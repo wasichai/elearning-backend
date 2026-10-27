@@ -457,7 +457,9 @@ def apply_model(client: Client, model: dict, report: Report) -> None:
         definition = client.call("GET", f"/api/metadata/objects/{obj['name']}")
         changed = {key: value for key, value in wanted.items() if _same(definition.get(key) or [], value) is False}
         if changed:
-            client.call("PUT", f"/api/objects/{obj['name']}", changed)
+            # UpdateObjectRequest exige label y su enabled vale true por omisión: se reenvían los del modelo
+            body = {k: obj[k] for k in ("label", "pluralLabel", "description") if k in obj} | changed
+            client.call("PUT", f"/api/objects/{obj['name']}", body)
             report.add(f"{', '.join(changed)} de {obj['name']}")
 
 

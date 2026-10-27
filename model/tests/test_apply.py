@@ -122,6 +122,8 @@ class FakeWasichai:
             self.actions.setdefault(m[1], []).append(body)
             return 201, body
         if m := re.fullmatch(r"/api/objects/(\w+)", path):
+            if not body.get("label"):  # como el real: UpdateObjectRequest.label es @NotBlank
+                return 400, {"detail": "Failed to read HTTP message"}
             self.objects[m[1]].update(body)
             return 200, {}
         if path == "/api/relationships":
