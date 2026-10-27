@@ -17,6 +17,13 @@ wasichai:
   web:
     problem-base-uri: ${LMS_PROBLEM_BASE_URI:https://wasichai-learning.dev/problems}
 
+# contrato OpenAPI del LMS (ADR-0008): solo /api/lms/**, servido en la ruta pública (solo GET, sin sesión)
+springdoc:
+  api-docs:
+    path: /api/lms/public/openapi
+  paths-to-match: /api/lms/**
+  writer-with-order-by-keys: true
+
 lms:
   product-name: ${LMS_PRODUCT_NAME:wasichai-learning}
   public:
