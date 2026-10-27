@@ -21,14 +21,14 @@ Ver [`reference-repositories.md` §8](../research/reference-repositories.md#8-en
 
 **El proceso se arma con lo que está instalado y no se simula Superpowers.**
 
-| Necesidad | Cómo se cubre |
-|---|---|
-| Diseñar antes de escribir | plan mode; el plan aprobado se convierte en ADR y en documentos de `docs/` |
-| TDD | manual: prueba que falla (rojo), código mínimo que la pasa (verde), refactor; la prueba roja se ejecuta de verdad |
-| Revisión de corrección | `/code-review` sobre el diff de cada paso |
-| Simplificación | `/simplify` antes de cerrar un paso |
-| Seguridad | `/security-review` en todo cambio que toque autenticación, autorización, entrada externa o archivos |
-| Paralelizar | subagentes, cada uno en su worktree y su rama, con una lista cerrada de archivos que puede tocar |
+| Necesidad                 | Cómo se cubre                                                                                                     |
+| ------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| Diseñar antes de escribir | plan mode; el plan aprobado se convierte en ADR y en documentos de `docs/`                                        |
+| TDD                       | manual: prueba que falla (rojo), código mínimo que la pasa (verde), refactor; la prueba roja se ejecuta de verdad |
+| Revisión de corrección    | `/code-review` sobre el diff de cada paso                                                                         |
+| Simplificación            | `/simplify` antes de cerrar un paso                                                                               |
+| Seguridad                 | `/security-review` en todo cambio que toque autenticación, autorización, entrada externa o archivos               |
+| Paralelizar               | subagentes, cada uno en su worktree y su rama, con una lista cerrada de archivos que puede tocar                  |
 
 **Trazabilidad en GitHub.** Una épica (issue) por tarea del plan; un issue y un PR por paso de la épica. El PR se
 integra con squash-merge solo después de verificar: build, formato y pruebas ejecutados y en verde, revisión hecha.

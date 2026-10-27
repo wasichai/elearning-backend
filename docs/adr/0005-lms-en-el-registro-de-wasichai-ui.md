@@ -6,7 +6,7 @@
 
 - wasichai-ui arma la interfaz con un registro de módulos
   ([ADR-028 de Wasichai](https://github.com/wasichai/wasichai/blob/main/docs/adr/0028-frontend-module-registry.md)):
-  cada `WasichaiModule` aporta rutas, menú, i18n y *slots*; `createRegistry` valida la combinación al arrancar.
+  cada `WasichaiModule` aporta rutas, menú, i18n y _slots_; `createRegistry` valida la combinación al arrancar.
 - Una ruta declara `chrome: 'shell' | 'bare' | 'public'` (`packages/core/src/registry/contract.ts`); las rutas
   `public` se montan fuera de la sesión (`packages/core/src/app/WasichaiRoutes.tsx`).
 - Los enlaces se construyen con `useWasichaiLinks().to('<módulo>:<ruta>')`; cada paquete tiene `boundaries.test.ts`
@@ -43,8 +43,8 @@ router y porque las rutas `public` del registro cubren lo que el portal de sgspe
 
 - Una sola aplicación, un login, un router; administración y LMS conviven con el mismo tema y componentes.
 - El LMS depende del contrato `WasichaiModule`: un cambio en wasichai-ui puede romper módulos al subir de versión.
-- Lo que el registro no ofrezca (p. ej. un *layout* editorial distinto para el catálogo) se resuelve dentro del
-  componente de la ruta, no con un router aparte. Si hiciera falta un *slot* nuevo, se pide a wasichai-ui con este
+- Lo que el registro no ofrezca (p. ej. un _layout_ editorial distinto para el catálogo) se resuelve dentro del
+  componente de la ruta, no con un router aparte. Si hiciera falta un _slot_ nuevo, se pide a wasichai-ui con este
   proyecto como segundo usuario concreto.
 - A verificar en implementación: que las rutas `public` admiten rutas anidadas con parámetros (`cursos/:slug`), carga
-  diferida (`lazy`) y que el *chrome* `public` no exige token para el `fetch` de datos.
+  diferida (`lazy`) y que el _chrome_ `public` no exige token para el `fetch` de datos.

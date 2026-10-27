@@ -9,8 +9,8 @@
   autónomo, semanas y carga total; y distinguir créditos **calculados, propuestos y aprobados**. No se asignan créditos
   oficiales sin validar la regla ni se mezclan ECTS con SCH.
 - Fuentes normativas verificadas ([`reference-repositories.md` §7](../research/reference-repositories.md#7-créditos-académicos-fuentes-normativas)):
-  - **Estados Unidos**, [34 CFR 600.2](https://www.ecfr.gov/current/title-34/subtitle-B/chapter-VI/part-600) (*credit
-    hour*): no menos de una hora de instrucción directa y un mínimo de dos horas de trabajo fuera de clase por semana
+  - **Estados Unidos**, [34 CFR 600.2](https://www.ecfr.gov/current/title-34/subtitle-B/chapter-VI/part-600) (_credit
+    hour_): no menos de una hora de instrucción directa y un mínimo de dos horas de trabajo fuera de clase por semana
     durante unas quince semanas para un crédito semestral, o una cantidad equivalente de trabajo en otras actividades,
     según la institución y su acreditadora.
   - **Europa**, ECTS (ECTS Users' Guide, [EHEA](https://ehea.info/)): 60 créditos por año a tiempo completo, de 1500 a

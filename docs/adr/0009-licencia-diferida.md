@@ -10,7 +10,7 @@
   `GET /license` 404, POM y `package.json` sin licencia; `sgspe`/`sgspe-ui` sin licencia, `slides/package.json`
   `"UNLICENSED"`; `srtm-backend` sin licencia del proyecto). Embabel Agent es Apache-2.0
   ([`reference-repositories.md` §6](../research/reference-repositories.md#6-licencias)).
-- Sin licencia rige el *copyright* por defecto: nadie más puede copiar, modificar ni redistribuir. Eso afecta a
+- Sin licencia rige el _copyright_ por defecto: nadie más puede copiar, modificar ni redistribuir. Eso afecta a
   depender de las librerías de Wasichai y a reutilizar el texto de los manuales SRTM y SGSPE.
 - Las licencias de Wasichai y de los manuales las gobierna la organización `wasichai` de GitHub, de la que el usuario
   es administrador.
@@ -26,11 +26,11 @@
 
 Opciones para este proyecto, a decidir:
 
-| Licencia | A favor | En contra |
-|---|---|---|
-| Apache-2.0 | permisiva, con concesión explícita de patentes; la de Embabel | permite derivados cerrados |
-| AGPL-3.0 | obliga a publicar cambios también si se ofrece como servicio en red (el caso de un LMS) | ahuyenta a integradores; compatibilidad con Wasichai |
-| MIT | la más simple y permisiva | sin concesión de patentes; permite derivados cerrados |
+| Licencia   | A favor                                                                                 | En contra                                             |
+| ---------- | --------------------------------------------------------------------------------------- | ----------------------------------------------------- |
+| Apache-2.0 | permisiva, con concesión explícita de patentes; la de Embabel                           | permite derivados cerrados                            |
+| AGPL-3.0   | obliga a publicar cambios también si se ofrece como servicio en red (el caso de un LMS) | ahuyenta a integradores; compatibilidad con Wasichai  |
+| MIT        | la más simple y permisiva                                                               | sin concesión de patentes; permite derivados cerrados |
 
 El análisis completo está en [`docs/legal/licensing.md`](../legal/licensing.md).
 

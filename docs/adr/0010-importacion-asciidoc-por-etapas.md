@@ -10,7 +10,7 @@
   extracción, diseño pedagógico y aprobación editorial.
 - Los manuales son documentación de referencia y procedimientos, **no material didáctico**: no tienen objetivos de
   aprendizaje, ejercicios, cuestionarios ni duraciones (búsqueda verificada). Sí tienen una anatomía fija por
-  procedimiento (*Objetivo*, *Requisitos previos*, pasos, *Resultado esperado*, *Verificación*).
+  procedimiento (_Objetivo_, _Requisitos previos_, pasos, _Resultado esperado_, _Verificación_).
 - Grafo de includes: SRTM de profundidad 1, SGSPE de profundidad 2 con `leveloffset=+1`; sin `tag=` ni `lines=`. Los
   fragmentos **no** son autocontenidos: se referencian con `<<id>>` entre sí.
 - Se construyen con Asciidoctor 2.0.26 y asciidoctor-pdf 2.3.15; en el entorno no hay `asciidoctor` instalado.

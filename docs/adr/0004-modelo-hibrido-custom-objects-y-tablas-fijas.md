@@ -4,7 +4,7 @@
 
 ## Contexto
 
-- Wasichai es *metadata-driven*: cada Custom Object es una tabla física en `app_data`
+- Wasichai es _metadata-driven_: cada Custom Object es una tabla física en `app_data`
   ([ADR-004 de Wasichai](https://github.com/wasichai/wasichai/blob/main/docs/adr/0004-physical-table-per-object.md)),
   creada por la plataforma; el código de una app no emite ese DDL.
 - La especificación prohíbe crear «otro sistema de autenticación, autorización, metadatos, formularios, navegación,
@@ -33,7 +33,7 @@ Lo que da la metadata sin código propio:
 - tenancy por `organization_id`.
 
 Las reglas propias van por SPI, no por tablas paralelas: `RecordWriteGuard` (versión publicada inmutable, sin
-autoaprobación) y `RecordReadScope` (alcance por asignación: docente de *su* edición, revisor de *su* revisión)
+autoaprobación) y `RecordReadScope` (alcance por asignación: docente de _su_ edición, revisor de _su_ revisión)
 ([ADR-025](https://github.com/wasichai/wasichai/blob/main/docs/adr/0025-extension-spis.md),
 [ADR-048 de Wasichai](https://github.com/wasichai/wasichai/blob/main/docs/adr/0048-a-read-scope-narrows-what-a-caller-reads.md)).
 Los comandos que tocan varios objetos van en `/api/lms/**`.

@@ -34,12 +34,12 @@ sola aplicación; un usuario con varios roles ve varios módulos sin cambiar de 
 
 **Criterios para extraer un módulo o una aplicación más adelante** (se necesita al menos uno, medido, y un ADR nuevo):
 
-| Criterio | Señal concreta |
-|---|---|
-| Equipos | un equipo distinto es dueño del módulo y las revisiones cruzadas lo frenan |
-| Cadencia de despliegue | el módulo necesita desplegarse con otra frecuencia y el despliegue conjunto lo bloquea |
+| Criterio               | Señal concreta                                                                                       |
+| ---------------------- | ---------------------------------------------------------------------------------------------------- |
+| Equipos                | un equipo distinto es dueño del módulo y las revisiones cruzadas lo frenan                           |
+| Cadencia de despliegue | el módulo necesita desplegarse con otra frecuencia y el despliegue conjunto lo bloquea               |
 | Perímetro de seguridad | exige aislamiento propio (p. ej. ejecutar código no confiable de laboratorios, renderizado de vídeo) |
-| Métricas | carga, latencia o consumo de recursos medidos que no se resuelven escalando el monolito |
+| Métricas               | carga, latencia o consumo de recursos medidos que no se resuelven escalando el monolito              |
 
 ## Alternativas consideradas
 
