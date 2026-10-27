@@ -14,18 +14,18 @@ en [`docs/testing/README.md`](../testing/README.md).
 
 ## 1. Autenticación
 
-| Aspecto | Comportamiento | Estado |
-|---|---|---|
-| Emisión | `POST /api/auth/login` (BCrypt) emite un JWT HS256 de Wasichai: `sub`, `org`, `email`, `roles`, `jti`, `exp` | Wasichai |
-| Duración | 8 h por defecto (`wasichai.security.jwt.ttl`) | Wasichai |
-| Secreto | `WASICHAI_JWT_SECRET`, ≥ 32 bytes; sin él la aplicación no arranca | Wasichai |
-| OIDC | «OIDC-ready» (ADR-010 de Wasichai): cambia el decodificador y el login, no los permisos | Posterior a F6 |
-| Revocación | `wasichai.security.jwt.revocation=true`: al desactivar, cambiar contraseña o roles, y en logout | F6 |
-| Límite de intentos | `wasichai.security.login.enabled=true`: `429` por correo y dirección, y por cuenta | F6 |
-| Contraseñas | `wasichai.security.password.*` (`PasswordPolicy`) | F6 |
-| Cuentas de servicio | `POST /api/auth/token`; nunca `ADMIN`; TTL de 15 min | Solo si hace falta |
-| Navegador | Token en `localStorage` (wasichai-ui); un `401` cierra la sesión | Wasichai-ui |
-| Semilla | `admin@wasichai.local` / `admin` solo con `wasichai.seed.dev=true` (perfil `dev`) | F1 |
+| Aspecto             | Comportamiento                                                                                               | Estado             |
+| ------------------- | ------------------------------------------------------------------------------------------------------------ | ------------------ |
+| Emisión             | `POST /api/auth/login` (BCrypt) emite un JWT HS256 de Wasichai: `sub`, `org`, `email`, `roles`, `jti`, `exp` | Wasichai           |
+| Duración            | 8 h por defecto (`wasichai.security.jwt.ttl`)                                                                | Wasichai           |
+| Secreto             | `WASICHAI_JWT_SECRET`, ≥ 32 bytes; sin él la aplicación no arranca                                           | Wasichai           |
+| OIDC                | «OIDC-ready» (ADR-010 de Wasichai): cambia el decodificador y el login, no los permisos                      | Posterior a F6     |
+| Revocación          | `wasichai.security.jwt.revocation=true`: al desactivar, cambiar contraseña o roles, y en logout              | F6                 |
+| Límite de intentos  | `wasichai.security.login.enabled=true`: `429` por correo y dirección, y por cuenta                           | F6                 |
+| Contraseñas         | `wasichai.security.password.*` (`PasswordPolicy`)                                                            | F6                 |
+| Cuentas de servicio | `POST /api/auth/token`; nunca `ADMIN`; TTL de 15 min                                                         | Solo si hace falta |
+| Navegador           | Token en `localStorage` (wasichai-ui); un `401` cierra la sesión                                             | Wasichai-ui        |
+| Semilla             | `admin@wasichai.local` / `admin` solo con `wasichai.seed.dev=true` (perfil `dev`)                            | F1                 |
 
 «Wasichai» en la columna de estado significa comportamiento de la plataforma, verificado en su documentación.
 
@@ -60,11 +60,11 @@ Roles (`model/roles.json`, multi-rol en `user_roles`): ESTUDIANTE, DOCENTE, CREA
 
 Acciones declaradas:
 
-| Objeto | Acción | Quién la recibe | Estado |
-|---|---|---|---|
-| `version_curso` | `APROBAR` | REVISOR (o el rol que fije la política), nunca el autor (§3) | En el modelo F1, uso F4 |
-| `version_curso` | `PUBLICAR` | ADMIN o un rol editorial designado | En el modelo F1, uso F4 |
-| A decidir | p. ej. `CALIFICAR`, `GENERAR`, `VALIDAR` | Ver [IA §8](../ai/README.md#8-permisos-separados) | F3/F5 |
+| Objeto          | Acción                                   | Quién la recibe                                              | Estado                  |
+| --------------- | ---------------------------------------- | ------------------------------------------------------------ | ----------------------- |
+| `version_curso` | `APROBAR`                                | REVISOR (o el rol que fije la política), nunca el autor (§3) | En el modelo F1, uso F4 |
+| `version_curso` | `PUBLICAR`                               | ADMIN o un rol editorial designado                           | En el modelo F1, uso F4 |
+| A decidir       | p. ej. `CALIFICAR`, `GENERAR`, `VALIDAR` | Ver [IA §8](../ai/README.md#8-permisos-separados)            | F3/F5                   |
 
 `GET /api/auth/me/permissions` informa al frontend de lo que el usuario puede hacer, acciones declaradas incluidas.
 
@@ -232,13 +232,13 @@ aplicación se conecta con un rol que no es dueño de las tablas, para que nadie
 
 ## 8. Gestión de secretos
 
-| Secreto | Dónde vive | Nunca en |
-|---|---|---|
-| `WASICHAI_JWT_SECRET` | Entorno o `Secret` del despliegue | Repositorio, logs, `.env.example` |
-| Credenciales de BD | Entorno; en producción, rol de migración y rol de ejecución | `application.yml` |
-| `GITHUB_TOKEN` (`read:packages`) | Solo build: Gradle, `~/.npmrc` del desarrollador, secreto de CI | Archivos del repo, imagen |
-| Clave del proveedor IA (F5) | Entorno del backend | Prompts, `AgentRun`, frontend |
-| Credenciales S3 (F2) | Entorno del backend | Cliente |
+| Secreto                          | Dónde vive                                                      | Nunca en                          |
+| -------------------------------- | --------------------------------------------------------------- | --------------------------------- |
+| `WASICHAI_JWT_SECRET`            | Entorno o `Secret` del despliegue                               | Repositorio, logs, `.env.example` |
+| Credenciales de BD               | Entorno; en producción, rol de migración y rol de ejecución     | `application.yml`                 |
+| `GITHUB_TOKEN` (`read:packages`) | Solo build: Gradle, `~/.npmrc` del desarrollador, secreto de CI | Archivos del repo, imagen         |
+| Clave del proveedor IA (F5)      | Entorno del backend                                             | Prompts, `AgentRun`, frontend     |
+| Credenciales S3 (F2)             | Entorno del backend                                             | Cliente                           |
 
 `.env` no se versiona; `.env.example` lista nombres sin valores reales. Si un secreto se filtra: rotarlo, revocar los
 tokens (con revocación activa) y registrar el incidente. El canal de reporte de vulnerabilidades está en `SECURITY.md`.
@@ -249,20 +249,20 @@ Obligatorias para cada recurso nuevo, como pruebas de integración contra la apl
 ver [pruebas](../testing/README.md)). Sujetos: usuarios de prueba con un solo rol, nunca `ADMIN`. Cada prueba
 comprueba también que **nada cambió**, releyendo como propietario.
 
-| Caso | Cómo | Esperado |
-|---|---|---|
-| Anónimo en ruta privada | Sin `Authorization` a `/api/lms/**` no público y a `/api/objects/**` | `401` |
-| Anónimo escribe en lo público | `POST`, `PUT`, `DELETE` a `/api/lms/public/**` | `401` o `403` |
-| Borrador por URL pública | Slug de una versión en borrador o en revisión | `404` |
-| IDOR: id ajeno en la URL | Cambiar el id de matrícula, intento, entrega, lección, versión o revisión por uno ajeno | `404`, cuerpo sin datos |
-| IDOR en relaciones | Crear o actualizar con un `RELATION` a un registro fuera de alcance | `400` en el campo |
-| Otra organización | Token de la organización B con ids de la A | `404` |
-| Rol sin permiso | ESTUDIANTE llama a un comando de DOCENTE, CREADOR o REVISOR; DOCENTE intenta `PUBLICAR` | `403` |
-| Docente fuera de su edición | DOCENTE de la edición X lee o califica en la Y | `404` |
-| Autoaprobación | El autor, aun con `APROBAR`, aprueba su versión | Rechazo del guard |
-| Publicada inmutable | Editar o borrar una versión `PUBLICADA` | Rechazo del guard |
-| Nota sin motivo | `PATCH` de calificación sin motivo | `400` |
-| Listados | Filtros que incluirían recursos ajenos | Solo los propios, conteos coherentes |
+| Caso                          | Cómo                                                                                    | Esperado                             |
+| ----------------------------- | --------------------------------------------------------------------------------------- | ------------------------------------ |
+| Anónimo en ruta privada       | Sin `Authorization` a `/api/lms/**` no público y a `/api/objects/**`                    | `401`                                |
+| Anónimo escribe en lo público | `POST`, `PUT`, `DELETE` a `/api/lms/public/**`                                          | `401` o `403`                        |
+| Borrador por URL pública      | Slug de una versión en borrador o en revisión                                           | `404`                                |
+| IDOR: id ajeno en la URL      | Cambiar el id de matrícula, intento, entrega, lección, versión o revisión por uno ajeno | `404`, cuerpo sin datos              |
+| IDOR en relaciones            | Crear o actualizar con un `RELATION` a un registro fuera de alcance                     | `400` en el campo                    |
+| Otra organización             | Token de la organización B con ids de la A                                              | `404`                                |
+| Rol sin permiso               | ESTUDIANTE llama a un comando de DOCENTE, CREADOR o REVISOR; DOCENTE intenta `PUBLICAR` | `403`                                |
+| Docente fuera de su edición   | DOCENTE de la edición X lee o califica en la Y                                          | `404`                                |
+| Autoaprobación                | El autor, aun con `APROBAR`, aprueba su versión                                         | Rechazo del guard                    |
+| Publicada inmutable           | Editar o borrar una versión `PUBLICADA`                                                 | Rechazo del guard                    |
+| Nota sin motivo               | `PATCH` de calificación sin motivo                                                      | `400`                                |
+| Listados                      | Filtros que incluirían recursos ajenos                                                  | Solo los propios, conteos coherentes |
 
 El código HTTP del rechazo de un guard (`WasichaiException` y su estado) se fija al implementar el primer guard y se
 anota aquí.

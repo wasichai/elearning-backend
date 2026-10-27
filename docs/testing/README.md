@@ -11,14 +11,14 @@ comprobaciones se ejecutan de verdad ([ADR-0001](../adr/0001-proceso-de-ingenier
 
 ## Niveles
 
-| Nivel | Qué cubre | Herramientas | Comando |
-|---|---|---|---|
-| Dominio | Carga y créditos (`workload`), filtros, transiciones, finalización, progreso | JUnit 5 + AssertJ | `./gradlew build` |
-| Integración | Contratos, permisos, aislamiento, migraciones, guards, idempotencia | `WasichaiIntegrationTest`, `postgres:18` | `./gradlew integrationTest` |
-| Aprovisionamiento | `model/apply.py`: validación del modelo, idempotencia | `unittest` (biblioteca estándar) | `python3 -m unittest` |
-| Arquitectura | Fronteras del monolito | Escaneo de fuentes con AssertJ | `./gradlew build` |
-| Frontend | Componentes, formularios, rutas y permisos, registro, estados, accesibilidad | Vitest, Testing Library, `@wasichai/testing` | `yarn test` |
-| E2E | Flujos de usuario en navegador | Playwright, API simulada o backend real | `yarn e2e` |
+| Nivel             | Qué cubre                                                                    | Herramientas                                 | Comando                     |
+| ----------------- | ---------------------------------------------------------------------------- | -------------------------------------------- | --------------------------- |
+| Dominio           | Carga y créditos (`workload`), filtros, transiciones, finalización, progreso | JUnit 5 + AssertJ                            | `./gradlew build`           |
+| Integración       | Contratos, permisos, aislamiento, migraciones, guards, idempotencia          | `WasichaiIntegrationTest`, `postgres:18`     | `./gradlew integrationTest` |
+| Aprovisionamiento | `model/apply.py`: validación del modelo, idempotencia                        | `unittest` (biblioteca estándar)             | `python3 -m unittest`       |
+| Arquitectura      | Fronteras del monolito                                                       | Escaneo de fuentes con AssertJ               | `./gradlew build`           |
+| Frontend          | Componentes, formularios, rutas y permisos, registro, estados, accesibilidad | Vitest, Testing Library, `@wasichai/testing` | `yarn test`                 |
+| E2E               | Flujos de usuario en navegador                                               | Playwright, API simulada o backend real      | `yarn e2e`                  |
 
 Como en Wasichai, no se usan MockK, Kotest ni ArchUnit; la prueba de arquitectura sigue el patrón de su
 `CoreArchitectureTest`. La integración usa PostgreSQL real con Testcontainers (`WasichaiTestDatabase`).
@@ -110,22 +110,22 @@ pruebas.
 Los 13 flujos de la especificación (§20) y la fase en que llega cada uno ([roadmap](../product/roadmap.md)). El flujo 0
 no está en la lista de la especificación: es el del primer incremento.
 
-| # | Flujo | Fase | Datos necesarios |
-|---|---|---|---|
-| 0 | Visitante anónimo busca, filtra y abre la ficha de un curso publicado; un borrador no aparece | Primer incremento | Cursos publicados y uno en borrador |
-| 1 | Login de estudiante | F2 | Usuario ESTUDIANTE |
-| 2 | Matrícula en una edición | F2 | Edición con ventana de matrícula abierta |
-| 3 | Abrir una unidad y un recurso | F2 | Versión publicada con unidades, lecciones y recursos |
-| 4 | Progreso persistido (salir y volver continúa donde quedó) | F2 | Matrícula activa |
-| 5 | Rendir una evaluación | F3 | Evaluación con instantánea de versión |
-| 6 | Ver resultado y retroalimentación | F3 | Intento calificado |
-| 7 | Docente ve solo lo permitido (sus ediciones, su alumnado) | F3 | Dos ediciones con docentes distintos |
-| 8 | Crear y editar un borrador | F4 | Usuario CREADOR |
-| 9 | Enviar a revisión | F4 | Borrador válido |
-| 10 | Revisar, pedir cambios y aprobar | F4 | REVISOR asignado distinto del autor |
-| 11 | Publicar | F4 | Versión aprobada, usuario con `PUBLICAR` |
-| 12 | Lo publicado es visible al alumno sin alterar lo que ya consumía | F4 | Matrícula sobre la versión anterior |
-| 13 | Sin permiso no puede (ruta oculta y acción rechazada por el servidor) | Primer incremento y cada fase | Usuarios de un rol, otra organización |
+| #   | Flujo                                                                                         | Fase                          | Datos necesarios                                     |
+| --- | --------------------------------------------------------------------------------------------- | ----------------------------- | ---------------------------------------------------- |
+| 0   | Visitante anónimo busca, filtra y abre la ficha de un curso publicado; un borrador no aparece | Primer incremento             | Cursos publicados y uno en borrador                  |
+| 1   | Login de estudiante                                                                           | F2                            | Usuario ESTUDIANTE                                   |
+| 2   | Matrícula en una edición                                                                      | F2                            | Edición con ventana de matrícula abierta             |
+| 3   | Abrir una unidad y un recurso                                                                 | F2                            | Versión publicada con unidades, lecciones y recursos |
+| 4   | Progreso persistido (salir y volver continúa donde quedó)                                     | F2                            | Matrícula activa                                     |
+| 5   | Rendir una evaluación                                                                         | F3                            | Evaluación con instantánea de versión                |
+| 6   | Ver resultado y retroalimentación                                                             | F3                            | Intento calificado                                   |
+| 7   | Docente ve solo lo permitido (sus ediciones, su alumnado)                                     | F3                            | Dos ediciones con docentes distintos                 |
+| 8   | Crear y editar un borrador                                                                    | F4                            | Usuario CREADOR                                      |
+| 9   | Enviar a revisión                                                                             | F4                            | Borrador válido                                      |
+| 10  | Revisar, pedir cambios y aprobar                                                              | F4                            | REVISOR asignado distinto del autor                  |
+| 11  | Publicar                                                                                      | F4                            | Versión aprobada, usuario con `PUBLICAR`             |
+| 12  | Lo publicado es visible al alumno sin alterar lo que ya consumía                              | F4                            | Matrícula sobre la versión anterior                  |
+| 13  | Sin permiso no puede (ruta oculta y acción rechazada por el servidor)                         | Primer incremento y cada fase | Usuarios de un rol, otra organización                |
 
 F5 añade un flujo propio con el doble determinista (brief → borrador validado → revisión → publicación tras
 aprobación) y F6 la regresión completa con accesibilidad y capturas.

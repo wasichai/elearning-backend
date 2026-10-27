@@ -11,18 +11,18 @@ Comprobado el 2026-10-27 con `gh api` sobre los commits de
 [`docs/research/reference-repositories.md`](../research/reference-repositories.md#6-licencias) y con los registros
 públicos (Maven Central, npm).
 
-| Componente | Licencia | Cómo se verificó |
-|---|---|---|
-| `wasichai/wasichai` | **Ninguna** | Sin archivo de licencia en el árbol, `GET /repos/wasichai/wasichai/license` → 404, POM sin `licenses`, sin cabeceras |
-| `wasichai/wasichai-ui` | **Ninguna** | Sin archivo; ningún `package.json` declara `license` |
-| `wasichai/sgspe` | **Ninguna** | Sin archivo; `slides/package.json` dice `"license": "UNLICENSED"` |
-| `wasichai/sgspe-ui` | **Ninguna** | Sin archivo |
-| `wasichai/srtm-backend` (manuales SRTM) | **Ninguna** para el proyecto; solo las de sus fuentes (OFL, DejaVu, Liberation) | Árbol del repositorio |
-| Embabel Agent 1.5.3 | Apache-2.0 | Repositorio `embabel/embabel-agent` |
-| Spring Boot 4.1.1, Spring AI 2.0.1, Kotlin 2.4.21 | Apache-2.0 | POM en Maven Central |
-| React, Vite, Tailwind CSS, React Router, TanStack Query, Zod, i18next, Vitest | MIT | Campo `license` en npm |
-| Playwright | Apache-2.0 | Campo `license` en npm |
-| Remotion 4.0.x | Licencia propia de Remotion, no OSI | npm: `SEE LICENSE IN LICENSE.md`; `remotion-dev/remotion:LICENSE.md` |
+| Componente                                                                    | Licencia                                                                        | Cómo se verificó                                                                                                     |
+| ----------------------------------------------------------------------------- | ------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `wasichai/wasichai`                                                           | **Ninguna**                                                                     | Sin archivo de licencia en el árbol, `GET /repos/wasichai/wasichai/license` → 404, POM sin `licenses`, sin cabeceras |
+| `wasichai/wasichai-ui`                                                        | **Ninguna**                                                                     | Sin archivo; ningún `package.json` declara `license`                                                                 |
+| `wasichai/sgspe`                                                              | **Ninguna**                                                                     | Sin archivo; `slides/package.json` dice `"license": "UNLICENSED"`                                                    |
+| `wasichai/sgspe-ui`                                                           | **Ninguna**                                                                     | Sin archivo                                                                                                          |
+| `wasichai/srtm-backend` (manuales SRTM)                                       | **Ninguna** para el proyecto; solo las de sus fuentes (OFL, DejaVu, Liberation) | Árbol del repositorio                                                                                                |
+| Embabel Agent 1.5.3                                                           | Apache-2.0                                                                      | Repositorio `embabel/embabel-agent`                                                                                  |
+| Spring Boot 4.1.1, Spring AI 2.0.1, Kotlin 2.4.21                             | Apache-2.0                                                                      | POM en Maven Central                                                                                                 |
+| React, Vite, Tailwind CSS, React Router, TanStack Query, Zod, i18next, Vitest | MIT                                                                             | Campo `license` en npm                                                                                               |
+| Playwright                                                                    | Apache-2.0                                                                      | Campo `license` en npm                                                                                               |
+| Remotion 4.0.x                                                                | Licencia propia de Remotion, no OSI                                             | npm: `SEE LICENSE IN LICENSE.md`; `remotion-dev/remotion:LICENSE.md`                                                 |
 
 El resto del árbol de dependencias se verifica con un informe automático de licencias en CI (planificado F1; la
 herramienta se elige al configurarlo).
@@ -60,11 +60,11 @@ modificarlo ni redistribuirlo fuera de ese uso. Para este proyecto significa:
 
 Para el **código**:
 
-| Licencia | A favor | En contra |
-|---|---|---|
-| Apache-2.0 | La de Spring, Kotlin y Embabel; concesión expresa de patentes; muy conocida | Permite forks cerrados y servicios sin devolver cambios |
-| AGPL-3.0 | Quien ofrezca el LMS modificado como servicio en red publica sus cambios | Muchas organizaciones la evitan; exige dependencias compatibles |
-| MIT | La más simple y permisiva; máxima adopción | Sin concesión expresa de patentes; permite forks cerrados |
+| Licencia   | A favor                                                                     | En contra                                                       |
+| ---------- | --------------------------------------------------------------------------- | --------------------------------------------------------------- |
+| Apache-2.0 | La de Spring, Kotlin y Embabel; concesión expresa de patentes; muy conocida | Permite forks cerrados y servicios sin devolver cambios         |
+| AGPL-3.0   | Quien ofrezca el LMS modificado como servicio en red publica sus cambios    | Muchas organizaciones la evitan; exige dependencias compatibles |
+| MIT        | La más simple y permisiva; máxima adopción                                  | Sin concesión expresa de patentes; permite forks cerrados       |
 
 Para los **materiales de curso** (texto, imágenes, vídeos), una licencia de contenido separada es habitual, por ejemplo
 CC BY 4.0 o CC BY-SA 4.0; cada material puede llevar la suya en sus metadatos (especificación §9). Aplica solo al

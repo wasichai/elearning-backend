@@ -8,12 +8,12 @@ gestión de secretos, en [`docs/security/README.md`](../security/README.md#8-ges
 
 ## Puertos locales
 
-| Servicio | Dirección | Notas |
-|---|---|---|
-| Backend (Spring Boot) | `http://localhost:8090` | `server.port`; la misma que usa la guía de Wasichai |
-| UI (Vite, `yarn dev`) | `http://localhost:5180` | Proxy de `/api` al backend |
-| PostgreSQL 18 (`compose.yaml`) | `127.0.0.1:5436` | Solo en loopback |
-| PostgreSQL de las pruebas | Puerto aleatorio de Testcontainers | **Ninguna prueba usa 5432** ([pruebas](../testing/README.md#regla-del-puerto-5432)) |
+| Servicio                       | Dirección                          | Notas                                                                               |
+| ------------------------------ | ---------------------------------- | ----------------------------------------------------------------------------------- |
+| Backend (Spring Boot)          | `http://localhost:8090`            | `server.port`; la misma que usa la guía de Wasichai                                 |
+| UI (Vite, `yarn dev`)          | `http://localhost:5180`            | Proxy de `/api` al backend                                                          |
+| PostgreSQL 18 (`compose.yaml`) | `127.0.0.1:5436`                   | Solo en loopback                                                                    |
+| PostgreSQL de las pruebas      | Puerto aleatorio de Testcontainers | **Ninguna prueba usa 5432** ([pruebas](../testing/README.md#regla-del-puerto-5432)) |
 
 MinIO (S3) y Mailpit se añaden a `compose.yaml` cuando un requisito los use (recursos y vídeo en F2/F5, avisos en F3),
 también solo en loopback.
@@ -23,30 +23,30 @@ también solo en loopback.
 Lista prevista; `.env.example` es la referencia ejecutable y nunca lleva valores reales. Wasichai lee
 `wasichai.*` también como `WASICHAI_*` (enlace relajado de Spring).
 
-| Variable | Uso | Obligatoria | Fase |
-|---|---|---|---|
-| `WASICHAI_JWT_SECRET` | Firma de los JWT, ≥ 32 bytes; sin ella el backend no arranca | Sí | F1 |
-| `WASICHAI_DB_HOST`, `WASICHAI_DB_PORT` | Servidor PostgreSQL. Wasichai pone por defecto `localhost:5432`: en local se fija `5436` | Sí en local | F1 |
-| `WASICHAI_DB_NAME`, `WASICHAI_DB_USERNAME`, `WASICHAI_DB_PASSWORD` | Base y credenciales (Wasichai: `wasichai` las tres) | Fuera de local | F1 |
-| `SPRING_PROFILES_ACTIVE` | `dev` en local (activa la semilla de Wasichai) | No | F1 |
-| `WASICHAI_SEED_DEV` | `true` solo en desarrollo: crea `admin@wasichai.local` / `admin` | Nunca en producción | F1 |
-| `WASICHAI_WEB_CORS_ALLOWED_ORIGIN_PATTERNS` | Orígenes de la UI (por defecto de Wasichai `http://localhost:*`) | En despliegue | F1 |
-| `LMS_PUBLIC_ORGANIZATION` | Organización cuyo catálogo es público (`lms.public.organization`) | Sí | F1 |
-| `LMS_PRODUCT_NAME` / `VITE_APP_NAME` | Nombre visible del producto (backend / build del frontend) | No | F1 |
-| `WASICHAI_SECURITY_JWT_REVOCATION`, `…_LOGIN_ENABLED`, `…_PASSWORD_*` | Endurecimiento del login | Antes de producción | F6 |
-| `WASICHAI_FILES_*` | Almacén de archivos (`store`, `s3.*`, `max-bytes`) | Cuando haya archivos | F2 |
-| `ANTHROPIC_API_KEY`, `WASICHAI_AGENT_ENABLED` | IA; sin clave, [doble determinista](../ai/README.md#7-doble-determinista-sin-credenciales) | No | F5 |
-| `GITHUB_ACTOR`, `GITHUB_TOKEN` | **Solo build**: Wasichai desde GitHub Packages (`read:packages`), `$(gh auth token)` | Solo build | F1 |
-| `WASICHAI_TEST_DB_*` | Base externa para pruebas de integración; el nombre debe terminar en `_test` | No | F1 |
+| Variable                                                              | Uso                                                                                        | Obligatoria          | Fase |
+| --------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ | -------------------- | ---- |
+| `WASICHAI_JWT_SECRET`                                                 | Firma de los JWT, ≥ 32 bytes; sin ella el backend no arranca                               | Sí                   | F1   |
+| `WASICHAI_DB_HOST`, `WASICHAI_DB_PORT`                                | Servidor PostgreSQL. Wasichai pone por defecto `localhost:5432`: en local se fija `5436`   | Sí en local          | F1   |
+| `WASICHAI_DB_NAME`, `WASICHAI_DB_USERNAME`, `WASICHAI_DB_PASSWORD`    | Base y credenciales (Wasichai: `wasichai` las tres)                                        | Fuera de local       | F1   |
+| `SPRING_PROFILES_ACTIVE`                                              | `dev` en local (activa la semilla de Wasichai)                                             | No                   | F1   |
+| `WASICHAI_SEED_DEV`                                                   | `true` solo en desarrollo: crea `admin@wasichai.local` / `admin`                           | Nunca en producción  | F1   |
+| `WASICHAI_WEB_CORS_ALLOWED_ORIGIN_PATTERNS`                           | Orígenes de la UI (por defecto de Wasichai `http://localhost:*`)                           | En despliegue        | F1   |
+| `LMS_PUBLIC_ORGANIZATION`                                             | Organización cuyo catálogo es público (`lms.public.organization`)                          | Sí                   | F1   |
+| `LMS_PRODUCT_NAME` / `VITE_APP_NAME`                                  | Nombre visible del producto (backend / build del frontend)                                 | No                   | F1   |
+| `WASICHAI_SECURITY_JWT_REVOCATION`, `…_LOGIN_ENABLED`, `…_PASSWORD_*` | Endurecimiento del login                                                                   | Antes de producción  | F6   |
+| `WASICHAI_FILES_*`                                                    | Almacén de archivos (`store`, `s3.*`, `max-bytes`)                                         | Cuando haya archivos | F2   |
+| `ANTHROPIC_API_KEY`, `WASICHAI_AGENT_ENABLED`                         | IA; sin clave, [doble determinista](../ai/README.md#7-doble-determinista-sin-credenciales) | No                   | F5   |
+| `GITHUB_ACTOR`, `GITHUB_TOKEN`                                        | **Solo build**: Wasichai desde GitHub Packages (`read:packages`), `$(gh auth token)`       | Solo build           | F1   |
+| `WASICHAI_TEST_DB_*`                                                  | Base externa para pruebas de integración; el nombre debe terminar en `_test`               | No                   | F1   |
 
 El frontend necesita además el token de `npm.pkg.github.com` en `~/.npmrc` del desarrollador o en un secreto de CI,
 nunca en el `.npmrc` del repositorio. Nombres de variables `LMS_*`: a confirmar al crear las propiedades en F1.
 
 ## Salud
 
-| Ruta | Qué dice | Acceso |
-|---|---|---|
-| `GET /api/health` | Salud de la aplicación (`healthController` de Wasichai) | Público |
+| Ruta                      | Qué dice                                                    | Acceso  |
+| ------------------------- | ----------------------------------------------------------- | ------- |
+| `GET /api/health`         | Salud de la aplicación (`healthController` de Wasichai)     | Público |
 | `GET /actuator/health/**` | Actuator de Spring Boot, incluido en el starter de Wasichai | Público |
 
 Grupos `liveness`/`readiness` para k3s y qué indicadores exponen detalle: a verificar al configurar actuator. Ningún
@@ -112,18 +112,18 @@ Una copia no cuenta hasta haberse restaurado. Procedimiento (manual ahora, autom
 
 ## Diagnóstico básico
 
-| Síntoma | Comprobación |
-|---|---|
-| El backend no arranca: `wasichai.security.jwt.secret must be at least 32 bytes` | Definir `WASICHAI_JWT_SECRET` con ≥ 32 bytes |
-| Gradle no resuelve `wasichai:*` (401/403) | Token sin `read:packages`: `gh auth refresh -h github.com -s read:packages`; exportar `GITHUB_*` |
-| `yarn install` falla con 401 en `npm.pkg.github.com` | Token en `~/.npmrc` (`//npm.pkg.github.com/:_authToken=…`) |
-| Conexión rechazada al puerto 5436 | `docker compose ps`; el contenedor de PostgreSQL debe estar `healthy` |
-| El backend intenta conectarse a 5432 | Falta `WASICHAI_DB_PORT=5436` (el valor por defecto de Wasichai es 5432) |
-| `WARN` de Wasichai sobre el dueño de `audit_log` | Esperado en local; en producción, separar roles |
-| La UI vuelve al login en cada llamada | Token caducado (8 h) o secreto distinto entre reinicios |
-| Errores CORS en el navegador | `WASICHAI_WEB_CORS_ALLOWED_ORIGIN_PATTERNS` no incluye el origen de la UI |
-| `./gradlew integrationTest` falla al iniciar el contenedor | Docker no accesible; o usar `WASICHAI_TEST_DB_*` con una base cuyo nombre termine en `_test` |
-| Seguir una petición concreta | Tomar `X-Correlation-Id` de la respuesta y buscarlo en el registro y en `/api/audit?correlationId=` |
+| Síntoma                                                                         | Comprobación                                                                                        |
+| ------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| El backend no arranca: `wasichai.security.jwt.secret must be at least 32 bytes` | Definir `WASICHAI_JWT_SECRET` con ≥ 32 bytes                                                        |
+| Gradle no resuelve `wasichai:*` (401/403)                                       | Token sin `read:packages`: `gh auth refresh -h github.com -s read:packages`; exportar `GITHUB_*`    |
+| `yarn install` falla con 401 en `npm.pkg.github.com`                            | Token en `~/.npmrc` (`//npm.pkg.github.com/:_authToken=…`)                                          |
+| Conexión rechazada al puerto 5436                                               | `docker compose ps`; el contenedor de PostgreSQL debe estar `healthy`                               |
+| El backend intenta conectarse a 5432                                            | Falta `WASICHAI_DB_PORT=5436` (el valor por defecto de Wasichai es 5432)                            |
+| `WARN` de Wasichai sobre el dueño de `audit_log`                                | Esperado en local; en producción, separar roles                                                     |
+| La UI vuelve al login en cada llamada                                           | Token caducado (8 h) o secreto distinto entre reinicios                                             |
+| Errores CORS en el navegador                                                    | `WASICHAI_WEB_CORS_ALLOWED_ORIGIN_PATTERNS` no incluye el origen de la UI                           |
+| `./gradlew integrationTest` falla al iniciar el contenedor                      | Docker no accesible; o usar `WASICHAI_TEST_DB_*` con una base cuyo nombre termine en `_test`        |
+| Seguir una petición concreta                                                    | Tomar `X-Correlation-Id` de la respuesta y buscarlo en el registro y en `/api/audit?correlationId=` |
 
 ## Despliegue objetivo (k3s)
 

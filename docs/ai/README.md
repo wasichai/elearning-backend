@@ -13,29 +13,29 @@ explícitos, no agentes sueltos. Lo publicado no depende del proveedor de IA.
 Diez pasos de la especificación. «Embabel» significa que el paso llama a un modelo a través de Embabel; «código»,
 que es lógica determinista del módulo `elearning.ai` o de `authoring`; «persona», una acción humana con permiso propio.
 
-1. **Brief** — temática, público, objetivos, duración, idioma, nivel, expertos y fuentes autorizadas. *Persona*
+1. **Brief** — temática, público, objetivos, duración, idioma, nivel, expertos y fuentes autorizadas. _Persona_
    (CREADOR) con formulario validado → `Brief`. Fuentes solo de la lista permitida o de paquetes importados
    ([importador](../security/README.md#46-importador-asciidoc-f4)).
-2. **Análisis de fuentes con procedencia** — *código* (importador: grafo `include::`, secciones, anclas) + *Embabel*
+2. **Análisis de fuentes con procedencia** — _código_ (importador: grafo `include::`, secciones, anclas) + _Embabel_
    (extracción de conceptos y procedimientos) → `SourceAnalysis`, cada elemento ligado a `repo@sha:ruta#ancla`. Lo que
    no tiene procedencia se descarta.
 3. **Diseño pedagógico** — resultados medibles, temario, secuencia, distribución horaria, actividades, evaluaciones
-   alineadas, lecturas y criterios de aprobación. *Embabel* → `CourseDesign`. Horas y créditos los calcula el dominio
+   alineadas, lecturas y criterios de aprobación. _Embabel_ → `CourseDesign`. Horas y créditos los calcula el dominio
    `workload` (código), no el modelo.
-4. **Borrador con plantillas versionadas** — *Embabel* → `LessonDraft` en la fuente canónica (AsciiDoc). Plantilla y
+4. **Borrador con plantillas versionadas** — _Embabel_ → `LessonDraft` en la fuente canónica (AsciiDoc). Plantilla y
    versión quedan en `AgentRun`.
-5. **Multimedia** — guiones, diapositivas, narración, subtítulos y Remotion. *Embabel* (guion y estructura) + *código*
+5. **Multimedia** — guiones, diapositivas, narración, subtítulos y Remotion. _Embabel_ (guion y estructura) + _código_
    (render) → `VideoScript`, `SlideDeck`. Un vídeo solo está «terminado» si se renderizó y validó (§12).
-6. **Validaciones automáticas** — *código*: estructura, referencias, enlaces, recursos, duplicidad (hashes),
-   accesibilidad y metadatos → `ValidationReport`. *Embabel* solo aporta una **opinión** sobre la coherencia
+6. **Validaciones automáticas** — _código_: estructura, referencias, enlaces, recursos, duplicidad (hashes),
+   accesibilidad y metadatos → `ValidationReport`. _Embabel_ solo aporta una **opinión** sobre la coherencia
    contenido-evaluación, que nunca aprueba ni bloquea por sí sola.
-7. **Revisión humana** — aprobar, pedir cambios, comentar fragmentos, rechazar. *Persona* (REVISOR asignado) →
+7. **Revisión humana** — aprobar, pedir cambios, comentar fragmentos, rechazar. _Persona_ (REVISOR asignado) →
    `ContentReview` y `ReviewComment` ligados a la versión, en la bandeja del revisor.
-8. **Correcciones** — *persona* (CREADOR), con ayuda opcional de Embabel → nueva versión. No borra versiones anteriores
+8. **Correcciones** — _persona_ (CREADOR), con ayuda opcional de Embabel → nueva versión. No borra versiones anteriores
    ni toca las decisiones del revisor (`appendOnly`).
-9. **Aprobación final** — *persona* con `APROBAR`, distinta del autor → `APROBADA`
+9. **Aprobación final** — _persona_ con `APROBAR`, distinta del autor → `APROBADA`
    ([seguridad §3](../security/README.md#3-separación-de-deberes)).
-10. **Publicación** — *persona* con `PUBLICAR` → versión `PUBLICADA` inmutable. Nunca la hace un agente ni un trabajo
+10. **Publicación** — _persona_ con `PUBLICAR` → versión `PUBLICADA` inmutable. Nunca la hace un agente ni un trabajo
     automático.
 
 Los pasos 7 a 10 son el flujo editorial de F4 (`wasichai-workflow`); F5 solo añade los pasos que producen borradores y
@@ -88,24 +88,24 @@ pregunta; la entidad de este proyecto lleva otro nombre técnico en Kotlin (se f
 
 Una fila por ejecución de un paso (o por pregunta del asistente). Campos exigidos por la especificación:
 
-| Campo | Contenido |
-|---|---|
-| `id` | UUID estable |
-| `kind` | Paso (`SOURCE_ANALYSIS`, `COURSE_DESIGN`, `LESSON_DRAFT`, `SCRIPT`, `CONSISTENCY_REVIEW`, `ASSISTANT`…) |
-| `requested_by` | Usuario que lo pidió (el trabajo corre como plataforma, así que se guarda aquí) |
-| `course_id`, `unit_id`, `version_id` | Curso, unidad y versión afectados |
-| `objective`, `inputs` | Objetivo declarado y entradas exactas (brief, ids de fuentes) |
-| `sources` | Referencias `repo@sha:ruta#ancla` y hashes de su contenido |
-| `provider`, `model`, `model_params` | Proveedor y modelo (sin claves ni cabeceras) |
-| `prompt_version`, `template_version` | Versiones de instrucciones y plantillas |
-| `output` | Resultado estructurado (JSON del esquema del paso) |
-| `validations` | Informe de validación (esquema, referencias, reglas) |
-| `status`, `error` | `PENDING`, `RUNNING`, `SUCCEEDED`, `INVALID_OUTPUT`, `FAILED`, `CANCELLED`; error legible |
-| `input_tokens`, `output_tokens`, `cost` | Consumo y coste estimado con la tarifa configurada y su fecha |
-| `started_at`, `finished_at` | Duración |
-| `human_interventions` | Aceptaciones, ediciones y rechazos posteriores, con usuario y hora |
-| `idempotency_key`, `attempt` | Clave del trabajo y número de reintento |
-| `generator` | `MODEL` o `DETERMINISTIC` (§7) |
+| Campo                                   | Contenido                                                                                               |
+| --------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `id`                                    | UUID estable                                                                                            |
+| `kind`                                  | Paso (`SOURCE_ANALYSIS`, `COURSE_DESIGN`, `LESSON_DRAFT`, `SCRIPT`, `CONSISTENCY_REVIEW`, `ASSISTANT`…) |
+| `requested_by`                          | Usuario que lo pidió (el trabajo corre como plataforma, así que se guarda aquí)                         |
+| `course_id`, `unit_id`, `version_id`    | Curso, unidad y versión afectados                                                                       |
+| `objective`, `inputs`                   | Objetivo declarado y entradas exactas (brief, ids de fuentes)                                           |
+| `sources`                               | Referencias `repo@sha:ruta#ancla` y hashes de su contenido                                              |
+| `provider`, `model`, `model_params`     | Proveedor y modelo (sin claves ni cabeceras)                                                            |
+| `prompt_version`, `template_version`    | Versiones de instrucciones y plantillas                                                                 |
+| `output`                                | Resultado estructurado (JSON del esquema del paso)                                                      |
+| `validations`                           | Informe de validación (esquema, referencias, reglas)                                                    |
+| `status`, `error`                       | `PENDING`, `RUNNING`, `SUCCEEDED`, `INVALID_OUTPUT`, `FAILED`, `CANCELLED`; error legible               |
+| `input_tokens`, `output_tokens`, `cost` | Consumo y coste estimado con la tarifa configurada y su fecha                                           |
+| `started_at`, `finished_at`             | Duración                                                                                                |
+| `human_interventions`                   | Aceptaciones, ediciones y rechazos posteriores, con usuario y hora                                      |
+| `idempotency_key`, `attempt`            | Clave del trabajo y número de reintento                                                                 |
+| `generator`                             | `MODEL` o `DETERMINISTIC` (§7)                                                                          |
 
 Almacenamiento: `inputs`, `output` y `validations` son JSON y el tipo `JSON` de Wasichai aún no existe, así que el
 registro va en una tabla fija del esquema `lms` (`ModuleMigration` orden 200), con lectura por API propia bajo
@@ -128,7 +128,7 @@ IA. Diseño previsto, a confirmar con un ADR en F5:
 - Tabla fija `lms.ai_job` con el mismo patrón que `automation_runs`: estado, intentos, `FOR UPDATE SKIP LOCKED`,
   sondeo por temporizador; reclamación con `ClusterLock` donde haga falta (ADR-039 de Wasichai).
 - El permiso se comprueba **al encolar**, como el usuario; el trabajo escribe con `RecordService.asPlatform(org,
-  "ai:<job>")`, así que el `audit_log` lo etiqueta y `requested_by` queda en `AgentRun`.
+"ai:<job>")`, así que el `audit_log` lo etiqueta y `requested_by` queda en `AgentRun`.
 - **Idempotencia**: clave = hash de (paso, entradas, hashes de fuentes, versión de instrucciones y plantilla, modelo).
   Un reencolado con la misma clave devuelve el resultado existente: no se paga dos veces ni se crea un segundo
   borrador.
@@ -156,7 +156,7 @@ IA. Diseño previsto, a confirmar con un ADR en F5:
 
 Sin clave de proveedor (desarrollo, CI, colaboradores), cada interfaz del §2 usa su implementación determinista:
 plantillas fijas que producen salidas válidas según el esquema a partir de las entradas (p. ej., una lección por
-procedimiento con su *Objetivo* y *Verificación*). Reglas:
+procedimiento con su _Objetivo_ y _Verificación_). Reglas:
 
 - `generator = DETERMINISTIC` en `AgentRun` y un distintivo visible en la UI («generado sin IA, ilustrativo»).
 - No cuenta en los indicadores (§10) ni en la comparación de modelos.
@@ -168,12 +168,12 @@ procedimiento con su *Objetivo* y *Verificación*). Reglas:
 
 Generar, validar, aprobar y publicar son permisos distintos (acciones declaradas de Wasichai, ADR-042):
 
-| Acción | Quién | Objeto | Estado |
-|---|---|---|---|
-| Generar (encolar un paso) | CREADOR con acceso al curso | Trabajo IA o versión; nombre a decidir (`GENERAR`) | A decidir en F5 |
-| Validar (lanzar y aceptar el informe de validación) | CREADOR o REVISOR asignado | Versión; nombre a decidir (`VALIDAR`) | A decidir en F5 |
-| Aprobar | Persona con `APROBAR`, distinta del autor | `version_curso` | Planificado (F1 en el modelo) |
-| Publicar | Persona con `PUBLICAR` | `version_curso` | Planificado (F1 en el modelo) |
+| Acción                                              | Quién                                     | Objeto                                             | Estado                        |
+| --------------------------------------------------- | ----------------------------------------- | -------------------------------------------------- | ----------------------------- |
+| Generar (encolar un paso)                           | CREADOR con acceso al curso               | Trabajo IA o versión; nombre a decidir (`GENERAR`) | A decidir en F5               |
+| Validar (lanzar y aceptar el informe de validación) | CREADOR o REVISOR asignado                | Versión; nombre a decidir (`VALIDAR`)              | A decidir en F5               |
+| Aprobar                                             | Persona con `APROBAR`, distinta del autor | `version_curso`                                    | Planificado (F1 en el modelo) |
+| Publicar                                            | Persona con `PUBLICAR`                    | `version_curso`                                    | Planificado (F1 en el modelo) |
 
 Los trabajos IA no tienen ninguna de las dos últimas.
 
@@ -196,17 +196,17 @@ consistencia, guiones, transformación de formato.
 Se calculan solo sobre ejecuciones `generator = MODEL`. La corrección técnica no es calidad pedagógica: los
 indicadores 1–8 miden el proceso; solo el 9 y la revisión humana dicen algo de la calidad.
 
-| # | Indicador | Definición |
-|---|---|---|
-| 1 | Borradores aceptados sin cambios estructurales | Borradores aprobados sin cambio estructural ÷ borradores revisados |
-| 2 | Tiempo brief → borrador validado | Mediana entre la creación del brief y el primer `ValidationReport` sin errores bloqueantes |
-| 3 | Referencias verificadas | Referencias cuya cita existe en la fuente y revisión indicadas ÷ referencias generadas |
-| 4 | Incidencias antes de revisión | Errores del `ValidationReport` por borrador al entrar en revisión |
-| 5 | Tiempo de revisión humana | Mediana entre «en revisión» y la decisión del revisor |
-| 6 | Coste por unidad y por curso | Suma de `cost` de las ejecuciones ligadas, reintentos incluidos, con la tarifa y su fecha |
-| 7 | Publicados sin errores de generación | Versiones publicadas sin incidencias atribuidas a la generación ÷ versiones publicadas con contenido generado |
-| 8 | Incidencias tras publicar | Feedback contextual resuelto como error de contenido en las versiones generadas, por versión publicada |
-| 9 | Calidad percibida | Valoración de recursos (claridad, utilidad, actualidad, calidad) de estudiantes matriculados, con muestra mínima publicada (F6) |
+| #   | Indicador                                      | Definición                                                                                                                      |
+| --- | ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Borradores aceptados sin cambios estructurales | Borradores aprobados sin cambio estructural ÷ borradores revisados                                                              |
+| 2   | Tiempo brief → borrador validado               | Mediana entre la creación del brief y el primer `ValidationReport` sin errores bloqueantes                                      |
+| 3   | Referencias verificadas                        | Referencias cuya cita existe en la fuente y revisión indicadas ÷ referencias generadas                                          |
+| 4   | Incidencias antes de revisión                  | Errores del `ValidationReport` por borrador al entrar en revisión                                                               |
+| 5   | Tiempo de revisión humana                      | Mediana entre «en revisión» y la decisión del revisor                                                                           |
+| 6   | Coste por unidad y por curso                   | Suma de `cost` de las ejecuciones ligadas, reintentos incluidos, con la tarifa y su fecha                                       |
+| 7   | Publicados sin errores de generación           | Versiones publicadas sin incidencias atribuidas a la generación ÷ versiones publicadas con contenido generado                   |
+| 8   | Incidencias tras publicar                      | Feedback contextual resuelto como error de contenido en las versiones generadas, por versión publicada                          |
+| 9   | Calidad percibida                              | Valoración de recursos (claridad, utilidad, actualidad, calidad) de estudiantes matriculados, con muestra mínima publicada (F6) |
 
 Cambio estructural: alta, baja o reordenación de unidades, lecciones o evaluaciones respecto del borrador.
 
