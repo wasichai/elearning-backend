@@ -1,0 +1,387 @@
+#!/usr/bin/env python3
+"""Aplica el modelo LMS (model/model.json) y los roles (model/roles.json) a un Wasichai por su API REST.
+
+Escrito para este proyecto, solo con la biblioteca estándar. Idempotente: compara lo que el servidor ya tiene con lo que
+declara el modelo y solo envía la diferencia, así que una segunda ejecución no cambia nada. Nunca borra, renombra ni
+cambia el tipo de un campo, ni quita opciones de un ENUM: eso es una migración de datos y se decide a mano.
+
+Fases (cada una necesita la anterior):
+  1. objetos con sus campos propios (sin relaciones) y opciones de ENUM nuevas;
+  2. acciones declaradas por objeto (ADR-042 de Wasichai);
+  3. relaciones (crean los campos RELATION), su obligatoriedad y las restricciones/índices que las nombran;
+  4. roles y sus permisos (el PUT de permisos reemplaza el conjunto completo del rol).
+
+Uso:
+  python3 model/apply.py --validate-only
+  python3 model/apply.py --url http://localhost:8090 [--email … --password …]
+Credenciales también por WASICHAI_URL, WASICHAI_EMAIL, WASICHAI_PASSWORD. Nunca se escriben en disco.
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import re
+import sys
+import urllib.error
+import urllib.parse
+import urllib.request
+from dataclasses import dataclass, field
+from pathlib import Path
+
+HERE = Path(__file__).resolve().parent
+NAME = re.compile(r"^[a-z][a-z0-9_]{0,62}$")
+ACTION = re.compile(r"^[A-Z][A-Z0-9_]{1,48}$")
+ROLE = re.compile(r"^[A-Z][A-Z0-9_]{1,62}$")
+FIELD_TYPES = {"TEXT", "LONG_TEXT", "INTEGER", "DECIMAL", "BOOLEAN", "DATE", "DATETIME", "ENUM", "EMAIL", "URL", "UUID", "FILE", "IMAGE"}
+RELATIONSHIP_TYPES = {"MANY_TO_ONE", "ONE_TO_ONE", "ONE_TO_MANY", "MANY_TO_MANY"}
+RECORD_ACTIONS = {"READ", "CREATE", "UPDATE", "DELETE"}
+BUILT_IN_ACTIONS = RECORD_ACTIONS | {"MANAGE_METADATA", "MANAGE_ORGANIZATION", "MANAGE_TENANTS"}
+# los que la plataforma se reserva (GET /api/metadata/system-fields)
+RESERVED_FIELDS = {"id", "organization_id", "created_at", "updated_at", "created_by", "updated_by", "workflow_state", "version", "count", "after"}
+FIELD_KEYS = ("name", "label", "type", "required", "unique", "enumOptions", "defaultValue", "indexed", "timeZone")
+
+
+class ModelError(Exception):
+    """El modelo no es válido. Lleva todos los problemas encontrados, no solo el primero."""
+
+    def __init__(self, problems: list[str]):
+        super().__init__("\n".join(problems))
+        self.problems = problems
+
+
+class ApiError(Exception):
+    def __init__(self, status: int, method: str, path: str, body: str):
+        detail = body
+        try:
+            problem = json.loads(body)
+            detail = problem.get("detail") or body
+            errors = problem.get("errors") or []
+            if errors:
+                detail += " — " + "; ".join(f"{e.get('field')}: {e.get('message')}" for e in errors)
+        except ValueError:
+            pass
+        super().__init__(f"{method} {path} → {status}: {detail}")
+        self.status = status
+
+
+# ---------------------------------------------------------------------------------------------------------------------
+# validación, sin red
+# ---------------------------------------------------------------------------------------------------------------------
+
+
+def validate(model: dict, roles: dict | None = None) -> None:
+    problems: list[str] = []
+    enums = model.get("enums", {})
+    for enum, options in enums.items():
+        if not NAME.match(enum):
+            problems.append(f"enum '{enum}': nombre inválido")
+        if not options or len(set(options)) != len(options) or any(not isinstance(o, str) or not o.strip() for o in options):
+            problems.append(f"enum '{enum}': necesita opciones no vacías y sin repetir")
+
+    objects: dict[str, dict] = {}
+    for obj in model.get("objects", []):
+        name = obj.get("name", "")
+        if not NAME.match(name):
+            problems.append(f"objeto '{name}': nombre inválido")
+        if name in objects:
+            problems.append(f"objeto '{name}': repetido")
+        if not obj.get("label"):
+            problems.append(f"objeto '{name}': falta label")
+        objects[name] = obj
+        fields: set[str] = set()
+        for f in obj.get("fields", []):
+            fname = f.get("name", "")
+            where = f"{name}.{fname}"
+            if not NAME.match(fname):
+                problems.append(f"campo '{where}': nombre inválido")
+            if fname in RESERVED_FIELDS:
+                problems.append(f"campo '{where}': nombre reservado por la plataforma")
+            if fname in fields:
+                problems.append(f"campo '{where}': repetido")
+            fields.add(fname)
+            ftype = f.get("type")
+            if ftype == "RELATION":
+                problems.append(f"campo '{where}': un RELATION se declara en relationships, no como campo")
+            elif ftype not in FIELD_TYPES:
+                problems.append(f"campo '{where}': tipo desconocido {ftype!r}")
+            if ftype == "ENUM":
+                ref = f.get("enum")
+                if ref not in enums:
+                    problems.append(f"campo '{where}': enum desconocido {ref!r}")
+                elif f.get("defaultValue") is not None and f["defaultValue"] not in enums[ref]:
+                    problems.append(f"campo '{where}': el valor por defecto no es una opción de '{ref}'")
+            elif "enum" in f:
+                problems.append(f"campo '{where}': solo un ENUM lleva 'enum'")
+            if f.get("timeZone") and ftype != "DATETIME":
+                problems.append(f"campo '{where}': solo un DATETIME lleva timeZone")
+            if f.get("indexed") and ftype == "LONG_TEXT":
+                problems.append(f"campo '{where}': un LONG_TEXT no se indexa")
+        actions: set[str] = set()
+        for a in obj.get("actions", []):
+            aname = a.get("name", "")
+            if not ACTION.match(aname) or aname in BUILT_IN_ACTIONS:
+                problems.append(f"acción '{name}.{aname}': nombre inválido o reservado")
+            if aname in actions:
+                problems.append(f"acción '{name}.{aname}': repetida")
+            actions.add(aname)
+
+    relationship_fields: dict[str, set[str]] = {n: set() for n in objects}
+    for rel in model.get("relationships", []):
+        rname = rel.get("name", "")
+        if not NAME.match(rname):
+            problems.append(f"relación '{rname}': nombre inválido")
+        if rel.get("type") not in RELATIONSHIP_TYPES:
+            problems.append(f"relación '{rname}': tipo desconocido {rel.get('type')!r}")
+        for end in ("source", "target"):
+            if rel.get(end) not in objects:
+                problems.append(f"relación '{rname}': {end} desconocido {rel.get(end)!r}")
+        if rel.get("type") != "MANY_TO_MANY":
+            fname = rel.get("fieldName", "")
+            owner = rel.get("target") if rel.get("type") == "ONE_TO_MANY" else rel.get("source")
+            if not NAME.match(fname) or fname in RESERVED_FIELDS:
+                problems.append(f"relación '{rname}': fieldName inválido")
+            elif owner in objects:
+                if any(f["name"] == fname for f in objects[owner].get("fields", [])) or fname in relationship_fields[owner]:
+                    problems.append(f"relación '{rname}': el campo '{owner}.{fname}' ya existe")
+                relationship_fields[owner].add(fname)
+        elif rel.get("required"):
+            problems.append(f"relación '{rname}': un MANY_TO_MANY no puede ser obligatorio")
+
+    for obj in model.get("objects", []):
+        known = {f["name"] for f in obj.get("fields", [])} | relationship_fields.get(obj["name"], set())
+        long_text = {f["name"] for f in obj.get("fields", []) if f.get("type") == "LONG_TEXT"}
+        for key, minimum in (("indexes", 1), ("uniqueConstraints", 2)):
+            for entry in obj.get(key, []):
+                if len(entry) < minimum or len(set(entry)) != len(entry):
+                    problems.append(f"{key} de '{obj['name']}': entrada {entry} inválida")
+                for fname in entry:
+                    if fname not in known:
+                        problems.append(f"{key} de '{obj['name']}': campo desconocido '{fname}'")
+                    elif fname in long_text:
+                        problems.append(f"{key} de '{obj['name']}': '{fname}' es LONG_TEXT")
+
+    if roles is not None:
+        seen: set[str] = set()
+        for role in roles.get("roles", []):
+            rname = role.get("name", "")
+            if not ROLE.match(rname) or rname == "ADMIN":
+                problems.append(f"rol '{rname}': nombre inválido (ADMIN es de la plataforma)")
+            if rname in seen:
+                problems.append(f"rol '{rname}': repetido")
+            seen.add(rname)
+            for grant in role.get("permissions", []):
+                obj = grant.get("object")
+                if obj not in objects:
+                    problems.append(f"rol '{rname}': objeto desconocido {obj!r}")
+                    continue
+                declared = {a["name"] for a in objects[obj].get("actions", [])}
+                for action in grant.get("actions", []):
+                    if action not in RECORD_ACTIONS | declared:
+                        problems.append(f"rol '{rname}': acción '{action}' no existe en '{obj}'")
+    if problems:
+        raise ModelError(problems)
+
+
+# ---------------------------------------------------------------------------------------------------------------------
+# cliente HTTP mínimo
+# ---------------------------------------------------------------------------------------------------------------------
+
+
+class Client:
+    def __init__(self, base_url: str, token: str | None = None):
+        self.base = base_url.rstrip("/")
+        self.token = token
+
+    def call(self, method: str, path: str, body: object | None = None, ok_statuses: tuple[int, ...] = ()) -> object | None:
+        data = None if body is None else json.dumps(body).encode()
+        request = urllib.request.Request(self.base + path, data=data, method=method)
+        request.add_header("Accept", "application/json")
+        if data is not None:
+            request.add_header("Content-Type", "application/json")
+        if self.token:
+            request.add_header("Authorization", f"Bearer {self.token}")
+        try:
+            with urllib.request.urlopen(request, timeout=60) as response:
+                raw = response.read().decode()
+        except urllib.error.HTTPError as error:
+            raw = error.read().decode()
+            if error.code in ok_statuses:
+                return None
+            raise ApiError(error.code, method, path, raw) from None
+        return json.loads(raw) if raw.strip() else None
+
+    def login(self, email: str, password: str) -> None:
+        answer = self.call("POST", "/api/auth/login", {"email": email, "password": password})
+        self.token = answer["token"]
+
+
+# ---------------------------------------------------------------------------------------------------------------------
+# aplicación
+# ---------------------------------------------------------------------------------------------------------------------
+
+
+@dataclass
+class Report:
+    changes: list[str] = field(default_factory=list)
+
+    def add(self, what: str) -> None:
+        self.changes.append(what)
+        print(f"  + {what}", flush=True)
+
+
+def _field_payload(f: dict, enums: dict) -> dict:
+    payload = {k: f[k] for k in FIELD_KEYS if k in f}
+    if f.get("type") == "ENUM":
+        payload["enumOptions"] = list(enums[f["enum"]])
+    payload.setdefault("label", f["name"].replace("_", " ").capitalize())
+    return payload
+
+
+def _relationship_owner(rel: dict) -> str:
+    return rel["target"] if rel["type"] == "ONE_TO_MANY" else rel["source"]
+
+
+def _deferred(obj: dict, relationship_fields: set[str], key: str) -> list[list[str]]:
+    return [entry for entry in obj.get(key, []) if any(f in relationship_fields for f in entry)]
+
+
+def apply_model(client: Client, model: dict, report: Report) -> None:
+    enums = model.get("enums", {})
+    rel_fields: dict[str, set[str]] = {}
+    for rel in model.get("relationships", []):
+        if rel["type"] != "MANY_TO_MANY":
+            rel_fields.setdefault(_relationship_owner(rel), set()).add(rel["fieldName"])
+
+    existing = {o["name"] for o in client.call("GET", "/api/objects") or []}
+
+    # 1. objetos y campos propios
+    for obj in model.get("objects", []):
+        name = obj["name"]
+        mine = rel_fields.get(name, set())
+        if name not in existing:
+            body = {k: obj[k] for k in ("name", "label", "pluralLabel", "description", "appendOnly", "apiOnly", "requiresReason") if k in obj}
+            body["fields"] = [_field_payload(f, enums) for f in obj.get("fields", [])]
+            for key in ("indexes", "uniqueConstraints"):
+                now = [e for e in obj.get(key, []) if e not in _deferred(obj, mine, key)]
+                if now:
+                    body[key] = now
+            client.call("POST", "/api/objects", body)
+            report.add(f"objeto {name}")
+            continue
+        definition = client.call("GET", f"/api/metadata/objects/{name}")
+        current = {f["name"]: f for f in definition.get("fields", [])}
+        for f in obj.get("fields", []):
+            if f["name"] not in current:
+                client.call("POST", f"/api/metadata/objects/{name}/fields", _field_payload(f, enums))
+                report.add(f"campo {name}.{f['name']}")
+            elif f.get("type") == "ENUM":
+                have = list(current[f["name"]].get("enumOptions") or [])
+                missing = [o for o in enums[f["enum"]] if o not in have]
+                if missing:
+                    client.call("PUT", f"/api/metadata/objects/{name}/fields/{f['name']}", {"enumOptions": have + missing})
+                    report.add(f"opciones {name}.{f['name']}: {', '.join(missing)}")
+
+    # 2. acciones declaradas
+    for obj in model.get("objects", []):
+        if not obj.get("actions"):
+            continue
+        have = {a["name"] for a in client.call("GET", f"/api/metadata/objects/{obj['name']}/actions") or []}
+        for action in obj["actions"]:
+            if action["name"] not in have:
+                client.call("POST", f"/api/metadata/objects/{obj['name']}/actions", action, ok_statuses=(409,))
+                report.add(f"acción {obj['name']}.{action['name']}")
+
+    # 3. relaciones, obligatoriedad y lo que las nombra
+    have_rels = {r["name"] for r in client.call("GET", "/api/relationships") or []}
+    for rel in model.get("relationships", []):
+        if rel["name"] not in have_rels:
+            body = {k: rel[k] for k in ("name", "label", "inverseLabel", "type", "source", "target", "fieldName") if k in rel}
+            client.call("POST", "/api/relationships", body)
+            report.add(f"relación {rel['name']}")
+    for rel in model.get("relationships", []):
+        if rel.get("required"):
+            owner, fname = _relationship_owner(rel), rel["fieldName"]
+            current = {f["name"]: f for f in client.call("GET", f"/api/metadata/objects/{owner}").get("fields", [])}
+            if not current.get(fname, {}).get("required"):
+                client.call("PUT", f"/api/metadata/objects/{owner}/fields/{fname}", {"required": True})
+                report.add(f"obligatorio {owner}.{fname}")
+    for obj in model.get("objects", []):
+        mine = rel_fields.get(obj["name"], set())
+        wanted = {key: obj.get(key, []) for key in ("indexes", "uniqueConstraints") if _deferred(obj, mine, key)}
+        if not wanted:
+            continue
+        definition = client.call("GET", f"/api/metadata/objects/{obj['name']}")
+        changed = {key: value for key, value in wanted.items() if _same(definition.get(key) or [], value) is False}
+        if changed:
+            client.call("PUT", f"/api/objects/{obj['name']}", changed)
+            report.add(f"{', '.join(changed)} de {obj['name']}")
+
+
+def _same(have: list[list[str]], want: list[list[str]]) -> bool:
+    return sorted(map(tuple, have)) == sorted(map(tuple, want))
+
+
+def apply_roles(client: Client, roles: dict, report: Report) -> None:
+    have = {r["name"]: r for r in client.call("GET", "/api/roles") or []}
+    for role in roles.get("roles", []):
+        name = role["name"]
+        if name not in have:
+            client.call("POST", "/api/roles", {"name": name, "label": role["label"], "ownRecordsOnly": role.get("ownRecordsOnly", False)})
+            report.add(f"rol {name}")
+            current: set[tuple[str | None, str]] = set()
+        else:
+            current = {(p["objectName"], p["action"]) for p in have[name].get("permissions", []) if p.get("allowed", True)}
+        wanted = {(g["object"], a) for g in role.get("permissions", []) for a in g["actions"]}
+        if wanted != current:
+            entries = [{"objectName": o, "action": a} for o, a in sorted(wanted, key=lambda p: (p[0] or "", p[1]))]
+            client.call("PUT", f"/api/roles/{name}/permissions", {"permissions": entries})
+            report.add(f"permisos de {name} ({len(entries)})")
+
+
+def load(path: Path) -> dict:
+    with path.open(encoding="utf-8") as handle:
+        return json.load(handle)
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    parser.add_argument("--model", type=Path, default=HERE / "model.json")
+    parser.add_argument("--roles", type=Path, default=HERE / "roles.json")
+    parser.add_argument("--validate-only", action="store_true", help="valida y termina, sin llamar a la API")
+    parser.add_argument("--url", default=os.environ.get("WASICHAI_URL", "http://localhost:8090"))
+    parser.add_argument("--email", default=os.environ.get("WASICHAI_EMAIL"))
+    parser.add_argument("--password", default=os.environ.get("WASICHAI_PASSWORD"))
+    args = parser.parse_args(argv)
+
+    model = load(args.model)
+    roles = load(args.roles) if args.roles.exists() else None
+    try:
+        validate(model, roles)
+    except ModelError as error:
+        print("Modelo inválido:", *(f"  - {p}" for p in error.problems), sep="\n", file=sys.stderr)
+        return 2
+    print(f"Modelo válido: {len(model.get('objects', []))} objetos, {len(model.get('relationships', []))} relaciones, "
+          f"{len((roles or {}).get('roles', []))} roles.")
+    if args.validate_only:
+        return 0
+    if not args.email or not args.password:
+        print("Faltan credenciales: --email/--password o WASICHAI_EMAIL/WASICHAI_PASSWORD.", file=sys.stderr)
+        return 2
+    client = Client(args.url)
+    report = Report()
+    try:
+        client.login(args.email, args.password)
+        apply_model(client, model, report)
+        if roles is not None:
+            apply_roles(client, roles, report)
+    except (ApiError, urllib.error.URLError) as error:
+        print(f"Error: {error}", file=sys.stderr)
+        return 1
+    print(f"{len(report.changes)} cambios." if report.changes else "Sin cambios: el servidor ya tiene el modelo.")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

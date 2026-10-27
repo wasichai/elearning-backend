@@ -23,3 +23,5 @@ node_modules/
 
 # SO
 .DS_Store
+__pycache__/
+*.pyc
