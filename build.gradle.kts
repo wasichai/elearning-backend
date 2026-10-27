@@ -44,3 +44,17 @@ val integrationTest by tasks.registering(Test::class) {
 }
 
 tasks.bootJar { archiveFileName.set("elearning-backend.jar") }
+
+// desarrollo local: bootRun toma .env (ignorado por git) como variables de entorno reales, que es como las lee Wasichai
+tasks.bootRun {
+    val env = file(".env")
+    if (env.exists()) {
+        env
+            .readLines()
+            .map { it.trim() }
+            .filter { it.isNotEmpty() && !it.startsWith("#") && "=" in it }
+            .map { it.split("=", limit = 2) }
+            .filter { (_, value) -> value.isNotBlank() }
+            .forEach { (key, value) -> environment(key.trim(), value.trim()) }
+    }
+}
