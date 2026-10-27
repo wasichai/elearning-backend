@@ -10,15 +10,15 @@ ejecutando las pruebas y los recorridos indicados, en local y en CI, y el result
 
 ## Resumen
 
-| Fase | Objetivo | Estado (2026-10-27) |
-|---|---|---|
-| F0 | Investigación y arquitectura | en curso: #2 y #6 cerrados |
-| F1 | Esqueleto ejecutable y primer incremento: catálogo público con carga y créditos propuestos | planificada, con épicas |
-| F2 | LMS básico: aula, matrícula, unidades, lecciones, recursos y progreso | planificada |
-| F3 | Evaluaciones y operación docente | planificada |
-| F4 | Estudio editorial e importador AsciiDoc | planificada |
-| F5 | IA y multimedia | planificada |
-| F6 | Calidad, reputación y despliegue | planificada |
+| Fase | Objetivo                                                                                   | Estado (2026-10-27)        |
+| ---- | ------------------------------------------------------------------------------------------ | -------------------------- |
+| F0   | Investigación y arquitectura                                                               | en curso: #2 y #6 cerrados |
+| F1   | Esqueleto ejecutable y primer incremento: catálogo público con carga y créditos propuestos | planificada, con épicas    |
+| F2   | LMS básico: aula, matrícula, unidades, lecciones, recursos y progreso                      | planificada                |
+| F3   | Evaluaciones y operación docente                                                           | planificada                |
+| F4   | Estudio editorial e importador AsciiDoc                                                    | planificada                |
+| F5   | IA y multimedia                                                                            | planificada                |
+| F6   | Calidad, reputación y despliegue                                                           | planificada                |
 
 Las épicas viven en [wasichai/elearning-backend](https://github.com/wasichai/elearning-backend/issues); los pasos de
 frontend, en [wasichai/elearning-frontend](https://github.com/wasichai/elearning-frontend/issues). Cada paso es un
@@ -119,7 +119,7 @@ esté fijado; el smoke de E8 contra backend real necesita E5 terminado.
 **Nuevo.** Cadena de seguridad pública acotada, dominio de carga y créditos, API y DTO del catálogo, `catalogModule`.
 
 **Criterio de aceptación.** Con `docker compose up`, `./gradlew bootRun` y `yarn dev`, un visitante anónimo busca,
-filtra y ordena cursos publicados y abre su ficha con temario, ediciones, docentes, carga y créditos *propuestos*;
+filtra y ordena cursos publicados y abre su ficha con temario, ediciones, docentes, carga y créditos _propuestos_;
 los cursos en borrador no aparecen ni por URL; todo lo demás bajo `/api/lms/**` exige sesión; build, ktlint,
 pruebas unitarias, de integración y de arquitectura, lint, tipos, Vitest, build de frontend y E2E pasan en local y en
 CI.
