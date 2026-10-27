@@ -67,19 +67,19 @@ modelo, sus guardas, sus alcances de lectura y sus comandos en `/api/lms/**`. La
 
 ### 2.1 Responsabilidad y contratos
 
-| Capacidad | Responsabilidad | Contratos públicos | Fase |
-|---|---|---|---|
-| `common` | Permisos (`CurrentUser`), marca de escritura propia, errores `ProblemDetail`, cadena de seguridad pública | Ninguno propio | F1 |
-| `workload` | Dominio puro: horas de contacto/autónomas/totales, `CreditPolicy` → `CreditProposal` | API Kotlin, sin HTTP | F1 |
-| `course` | Curso, versión, unidad, lección, edición, docentes, sesiones | `/api/lms/courses/**`, `/api/lms/offerings/**` | F1 · F3 (sesiones) |
-| `catalog` | Lectura pública de lo publicado; búsqueda, filtros, orden | `GET /api/lms/public/catalog/**` | F1 |
-| `enrollment` | Matrícula, capacidad, ventana de inscripción | `/api/lms/enrollments/**` | F2 |
-| `learning` | Aula, progreso, eventos de aprendizaje, asistencia, finalización, certificados | `/api/lms/classroom/**` | F2 · F3 |
-| `assessment` | Evaluaciones, versiones e instantáneas, intentos, entregas, rúbricas, resultados | `/api/lms/assessments/**`, `/api/lms/attempts/**` | F3 |
-| `authoring` | Recursos versionados, revisión, comentarios, publicación, importador AsciiDoc | `/api/lms/authoring/**`, `/api/lms/reviews/**` | F4 |
-| `ai` | Canalización editorial con Embabel, `AgentRun`, doble determinista | `/api/lms/ai/**` | F5 |
-| `media` | Renderizado (HTML, PDF, Remotion), artefactos generados | `/api/lms/media/**` | F4 · F5 |
-| `reputation` (nombre propuesto) | Valoraciones y feedback contextual | `/api/lms/ratings/**`, `/api/lms/feedback/**` | F6 |
+| Capacidad                       | Responsabilidad                                                                                           | Contratos públicos                                | Fase               |
+| ------------------------------- | --------------------------------------------------------------------------------------------------------- | ------------------------------------------------- | ------------------ |
+| `common`                        | Permisos (`CurrentUser`), marca de escritura propia, errores `ProblemDetail`, cadena de seguridad pública | Ninguno propio                                    | F1                 |
+| `workload`                      | Dominio puro: horas de contacto/autónomas/totales, `CreditPolicy` → `CreditProposal`                      | API Kotlin, sin HTTP                              | F1                 |
+| `course`                        | Curso, versión, unidad, lección, edición, docentes, sesiones                                              | `/api/lms/courses/**`, `/api/lms/offerings/**`    | F1 · F3 (sesiones) |
+| `catalog`                       | Lectura pública de lo publicado; búsqueda, filtros, orden                                                 | `GET /api/lms/public/catalog/**`                  | F1                 |
+| `enrollment`                    | Matrícula, capacidad, ventana de inscripción                                                              | `/api/lms/enrollments/**`                         | F2                 |
+| `learning`                      | Aula, progreso, eventos de aprendizaje, asistencia, finalización, certificados                            | `/api/lms/classroom/**`                           | F2 · F3            |
+| `assessment`                    | Evaluaciones, versiones e instantáneas, intentos, entregas, rúbricas, resultados                          | `/api/lms/assessments/**`, `/api/lms/attempts/**` | F3                 |
+| `authoring`                     | Recursos versionados, revisión, comentarios, publicación, importador AsciiDoc                             | `/api/lms/authoring/**`, `/api/lms/reviews/**`    | F4                 |
+| `ai`                            | Canalización editorial con Embabel, `AgentRun`, doble determinista                                        | `/api/lms/ai/**`                                  | F5                 |
+| `media`                         | Renderizado (HTML, PDF, Remotion), artefactos generados                                                   | `/api/lms/media/**`                               | F4 · F5            |
+| `reputation` (nombre propuesto) | Valoraciones y feedback contextual                                                                        | `/api/lms/ratings/**`, `/api/lms/feedback/**`     | F6                 |
 
 Las rutas son el prefijo previsto; el contrato exacto se documenta con springdoc al implementarlo
 ([ADR-0008](../adr/0008-openapi-con-springdoc.md)). Además de sus comandos, toda capacidad expone sus Custom Objects por
@@ -87,19 +87,19 @@ la API genérica de Wasichai (`/api/objects/{o}/records`) salvo los marcados `ap
 
 ### 2.2 Persistencia, permisos, trabajos y frontend
 
-| Capacidad | Migraciones / modelo | Permisos y alcance | Eventos y trabajos | Módulo UI (`<x>Module`) |
-|---|---|---|---|---|
-| `common` | — | Acciones declaradas por objeto; nunca nombres de rol | — | — |
-| `workload` | — | — | — | — |
-| `course` | Objetos | `PUBLICAR`, `APROBAR`; docente por `docente_edicion` | Aviso de cambio de calendario (F3) | `catalog`, `teaching`, `studio` |
-| `catalog` | — (lee los de `course`) | Anónimo, solo `GET`, solo lo publicado | — | `catalog` |
-| `enrollment` | Objetos | Estudiante: sus matrículas | Notificación de matrícula | `classroom`, `teaching` |
-| `learning` | Objetos + `lms.evento_aprendizaje` | Estudiante: lo suyo; docente: su edición | Finalización; emisión de certificado | `classroom`, `teaching` |
-| `assessment` | Objetos + tablas `lms` | Docente de la edición; con motivo | Vencimiento de intentos; corrección | `classroom`, `teaching` |
-| `authoring` | Objetos | Revisor: sus revisiones; sin autoaprobación | Importación (trabajo); avisos de revisión | `studio`, `review` |
-| `ai` | Objeto `ejecucion_agente` | Generar ≠ validar ≠ aprobar ≠ publicar | Ejecuciones en cola persistente | `studio` |
-| `media` | Objeto `artefacto_generado` + `FILE` | Hereda del recurso | Renderizado en cola persistente | `studio` |
-| `reputation` | Objetos | Solo matriculados valoran; moderación | Agregados periódicos | `classroom`, `teaching` |
+| Capacidad    | Migraciones / modelo                 | Permisos y alcance                                   | Eventos y trabajos                        | Módulo UI (`<x>Module`)         |
+| ------------ | ------------------------------------ | ---------------------------------------------------- | ----------------------------------------- | ------------------------------- |
+| `common`     | —                                    | Acciones declaradas por objeto; nunca nombres de rol | —                                         | —                               |
+| `workload`   | —                                    | —                                                    | —                                         | —                               |
+| `course`     | Objetos                              | `PUBLICAR`, `APROBAR`; docente por `docente_edicion` | Aviso de cambio de calendario (F3)        | `catalog`, `teaching`, `studio` |
+| `catalog`    | — (lee los de `course`)              | Anónimo, solo `GET`, solo lo publicado               | —                                         | `catalog`                       |
+| `enrollment` | Objetos                              | Estudiante: sus matrículas                           | Notificación de matrícula                 | `classroom`, `teaching`         |
+| `learning`   | Objetos + `lms.evento_aprendizaje`   | Estudiante: lo suyo; docente: su edición             | Finalización; emisión de certificado      | `classroom`, `teaching`         |
+| `assessment` | Objetos + tablas `lms`               | Docente de la edición; con motivo                    | Vencimiento de intentos; corrección       | `classroom`, `teaching`         |
+| `authoring`  | Objetos                              | Revisor: sus revisiones; sin autoaprobación          | Importación (trabajo); avisos de revisión | `studio`, `review`              |
+| `ai`         | Objeto `ejecucion_agente`            | Generar ≠ validar ≠ aprobar ≠ publicar               | Ejecuciones en cola persistente           | `studio`                        |
+| `media`      | Objeto `artefacto_generado` + `FILE` | Hereda del recurso                                   | Renderizado en cola persistente           | `studio`                        |
+| `reputation` | Objetos                              | Solo matriculados valoran; moderación                | Agregados periódicos                      | `classroom`, `teaching`         |
 
 «Objetos» son Custom Objects aplicados por `model/apply.py`. Las tablas fijas del esquema `lms` se crean con
 `ModuleMigration("lms", "classpath:db/lms", 200)` ([ADR-0004](../adr/0004-modelo-hibrido-custom-objects-y-tablas-fijas.md));
@@ -132,16 +132,16 @@ Una flecha `A --> B` significa «A puede usar B». Todo paquete puede usar `comm
 la inferior declara un puerto y la superior lo implementa: por ejemplo, el cupo disponible que muestra el catálogo es un
 puerto de `course` implementado por `enrollment` (F2).
 
-| Regla | Comprobación |
-|---|---|
-| Sin ciclos entre capacidades; solo las flechas del diagrama | `ArchitectureTest` (escaneo de fuentes, como `CoreArchitectureTest` de Wasichai) |
-| Nada bajo el paquete `wasichai` | `ArchitectureTest` |
-| Sin JPA, Hibernate, Spring Data, JDBC bloqueante ni `.block()` en `main` | `ArchitectureTest` |
-| Sin literales de nombre de rol en el código | `ArchitectureTest` |
-| Sin APIs internas de Wasichai (`RecordStore`, tablas físicas de Custom Objects) | Revisión + `ArchitectureTest` (imports prohibidos) |
-| `DatabaseClient` solo contra el esquema `lms` | Revisión |
-| SDK de proveedores (LLM, S3, videoconferencia) solo en su adaptador (`ai`, `media`, `course.meeting`) | `ArchitectureTest` |
-| El nombre del producto no aparece en paquetes, objetos, campos ni claves | `ArchitectureTest` + revisión |
+| Regla                                                                                                 | Comprobación                                                                     |
+| ----------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| Sin ciclos entre capacidades; solo las flechas del diagrama                                           | `ArchitectureTest` (escaneo de fuentes, como `CoreArchitectureTest` de Wasichai) |
+| Nada bajo el paquete `wasichai`                                                                       | `ArchitectureTest`                                                               |
+| Sin JPA, Hibernate, Spring Data, JDBC bloqueante ni `.block()` en `main`                              | `ArchitectureTest`                                                               |
+| Sin literales de nombre de rol en el código                                                           | `ArchitectureTest`                                                               |
+| Sin APIs internas de Wasichai (`RecordStore`, tablas físicas de Custom Objects)                       | Revisión + `ArchitectureTest` (imports prohibidos)                               |
+| `DatabaseClient` solo contra el esquema `lms`                                                         | Revisión                                                                         |
+| SDK de proveedores (LLM, S3, videoconferencia) solo en su adaptador (`ai`, `media`, `course.meeting`) | `ArchitectureTest`                                                               |
+| El nombre del producto no aparece en paquetes, objetos, campos ni claves                              | `ArchitectureTest` + revisión                                                    |
 
 ## 3. Módulos de experiencia del frontend
 
@@ -150,32 +150,32 @@ carga `lazy` y `boundaries.test.ts` ([ADR-0003](../adr/0003-monolito-modular-y-m
 [ADR-0005](../adr/0005-lms-en-el-registro-de-wasichai-ui.md)). No hay apps ni repos separados por audiencia: una cuenta
 con varios roles ve varias experiencias en la misma app.
 
-| Módulo | Para quién | Rutas | Consume | Fase |
-|---|---|---|---|---|
-| `catalogModule` | Visitante y cualquier usuario | `chrome: 'public'` (fuera de la sesión) | `catalog` | F1 |
-| `classroomModule` | Estudiante | `shell` | `enrollment`, `learning`, `assessment`, `reputation` | F2 |
-| `teachingModule` | Docente | `shell` | `course` (ediciones, sesiones), `learning`, `assessment` | F3 |
-| `studioModule` | Creador | `shell` | `course`, `authoring`, `ai`, `media` | F4 |
-| `reviewModule` | Revisor | `shell` | `authoring` | F4 |
-| Módulos core de Wasichai | Admin | `shell` | `/api/**` de Wasichai (usuarios, roles, metadata, auditoría) | F1 |
+| Módulo                   | Para quién                    | Rutas                                   | Consume                                                      | Fase |
+| ------------------------ | ----------------------------- | --------------------------------------- | ------------------------------------------------------------ | ---- |
+| `catalogModule`          | Visitante y cualquier usuario | `chrome: 'public'` (fuera de la sesión) | `catalog`                                                    | F1   |
+| `classroomModule`        | Estudiante                    | `shell`                                 | `enrollment`, `learning`, `assessment`, `reputation`         | F2   |
+| `teachingModule`         | Docente                       | `shell`                                 | `course` (ediciones, sesiones), `learning`, `assessment`     | F3   |
+| `studioModule`           | Creador                       | `shell`                                 | `course`, `authoring`, `ai`, `media`                         | F4   |
+| `reviewModule`           | Revisor                       | `shell`                                 | `authoring`                                                  | F4   |
+| Módulos core de Wasichai | Admin                         | `shell`                                 | `/api/**` de Wasichai (usuarios, roles, metadata, auditoría) | F1   |
 
 La UI oculta por permisos como cortesía (`visible(permissions)`); el servidor decide siempre.
 
 ## 4. Qué se reutiliza de Wasichai y qué es nuevo
 
-| Necesidad | Se reutiliza | Lo nuevo de wasichai-learning |
-|---|---|---|
-| Identidad, multi-rol, organizaciones | core (`user_roles`, JWT, `organization_id`) | Roles ESTUDIANTE, DOCENTE, CREADOR, REVISOR (`model/roles.json`) |
-| Entidades y pantallas de administración | Custom Objects, API genérica, ETag, `Idempotency-Key` | `model/model.json` y `model/apply.py` |
-| Reglas de escritura y de lectura | Guardas, alcances y máscaras de lectura; banderas por objeto | Guardas y alcances del LMS ([domain-model §6][dm6]) |
-| Auditoría | `audit_log` append-only, `X-Change-Reason`, correlación | Nada paralelo: `AuditRecord` es `audit_log` |
-| Archivos (vídeo, PDF, entregas) | `wasichai-files` (`FILE`, `FileStore` local o S3, `sha256`) | — (F2) |
-| Avisos (publicación, calendario) | `wasichai-notifications` (correo, SSE) | Fuentes de notificación del LMS (F3) |
-| Reacciones a cambios de registros | `wasichai-automation` (reglas, cola, `NOTIFY`, `GENERATE_DOCUMENT`) | Reglas declaradas en el modelo (F3) |
-| Estados con transiciones por rol | `wasichai-workflow` (estado en el registro) | A evaluar para `revision_contenido` (F4) |
-| Certificados congelados | `wasichai-documents` (documento congelado al emitir) | Plantilla y regla de emisión (F3); PDF a verificar (sin motor PDF) |
-| Asistente sobre los datos | `wasichai-agent` (preguntas de solo lectura) | Canalización editorial propia con Embabel en `ai` (F5) |
-| Tareas en segundo plano | `RecordService.asPlatform`, `ClusterLock`, `TenantDirectory` | Trabajos del LMS (§6) |
+| Necesidad                               | Se reutiliza                                                        | Lo nuevo de wasichai-learning                                      |
+| --------------------------------------- | ------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| Identidad, multi-rol, organizaciones    | core (`user_roles`, JWT, `organization_id`)                         | Roles ESTUDIANTE, DOCENTE, CREADOR, REVISOR (`model/roles.json`)   |
+| Entidades y pantallas de administración | Custom Objects, API genérica, ETag, `Idempotency-Key`               | `model/model.json` y `model/apply.py`                              |
+| Reglas de escritura y de lectura        | Guardas, alcances y máscaras de lectura; banderas por objeto        | Guardas y alcances del LMS ([domain-model §6][dm6])                |
+| Auditoría                               | `audit_log` append-only, `X-Change-Reason`, correlación             | Nada paralelo: `AuditRecord` es `audit_log`                        |
+| Archivos (vídeo, PDF, entregas)         | `wasichai-files` (`FILE`, `FileStore` local o S3, `sha256`)         | — (F2)                                                             |
+| Avisos (publicación, calendario)        | `wasichai-notifications` (correo, SSE)                              | Fuentes de notificación del LMS (F3)                               |
+| Reacciones a cambios de registros       | `wasichai-automation` (reglas, cola, `NOTIFY`, `GENERATE_DOCUMENT`) | Reglas declaradas en el modelo (F3)                                |
+| Estados con transiciones por rol        | `wasichai-workflow` (estado en el registro)                         | A evaluar para `revision_contenido` (F4)                           |
+| Certificados congelados                 | `wasichai-documents` (documento congelado al emitir)                | Plantilla y regla de emisión (F3); PDF a verificar (sin motor PDF) |
+| Asistente sobre los datos               | `wasichai-agent` (preguntas de solo lectura)                        | Canalización editorial propia con Embabel en `ai` (F5)             |
+| Tareas en segundo plano                 | `RecordService.asPlatform`, `ClusterLock`, `TenantDirectory`        | Trabajos del LMS (§6)                                              |
 
 Sin equivalente en Wasichai, y por tanto nuevo: catálogo público, carga y créditos, versionado de cursos, intentos con
 instantánea, importador AsciiDoc y Remotion.
@@ -209,7 +209,7 @@ sequenceDiagram
 1. El módulo llama a `/api/lms/**` con el JWT de Wasichai. Las lecturas simples de un objeto pueden ir a la API genérica
    de Wasichai; los cambios con reglas de varios registros van siempre por un comando LMS.
 2. El controlador obtiene al usuario con `CurrentUser` y comprueba la acción con `requirePermission(user, action,
-   objectId)`; las acciones de negocio (`PUBLICAR`, `APROBAR`, …) son acciones declaradas por objeto. Nunca compara
+objectId)`; las acciones de negocio (`PUBLICAR`, `APROBAR`, …) son acciones declaradas por objeto. Nunca compara
    nombres de rol.
 3. El servicio escribe con `RecordService` dentro de una transacción (Wasichai une `RecordService` a la transacción del
    que llama) y de una marca de corrutina propia del LMS. Una guarda puede rechazar las escrituras sin esa marca, que son

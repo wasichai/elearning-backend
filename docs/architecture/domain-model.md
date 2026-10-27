@@ -78,13 +78,13 @@ administración y API genérica sin código. **Tabla fija** en el esquema `lms` 
 3. El dato no debe salir nunca por la API genérica ni por el asistente de Wasichai, ni siquiera a ADMIN (claves de
    respuesta antes de tiempo).
 
-| Entidad | Almacenamiento | Razón |
-|---|---|---|
-| Todas las de §4 salvo las de abajo | Custom Object | Regla por defecto |
-| Contenido de `version_evaluacion` (preguntas, opciones, claves, puntajes) | `lms.version_evaluacion_contenido` (`jsonb`, `sha256`) | 1 y 3 |
-| Respuestas de un intento | `lms.respuesta_intento` (`jsonb` por ítem) | 1 y 3; el estudiante ve las suyas por comando |
-| Eventos de aprendizaje (vídeo, lectura, navegación) | `lms.evento_aprendizaje` (solo `INSERT`) | 2 |
-| Proyección del catálogo público (solo con la opción B) | `lms.catalogo_publicado` | [overview §5.1][ov51] |
+| Entidad                                                                   | Almacenamiento                                         | Razón                                         |
+| ------------------------------------------------------------------------- | ------------------------------------------------------ | --------------------------------------------- |
+| Todas las de §4 salvo las de abajo                                        | Custom Object                                          | Regla por defecto                             |
+| Contenido de `version_evaluacion` (preguntas, opciones, claves, puntajes) | `lms.version_evaluacion_contenido` (`jsonb`, `sha256`) | 1 y 3                                         |
+| Respuestas de un intento                                                  | `lms.respuesta_intento` (`jsonb` por ítem)             | 1 y 3; el estudiante ve las suyas por comando |
+| Eventos de aprendizaje (vídeo, lectura, navegación)                       | `lms.evento_aprendizaje` (solo `INSERT`)               | 2                                             |
+| Proyección del catálogo público (solo con la opción B)                    | `lms.catalogo_publicado`                               | [overview §5.1][ov51]                         |
 
 Toda tabla `lms` lleva `organization_id NOT NULL` y cada consulta filtra por él: Wasichai no tiene RLS, así que el
 aislamiento es responsabilidad del repositorio y de sus pruebas. El primer incremento no crea ninguna (salvo que se elija
@@ -111,11 +111,12 @@ Invariantes: `version_vigente` es una versión de este curso en estado `PUBLICAD
 publicar [guarda + servicio]; el `slug` no cambia una vez publicado (rompería enlaces) [guarda].
 
 **`version_curso`** (CourseVersion) — una versión del temario: lo que se revisa, se aprueba y se publica. F1.
+
 - Identidad y estado: `curso · RELATION → curso · requerido` · `numero · INTEGER` · `estado · ENUM(BORRADOR,
-  EN_REVISION, APROBADA, PUBLICADA, RETIRADA)` · `version_anterior · RELATION → version_curso` · `idioma · TEXT · BCP 47
-  (es)` · `autor_id · UUID` · `aprobada_por · UUID` · `publicada_en · DATETIME` · `publicada_por · UUID`.
+EN_REVISION, APROBADA, PUBLICADA, RETIRADA)` · `version_anterior · RELATION → version_curso` · `idioma · TEXT · BCP 47
+(es)` · `autor_id · UUID` · `aprobada_por · UUID` · `publicada_en · DATETIME` · `publicada_por · UUID`.
 - Contenido de ficha: `titulo · TEXT` · `resumen · LONG_TEXT` · `objetivos · LONG_TEXT` · `resultados_aprendizaje ·
-  LONG_TEXT` · `conocimientos_previos · LONG_TEXT` · `requisitos · LONG_TEXT` · `evaluacion_resumen · LONG_TEXT` ·
+LONG_TEXT` · `conocimientos_previos · LONG_TEXT` · `requisitos · LONG_TEXT` · `evaluacion_resumen · LONG_TEXT` ·
   `certificacion_resumen · LONG_TEXT`.
 - Carga académica ([ADR-0007](../adr/0007-carga-academica-y-creditos-como-politica-versionada.md)): `semanas · INTEGER` ·
   `horas_teoria_semana · DECIMAL` · `horas_practica_lab_semana · DECIMAL` · `horas_supervisadas_semana · DECIMAL` ·
@@ -147,11 +148,12 @@ se completa por tiempo abierto) [guarda].
 
 **`recurso`** y **`version_recurso`** (LearningResource) — material reutilizable y versionado, independiente del formato
 de salida. F2 (subida de archivos) · F4 (flujo editorial).
+
 - `recurso`: `titulo · TEXT` · `tipo · ENUM(HTML, PDF, VIDEO, PRESENTACION, LABORATORIO, CUESTIONARIO, IMAGEN, DIAGRAMA)` ·
   `idioma · TEXT` · `responsable_editorial_id · UUID`.
 - `version_recurso`: `recurso · RELATION → recurso` · `numero · INTEGER` · `estado · ENUM` (mismo ciclo que
   `version_curso`) · `fuente_canonica · ENUM(ASCIIDOC, LATEX, HTML, NINGUNA)` · `fuente · FILE` · `origen · TEXT ·
-  repo@sha:ruta#ancla` · `referencias · LONG_TEXT` · `autor_id · UUID` · `revisada_en · DATETIME`;
+repo@sha:ruta#ancla` · `referencias · LONG_TEXT` · `autor_id · UUID` · `revisada_en · DATETIME`;
   `uniqueConstraints: [[recurso, numero]]`.
 - `recurso_leccion`: `leccion · RELATION` · `version_recurso · RELATION` · `orden · INTEGER`;
   `uniqueConstraints: [[leccion, version_recurso]]`. Objeto y no `MANY_TO_MANY` porque el orden importa.
@@ -411,18 +413,18 @@ dependen de contar o de otro registro (cupo, una sola versión publicada) se pro
 
 ## 7. Reglas de consistencia de la sección 16
 
-| Regla | Cómo se cumple |
-|---|---|
-| Lo publicado es inmutable | Guarda: las versiones y sus hijos solo cambian en `BORRADOR`; artefactos `appendOnly`; corregir = versión nueva |
-| La matrícula identifica la edición | `matricula.edicion` requerido + `uniqueConstraints [edicion, estudiante_id]` |
-| El progreso se liga a matrícula y versión | `progreso_leccion.matricula` + guarda: la lección es de `matricula.version_curso`, fijada al matricular |
-| El intento usa la versión exacta de la prueba | `intento_evaluacion.version_evaluacion` + `sha256`; el contenido está en una tabla sin `UPDATE` |
-| Aprobación por reglas explícitas | Reglas de finalización versionadas en `version_curso`; aprobar una prueba no aprueba el curso |
-| Créditos con su método | `CreditProposal` con sistema, método, parámetros, fuente y versión; propone, no aprueba ([ADR-0007][adr7]) |
-| Transacciones donde corresponda | Comandos de varios registros en una transacción (`RecordService` se une a ella) |
-| Asíncronos recuperables sin duplicados | Registro como cola con `clave_idempotencia` única y reintentos con tope ([overview §6][ov6]) |
-| Sin acceso cruzado entre organizaciones | Tabla física por organización, organización del JWT; tablas `lms` filtradas por `organization_id` |
-| Sin acceso cruzado entre usuarios o cursos | `RecordReadScope` por asignación + guardas; pruebas de IDOR ([security](../security/README.md)) |
+| Regla                                         | Cómo se cumple                                                                                                  |
+| --------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| Lo publicado es inmutable                     | Guarda: las versiones y sus hijos solo cambian en `BORRADOR`; artefactos `appendOnly`; corregir = versión nueva |
+| La matrícula identifica la edición            | `matricula.edicion` requerido + `uniqueConstraints [edicion, estudiante_id]`                                    |
+| El progreso se liga a matrícula y versión     | `progreso_leccion.matricula` + guarda: la lección es de `matricula.version_curso`, fijada al matricular         |
+| El intento usa la versión exacta de la prueba | `intento_evaluacion.version_evaluacion` + `sha256`; el contenido está en una tabla sin `UPDATE`                 |
+| Aprobación por reglas explícitas              | Reglas de finalización versionadas en `version_curso`; aprobar una prueba no aprueba el curso                   |
+| Créditos con su método                        | `CreditProposal` con sistema, método, parámetros, fuente y versión; propone, no aprueba ([ADR-0007][adr7])      |
+| Transacciones donde corresponda               | Comandos de varios registros en una transacción (`RecordService` se une a ella)                                 |
+| Asíncronos recuperables sin duplicados        | Registro como cola con `clave_idempotencia` única y reintentos con tope ([overview §6][ov6])                    |
+| Sin acceso cruzado entre organizaciones       | Tabla física por organización, organización del JWT; tablas `lms` filtradas por `organization_id`               |
+| Sin acceso cruzado entre usuarios o cursos    | `RecordReadScope` por asignación + guardas; pruebas de IDOR ([security](../security/README.md))                 |
 
 No hay conversión entre ECTS y SCH.
 
