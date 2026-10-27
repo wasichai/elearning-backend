@@ -19,3 +19,9 @@ wasichai:
 
 lms:
   product-name: ${LMS_PRODUCT_NAME:wasichai-learning}
+  public:
+    # slug de la organización cuyo catálogo es público; vacío = sin catálogo público
+    organization: ${LMS_PUBLIC_ORGANIZATION:}
+  catalog:
+    # cada cuánto se refresca la proyección pública (ADR-0011): un cambio tarda como mucho esto en verse
+    refresh: ${LMS_CATALOG_REFRESH:30s}
