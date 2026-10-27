@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.BeforeEach
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.core.env.Environment
+import org.springframework.test.context.TestPropertySource
 import tools.jackson.databind.JsonNode
 import tools.jackson.databind.json.JsonMapper
 import wasichai.test.WasichaiIntegrationTest
@@ -13,6 +14,8 @@ import java.util.concurrent.TimeUnit
 // base de las pruebas de API del LMS. antes de la primera prueba de la JVM aprovisiona la organización sembrada con el
 // script real (model/apply.py --demo), contra esta misma aplicación: el contrato que se prueba es el que usa producción.
 // la base de datos la comparten todas las clases de la corrida, así que el aprovisionamiento corre una sola vez
+// el catálogo público es el de la organización sembrada por Wasichai («demo»)
+@TestPropertySource(properties = ["lms.public.organization=demo"])
 abstract class LmsApiTest : WasichaiIntegrationTest() {
     @Autowired
     private lateinit var environment: Environment
