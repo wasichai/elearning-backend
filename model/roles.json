@@ -1,0 +1,61 @@
+{
+  "_comentario": "Roles del LMS. ADMIN es de Wasichai y tiene todo, incluidas las acciones declaradas. Una cuenta puede tener varios roles. El alcance por recurso (su edición, su revisión) no sale de aquí: lo acota RecordReadScope con las asignaciones (docente_edicion). PUBLICAR solo lo tiene ADMIN hasta que exista el flujo editorial (F4).",
+  "roles": [
+    {
+      "name": "ESTUDIANTE",
+      "label": "Estudiante",
+      "permissions": [
+        { "object": "categoria", "actions": ["READ"] },
+        { "object": "curso", "actions": ["READ"] },
+        { "object": "version_curso", "actions": ["READ"] },
+        { "object": "unidad", "actions": ["READ"] },
+        { "object": "leccion", "actions": ["READ"] },
+        { "object": "edicion_curso", "actions": ["READ"] },
+        { "object": "perfil_docente", "actions": ["READ"] },
+        { "object": "docente_edicion", "actions": ["READ"] }
+      ]
+    },
+    {
+      "name": "DOCENTE",
+      "label": "Docente",
+      "permissions": [
+        { "object": "categoria", "actions": ["READ"] },
+        { "object": "curso", "actions": ["READ"] },
+        { "object": "version_curso", "actions": ["READ"] },
+        { "object": "unidad", "actions": ["READ"] },
+        { "object": "leccion", "actions": ["READ"] },
+        { "object": "edicion_curso", "actions": ["READ", "UPDATE"] },
+        { "object": "perfil_docente", "actions": ["READ"] },
+        { "object": "docente_edicion", "actions": ["READ"] }
+      ]
+    },
+    {
+      "name": "CREADOR",
+      "label": "Creador de contenido",
+      "permissions": [
+        { "object": "categoria", "actions": ["READ"] },
+        { "object": "curso", "actions": ["READ", "CREATE", "UPDATE"] },
+        { "object": "version_curso", "actions": ["READ", "CREATE", "UPDATE", "ENVIAR_A_REVISION"] },
+        { "object": "unidad", "actions": ["READ", "CREATE", "UPDATE", "DELETE"] },
+        { "object": "leccion", "actions": ["READ", "CREATE", "UPDATE", "DELETE"] },
+        { "object": "edicion_curso", "actions": ["READ"] },
+        { "object": "perfil_docente", "actions": ["READ"] },
+        { "object": "docente_edicion", "actions": ["READ"] }
+      ]
+    },
+    {
+      "name": "REVISOR",
+      "label": "Revisor de contenido",
+      "permissions": [
+        { "object": "categoria", "actions": ["READ"] },
+        { "object": "curso", "actions": ["READ"] },
+        { "object": "version_curso", "actions": ["READ", "APROBAR"] },
+        { "object": "unidad", "actions": ["READ"] },
+        { "object": "leccion", "actions": ["READ"] },
+        { "object": "edicion_curso", "actions": ["READ"] },
+        { "object": "perfil_docente", "actions": ["READ"] },
+        { "object": "docente_edicion", "actions": ["READ"] }
+      ]
+    }
+  ]
+}
