@@ -32,7 +32,7 @@ class CatalogReader(
     suspend fun detail(slug: String): CourseDetail {
         val row = repository.detail(properties.public.organization, slug) ?: throw NotFoundException(NOT_FOUND)
         val detail = parse(row)
-        return detail.copy(offerings = current(detail.offerings))
+        return detail.copy(offerings = OfferingCalendar.current(detail.offerings, clock))
     }
 
     val organization: String get() = properties.public.organization
@@ -52,14 +52,26 @@ class CatalogReader(
             weeks = d.weeks,
             workload = WorkloadSummary(d.workload.totalHours, d.workload.contactHours, d.workload.autonomousHours),
             nextOffering =
-                current(d.offerings).firstOrNull()?.let {
+                OfferingCalendar.current(d.offerings, clock).firstOrNull()?.let {
                     NextOffering(it.code, it.status, it.startDate, it.endDate, it.timeZone, it.enrollmentOpen)
                 },
             illustrative = d.illustrative,
         )
 
-    // las ediciones que no han terminado, con la inscripción evaluada hoy en su zona
-    private fun current(offerings: List<OfferingView>): List<OfferingView> =
+    companion object {
+        const val NOT_FOUND = "Curso no encontrado"
+    }
+}
+
+// lo que depende del día, en la zona horaria de cada edición (con su horario de verano): qué ediciones siguen vigentes
+// y si su inscripción está abierta hoy. puro: el reloj entra como argumento
+object OfferingCalendar {
+    const val OPEN = "INSCRIPCION_ABIERTA"
+
+    fun current(
+        offerings: List<OfferingView>,
+        clock: Clock,
+    ): List<OfferingView> =
         offerings
             .map { o -> o to LocalDate.now(clock.withZone(ZoneId.of(o.timeZone))) }
             .filter { (o, today) -> !o.endDate.isBefore(today) }
@@ -70,9 +82,4 @@ class CatalogReader(
         o: OfferingView,
         today: LocalDate,
     ) = o.status == OPEN && (o.enrollmentFrom == null || !today.isBefore(o.enrollmentFrom)) && (o.enrollmentUntil == null || !today.isAfter(o.enrollmentUntil))
-
-    companion object {
-        const val NOT_FOUND = "Curso no encontrado"
-        const val OPEN = "INSCRIPCION_ABIERTA"
-    }
 }

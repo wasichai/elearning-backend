@@ -1,10 +1,12 @@
 package elearning.catalog
 
 import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import wasichai.core.common.FieldViolation
+import wasichai.core.common.NotFoundException
 import wasichai.core.common.ValidationException
 import java.time.LocalDate
 import java.time.format.DateTimeParseException
@@ -26,6 +28,15 @@ class CatalogController(
         @RequestParam(required = false) page: String?,
         @RequestParam(required = false) size: String?,
     ): CoursePage = reader.page(parse(q, category, level, modality, startsFrom, sort, page, size))
+
+    // un borrador, un slug inexistente o el de otra organización reciben la misma respuesta: no se distingue qué existe
+    @GetMapping("/courses/{slug}")
+    suspend fun course(
+        @PathVariable slug: String,
+    ): CourseDetail {
+        if (!SLUG.matches(slug)) throw NotFoundException(CatalogReader.NOT_FOUND)
+        return reader.detail(slug)
+    }
 
     // reúne todos los errores de una vez; cada uno nombra su parámetro
     private fun parse(
