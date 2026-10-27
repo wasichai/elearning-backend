@@ -1,0 +1,28 @@
+# Decisiones de arquitectura (ADR)
+
+Una decisión por archivo, numerada en orden: `NNNN-titulo-en-kebab.md`. Cada ADR tiene una línea de estado y las
+secciones Contexto, Decisión, Alternativas consideradas y Consecuencias. El formato sigue el de
+[Wasichai](https://github.com/wasichai/wasichai/blob/main/docs/adr/README.md).
+
+- **Un ADR aceptado no se edita para cambiar la decisión.** Un ADR nuevo la modifica o la reemplaza y lo dice en su
+  línea de estado; el anterior pasa a «reemplazada por ADR-00NN». Corregir una errata o un enlace no es cambiar la
+  decisión.
+- **Estados:** _propuesta_ (en discusión), _aceptada_ (rige), _reemplazada por ADR-00NN_.
+- **Decisiones de plataforma.** Las toma Wasichai y aquí no se repiten: se citan como «ADR-025 de Wasichai», con enlace
+  a `wasichai/docs/adr/`. Cada ADR de este repositorio explica solo lo propio de wasichai-learning.
+- **Hechos.** Lo que un ADR afirma de Wasichai, de los manuales o del entorno está verificado en
+  [`docs/research/reference-repositories.md`](../research/reference-repositories.md); lo no verificado se marca
+  «a verificar en implementación».
+
+| ADR                                                                 | Decisión                                                          | Estado   | Fecha      |
+| ------------------------------------------------------------------- | ----------------------------------------------------------------- | -------- | ---------- |
+| [0001](0001-proceso-de-ingenieria-sin-superpowers.md)               | El proceso de ingeniería no depende de Superpowers                | aceptada | 2026-10-27 |
+| [0002](0002-wasichai-desde-github-packages.md)                      | Wasichai se consume como librerías desde GitHub Packages          | aceptada | 2026-10-27 |
+| [0003](0003-monolito-modular-y-modulos-ui-por-experiencia.md)       | Monolito modular: backend por capacidad, frontend por experiencia | aceptada | 2026-10-27 |
+| [0004](0004-modelo-hibrido-custom-objects-y-tablas-fijas.md)        | Modelo híbrido: Custom Objects y tablas fijas solo si hace falta  | aceptada | 2026-10-27 |
+| [0005](0005-lms-en-el-registro-de-wasichai-ui.md)                   | Todo el LMS se registra como módulos de `<WasichaiApp>`           | aceptada | 2026-10-27 |
+| [0006](0006-catalogo-publico-con-cadena-de-seguridad-acotada.md)    | Catálogo público con cadena de seguridad acotada                  | aceptada | 2026-10-27 |
+| [0007](0007-carga-academica-y-creditos-como-politica-versionada.md) | Carga y créditos como política versionada que propone             | aceptada | 2026-10-27 |
+| [0008](0008-openapi-con-springdoc.md)                               | La API propia se documenta con OpenAPI vía springdoc 3.x          | aceptada | 2026-10-27 |
+| [0009](0009-licencia-diferida.md)                                   | La licencia del proyecto se difiere                               | aceptada | 2026-10-27 |
+| [0010](0010-importacion-asciidoc-por-etapas.md)                     | La importación AsciiDoc avanza por etapas y nunca publica sola    | aceptada | 2026-10-27 |
