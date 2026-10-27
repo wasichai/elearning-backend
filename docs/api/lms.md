@@ -146,3 +146,23 @@ Respuesta 200 `CourseDetail` = todos los campos de `CourseSummary` (salvo `nextO
 `enrollmentOpen` = estado `INSCRIPCION_ABIERTA` y la fecha de hoy (en la zona de la edición) dentro de
 [`enrollmentFrom`, `enrollmentUntil`] cuando existen. Los créditos son siempre una **propuesta**: la interfaz debe decir
 «créditos propuestos, no oficiales» salvo que `approved` tenga valor.
+
+## Valores y nulos
+
+- **Enumeraciones** (las del modelo, `model/model.json`): `level` `INICIAL` \| `INTERMEDIO` \| `AVANZADO`; `modality`
+  `ASINCRONA` \| `SINCRONA` \| `HIBRIDA`; edición `status` `PROGRAMADA` \| `INSCRIPCION_ABIERTA` \| `EN_CURSO` (las
+  `FINALIZADA` y `CANCELADA` no se publican); lección `type` `LECTURA` \| `VIDEO` \| `PRESENTACION` \| `LABORATORIO` \|
+  `EVALUACION` \| `SESION`; docente `role` `TITULAR` \| `ASISTENTE`. Un valor nuevo llega primero al modelo y aquí.
+- **Pueden ser `null`**: `summary`, `category`, `nextOffering`, `prerequisiteKnowledge`, `version.publishedAt`,
+  `requirements`, `assessment`, `certification`, `credits.system`, `credits.approved`, `credits.proposal`;
+  en unidades `description` y `estimatedHours`; en lecciones `durationMinutes`, `summary` y `source`; en ediciones
+  `enrollmentFrom`, `enrollmentUntil`, `capacity` y `schedule`; en docentes `professionalTitle`, `bio` y `specialties`.
+  Las listas nunca son `null` (como mucho, vacías).
+- `credits.proposal.parameters` es un mapa de texto a texto (`"27"`, no `27`).
+- `weeks` y `workload.weeks` son el mismo valor.
+- `sort` no admite dirección: cada orden tiene la suya (próximos y duración ascendentes, título alfabético).
+
+## Contrato OpenAPI
+
+`GET /api/lms/public/openapi` (público) sirve el contrato OpenAPI 3 de `/api/lms/**` generado por springdoc 3.2.0
+([ADR-0008](../adr/0008-openapi-con-springdoc.md)); no incluye la API de Wasichai.

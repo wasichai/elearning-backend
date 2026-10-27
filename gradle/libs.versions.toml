@@ -5,11 +5,14 @@ springBoot = "4.1.1"
 wasichai = "1.6.0"
 ktlint = "14.2.0"
 ktlintTool = "1.7.1"
+# OpenAPI del LMS (ADR-0008): la línea 3.x es la de Spring Boot 4
+springdoc = "3.2.0"
 
 [libraries]
 wasichai-bom = { module = "wasichai:wasichai-bom", version.ref = "wasichai" }
 wasichai-starter = { module = "wasichai:wasichai-spring-boot-starter" }
 wasichai-test = { module = "wasichai:wasichai-test" }
+springdoc-webflux-api = { module = "org.springdoc:springdoc-openapi-starter-webflux-api", version.ref = "springdoc" }
 
 [plugins]
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
