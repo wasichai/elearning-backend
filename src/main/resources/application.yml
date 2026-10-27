@@ -1,0 +1,21 @@
+# La base de datos sale de WASICHAI_DB_HOST/PORT/NAME/USERNAME/PASSWORD (las lee Wasichai). El secreto del JWT no tiene
+# valor por defecto a propósito: sin WASICHAI_JWT_SECRET la aplicación no arranca.
+server:
+  port: ${PORT:8090}
+
+spring:
+  application:
+    name: elearning-backend
+
+wasichai:
+  security:
+    jwt:
+      secret: ${WASICHAI_JWT_SECRET:}
+      revocation: true
+    login:
+      enabled: true
+  web:
+    problem-base-uri: ${LMS_PROBLEM_BASE_URI:https://wasichai-learning.dev/problems}
+
+lms:
+  product-name: ${LMS_PRODUCT_NAME:wasichai-learning}

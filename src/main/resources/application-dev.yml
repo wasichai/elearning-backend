@@ -1,0 +1,4 @@
+# Solo desarrollo local: usuario admin@wasichai.local / admin de la semilla de Wasichai. Nunca en otro entorno.
+wasichai:
+  seed:
+    dev: true
