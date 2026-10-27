@@ -4,13 +4,13 @@ Qué hay realmente en las bibliotecas y materiales sobre los que se construye wa
 2026-10-27 con `gh api` (sin clonar) y contra los registros públicos. Cada afirmación cita su origen. «Ausente
 (verificado)» significa que se buscó en el árbol completo y no está; lo no revisado se dice como tal.
 
-| Repositorio | Commit consultado | Fecha |
-|---|---|---|
-| [wasichai/wasichai](https://github.com/wasichai/wasichai) | `a9ad74d56338` | 2026-10-26 |
-| [wasichai/wasichai-ui](https://github.com/wasichai/wasichai-ui) | `731bad64a69f` | 2026-10-26 |
-| [wasichai/sgspe](https://github.com/wasichai/sgspe) | `0ebf69ffcbe3` | 2026-10-25 |
-| [wasichai/sgspe-ui](https://github.com/wasichai/sgspe-ui) | `7852e90a31c1` | 2026-10-25 |
-| [wasichai/srtm-backend](https://github.com/wasichai/srtm-backend) | `6daacd307726` | 2026-10-27 |
+| Repositorio                                                       | Commit consultado         | Fecha      |
+| ----------------------------------------------------------------- | ------------------------- | ---------- |
+| [wasichai/wasichai](https://github.com/wasichai/wasichai)         | `a9ad74d56338`            | 2026-10-26 |
+| [wasichai/wasichai-ui](https://github.com/wasichai/wasichai-ui)   | `731bad64a69f`            | 2026-10-26 |
+| [wasichai/sgspe](https://github.com/wasichai/sgspe)               | `0ebf69ffcbe3`            | 2026-10-25 |
+| [wasichai/sgspe-ui](https://github.com/wasichai/sgspe-ui)         | `7852e90a31c1`            | 2026-10-25 |
+| [wasichai/srtm-backend](https://github.com/wasichai/srtm-backend) | `6daacd307726`            | 2026-10-27 |
 | [embabel/embabel-agent](https://github.com/embabel/embabel-agent) | `v1.5.3` (`4fbd06ad335b`) | 2026-10-05 |
 
 ## 1. Versiones reales
@@ -18,20 +18,20 @@ Qué hay realmente en las bibliotecas y materiales sobre los que se construye wa
 Fuente autoritativa: `repo1.maven.org/maven2/**/maven-metadata.xml` y `registry.npmjs.org`. El índice de
 búsqueda de `search.maven.org` estaba desactualizado (devolvía Spring Boot 3.5.3) y no se usa.
 
-| Pieza | Wasichai la fija en | Última estable publicada |
-|---|---|---|
-| Kotlin | `2.4.21` (`gradle/libs.versions.toml`) | 2.4.21 |
-| Spring Boot | `4.1.1` | 4.1.2 (4.2.0-RC1 no estable) |
-| Gradle | `9.8.2` (`gradle-wrapper.properties`) | 9.8.2 |
-| JDK | `jvmToolchain(25)`; CI temurin 25 | — |
-| PostgreSQL | `postgres:18` (`WasichaiTestDatabase.DEFAULT_IMAGE`) | imagen `postgres:18.6` |
-| Flyway | `13.10.3` | 13.11.1 |
-| Testcontainers | `2.0.5` | — |
-| Jackson | 3 (`tools.jackson.module:jackson-module-kotlin`) | — |
-| Embabel Agent | `1.5.3` (`embabel-agent-starter`, `-starter-anthropic`) | 1.5.3, Apache-2.0 |
-| Spring AI | sin entrada propia | 2.0.2 (Embabel 1.5.3 depende de `spring-ai-*:2.0.1`) |
-| springdoc-openapi | ausente (verificado) | 3.2.0 (línea Boot 4) |
-| r2dbc-postgresql | vía starter | 1.1.3.RELEASE |
+| Pieza             | Wasichai la fija en                                     | Última estable publicada                             |
+| ----------------- | ------------------------------------------------------- | ---------------------------------------------------- |
+| Kotlin            | `2.4.21` (`gradle/libs.versions.toml`)                  | 2.4.21                                               |
+| Spring Boot       | `4.1.1`                                                 | 4.1.2 (4.2.0-RC1 no estable)                         |
+| Gradle            | `9.8.2` (`gradle-wrapper.properties`)                   | 9.8.2                                                |
+| JDK               | `jvmToolchain(25)`; CI temurin 25                       | —                                                    |
+| PostgreSQL        | `postgres:18` (`WasichaiTestDatabase.DEFAULT_IMAGE`)    | imagen `postgres:18.6`                               |
+| Flyway            | `13.10.3`                                               | 13.11.1                                              |
+| Testcontainers    | `2.0.5`                                                 | —                                                    |
+| Jackson           | 3 (`tools.jackson.module:jackson-module-kotlin`)        | —                                                    |
+| Embabel Agent     | `1.5.3` (`embabel-agent-starter`, `-starter-anthropic`) | 1.5.3, Apache-2.0                                    |
+| Spring AI         | sin entrada propia                                      | 2.0.2 (Embabel 1.5.3 depende de `spring-ai-*:2.0.1`) |
+| springdoc-openapi | ausente (verificado)                                    | 3.2.0 (línea Boot 4)                                 |
+| r2dbc-postgresql  | vía starter                                             | 1.1.3.RELEASE                                        |
 
 `embabel-agent-api-1.5.3.pom` declara `spring-boot-starter:4.1.1` y `spring-ai-client-chat:2.0.1`: Embabel
 es compatible con el stack objetivo.
@@ -154,16 +154,16 @@ Autenticación: `POST /auth/login`, token en `localStorage`, permisos desde `GET
 
 ## 5. Manuales SRTM y SGSPE
 
-| | SRTM (`srtm-backend/docs/manuales`) | SGSPE (`sgspe/docs/manuals`) |
-|---|---|---|
-| Fuentes | 23 `.adoc`, ~171 capturas, 9 diagramas Mermaid prerenderizados | 47 `.adoc`, 56 capturas, 11 diagramas |
-| Organización | un libro por perfil (`usuario/registrador`, `arbitrios-emision`, `fiscalizador`, `anuncios`, `consulta`, `normativa`) + administrador + sistema; compartidos en `comun/`, `referencia/` | 4 maestros (`user`, `administrator`, `system`, `reference`) que incluyen capítulos `NN-tema.adoc` |
-| Atributos | `atributos.adoc` | `attributes.adoc` (versión inyectada por `build-docs.sh`) |
-| Grafo `include::` | profundidad 1; sin `tag=` ni `lines=`; rutas sin atributos | profundidad 2; solo `leveloffset=+1`; `reference/generated/*` generado desde `model/` |
-| Construcción | `Makefile`: Asciidoctor 2.0.26, asciidoctor-pdf 2.3.15, `herramientas/validar.py`; CI `manuales.yml` | `scripts/build-docs.sh`, `validate-docs.py`; sin CI; PDF versionados en `output/pdf/` |
+|                   | SRTM (`srtm-backend/docs/manuales`)                                                                                                                                                     | SGSPE (`sgspe/docs/manuals`)                                                                      |
+| ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| Fuentes           | 23 `.adoc`, ~171 capturas, 9 diagramas Mermaid prerenderizados                                                                                                                          | 47 `.adoc`, 56 capturas, 11 diagramas                                                             |
+| Organización      | un libro por perfil (`usuario/registrador`, `arbitrios-emision`, `fiscalizador`, `anuncios`, `consulta`, `normativa`) + administrador + sistema; compartidos en `comun/`, `referencia/` | 4 maestros (`user`, `administrator`, `system`, `reference`) que incluyen capítulos `NN-tema.adoc` |
+| Atributos         | `atributos.adoc`                                                                                                                                                                        | `attributes.adoc` (versión inyectada por `build-docs.sh`)                                         |
+| Grafo `include::` | profundidad 1; sin `tag=` ni `lines=`; rutas sin atributos                                                                                                                              | profundidad 2; solo `leveloffset=+1`; `reference/generated/*` generado desde `model/`             |
+| Construcción      | `Makefile`: Asciidoctor 2.0.26, asciidoctor-pdf 2.3.15, `herramientas/validar.py`; CI `manuales.yml`                                                                                    | `scripts/build-docs.sh`, `validate-docs.py`; sin CI; PDF versionados en `output/pdf/`             |
 
-**Anatomía.** Procedimientos con forma fija: *Objetivo*, *Requisitos previos*, pasos numerados, *Resultado
-esperado*, *Verificación*, *Casos especiales* (SRTM: bloque de ejemplo con lista horizontal y el comentario
+**Anatomía.** Procedimientos con forma fija: _Objetivo_, _Requisitos previos_, pasos numerados, _Resultado
+esperado_, _Verificación_, _Casos especiales_ (SRTM: bloque de ejemplo con lista horizontal y el comentario
 `// fin de los pasos`; SGSPE: párrafos en negrita). Imágenes con `[[fig-…]]` y texto alternativo extenso,
 tablas, admoniciones, `btn:`/`menu:`, referencias `<<id>>` entre fragmentos (los fragmentos **no** son
 autocontenidos), glosarios y preguntas frecuentes.
@@ -183,13 +183,13 @@ de desarrollo (`admin@wasichai.local`). La semilla de este proyecto no reutiliza
 
 ## 6. Licencias
 
-| Repositorio | Resultado |
-|---|---|
-| wasichai | sin licencia (verificado: árbol, `GET /license` 404, POM sin `licenses`, sin cabeceras) |
-| wasichai-ui | sin licencia; ningún `package.json` declara `license` |
-| srtm-backend | sin licencia del proyecto; solo licencias OFL/DejaVu/Liberation de fuentes |
-| sgspe / sgspe-ui | sin licencia; `slides/package.json`: `"license": "UNLICENSED"` |
-| embabel-agent | Apache-2.0 |
+| Repositorio      | Resultado                                                                               |
+| ---------------- | --------------------------------------------------------------------------------------- |
+| wasichai         | sin licencia (verificado: árbol, `GET /license` 404, POM sin `licenses`, sin cabeceras) |
+| wasichai-ui      | sin licencia; ningún `package.json` declara `license`                                   |
+| srtm-backend     | sin licencia del proyecto; solo licencias OFL/DejaVu/Liberation de fuentes              |
+| sgspe / sgspe-ui | sin licencia; `slides/package.json`: `"license": "UNLICENSED"`                          |
+| embabel-agent    | Apache-2.0                                                                              |
 
 `SECURITY.md` de wasichai, wasichai-ui y srtm-backend es la plantilla de GitHub sin completar. Las
 consecuencias están en [`docs/legal/licensing.md`](../legal/licensing.md).
