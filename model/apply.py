@@ -9,17 +9,21 @@ Fases (cada una necesita la anterior):
   1. objetos con sus campos propios (sin relaciones) y opciones de ENUM nuevas;
   2. acciones declaradas por objeto (ADR-042 de Wasichai);
   3. relaciones (crean los campos RELATION), su obligatoriedad y las restricciones/índices que las nombran;
-  4. roles y sus permisos (el PUT de permisos reemplaza el conjunto completo del rol).
+  4. roles y sus permisos (el PUT de permisos reemplaza el conjunto completo del rol);
+  5. con --demo, los usuarios y registros sintéticos de model/demo/data.json (ver model/demo/README.md): cada uno se
+     busca por su clave natural y solo se crea lo que falta; lo que ya existe no se modifica.
 
 Uso:
-  python3 model/apply.py --validate-only
-  python3 model/apply.py --url http://localhost:8090 [--email … --password …]
-Credenciales también por WASICHAI_URL, WASICHAI_EMAIL, WASICHAI_PASSWORD. Nunca se escriben en disco.
+  python3 model/apply.py --validate-only [--demo]
+  python3 model/apply.py --url http://localhost:8090 [--email … --password …] [--demo]
+Credenciales también por WASICHAI_URL, WASICHAI_EMAIL, WASICHAI_PASSWORD; la contraseña de los usuarios de demostración,
+solo por WASICHAI_DEMO_PASSWORD. Nunca se escriben en disco.
 """
 
 from __future__ import annotations
 
 import argparse
+import datetime
 import json
 import os
 import re
@@ -41,6 +45,10 @@ BUILT_IN_ACTIONS = RECORD_ACTIONS | {"MANAGE_METADATA", "MANAGE_ORGANIZATION", "
 # los que la plataforma se reserva (GET /api/metadata/system-fields)
 RESERVED_FIELDS = {"id", "organization_id", "created_at", "updated_at", "created_by", "updated_by", "workflow_state", "version", "count", "after"}
 FIELD_KEYS = ("name", "label", "type", "required", "unique", "enumOptions", "defaultValue", "indexed", "timeZone")
+DEMO_DOMAIN = "demo.wasichai-learning.test"
+DEMO_EMAIL = re.compile(r"^[a-z0-9][a-z0-9._-]*@" + re.escape(DEMO_DOMAIN) + "$")
+ALIAS = re.compile(r"^[a-z0-9][a-z0-9-]{0,79}$")
+UUID = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
 
 
 class ModelError(Exception):
@@ -49,6 +57,10 @@ class ModelError(Exception):
     def __init__(self, problems: list[str]):
         super().__init__("\n".join(problems))
         self.problems = problems
+
+
+class DemoError(Exception):
+    """Los datos de demostración chocan con lo que ya hay en el servidor (por ejemplo, una clave natural repetida)."""
 
 
 class ApiError(Exception):
@@ -180,6 +192,136 @@ def validate(model: dict, roles: dict | None = None) -> None:
                 for action in grant.get("actions", []):
                     if action not in RECORD_ACTIONS | declared:
                         problems.append(f"rol '{rname}': acción '{action}' no existe en '{obj}'")
+    if problems:
+        raise ModelError(problems)
+
+
+def _relation_fields(model: dict) -> dict[str, dict[str, dict]]:
+    """Por objeto, sus campos RELATION (fieldName → relación)."""
+    found: dict[str, dict[str, dict]] = {}
+    for rel in model.get("relationships", []):
+        if rel.get("type") != "MANY_TO_MANY":
+            found.setdefault(_relationship_owner(rel), {})[rel["fieldName"]] = rel
+    return found
+
+
+def _natural_keys(obj: dict) -> list[set[str]]:
+    """Las combinaciones de campos que el modelo declara únicas: un campo unique o una uniqueConstraint."""
+    return [{f["name"]} for f in obj.get("fields", []) if f.get("unique")] + [set(c) for c in obj.get("uniqueConstraints", [])]
+
+
+def _value_problem(f: dict, value: object, enums: dict) -> str | None:
+    ftype = f.get("type")
+    if ftype in ("TEXT", "LONG_TEXT", "EMAIL", "URL"):
+        return None if isinstance(value, str) and value.strip() else "se esperaba un texto no vacío"
+    if ftype == "INTEGER":
+        return None if isinstance(value, int) and not isinstance(value, bool) else "se esperaba un entero"
+    if ftype == "DECIMAL":
+        return None if isinstance(value, (int, float)) and not isinstance(value, bool) else "se esperaba un número"
+    if ftype == "BOOLEAN":
+        return None if isinstance(value, bool) else "se esperaba true o false"
+    if ftype == "ENUM":
+        return None if value in enums.get(f.get("enum"), []) else f"{value!r} no es una opción de '{f.get('enum')}'"
+    if ftype == "UUID":
+        return None if isinstance(value, str) and UUID.match(value) else "se esperaba un UUID"
+    if ftype in ("DATE", "DATETIME"):
+        try:
+            if ftype == "DATE":
+                datetime.date.fromisoformat(value)
+            elif datetime.datetime.fromisoformat(value).tzinfo is None:
+                return "un DATETIME lleva zona horaria (por ejemplo, Z)"
+        except (TypeError, ValueError):
+            return f"{value!r} no es un {ftype} ISO 8601"
+        return None
+    return f"el tipo {ftype} no se admite en los datos de demostración"
+
+
+def validate_demo(data: dict, model: dict, roles: dict | None = None) -> None:
+    """Valida model/demo/data.json contra el modelo y los roles, sin red. Reúne todos los problemas, como validate()."""
+    problems: list[str] = []
+    enums = model.get("enums", {})
+    objects = {o["name"]: o for o in model.get("objects", [])}
+    relations = _relation_fields(model)
+    known_roles = {"ADMIN"} | {r["name"] for r in (roles or {}).get("roles", [])}
+
+    for key in data:
+        if key not in ("users", "records") and not key.startswith("_"):
+            problems.append(f"clave desconocida '{key}' en los datos de demostración")
+
+    emails: set[str] = set()
+    for user in data.get("users", []):
+        email = user.get("email", "")
+        if not DEMO_EMAIL.match(email):
+            problems.append(f"usuario '{email}': el correo debe ser del dominio {DEMO_DOMAIN}, en minúsculas")
+        if email in emails:
+            problems.append(f"usuario '{email}': repetido")
+        emails.add(email)
+        if not str(user.get("displayName", "")).strip():
+            problems.append(f"usuario '{email}': falta displayName")
+        if "password" in user:
+            problems.append(f"usuario '{email}': la contraseña no va en el archivo, sino en WASICHAI_DEMO_PASSWORD")
+        if not user.get("roles"):
+            problems.append(f"usuario '{email}': necesita al menos un rol")
+        for role in user.get("roles", []):
+            if role not in known_roles:
+                problems.append(f"usuario '{email}': rol desconocido {role!r}")
+
+    aliases: dict[str, str] = {}
+    keys_seen: set[tuple] = set()
+    for i, record in enumerate(data.get("records", [])):
+        alias, oname = record.get("ref", ""), record.get("object", "")
+        where = f"registro {alias or '#' + str(i)} ({oname})"
+        if not ALIAS.match(alias):
+            problems.append(f"{where}: 'ref' inválido (minúsculas, dígitos y guiones)")
+        elif alias in aliases:
+            problems.append(f"{where}: 'ref' repetido")
+        for key in record:
+            if key not in ("ref", "object", "key", "attributes", "refs", "users"):
+                problems.append(f"{where}: clave desconocida '{key}'")
+        if oname not in objects:
+            problems.append(f"{where}: objeto desconocido")
+            continue
+        fields = {f["name"]: f for f in objects[oname].get("fields", [])}
+        rels = relations.get(oname, {})
+        attributes, refs, users = record.get("attributes", {}), record.get("refs", {}), record.get("users", {})
+        for fname, value in attributes.items():
+            if fname in rels:
+                problems.append(f"{where}: '{fname}' es una relación: va en 'refs'")
+            elif fname not in fields:
+                problems.append(f"{where}: campo desconocido '{fname}'")
+            elif problem := _value_problem(fields[fname], value, enums):
+                problems.append(f"{where}: campo '{fname}': {problem}")
+        for fname, target in refs.items():
+            if fname not in rels:
+                problems.append(f"{where}: '{fname}' no es una relación de '{oname}'")
+            elif target not in aliases:
+                problems.append(f"{where}: '{fname}' apunta a '{target}', que no está antes en el archivo")
+            elif aliases[target] != rels[fname]["target"]:
+                problems.append(f"{where}: '{fname}' apunta a un {aliases[target]}, no a un {rels[fname]['target']}")
+        for fname, email in users.items():
+            if fields.get(fname, {}).get("type") != "UUID":
+                problems.append(f"{where}: '{fname}' no es un campo UUID donde poner un usuario")
+            elif email not in emails:
+                problems.append(f"{where}: '{fname}' apunta al usuario '{email}', que no está en 'users'")
+        given = set(attributes) | set(refs) | set(users)
+        for f in fields.values():
+            if f.get("required") and f.get("defaultValue") is None and f["name"] not in given:
+                problems.append(f"{where}: falta el campo obligatorio '{f['name']}'")
+        for fname, rel in rels.items():
+            if rel.get("required") and fname not in refs:
+                problems.append(f"{where}: falta la relación obligatoria '{fname}'")
+        key = record.get("key") or []
+        if set(key) not in _natural_keys(objects[oname]):
+            problems.append(f"{where}: la clave {key} no es un campo único ni una uniqueConstraint del modelo")
+        elif not set(key) <= given:
+            problems.append(f"{where}: la clave {key} nombra campos sin valor")
+        else:
+            values = tuple(sorted((k, json.dumps(attributes.get(k, refs.get(k, users.get(k))))) for k in key))
+            if (oname, values) in keys_seen:
+                problems.append(f"{where}: clave natural repetida {dict(values)}")
+            keys_seen.add((oname, values))
+        if ALIAS.match(alias) and alias not in aliases:
+            aliases[alias] = oname
     if problems:
         raise ModelError(problems)
 
@@ -340,6 +482,67 @@ def apply_roles(client: Client, roles: dict, report: Report) -> None:
             report.add(f"permisos de {name} ({len(entries)})")
 
 
+def _content(answer: object) -> list[dict]:
+    if isinstance(answer, dict):
+        return list(answer.get("content") or [])
+    return list(answer or [])
+
+
+def _role_names(roles: object) -> set[str]:
+    return {r["name"] if isinstance(r, dict) else r for r in roles or []}
+
+
+def _matches(have: object, want: object) -> bool:
+    if isinstance(have, dict):  # una relación puede volver expandida
+        have = have.get("id")
+    return have is not None and str(have) == str(want)
+
+
+def apply_users(client: Client, users: list[dict], password: str, report: Report) -> dict[str, str]:
+    """Crea los usuarios que faltan y deja sus roles en los declarados. Devuelve correo → id. No cambia contraseñas."""
+    existing = {u["email"].lower(): u for u in _content(client.call("GET", "/api/users"))}
+    ids: dict[str, str] = {}
+    for user in users:
+        email, wanted = user["email"], sorted(user["roles"])
+        have = existing.get(email.lower())
+        if have is None:
+            created = client.call("POST", "/api/users", {"email": email, "displayName": user["displayName"], "password": password, "roles": wanted})
+            ids[email] = created["id"]
+            report.add(f"usuario {email}")
+        else:
+            ids[email] = have["id"]
+            if _role_names(have.get("roles")) != set(wanted):
+                client.call("PUT", f"/api/users/{have['id']}/roles", {"roles": wanted})
+                report.add(f"roles de {email}: {', '.join(wanted)}")
+    return ids
+
+
+def _find_record(client: Client, obj: str, key: dict) -> dict | None:
+    query = urllib.parse.urlencode({**key, "size": 200})
+    # se vuelve a filtrar aquí: un filtro que el servidor no aplicara no debe hacer pasar otro registro por este
+    found = [r for r in _content(client.call("GET", f"/api/objects/{obj}/records?{query}"))
+             if all(_matches((r.get("attributes") or {}).get(k), v) for k, v in key.items())]
+    if len(found) > 1:
+        raise DemoError(f"{obj} {key}: {len(found)} registros con la misma clave natural")
+    return found[0] if found else None
+
+
+def apply_demo(client: Client, data: dict, password: str, report: Report) -> None:
+    """Usuarios y registros de demostración: cada registro se busca por su clave natural y solo se crea si falta."""
+    user_ids = apply_users(client, data.get("users", []), password, report)
+    ids: dict[str, str] = {}
+    for record in data.get("records", []):
+        obj = record["object"]
+        attributes = dict(record.get("attributes", {}))
+        attributes.update({f: ids[alias] for f, alias in record.get("refs", {}).items()})
+        attributes.update({f: user_ids[email] for f, email in record.get("users", {}).items()})
+        found = _find_record(client, obj, {k: attributes[k] for k in record["key"]})
+        if found is None:
+            found = client.call("POST", f"/api/objects/{obj}/records", {"attributes": attributes})
+            report.add(f"{obj} {record['ref']}")
+        ids[record["ref"]] = found["id"]
+
+
 def load(path: Path) -> dict:
     with path.open(encoding="utf-8") as handle:
         return json.load(handle)
@@ -353,6 +556,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--url", default=os.environ.get("WASICHAI_URL", "http://localhost:8090"))
     parser.add_argument("--email", default=os.environ.get("WASICHAI_EMAIL"))
     parser.add_argument("--password", default=os.environ.get("WASICHAI_PASSWORD"))
+    parser.add_argument("--demo", action="store_true", help="valida y aplica también los datos de demostración")
+    parser.add_argument("--demo-data", type=Path, default=HERE / "demo" / "data.json")
     args = parser.parse_args(argv)
 
     model = load(args.model)
@@ -364,10 +569,23 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     print(f"Modelo válido: {len(model.get('objects', []))} objetos, {len(model.get('relationships', []))} relaciones, "
           f"{len((roles or {}).get('roles', []))} roles.")
+    demo = None
+    if args.demo:
+        demo = load(args.demo_data)
+        try:
+            validate_demo(demo, model, roles)
+        except ModelError as error:
+            print("Datos de demostración inválidos:", *(f"  - {p}" for p in error.problems), sep="\n", file=sys.stderr)
+            return 2
+        print(f"Datos de demostración válidos: {len(demo.get('users', []))} usuarios, {len(demo.get('records', []))} registros.")
     if args.validate_only:
         return 0
     if not args.email or not args.password:
         print("Faltan credenciales: --email/--password o WASICHAI_EMAIL/WASICHAI_PASSWORD.", file=sys.stderr)
+        return 2
+    demo_password = os.environ.get("WASICHAI_DEMO_PASSWORD", "")
+    if demo is not None and not demo_password.strip():
+        print("Falta WASICHAI_DEMO_PASSWORD: con --demo, la contraseña de los usuarios de demostración se pasa solo por el entorno.", file=sys.stderr)
         return 2
     client = Client(args.url)
     report = Report()
@@ -376,10 +594,13 @@ def main(argv: list[str] | None = None) -> int:
         apply_model(client, model, report)
         if roles is not None:
             apply_roles(client, roles, report)
-    except (ApiError, urllib.error.URLError) as error:
+        if demo is not None:
+            apply_demo(client, demo, demo_password, report)
+    except (ApiError, DemoError, urllib.error.URLError) as error:
         print(f"Error: {error}", file=sys.stderr)
         return 1
-    print(f"{len(report.changes)} cambios." if report.changes else "Sin cambios: el servidor ya tiene el modelo.")
+    done = "el modelo y los datos de demostración" if demo is not None else "el modelo"
+    print(f"{len(report.changes)} cambios." if report.changes else f"Sin cambios: el servidor ya tiene {done}.")
     return 0
 
 
