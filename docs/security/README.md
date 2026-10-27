@@ -111,12 +111,10 @@ D denegación de servicio, E elevación de privilegios.
 - **E** La cadena pública alcanza rutas privadas → `securityMatcher` exacto y prueba de que el resto de `/api/lms/**`
   responde `401`.
 
-**Hallazgo a resolver en el primer incremento.** `RecordService.asPlatform` lanza una excepción dentro de **cualquier**
-petición que pase por Spring Security, anónima incluida (comprobado en `wasichai-core/.../platform/Background.kt`). La
-lectura del catálogo «como plataforma dentro de la petición» que proponía el plan no funciona tal cual. Opciones, a
-decidir al implementar ADR-0006: (a) un trabajo en segundo plano (`asPlatform` + `ClusterLock`) proyecta las versiones
-publicadas a una tabla fija `lms` de solo lectura que el endpoint consulta con `DatabaseClient`; (b) una cuenta de
-servicio con `READ` limitado. No se elude la protección de Wasichai quitando el contexto de seguridad.
+**Lectura resuelta por [ADR-0011](../adr/0011-catalogo-publico-leido-de-una-proyeccion.md).** `RecordService.asPlatform`
+lanza dentro de cualquier petición, anónima incluida, así que la ruta pública solo lee la proyección `lms.catalogo_publicado`,
+que mantiene un trabajo en segundo plano (`asPlatform` + `ClusterLock`). Lo que no está publicado no está en esa tabla:
+la barrera contra filtrar borradores es física, y aun así las pruebas negativas son obligatorias.
 
 ### 4.2 Aula del estudiante (F2–F3)
 
@@ -269,7 +267,7 @@ anota aquí.
 
 ## 10. Pendientes y a verificar
 
-- Lectura del catálogo público sin `asPlatform` dentro de la petición (§4.1), en el primer incremento.
+- Lectura del catálogo público desde la proyección de ADR-0011 (§4.1), en el primer incremento.
 - Si Wasichai impide que un administrador cambie sus propios roles (§3).
 - Cabeceras `Content-Disposition` y `nosniff`, y limpieza de metadatos, en `wasichai-files` (§4.4).
 - CSP compatible con wasichai-ui (F6).
