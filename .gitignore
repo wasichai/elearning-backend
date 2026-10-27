@@ -1,0 +1,25 @@
+# Gradle / JVM
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+*.class
+hs_err_pid*
+
+# IDE
+.idea/
+*.iml
+.vscode/
+.kotlin/
+
+# Node (herramientas de formato y commits)
+node_modules/
+
+# Entorno local: los secretos nunca se versionan
+.env
+*.local.env
+
+# Worktrees y estado local de Claude Code
+.claude/
+
+# SO
+.DS_Store

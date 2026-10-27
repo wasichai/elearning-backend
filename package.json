@@ -1,0 +1,17 @@
+{
+  "name": "elearning-backend-build",
+  "private": true,
+  "description": "Solo herramientas de formato y de mensajes de commit; el backend se construye con Gradle.",
+  "scripts": {
+    "format": "prettier --write \"**/*.{md,json,yml,yaml,mjs}\"",
+    "format:check": "prettier --check \"**/*.{md,json,yml,yaml,mjs}\"",
+    "commitlint": "commitlint --edit",
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "21.2.4",
+    "@commitlint/config-conventional": "21.2.3",
+    "husky": "9.1.7",
+    "prettier": "3.9.9"
+  }
+}
