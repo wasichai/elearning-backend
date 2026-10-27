@@ -1,6 +1,6 @@
 # ADR-0006: El catálogo público usa una cadena de seguridad acotada a `GET /api/lms/public/**`
 
-**Estado**: aceptada · 2026-10-27
+**Estado**: aceptada · 2026-10-27 · la lectura con `asPlatform` la reemplaza [ADR-0011](0011-catalogo-publico-leido-de-una-proyeccion.md)
 
 ## Contexto
 

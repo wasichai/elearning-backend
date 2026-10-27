@@ -223,27 +223,14 @@ objectId)`; las acciones de negocio (`PUBLICAR`, `APROBAR`, …) son acciones de
 7. Los errores salen como `ProblemDetail` (RFC 7807). Wasichai ya atiende `Idempotency-Key` en la creación de registros
    (su ADR-058); los comandos LMS que crean algo lo atienden igual, con el precedente de `sgspe/common/Idempotency.kt`.
 
-### 5.1 La petición anónima del catálogo (a verificar)
+### 5.1 La petición anónima del catálogo
 
 `GET /api/lms/public/**` pasa por una cadena de seguridad propia `@Order(-1)` que solo admite `GET`
-([ADR-0006](../adr/0006-catalogo-publico-con-cadena-de-seguridad-acotada.md)). **El plan preveía leer con
-`RecordService.asPlatform`, y eso no funciona dentro de una petición**: Wasichai lanza `IllegalStateException` si el
-contexto Reactor lleva el `SecurityContext`, que su `ReactorContextWebFilter` agrega a toda petición que pasa por una
-cadena, «with a token, and anonymous too (an OPTIONS request, a public path)» (ADR-039 de Wasichai; KDoc de
-`RecordService.asPlatform`: «Inside a request, with a token or without one, it throws»). Opciones, a decidir al
-implementar la tarea 5 y registrar en ADR-0006:
-
-- **A. Principal de catálogo.** La cadena pública fija como principal una cuenta de servicio de Wasichai con un rol que
-  solo tiene `READ` sobre los objetos del catálogo, y un `RecordReadScope` la limita a lo `PUBLICADA`. A favor: todo
-  sigue en `RecordService`, con permisos y alcance de Wasichai. En contra: construir el `Jwt` en proceso y su paso por
-  la revocación de tokens están sin probar.
-- **B. Proyección publicada.** Publicar escribe, en la misma transacción, una fila de solo lectura en
-  `lms.catalogo_publicado`, y la ruta pública lee esa tabla con `DatabaseClient`. A favor: lo público es literalmente la
-  instantánea publicada, y la lectura es barata. En contra: adelanta a F1 la primera tabla fija y hay que mantener la
-  proyección.
-
-Desacoplar la lectura del contexto de la petición (otro `CoroutineScope`) queda descartado: es exactamente el escape que
-ADR-039 de Wasichai señala como error.
+([ADR-0006](../adr/0006-catalogo-publico-con-cadena-de-seguridad-acotada.md)) y **lee únicamente la proyección
+`lms.catalogo_publicado`** ([ADR-0011](../adr/0011-catalogo-publico-leido-de-una-proyeccion.md)). `RecordService.asPlatform`
+lanza dentro de cualquier petición, anónima incluida (`Background.kt` de Wasichai), así que la proyección la mantiene un
+trabajo en segundo plano con `ClusterLock`, que sí puede leer como plataforma. Lo que no está publicado no está en la
+tabla.
 
 ## 6. Trabajos asíncronos
 
