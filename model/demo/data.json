@@ -1,0 +1,1290 @@
+{
+  "_comentario": "Datos sintéticos de demostración (issue #19). Todo es ficticio e ilustrativo; formato en model/demo/README.md. Las contraseñas no van aquí: WASICHAI_DEMO_PASSWORD.",
+  "users": [
+    {
+      "email": "estudiante@demo.wasichai-learning.test",
+      "displayName": "Estela Estudiante (demo)",
+      "roles": ["ESTUDIANTE"]
+    },
+    {
+      "email": "docente@demo.wasichai-learning.test",
+      "displayName": "Diego Docente (demo)",
+      "roles": ["DOCENTE"]
+    },
+    {
+      "email": "creador@demo.wasichai-learning.test",
+      "displayName": "Clara Creadora (demo)",
+      "roles": ["CREADOR"]
+    },
+    {
+      "email": "revisor@demo.wasichai-learning.test",
+      "displayName": "Rubén Revisor (demo)",
+      "roles": ["REVISOR"]
+    },
+    {
+      "email": "docente.revisor@demo.wasichai-learning.test",
+      "displayName": "Mara Multirrol (demo)",
+      "roles": ["DOCENTE", "REVISOR"]
+    }
+  ],
+  "records": [
+    {
+      "ref": "cat-sistemas-municipales",
+      "object": "categoria",
+      "key": ["slug"],
+      "attributes": {
+        "nombre": "Sistemas de gestión municipal",
+        "slug": "sistemas-municipales",
+        "orden": 1,
+        "descripcion": "Uso de los sistemas con los que una municipalidad registra tributos, autorizaciones y trámites."
+      }
+    },
+    {
+      "ref": "cat-gestion-social",
+      "object": "categoria",
+      "key": ["slug"],
+      "attributes": {
+        "nombre": "Gestión social de proyectos",
+        "slug": "gestion-social",
+        "orden": 2,
+        "descripcion": "Herramientas para el relacionamiento de un proyecto con su entorno: compromisos, acuerdos y seguimiento."
+      }
+    },
+    {
+      "ref": "cat-ia-aplicada",
+      "object": "categoria",
+      "key": ["slug"],
+      "attributes": {
+        "nombre": "Inteligencia artificial aplicada",
+        "slug": "ia-aplicada",
+        "orden": 3,
+        "descripcion": "Programación de asistentes y agentes de IA para procesos reales, con trazabilidad y decisión humana."
+      }
+    },
+    {
+      "ref": "perfil-diego",
+      "object": "perfil_docente",
+      "key": ["usuario_id"],
+      "attributes": {
+        "nombre_publico": "Diego Docente (demo)",
+        "titulo_profesional": "Ingeniero de sistemas (perfil ficticio)",
+        "especialidades": "Sistemas tributarios municipales; atención al contribuyente",
+        "biografia": "Perfil ficticio de demostración. Representa a un docente con experiencia en la implantación de sistemas de rentas y en la capacitación de personal de ventanilla."
+      },
+      "users": {
+        "usuario_id": "docente@demo.wasichai-learning.test"
+      }
+    },
+    {
+      "ref": "perfil-mara",
+      "object": "perfil_docente",
+      "key": ["usuario_id"],
+      "attributes": {
+        "nombre_publico": "Mara Multirrol (demo)",
+        "titulo_profesional": "Magíster en gestión pública (perfil ficticio)",
+        "especialidades": "Gestión social de proyectos; automatización con revisión humana",
+        "biografia": "Perfil ficticio de demostración. Enseña y, con otra cuenta de rol, revisa contenido: sirve para probar que un mismo usuario no aprueba lo que imparte."
+      },
+      "users": {
+        "usuario_id": "docente.revisor@demo.wasichai-learning.test"
+      }
+    },
+    {
+      "ref": "curso-srtm",
+      "object": "curso",
+      "key": ["codigo"],
+      "attributes": {
+        "codigo": "SRTM-ANU-101",
+        "slug": "srtm-acceso-y-anuncios",
+        "titulo": "Rentas municipales (SRTM): acceso al portal y registro de anuncios",
+        "resumen": "Curso práctico para el personal que atiende autorizaciones de anuncios en el sistema de rentas municipales: ingresar al portal, consultar el padrón, registrar, renovar, cesar y retirar anuncios, y entender cómo se devenga la tasa. Contenido ilustrativo de demostración: no ha sido validado por un experto en la materia.",
+        "idioma": "es",
+        "nivel": "INICIAL",
+        "conocimientos_previos": "Manejo básico de un navegador web. Conocer el trámite de autorización de anuncios ayuda, pero no se exige."
+      },
+      "refs": {
+        "categoria": "cat-sistemas-municipales"
+      }
+    },
+    {
+      "ref": "version-srtm-1",
+      "object": "version_curso",
+      "key": ["curso", "numero"],
+      "attributes": {
+        "numero": 1,
+        "estado": "PUBLICADA",
+        "modalidad": "ASINCRONA",
+        "semanas": 3,
+        "horas_teoria_semana": 2,
+        "horas_practica_semana": 2,
+        "horas_supervisadas_semana": 0,
+        "horas_autonomas_semana": 2,
+        "sistema_credito": "NINGUNO",
+        "objetivos": "Ingresar al portal y cerrar la sesión de forma segura en un equipo compartido.\nInterpretar el estado de un anuncio a partir de sus movimientos y a una fecha dada.\nRegistrar, renovar, cesar y retirar anuncios siguiendo el procedimiento del manual.\nExplicar por qué lo devengado no equivale a una deuda registrada.",
+        "resultados_aprendizaje": "Consulta el padrón de anuncios a una fecha pasada y justifica el estado de cada anuncio.\nRegistra un anuncio completo y verifica el resultado en el padrón y en la ficha del titular.\nDecide si una renovación procede y qué ejercicio devenga, con base en la vigencia y la fecha del acto.\nReconoce los mensajes de error frecuentes y elige la corrección adecuada.",
+        "requisitos": "Una cuenta de práctica en un entorno de demostración del sistema de rentas. No se trabaja con datos reales.",
+        "sistema_evaluacion": "Cuestionario de la unidad 2 (estados y padrón): 30 %.\nPráctica guiada de registro y renovación en el entorno de demostración: 40 %.\nEvaluación final de casos y mensajes de error: 30 %.\nNota mínima aprobatoria: 70 sobre 100.",
+        "certificacion": "Constancia de participación al aprobar las tres evaluaciones. No otorga créditos académicos.",
+        "fuentes": "wasichai/srtm-backend@6daacd3:docs/manuales/comun/acceso.adoc\nwasichai/srtm-backend@6daacd3:docs/manuales/usuario/anuncios.adoc\nLos manuales no declaran licencia: el curso cita secciones y anclas y resume con palabras propias; no reproduce su texto.",
+        "contenido_ilustrativo": true,
+        "publicada_en": "2026-10-15T14:00:00Z"
+      },
+      "refs": {
+        "curso": "curso-srtm"
+      }
+    },
+    {
+      "ref": "srtm-v1-u1",
+      "object": "unidad",
+      "key": ["version_curso", "orden"],
+      "attributes": {
+        "orden": 1,
+        "titulo": "Acceso al portal",
+        "descripcion": "Qué hace falta para trabajar en el portal y cómo abrir y cerrar una sesión.",
+        "objetivos": "Reunir lo necesario para ingresar.\nAbrir y cerrar la sesión sin perder trabajo.",
+        "horas_estimadas": 3
+      },
+      "refs": {
+        "version_curso": "version-srtm-1"
+      }
+    },
+    {
+      "ref": "srtm-v1-u1-l1",
+      "object": "leccion",
+      "key": ["unidad", "orden"],
+      "attributes": {
+        "orden": 1,
+        "titulo": "Lo que necesita para entrar",
+        "tipo": "LECTURA",
+        "duracion_minutos": 20,
+        "resumen": "Cuenta asignada por el administrador, navegador actualizado y acceso a la red: por qué cada requisito importa y qué ocurre con los mapas si no hay salida a Internet.",
+        "referencia_fuente": "wasichai/srtm-backend@6daacd3:docs/manuales/comun/acceso.adoc#requisitos-acceso"
+      },
+      "refs": {
+        "unidad": "srtm-v1-u1"
+      }
+    },
+    {
+      "ref": "srtm-v1-u1-l2",
+      "object": "leccion",
+      "key": ["unidad", "orden"],
+      "attributes": {
+        "orden": 2,
+        "titulo": "Ingresar y resolver un ingreso fallido",
+        "tipo": "LECTURA",
+        "duracion_minutos": 30,
+        "resumen": "El procedimiento de ingreso con su resultado esperado y su verificación, y cómo distinguir una credencial equivocada de un servidor que no responde.",
+        "referencia_fuente": "wasichai/srtm-backend@6daacd3:docs/manuales/comun/acceso.adoc#proc-ingresar"
+      },
+      "refs": {
+        "unidad": "srtm-v1-u1"
+      }
+    },
+    {
+      "ref": "srtm-v1-u1-l3",
+      "object": "leccion",
+      "key": ["unidad", "orden"],
+      "attributes": {
+        "orden": 3,
+        "titulo": "Duración y cierre de la sesión",
+        "tipo": "LECTURA",
+        "duracion_minutos": 20,
+        "resumen": "Cuánto dura una sesión, qué se pierde cuando vence y por qué cerrarla siempre en una ventanilla compartida.",
+        "referencia_fuente": "wasichai/srtm-backend@6daacd3:docs/manuales/comun/acceso.adoc#cerrar-sesion"
+      },
+      "refs": {
+        "unidad": "srtm-v1-u1"
+      }
+    },
+    {
+      "ref": "srtm-v1-u2",
+      "object": "unidad",
+      "key": ["version_curso", "orden"],
+      "attributes": {
+        "orden": 2,
+        "titulo": "El anuncio y su padrón",
+        "descripcion": "Los conceptos con los que el sistema describe un anuncio y cómo se consulta el padrón.",
+        "objetivos": "Usar con precisión titular, clase, vigencia y movimiento.\nLeer el padrón hoy y a una fecha pasada.",
+        "horas_estimadas": 4
+      },
+      "refs": {
+        "version_curso": "version-srtm-1"
+      }
+    },
+    {
+      "ref": "srtm-v1-u2-l1",
+      "object": "leccion",
+      "key": ["unidad", "orden"],
+      "attributes": {
+        "orden": 1,
+        "titulo": "Titular, clase, vigencia y movimientos",
+        "tipo": "LECTURA",
+        "duracion_minutos": 30,
+        "resumen": "El vocabulario del módulo: quién es el titular, qué fija la clase y por qué un anuncio no se edita sino que acumula movimientos.",
+        "referencia_fuente": "wasichai/srtm-backend@6daacd3:docs/manuales/usuario/anuncios.adoc#anuncio-conceptos"
+      },
+      "refs": {
+        "unidad": "srtm-v1-u2"
+      }
+    },
+    {
+      "ref": "srtm-v1-u2-l2",
+      "object": "leccion",
+      "key": ["unidad", "orden"],
+      "attributes": {
+        "orden": 2,
+        "titulo": "Cómo se deduce el estado",
+        "tipo": "LECTURA",
+        "duracion_minutos": 30,
+        "resumen": "El estado no se escribe: se calcula a una fecha revisando retiro, cese y vigencia, en ese orden. Ejemplos con anuncios ficticios.",
+        "referencia_fuente": "wasichai/srtm-backend@6daacd3:docs/manuales/usuario/anuncios.adoc#estados"
+      },
+      "refs": {
+        "unidad": "srtm-v1-u2"
+      }
+    },
+    {
+      "ref": "srtm-v1-u2-l3",
+      "object": "leccion",
+      "key": ["unidad", "orden"],
+      "attributes": {
+        "orden": 3,
+        "titulo": "Consultar el padrón con filtros",
+        "tipo": "PRESENTACION",
+        "duracion_minutos": 25,
+        "resumen": "Recorrido por los filtros del padrón y lo que muestra cada columna, incluidos los casos sin vigencia.",
+        "referencia_fuente": "wasichai/srtm-backend@6daacd3:docs/manuales/usuario/anuncios.adoc#proc-padron"
+      },
+      "refs": {
+        "unidad": "srtm-v1-u2"
+      }
+    },
+    {
+      "ref": "srtm-v1-u2-l4",
+      "object": "leccion",
+      "key": ["unidad", "orden"],
+      "attributes": {
+        "orden": 4,
+        "titulo": "Práctica: el padrón a una fecha pasada",
+        "tipo": "LABORATORIO",
+        "duracion_minutos": 45,
+        "resumen": "Ejercicio guiado en el entorno de demostración: responder qué anuncios estaban vigentes el día de una inspección ficticia y justificar cada estado.",
+        "referencia_fuente": "wasichai/srtm-backend@6daacd3:docs/manuales/usuario/anuncios.adoc#padron-a-fecha"
+      },
+      "refs": {
+        "unidad": "srtm-v1-u2"
+      }
+    },
+    {
+      "ref": "srtm-v1-u3",
+      "object": "unidad",
+      "key": ["version_curso", "orden"],
+      "attributes": {
+        "orden": 3,
+        "titulo": "Registrar y mantener anuncios",
+        "descripcion": "Los actos que cambian la situación de un anuncio y sus reglas.",
+        "objetivos": "Registrar un anuncio con su autorización.\nRenovar, cesar y retirar respetando el orden de los actos.",
+        "horas_estimadas": 7
+      },
+      "refs": {
+        "version_curso": "version-srtm-1"
+      }
+    },
+    {
+      "ref": "srtm-v1-u3-l1",
+      "object": "leccion",
+      "key": ["unidad", "orden"],
+      "attributes": {
+        "orden": 1,
+        "titulo": "Registrar un anuncio con su autorización",
+        "tipo": "LECTURA",
+        "duracion_minutos": 40,
+        "resumen": "Los datos que pide el formulario, qué comprobar antes de confirmar (el anuncio no se edita después) y cómo verificar el alta.",
+        "referencia_fuente": "wasichai/srtm-backend@6daacd3:docs/manuales/usuario/anuncios.adoc#proc-nuevo"
+      },
+      "refs": {
+        "unidad": "srtm-v1-u3"
+      }
+    },
+    {
+      "ref": "srtm-v1-u3-l2",
+      "object": "leccion",
+      "key": ["unidad", "orden"],
+      "attributes": {
+        "orden": 2,
+        "titulo": "El reintento seguro",
+        "tipo": "LECTURA",
+        "duracion_minutos": 20,
+        "resumen": "Qué hacer cuando no llega la respuesta del servidor y por qué repetir desde el mismo formulario no duplica el anuncio ni la tasa.",
+        "referencia_fuente": "wasichai/srtm-backend@6daacd3:docs/manuales/usuario/anuncios.adoc#reintento"
+      },
+      "refs": {
+        "unidad": "srtm-v1-u3"
+      }
+    },
+    {
+      "ref": "srtm-v1-u3-l3",
+      "object": "leccion",
+      "key": ["unidad", "orden"],
+      "attributes": {
+        "orden": 3,
+        "titulo": "Renovar un anuncio",
+        "tipo": "LABORATORIO",
+        "duracion_minutos": 60,
+        "resumen": "Práctica de renovación: elegir la nueva vigencia, prever qué ejercicio devenga y reconocer cuándo el sistema la rechaza.",
+        "referencia_fuente": "wasichai/srtm-backend@6daacd3:docs/manuales/usuario/anuncios.adoc#proc-renovar"
+      },
+      "refs": {
+        "unidad": "srtm-v1-u3"
+      }
+    },
+    {
+      "ref": "srtm-v1-u3-l4",
+      "object": "leccion",
+      "key": ["unidad", "orden"],
+      "attributes": {
+        "orden": 4,
+        "titulo": "Cesar y retirar",
+        "tipo": "LECTURA",
+        "duracion_minutos": 30,
+        "resumen": "Diferencia entre dar de baja la autorización y dejar constancia de que el elemento ya no está; ninguno de los dos se deshace.",
+        "referencia_fuente": "wasichai/srtm-backend@6daacd3:docs/manuales/usuario/anuncios.adoc#proc-cesar"
+      },
+      "refs": {
+        "unidad": "srtm-v1-u3"
+      }
+    },
+    {
+      "ref": "srtm-v1-u4",
+      "object": "unidad",
+      "key": ["version_curso", "orden"],
+      "attributes": {
+        "orden": 4,
+        "titulo": "Tasas y lo devengado",
+        "descripcion": "Cómo se determina la tasa de cada acto y qué significa el devengado.",
+        "objetivos": "Aplicar la regla de una tasa por clase y ejercicio.\nDistinguir lo devengado de lo pagado.",
+        "horas_estimadas": 4
+      },
+      "refs": {
+        "version_curso": "version-srtm-1"
+      }
+    },
+    {
+      "ref": "srtm-v1-u4-l1",
+      "object": "leccion",
+      "key": ["unidad", "orden"],
+      "attributes": {
+        "orden": 1,
+        "titulo": "Cómo se aplica la tasa",
+        "tipo": "LECTURA",
+        "duracion_minutos": 25,
+        "resumen": "La tasa depende de la clase y del ejercicio, no del tamaño; se copia en el movimiento y no cambia si después cambia la tarifa.",
+        "referencia_fuente": "wasichai/srtm-backend@6daacd3:docs/manuales/usuario/anuncios.adoc#tasa-como-aplica"
+      },
+      "refs": {
+        "unidad": "srtm-v1-u4"
+      }
+    },
+    {
+      "ref": "srtm-v1-u4-l2",
+      "object": "leccion",
+      "key": ["unidad", "orden"],
+      "attributes": {
+        "orden": 2,
+        "titulo": "Lo devengado no es una deuda",
+        "tipo": "LECTURA",
+        "duracion_minutos": 15,
+        "resumen": "El sistema determina la tasa pero no registra pagos: dónde se consulta si un anuncio está pagado.",
+        "referencia_fuente": "wasichai/srtm-backend@6daacd3:docs/manuales/usuario/anuncios.adoc#devengado"
+      },
+      "refs": {
+        "unidad": "srtm-v1-u4"
+      }
+    },
+    {
+      "ref": "srtm-v1-u4-l3",
+      "object": "leccion",
+      "key": ["unidad", "orden"],
+      "attributes": {
+        "orden": 3,
+        "titulo": "Evaluación final: casos y mensajes de error",
+        "tipo": "EVALUACION",
+        "duracion_minutos": 40,
+        "resumen": "Casos breves en los que hay que identificar la causa de un mensaje de error y la corrección que corresponde.",
+        "referencia_fuente": "wasichai/srtm-backend@6daacd3:docs/manuales/usuario/anuncios.adoc#errores"
+      },
+      "refs": {
+        "unidad": "srtm-v1-u4"
+      }
+    },
+    {
+      "ref": "version-srtm-2",
+      "object": "version_curso",
+      "key": ["curso", "numero"],
+      "attributes": {
+        "numero": 2,
+        "estado": "BORRADOR",
+        "modalidad": "ASINCRONA",
+        "semanas": 3,
+        "horas_teoria_semana": 2,
+        "horas_practica_semana": 2,
+        "horas_supervisadas_semana": 0,
+        "horas_autonomas_semana": 2,
+        "sistema_credito": "NINGUNO",
+        "objetivos": "Los de la versión 1.\nConsultar los anuncios desde las fichas del contribuyente y del predio.",
+        "fuentes": "wasichai/srtm-backend@6daacd3:docs/manuales/usuario/anuncios.adoc",
+        "contenido_ilustrativo": true
+      },
+      "refs": {
+        "curso": "curso-srtm"
+      }
+    },
+    {
+      "ref": "srtm-v2-u1",
+      "object": "unidad",
+      "key": ["version_curso", "orden"],
+      "attributes": {
+        "orden": 1,
+        "titulo": "Novedad: los anuncios en las fichas",
+        "descripcion": "Borrador de una unidad nueva; no debe verse en el catálogo mientras no se publique.",
+        "objetivos": "Encontrar los anuncios de un titular o de un predio sin pasar por el padrón.",
+        "horas_estimadas": 2
+      },
+      "refs": {
+        "version_curso": "version-srtm-2"
+      }
+    },
+    {
+      "ref": "srtm-v2-u1-l1",
+      "object": "leccion",
+      "key": ["unidad", "orden"],
+      "attributes": {
+        "orden": 1,
+        "titulo": "La pestaña Anuncios del contribuyente y del predio",
+        "tipo": "LECTURA",
+        "duracion_minutos": 20,
+        "resumen": "Dónde aparecen los anuncios de un titular y de un predio, y por qué esa pestaña es solo de consulta.",
+        "referencia_fuente": "wasichai/srtm-backend@6daacd3:docs/manuales/usuario/anuncios.adoc#fichas"
+      },
+      "refs": {
+        "unidad": "srtm-v2-u1"
+      }
+    },
+    {
+      "ref": "srtm-v2-u1-l2",
+      "object": "leccion",
+      "key": ["unidad", "orden"],
+      "attributes": {
+        "orden": 2,
+        "titulo": "Preguntas frecuentes de los anuncios",
+        "tipo": "LECTURA",
+        "duracion_minutos": 20,
+        "resumen": "Repaso guiado de las dudas habituales, con remisión a la sección del manual que las resuelve.",
+        "referencia_fuente": "wasichai/srtm-backend@6daacd3:docs/manuales/usuario/anuncios.adoc#faq-anuncios"
+      },
+      "refs": {
+        "unidad": "srtm-v2-u1"
+      }
+    },
+    {
+      "ref": "curso-sgspe",
+      "object": "curso",
+      "key": ["codigo"],
+      "attributes": {
+        "codigo": "SGSPE-101",
+        "slug": "sgspe-primeros-pasos-y-compromisos",
+        "titulo": "SGSPE: primeros pasos y gestión de compromisos",
+        "resumen": "Introducción al portal SGSPE para equipos sociales de proyecto: moverse por la interfaz, trabajar con listas y fichas, cambiar estados con motivo y llevar un compromiso desde su registro hasta su verificación. Contenido ilustrativo de demostración: no ha sido validado por un experto en la materia.",
+        "idioma": "es",
+        "nivel": "INICIAL",
+        "conocimientos_previos": "Ninguno sobre el sistema. Se recomienda conocer cómo se relaciona un proyecto con sus grupos de interés."
+      },
+      "refs": {
+        "categoria": "cat-gestion-social"
+      }
+    },
+    {
+      "ref": "version-sgspe-1",
+      "object": "version_curso",
+      "key": ["curso", "numero"],
+      "attributes": {
+        "numero": 1,
+        "estado": "PUBLICADA",
+        "modalidad": "ASINCRONA",
+        "semanas": 2,
+        "horas_teoria_semana": 3,
+        "horas_practica_semana": 3,
+        "horas_supervisadas_semana": 0,
+        "horas_autonomas_semana": 2,
+        "sistema_credito": "NINGUNO",
+        "objetivos": "Orientarse en el portal: inicio, selector de proyecto, búsqueda y menú de la cuenta.\nUsar listas, vistas y fichas para encontrar y entender un registro.\nDar un paso de estado con su motivo y comprobarlo en la actividad.\nSeguir el ciclo de un compromiso: registro, aprobación, entrega, cumplimiento y verificación.",
+        "resultados_aprendizaje": "Encuentra un registro con vistas y filtros, y comparte el enlace con los filtros aplicados.\nExplica qué indica la siguiente acción de una ficha y qué falta cuando aparece atenuada.\nRegistra un compromiso de práctica completo y lo envía a aprobación.\nJustifica por qué quien registra un compromiso no puede aprobarlo ni verificarlo.",
+        "requisitos": "Una cuenta de práctica asignada a un proyecto de demostración.",
+        "sistema_evaluacion": "Práctica de cambio de estado con motivo: 40 %.\nCuestionario final sobre el ciclo de un compromiso: 60 %.\nNota mínima aprobatoria: 70 sobre 100.",
+        "certificacion": "Constancia de participación al aprobar la práctica y el cuestionario. No otorga créditos académicos.",
+        "fuentes": "wasichai/sgspe@0ebf69f:docs/manuals/user/02-primeros-pasos.adoc\nwasichai/sgspe@0ebf69f:docs/manuals/user/05-compromisos.adoc\nLos manuales no declaran licencia: el curso cita secciones y anclas y resume con palabras propias; no reproduce su texto.\nLas anclas de las secciones de 05-compromisos.adoc sin ancla explícita son las que genera Asciidoctor (idprefix vacío, idseparator «-»).",
+        "contenido_ilustrativo": true,
+        "publicada_en": "2026-10-20T15:30:00Z"
+      },
+      "refs": {
+        "curso": "curso-sgspe"
+      }
+    },
+    {
+      "ref": "sgspe-v1-u1",
+      "object": "unidad",
+      "key": ["version_curso", "orden"],
+      "attributes": {
+        "orden": 1,
+        "titulo": "Primeros pasos en el portal",
+        "descripcion": "Entrar, orientarse y moverse entre proyectos y listas.",
+        "objetivos": "Iniciar y cerrar sesión.\nUsar el selector de proyecto, la búsqueda y las listas.",
+        "horas_estimadas": 4
+      },
+      "refs": {
+        "version_curso": "version-sgspe-1"
+      }
+    },
+    {
+      "ref": "sgspe-v1-u1-l1",
+      "object": "leccion",
+      "key": ["unidad", "orden"],
+      "attributes": {
+        "orden": 1,
+        "titulo": "Iniciar sesión y qué hacer si falla",
+        "tipo": "LECTURA",
+        "duracion_minutos": 20,
+        "resumen": "El procedimiento de ingreso, cómo verificar la cuenta y los roles, y a quién acudir si no recuerda la contraseña.",
+        "referencia_fuente": "wasichai/sgspe@0ebf69f:docs/manuals/user/02-primeros-pasos.adoc#usr-login"
+      },
+      "refs": {
+        "unidad": "sgspe-v1-u1"
+      }
+    },
+    {
+      "ref": "sgspe-v1-u1-l2",
+      "object": "leccion",
+      "key": ["unidad", "orden"],
+      "attributes": {
+        "orden": 2,
+        "titulo": "Trabajar dentro de un proyecto",
+        "tipo": "LECTURA",
+        "duracion_minutos": 25,
+        "resumen": "Las pestañas del proyecto, lo que marcan en rojo y el aviso que aparece cuando puede leer un proyecto sin estar asignado.",
+        "referencia_fuente": "wasichai/sgspe@0ebf69f:docs/manuals/user/02-primeros-pasos.adoc#usr-proyecto-360"
+      },
+      "refs": {
+        "unidad": "sgspe-v1-u1"
+      }
+    },
+    {
+      "ref": "sgspe-v1-u1-l3",
+      "object": "leccion",
+      "key": ["unidad", "orden"],
+      "attributes": {
+        "orden": 3,
+        "titulo": "Listas, vistas y filtros",
+        "tipo": "PRESENTACION",
+        "duracion_minutos": 30,
+        "resumen": "Vistas predefinidas, filtros que quedan en la dirección de la página, vista previa y recorrido entre registros sin volver a la lista.",
+        "referencia_fuente": "wasichai/sgspe@0ebf69f:docs/manuals/user/02-primeros-pasos.adoc#usr-listas"
+      },
+      "refs": {
+        "unidad": "sgspe-v1-u1"
+      }
+    },
+    {
+      "ref": "sgspe-v1-u2",
+      "object": "unidad",
+      "key": ["version_curso", "orden"],
+      "attributes": {
+        "orden": 2,
+        "titulo": "Fichas y estados",
+        "descripcion": "Cómo se lee un registro y cómo avanza de estado.",
+        "objetivos": "Leer la ficha y su trazabilidad.\nCambiar un estado con motivo e interpretar los mensajes.",
+        "horas_estimadas": 5
+      },
+      "refs": {
+        "version_curso": "version-sgspe-1"
+      }
+    },
+    {
+      "ref": "sgspe-v1-u2-l1",
+      "object": "leccion",
+      "key": ["unidad", "orden"],
+      "attributes": {
+        "orden": 1,
+        "titulo": "Leer una ficha de registro",
+        "tipo": "LECTURA",
+        "duracion_minutos": 25,
+        "resumen": "Las tarjetas de estado, siguiente acción, responsable y vencimiento, y el panel de trazabilidad.",
+        "referencia_fuente": "wasichai/sgspe@0ebf69f:docs/manuals/user/02-primeros-pasos.adoc#usr-fichas"
+      },
+      "refs": {
+        "unidad": "sgspe-v1-u2"
+      }
+    },
+    {
+      "ref": "sgspe-v1-u2-l2",
+      "object": "leccion",
+      "key": ["unidad", "orden"],
+      "attributes": {
+        "orden": 2,
+        "titulo": "Práctica: cambiar el estado de un registro",
+        "tipo": "LABORATORIO",
+        "duracion_minutos": 45,
+        "resumen": "Dar un paso de estado en un registro de práctica, escribir el motivo y comprobarlo en la pestaña de actividad.",
+        "referencia_fuente": "wasichai/sgspe@0ebf69f:docs/manuals/user/02-primeros-pasos.adoc#usr-transiciones"
+      },
+      "refs": {
+        "unidad": "sgspe-v1-u2"
+      }
+    },
+    {
+      "ref": "sgspe-v1-u2-l3",
+      "object": "leccion",
+      "key": ["unidad", "orden"],
+      "attributes": {
+        "orden": 3,
+        "titulo": "Interpretar los mensajes del sistema",
+        "tipo": "LECTURA",
+        "duracion_minutos": 20,
+        "resumen": "Qué significa cada mensaje frecuente y qué hacer, en especial cuando otra persona cambió el registro a la vez.",
+        "referencia_fuente": "wasichai/sgspe@0ebf69f:docs/manuals/user/02-primeros-pasos.adoc#usr-mensajes"
+      },
+      "refs": {
+        "unidad": "sgspe-v1-u2"
+      }
+    },
+    {
+      "ref": "sgspe-v1-u3",
+      "object": "unidad",
+      "key": ["version_curso", "orden"],
+      "attributes": {
+        "orden": 3,
+        "titulo": "El ciclo de un compromiso",
+        "descripcion": "Del registro a la verificación, con las reglas que el sistema comprueba en cada paso.",
+        "objetivos": "Registrar un compromiso completo.\nExplicar la separación entre quien registra, aprueba y verifica.",
+        "horas_estimadas": 5
+      },
+      "refs": {
+        "version_curso": "version-sgspe-1"
+      }
+    },
+    {
+      "ref": "sgspe-v1-u3-l1",
+      "object": "leccion",
+      "key": ["unidad", "orden"],
+      "attributes": {
+        "orden": 1,
+        "titulo": "Qué es un compromiso y por qué estados pasa",
+        "tipo": "LECTURA",
+        "duracion_minutos": 20,
+        "resumen": "Un compromiso como obligación concreta ante grupos de interés: de dónde nace y cómo avanza hasta cerrarse.",
+        "referencia_fuente": "wasichai/sgspe@0ebf69f:docs/manuals/user/05-compromisos.adoc#usr-compromisos"
+      },
+      "refs": {
+        "unidad": "sgspe-v1-u3"
+      }
+    },
+    {
+      "ref": "sgspe-v1-u3-l2",
+      "object": "leccion",
+      "key": ["unidad", "orden"],
+      "attributes": {
+        "orden": 2,
+        "titulo": "Registrar un compromiso",
+        "tipo": "LABORATORIO",
+        "duracion_minutos": 45,
+        "resumen": "Recorrido por los pasos del registro, del origen al plazo y el responsable, y envío a aprobación.",
+        "referencia_fuente": "wasichai/sgspe@0ebf69f:docs/manuals/user/05-compromisos.adoc#registrar-un-compromiso"
+      },
+      "refs": {
+        "unidad": "sgspe-v1-u3"
+      }
+    },
+    {
+      "ref": "sgspe-v1-u3-l3",
+      "object": "leccion",
+      "key": ["unidad", "orden"],
+      "attributes": {
+        "orden": 3,
+        "titulo": "Aprobar: quién puede y qué se comprueba",
+        "tipo": "LECTURA",
+        "duracion_minutos": 20,
+        "resumen": "Las reglas de la aprobación, entre ellas que quien aprueba no sea quien registró, y la tarea que se crea al aprobar.",
+        "referencia_fuente": "wasichai/sgspe@0ebf69f:docs/manuals/user/05-compromisos.adoc#aprobar"
+      },
+      "refs": {
+        "unidad": "sgspe-v1-u3"
+      }
+    },
+    {
+      "ref": "sgspe-v1-u3-l4",
+      "object": "leccion",
+      "key": ["unidad", "orden"],
+      "attributes": {
+        "orden": 4,
+        "titulo": "Entrega, cumplimiento y verificación",
+        "tipo": "LECTURA",
+        "duracion_minutos": 25,
+        "resumen": "Qué evidencia exige el cumplimiento y por qué la verificación la hace una persona distinta del responsable.",
+        "referencia_fuente": "wasichai/sgspe@0ebf69f:docs/manuals/user/05-compromisos.adoc#registrar-una-entrega-y-el-cumplimiento"
+      },
+      "refs": {
+        "unidad": "sgspe-v1-u3"
+      }
+    },
+    {
+      "ref": "sgspe-v1-u4",
+      "object": "unidad",
+      "key": ["version_curso", "orden"],
+      "attributes": {
+        "orden": 4,
+        "titulo": "Seguimiento y cierre",
+        "descripcion": "Lo que pasa cuando un compromiso se retrasa y lo que todavía no es un compromiso.",
+        "objetivos": "Reprogramar e informar retrasos dejando historial.\nRevisar candidatos sin convertirlos automáticamente.",
+        "horas_estimadas": 2
+      },
+      "refs": {
+        "version_curso": "version-sgspe-1"
+      }
+    },
+    {
+      "ref": "sgspe-v1-u4-l1",
+      "object": "leccion",
+      "key": ["unidad", "orden"],
+      "attributes": {
+        "orden": 1,
+        "titulo": "Reprogramar, bloquear e informar retrasos",
+        "tipo": "LECTURA",
+        "duracion_minutos": 15,
+        "resumen": "Las acciones de seguimiento y por qué una reprogramación queda en el historial y no se edita.",
+        "referencia_fuente": "wasichai/sgspe@0ebf69f:docs/manuals/user/05-compromisos.adoc#reprogramar-bloquear-e-informar-retrasos"
+      },
+      "refs": {
+        "unidad": "sgspe-v1-u4"
+      }
+    },
+    {
+      "ref": "sgspe-v1-u4-l2",
+      "object": "leccion",
+      "key": ["unidad", "orden"],
+      "attributes": {
+        "orden": 2,
+        "titulo": "Candidatos a compromiso",
+        "tipo": "LECTURA",
+        "duracion_minutos": 15,
+        "resumen": "La vista de candidatos y la regla de que ninguno pasa a compromiso sin la decisión de una persona.",
+        "referencia_fuente": "wasichai/sgspe@0ebf69f:docs/manuals/user/05-compromisos.adoc#candidatos-a-compromiso"
+      },
+      "refs": {
+        "unidad": "sgspe-v1-u4"
+      }
+    },
+    {
+      "ref": "sgspe-v1-u4-l3",
+      "object": "leccion",
+      "key": ["unidad", "orden"],
+      "attributes": {
+        "orden": 3,
+        "titulo": "Cuestionario final",
+        "tipo": "EVALUACION",
+        "duracion_minutos": 30,
+        "resumen": "Preguntas sobre el ciclo completo de un compromiso y sobre quién puede dar cada paso.",
+        "referencia_fuente": "wasichai/sgspe@0ebf69f:docs/manuals/user/05-compromisos.adoc#usr-compromisos"
+      },
+      "refs": {
+        "unidad": "sgspe-v1-u4"
+      }
+    },
+    {
+      "ref": "curso-ia",
+      "object": "curso",
+      "key": ["codigo"],
+      "attributes": {
+        "codigo": "IA-AGT-201",
+        "slug": "agentes-ia-con-trazabilidad",
+        "titulo": "Agentes de IA con trazabilidad y revisión humana para procesos públicos",
+        "resumen": "Curso corto de programación para construir asistentes de IA que proponen y una persona decide, tomando como casos los procedimientos de rentas municipales y de gestión social: estados explícitos, separación de funciones, reintentos sin duplicados y registro auditable de cada ejecución. Contenido ilustrativo de demostración: no ha sido validado por un experto en la materia.",
+        "idioma": "es",
+        "nivel": "INTERMEDIO",
+        "conocimientos_previos": "Programación básica en un lenguaje de propósito general, uso de JSON y de una API REST."
+      },
+      "refs": {
+        "categoria": "cat-ia-aplicada"
+      }
+    },
+    {
+      "ref": "version-ia-1",
+      "object": "version_curso",
+      "key": ["curso", "numero"],
+      "attributes": {
+        "numero": 1,
+        "estado": "PUBLICADA",
+        "modalidad": "HIBRIDA",
+        "semanas": 6,
+        "horas_teoria_semana": 12,
+        "horas_practica_semana": 12,
+        "horas_supervisadas_semana": 0,
+        "horas_autonomas_semana": 12,
+        "sistema_credito": "ECTS",
+        "objetivos": "Convertir un procedimiento administrativo documentado en estados, reglas y datos tipados.\nDiseñar un agente que propone resultados estructurados y deja la decisión a una persona autorizada.\nRegistrar cada ejecución con sus entradas, fuentes, modelo, resultado y validaciones.\nTratar el texto de los documentos como dato no confiable.",
+        "resultados_aprendizaje": "Modela un procedimiento de un manual como máquina de estados con reglas comprobables.\nImplementa un agente cuya salida se valida contra un esquema y se rechaza si no lo cumple.\nDemuestra con pruebas que un reintento no duplica efectos.\nPresenta un registro de ejecuciones suficiente para que un revisor reconstruya cada decisión.",
+        "requisitos": "Equipo con entorno de desarrollo propio. Las prácticas usan un modelo determinista de prueba si no hay credenciales de un proveedor de IA.",
+        "sistema_evaluacion": "Laboratorios semanales: 40 %.\nProyecto final con revisión por pares: 40 %.\nParticipación en las sesiones síncronas: 20 %.\nNota mínima aprobatoria: 70 sobre 100.",
+        "certificacion": "Constancia de aprobación con la carga horaria: 6 semanas, 12 h de teoría, 12 h de práctica o laboratorio y 12 h de estudio autónomo por semana (216 h en total). La carga se expresa para el sistema ECTS, pero los créditos no están aprobados: los calcula y aprueba la institución que reconozca el curso, con su propia regla.",
+        "fuentes": "wasichai/srtm-backend@6daacd3:docs/manuales/usuario/anuncios.adoc\nwasichai/sgspe@0ebf69f:docs/manuals/user/02-primeros-pasos.adoc\nwasichai/sgspe@0ebf69f:docs/manuals/user/05-compromisos.adoc\nLos manuales se usan como casos de estudio; no declaran licencia y no se reproduce su texto.",
+        "contenido_ilustrativo": true,
+        "publicada_en": "2026-10-22T16:00:00Z"
+      },
+      "refs": {
+        "curso": "curso-ia"
+      }
+    },
+    {
+      "ref": "ia-v1-u1",
+      "object": "unidad",
+      "key": ["version_curso", "orden"],
+      "attributes": {
+        "orden": 1,
+        "titulo": "Del procedimiento al flujo automatizable",
+        "descripcion": "Leer un manual como especificación y modelar sus estados y reglas.",
+        "objetivos": "Extraer objetivo, requisitos, pasos y verificación de un procedimiento.\nModelar estados deducidos y transiciones.",
+        "horas_estimadas": 54
+      },
+      "refs": {
+        "version_curso": "version-ia-1"
+      }
+    },
+    {
+      "ref": "ia-v1-u1-l1",
+      "object": "leccion",
+      "key": ["unidad", "orden"],
+      "attributes": {
+        "orden": 1,
+        "titulo": "Un procedimiento como especificación",
+        "tipo": "LECTURA",
+        "duracion_minutos": 90,
+        "resumen": "Cómo la estructura fija de un procedimiento (objetivo, requisitos, pasos, resultado, verificación) se traduce en precondiciones, acciones y comprobaciones.",
+        "referencia_fuente": "wasichai/srtm-backend@6daacd3:docs/manuales/usuario/anuncios.adoc#presentacion-leer"
+      },
+      "refs": {
+        "unidad": "ia-v1-u1"
+      }
+    },
+    {
+      "ref": "ia-v1-u1-l2",
+      "object": "leccion",
+      "key": ["unidad", "orden"],
+      "attributes": {
+        "orden": 2,
+        "titulo": "Estados deducidos frente a estados escritos",
+        "tipo": "LECTURA",
+        "duracion_minutos": 90,
+        "resumen": "Caso: el estado de un anuncio se calcula a una fecha a partir de sus movimientos. Ventajas para auditar y para consultar el pasado.",
+        "referencia_fuente": "wasichai/srtm-backend@6daacd3:docs/manuales/usuario/anuncios.adoc#estados"
+      },
+      "refs": {
+        "unidad": "ia-v1-u1"
+      }
+    },
+    {
+      "ref": "ia-v1-u1-l3",
+      "object": "leccion",
+      "key": ["unidad", "orden"],
+      "attributes": {
+        "orden": 3,
+        "titulo": "Laboratorio: modelar un procedimiento con datos tipados",
+        "tipo": "LABORATORIO",
+        "duracion_minutos": 360,
+        "resumen": "Escribir los tipos, los estados y las reglas de un procedimiento elegido, con pruebas que fallan antes de implementarlo."
+      },
+      "refs": {
+        "unidad": "ia-v1-u1"
+      }
+    },
+    {
+      "ref": "ia-v1-u2",
+      "object": "unidad",
+      "key": ["version_curso", "orden"],
+      "attributes": {
+        "orden": 2,
+        "titulo": "Agentes que proponen, personas que deciden",
+        "descripcion": "Separación de funciones aplicada a la automatización con IA.",
+        "objetivos": "Separar generar, validar, aprobar y publicar.\nDiseñar la bandeja de revisión humana.",
+        "horas_estimadas": 54
+      },
+      "refs": {
+        "version_curso": "version-ia-1"
+      }
+    },
+    {
+      "ref": "ia-v1-u2-l1",
+      "object": "leccion",
+      "key": ["unidad", "orden"],
+      "attributes": {
+        "orden": 1,
+        "titulo": "Separación de funciones",
+        "tipo": "LECTURA",
+        "duracion_minutos": 90,
+        "resumen": "Caso: en la aprobación de un compromiso, quien aprueba no puede ser quien registró. La misma regla aplicada a lo que propone un agente.",
+        "referencia_fuente": "wasichai/sgspe@0ebf69f:docs/manuals/user/05-compromisos.adoc#aprobar"
+      },
+      "refs": {
+        "unidad": "ia-v1-u2"
+      }
+    },
+    {
+      "ref": "ia-v1-u2-l2",
+      "object": "leccion",
+      "key": ["unidad", "orden"],
+      "attributes": {
+        "orden": 2,
+        "titulo": "Candidatos: nada pasa sin una persona",
+        "tipo": "LECTURA",
+        "duracion_minutos": 60,
+        "resumen": "Caso: los candidatos a compromiso se aceptan o se descartan por decisión humana. Diseño de un agente que solo propone candidatos.",
+        "referencia_fuente": "wasichai/sgspe@0ebf69f:docs/manuals/user/05-compromisos.adoc#candidatos-a-compromiso"
+      },
+      "refs": {
+        "unidad": "ia-v1-u2"
+      }
+    },
+    {
+      "ref": "ia-v1-u2-l3",
+      "object": "leccion",
+      "key": ["unidad", "orden"],
+      "attributes": {
+        "orden": 3,
+        "titulo": "Sesión síncrona: diseño de la bandeja del revisor",
+        "tipo": "SESION",
+        "duracion_minutos": 180,
+        "resumen": "Taller en grupo: qué necesita ver un revisor para aprobar, pedir cambios o rechazar una propuesta con motivo."
+      },
+      "refs": {
+        "unidad": "ia-v1-u2"
+      }
+    },
+    {
+      "ref": "ia-v1-u3",
+      "object": "unidad",
+      "key": ["version_curso", "orden"],
+      "attributes": {
+        "orden": 3,
+        "titulo": "Trazabilidad e idempotencia",
+        "descripcion": "Que cada ejecución se pueda reconstruir y que repetirla no duplique efectos.",
+        "objetivos": "Registrar ejecuciones completas.\nDiseñar reintentos seguros.",
+        "horas_estimadas": 72
+      },
+      "refs": {
+        "version_curso": "version-ia-1"
+      }
+    },
+    {
+      "ref": "ia-v1-u3-l1",
+      "object": "leccion",
+      "key": ["unidad", "orden"],
+      "attributes": {
+        "orden": 1,
+        "titulo": "Qué registrar de cada ejecución",
+        "tipo": "LECTURA",
+        "duracion_minutos": 90,
+        "resumen": "Entradas, fuentes con su procedencia, modelo y versión de las instrucciones, resultado estructurado, validaciones, coste y duración; nunca secretos."
+      },
+      "refs": {
+        "unidad": "ia-v1-u3"
+      }
+    },
+    {
+      "ref": "ia-v1-u3-l2",
+      "object": "leccion",
+      "key": ["unidad", "orden"],
+      "attributes": {
+        "orden": 2,
+        "titulo": "Reintentos sin duplicados",
+        "tipo": "LECTURA",
+        "duracion_minutos": 60,
+        "resumen": "Caso: un formulario que repite el envío con la misma marca no registra dos veces el mismo acto. Claves de idempotencia para trabajos de IA.",
+        "referencia_fuente": "wasichai/srtm-backend@6daacd3:docs/manuales/usuario/anuncios.adoc#reintento"
+      },
+      "refs": {
+        "unidad": "ia-v1-u3"
+      }
+    },
+    {
+      "ref": "ia-v1-u3-l3",
+      "object": "leccion",
+      "key": ["unidad", "orden"],
+      "attributes": {
+        "orden": 3,
+        "titulo": "Laboratorio: clasificador con registro auditable",
+        "tipo": "LABORATORIO",
+        "duracion_minutos": 480,
+        "resumen": "Construir un agente que clasifica solicitudes de práctica, valida su salida contra un esquema y deja el registro de cada ejecución."
+      },
+      "refs": {
+        "unidad": "ia-v1-u3"
+      }
+    },
+    {
+      "ref": "ia-v1-u4",
+      "object": "unidad",
+      "key": ["version_curso", "orden"],
+      "attributes": {
+        "orden": 4,
+        "titulo": "Riesgos y proyecto final",
+        "descripcion": "Límites de seguridad del agente y presentación del proyecto.",
+        "objetivos": "Defender el agente frente a instrucciones incrustadas en documentos.\nPresentar y revisar un proyecto completo.",
+        "horas_estimadas": 36
+      },
+      "refs": {
+        "version_curso": "version-ia-1"
+      }
+    },
+    {
+      "ref": "ia-v1-u4-l1",
+      "object": "leccion",
+      "key": ["unidad", "orden"],
+      "attributes": {
+        "orden": 1,
+        "titulo": "El texto de un documento es dato, no instrucción",
+        "tipo": "LECTURA",
+        "duracion_minutos": 90,
+        "resumen": "Por qué un agente no debe obedecer lo que dice un documento que analiza, y cómo probarlo con documentos hostiles de prueba."
+      },
+      "refs": {
+        "unidad": "ia-v1-u4"
+      }
+    },
+    {
+      "ref": "ia-v1-u4-l2",
+      "object": "leccion",
+      "key": ["unidad", "orden"],
+      "attributes": {
+        "orden": 2,
+        "titulo": "Proyecto final y revisión por pares",
+        "tipo": "EVALUACION",
+        "duracion_minutos": 240,
+        "resumen": "Entrega de un agente para un procedimiento elegido, con pruebas, registro de ejecuciones y revisión cruzada."
+      },
+      "refs": {
+        "unidad": "ia-v1-u4"
+      }
+    },
+    {
+      "ref": "curso-borrador",
+      "object": "curso",
+      "key": ["codigo"],
+      "attributes": {
+        "codigo": "SRTM-ATC-001",
+        "slug": "atencion-en-ventanilla-borrador",
+        "titulo": "Atención al contribuyente en ventanilla (borrador)",
+        "resumen": "Curso en preparación, sin ninguna versión publicada: no debe aparecer en el catálogo. Contenido ilustrativo de demostración: no ha sido validado por un experto en la materia.",
+        "idioma": "es",
+        "nivel": "INICIAL"
+      },
+      "refs": {
+        "categoria": "cat-sistemas-municipales"
+      }
+    },
+    {
+      "ref": "version-borrador-1",
+      "object": "version_curso",
+      "key": ["curso", "numero"],
+      "attributes": {
+        "numero": 1,
+        "estado": "BORRADOR",
+        "modalidad": "SINCRONA",
+        "semanas": 1,
+        "horas_teoria_semana": 4,
+        "horas_practica_semana": 2,
+        "horas_supervisadas_semana": 0,
+        "horas_autonomas_semana": 2,
+        "sistema_credito": "NINGUNO",
+        "objetivos": "Borrador: los objetivos están pendientes de la revisión del creador.",
+        "contenido_ilustrativo": true
+      },
+      "refs": {
+        "curso": "curso-borrador"
+      }
+    },
+    {
+      "ref": "borrador-v1-u1",
+      "object": "unidad",
+      "key": ["version_curso", "orden"],
+      "attributes": {
+        "orden": 1,
+        "titulo": "Unidad en preparación",
+        "descripcion": "Borrador sin revisar.",
+        "horas_estimadas": 4
+      },
+      "refs": {
+        "version_curso": "version-borrador-1"
+      }
+    },
+    {
+      "ref": "borrador-v1-u1-l1",
+      "object": "leccion",
+      "key": ["unidad", "orden"],
+      "attributes": {
+        "orden": 1,
+        "titulo": "Lección en preparación",
+        "tipo": "LECTURA",
+        "duracion_minutos": 30,
+        "resumen": "Borrador sin revisar; su contenido se definirá en la revisión editorial."
+      },
+      "refs": {
+        "unidad": "borrador-v1-u1"
+      }
+    },
+    {
+      "ref": "edicion-srtm-2026-11",
+      "object": "edicion_curso",
+      "key": ["codigo"],
+      "attributes": {
+        "codigo": "SRTM-ANU-101-2026-11",
+        "estado": "INSCRIPCION_ABIERTA",
+        "fecha_inicio": "2026-11-09",
+        "fecha_fin": "2026-11-27",
+        "zona_horaria": "America/Lima",
+        "inscripcion_desde": "2026-10-26",
+        "inscripcion_hasta": "2026-11-06",
+        "capacidad": 40,
+        "calendario": "Asíncrona, tres semanas. Consultas con el docente los miércoles de 16:00 a 17:00 (hora de Lima)."
+      },
+      "refs": {
+        "version_curso": "version-srtm-1"
+      }
+    },
+    {
+      "ref": "edicion-srtm-2026-11-diego",
+      "object": "docente_edicion",
+      "key": ["edicion_curso", "perfil_docente"],
+      "attributes": {
+        "rol_docente": "TITULAR"
+      },
+      "refs": {
+        "edicion_curso": "edicion-srtm-2026-11",
+        "perfil_docente": "perfil-diego"
+      }
+    },
+    {
+      "ref": "edicion-srtm-2026-11-mara",
+      "object": "docente_edicion",
+      "key": ["edicion_curso", "perfil_docente"],
+      "attributes": {
+        "rol_docente": "ASISTENTE"
+      },
+      "refs": {
+        "edicion_curso": "edicion-srtm-2026-11",
+        "perfil_docente": "perfil-mara"
+      }
+    },
+    {
+      "ref": "edicion-srtm-2027-03",
+      "object": "edicion_curso",
+      "key": ["codigo"],
+      "attributes": {
+        "codigo": "SRTM-ANU-101-2027-03",
+        "estado": "PROGRAMADA",
+        "fecha_inicio": "2027-03-01",
+        "fecha_fin": "2027-03-19",
+        "zona_horaria": "America/Lima",
+        "inscripcion_desde": "2027-02-01",
+        "inscripcion_hasta": "2027-02-26",
+        "capacidad": 40,
+        "calendario": "Asíncrona, tres semanas. Consultas con el docente los jueves de 16:00 a 17:00 (hora de Lima)."
+      },
+      "refs": {
+        "version_curso": "version-srtm-1"
+      }
+    },
+    {
+      "ref": "edicion-srtm-2027-03-diego",
+      "object": "docente_edicion",
+      "key": ["edicion_curso", "perfil_docente"],
+      "attributes": {
+        "rol_docente": "TITULAR"
+      },
+      "refs": {
+        "edicion_curso": "edicion-srtm-2027-03",
+        "perfil_docente": "perfil-diego"
+      }
+    },
+    {
+      "ref": "edicion-sgspe-2027-01",
+      "object": "edicion_curso",
+      "key": ["codigo"],
+      "attributes": {
+        "codigo": "SGSPE-101-2027-01",
+        "estado": "PROGRAMADA",
+        "fecha_inicio": "2027-01-11",
+        "fecha_fin": "2027-01-22",
+        "zona_horaria": "America/Lima",
+        "inscripcion_desde": "2026-12-01",
+        "inscripcion_hasta": "2027-01-08",
+        "capacidad": 30,
+        "calendario": "Asíncrona, dos semanas. Revisión de la práctica en una sesión opcional el viernes 15 de enero, de 10:00 a 11:30 (hora de Lima)."
+      },
+      "refs": {
+        "version_curso": "version-sgspe-1"
+      }
+    },
+    {
+      "ref": "edicion-sgspe-2027-01-mara",
+      "object": "docente_edicion",
+      "key": ["edicion_curso", "perfil_docente"],
+      "attributes": {
+        "rol_docente": "TITULAR"
+      },
+      "refs": {
+        "edicion_curso": "edicion-sgspe-2027-01",
+        "perfil_docente": "perfil-mara"
+      }
+    },
+    {
+      "ref": "edicion-ia-2027-04",
+      "object": "edicion_curso",
+      "key": ["codigo"],
+      "attributes": {
+        "codigo": "IA-AGT-201-2027-04",
+        "estado": "PROGRAMADA",
+        "fecha_inicio": "2027-04-05",
+        "fecha_fin": "2027-05-14",
+        "zona_horaria": "America/Lima",
+        "inscripcion_desde": "2027-02-15",
+        "inscripcion_hasta": "2027-03-26",
+        "capacidad": 25,
+        "calendario": "Híbrida, seis semanas. Teoría síncrona lunes, miércoles y viernes de 08:00 a 12:00; laboratorio martes y jueves de 08:00 a 14:00 (hora de Lima). Estudio autónomo: 12 h por semana."
+      },
+      "refs": {
+        "version_curso": "version-ia-1"
+      }
+    },
+    {
+      "ref": "edicion-ia-2027-04-mara",
+      "object": "docente_edicion",
+      "key": ["edicion_curso", "perfil_docente"],
+      "attributes": {
+        "rol_docente": "TITULAR"
+      },
+      "refs": {
+        "edicion_curso": "edicion-ia-2027-04",
+        "perfil_docente": "perfil-mara"
+      }
+    },
+    {
+      "ref": "edicion-ia-2027-04-diego",
+      "object": "docente_edicion",
+      "key": ["edicion_curso", "perfil_docente"],
+      "attributes": {
+        "rol_docente": "ASISTENTE"
+      },
+      "refs": {
+        "edicion_curso": "edicion-ia-2027-04",
+        "perfil_docente": "perfil-diego"
+      }
+    }
+  ]
+}
