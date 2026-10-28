@@ -23,7 +23,8 @@ enum class CatalogSort(
     val orderBy: String,
 ) {
     // la próxima edición primero; sin edición próxima, al final
-    UPCOMING("upcoming", "(SELECT min(s) FROM unnest(inicios) s WHERE s >= CURRENT_DATE) ASC NULLS LAST, lower(titulo), slug"),
+    // la edición que sigue vigente (en curso o por empezar) que antes empieza; sin ninguna, al final
+    UPCOMING("upcoming", "(SELECT min(i) FROM unnest(inicios, fines) AS e(i, f) WHERE f >= CURRENT_DATE) ASC NULLS LAST, lower(titulo), slug"),
     TITLE("title", "lower(titulo), slug"),
     DURATION("duration", "semanas, lower(titulo), slug"),
     ;
@@ -61,13 +62,13 @@ class CatalogRepository(
             .sql(
                 """
                 INSERT INTO lms.catalogo_publicado
-                    (organizacion, slug, codigo, titulo, resumen, categoria_slug, categoria_nombre, nivel, modalidad, semanas, inicios, ficha, hash, actualizado_en)
-                VALUES (:org, :slug, :codigo, :titulo, :resumen, :categoriaSlug, :categoriaNombre, :nivel, :modalidad, :semanas, :inicios, CAST(:ficha AS jsonb), :hash, now())
+                    (organizacion, slug, codigo, titulo, resumen, categoria_slug, categoria_nombre, nivel, modalidad, semanas, inicios, fines, ficha, hash, actualizado_en)
+                VALUES (:org, :slug, :codigo, :titulo, :resumen, :categoriaSlug, :categoriaNombre, :nivel, :modalidad, :semanas, :inicios, :fines, CAST(:ficha AS jsonb), :hash, now())
                 ON CONFLICT (organizacion, slug) DO UPDATE SET
                     codigo = EXCLUDED.codigo, titulo = EXCLUDED.titulo, resumen = EXCLUDED.resumen,
                     categoria_slug = EXCLUDED.categoria_slug, categoria_nombre = EXCLUDED.categoria_nombre,
                     nivel = EXCLUDED.nivel, modalidad = EXCLUDED.modalidad, semanas = EXCLUDED.semanas,
-                    inicios = EXCLUDED.inicios, ficha = EXCLUDED.ficha, hash = EXCLUDED.hash, actualizado_en = now()
+                    inicios = EXCLUDED.inicios, fines = EXCLUDED.fines, ficha = EXCLUDED.ficha, hash = EXCLUDED.hash, actualizado_en = now()
                 """.trimIndent(),
             ).bind("org", organization)
             .bind("slug", d.slug)
@@ -80,6 +81,7 @@ class CatalogRepository(
             .bind("modalidad", d.modality)
             .bind("semanas", d.weeks)
             .bind("inicios", course.startDates.toTypedArray())
+            .bind("fines", course.endDates.toTypedArray())
             .bind("ficha", course.json())
             .bind("hash", course.hash)
             .fetch()
@@ -103,7 +105,14 @@ class CatalogRepository(
                 .awaitSingle()
         }
 
-    // los demás filtros de la organización: cuando no hay organización pública, se vacía todo
+    suspend fun deleteAll(): Long =
+        db
+            .sql("DELETE FROM lms.catalogo_publicado")
+            .fetch()
+            .rowsUpdated()
+            .awaitSingle()
+
+    // las filas de otras organizaciones (la pública cambió de slug)
     suspend fun deleteOtherOrganizations(organization: String): Long =
         db
             .sql("DELETE FROM lms.catalogo_publicado WHERE organizacion <> :org")

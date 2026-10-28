@@ -21,7 +21,8 @@ wasichai:
 springdoc:
   api-docs:
     path: /api/lms/public/openapi
-  paths-to-match: /api/lms/**
+  # solo lo público: una ruta privada futura de /api/lms no debe acabar en el contrato anónimo
+  paths-to-match: /api/lms/public/**
   writer-with-order-by-keys: true
 
 lms:

@@ -28,8 +28,9 @@ data class CatalogRecords(
 // un curso listo para la proyección: la ficha completa y las columnas por las que se filtra y ordena
 data class PublishedCourse(
     val detail: CourseDetail,
-    // inicios de las ediciones vigentes (no canceladas ni finalizadas), para «desde» y «próximos»
+    // inicios y fines de las ediciones vigentes (no canceladas ni finalizadas), alineados: «desde» y «próximos»
     val startDates: List<LocalDate>,
+    val endDates: List<LocalDate> = emptyList(),
 ) {
     fun json(): String = MAPPER.writeValueAsString(detail)
 
@@ -48,7 +49,12 @@ class CatalogBuilder(
     private val ectsPolicy: CreditPolicy = EctsPolicy(),
     private val schPolicy: CreditPolicy = SemesterCreditHourPolicy(),
 ) {
-    fun build(records: CatalogRecords): List<PublishedCourse> {
+    // un curso que no se puede publicar (datos fuera de rango, slug que la ruta rechazaría) se deja fuera y se informa
+    // por onReject: un registro malo no puede dejar sin refrescar el catálogo entero
+    fun build(
+        records: CatalogRecords,
+        onReject: (course: String, problem: Throwable) -> Unit = { _, _ -> },
+    ): List<PublishedCourse> {
         val categories = records.categories.associateBy { it.id }
         val profiles = records.profiles.associateBy { it.id }
         val lessonsByUnit = records.lessons.groupBy { it.ref("unidad") }
@@ -61,57 +67,91 @@ class CatalogBuilder(
                 .groupBy { it.ref("curso") }
                 .mapValues { (_, versions) -> versions.maxBy { it.int("numero") ?: 0 } }
 
-        return records.courses.mapNotNull { course ->
-            val version = published[course.id] ?: return@mapNotNull null
-            val offerings =
-                offeringsByVersion[version.id]
-                    .orEmpty()
-                    .filter { it.text("estado") in CURRENT_OFFERINGS }
-                    .map { offering(it, teachersByOffering[it.id].orEmpty(), profiles) }
-                    .sortedWith(compareBy({ it.startDate }, { it.code }))
-            val units =
-                unitsByVersion[version.id]
-                    .orEmpty()
-                    .sortedBy { it.int("orden") ?: 0 }
-                    .map { unit(it, lessonsByUnit[it.id].orEmpty()) }
-            val teachers =
-                offerings
-                    .flatMap { o -> teachersByOffering[records.offerings.first { it.text("codigo") == o.code }.id].orEmpty() }
-                    .mapNotNull { profiles[it.ref("perfil_docente")] }
-                    .distinctBy { it.id }
-                    .map { TeacherView(it.text("nombre_publico") ?: "", it.text("titulo_profesional"), it.text("biografia"), it.text("especialidades")) }
-            val workload = workload(version)
-            val category = course.ref("categoria")?.let { categories[it] }
-            PublishedCourse(
-                detail =
-                    CourseDetail(
-                        slug = course.text("slug")!!,
-                        code = course.text("codigo")!!,
-                        title = course.text("titulo")!!,
-                        summary = course.text("resumen"),
-                        language = course.text("idioma") ?: "es",
-                        level = course.text("nivel") ?: "INICIAL",
-                        modality = version.text("modalidad")!!,
-                        category = category?.let { CategoryRef(it.text("slug")!!, it.text("nombre")!!) },
-                        weeks = workload.weeks,
-                        illustrative = version.bool("contenido_ilustrativo") ?: true,
-                        prerequisiteKnowledge = course.text("conocimientos_previos"),
-                        version = VersionView(version.int("numero") ?: 0, version.instant("publicada_en")),
-                        objectives = version.lines("objetivos"),
-                        learningOutcomes = version.lines("resultados_aprendizaje"),
-                        requirements = version.text("requisitos"),
-                        assessment = version.text("sistema_evaluacion"),
-                        certification = version.text("certificacion"),
-                        sources = version.lines("fuentes"),
-                        workload = workloadView(workload),
-                        credits = credits(version, workload),
-                        units = units,
-                        offerings = offerings,
-                        teachers = teachers,
-                    ),
-                startDates = offerings.map { it.startDate },
-            )
-        }
+        return records.courses
+            .sortedBy { it.id }
+            .mapNotNull { course ->
+                val version = published[course.id] ?: return@mapNotNull null
+                try {
+                    course(course, version, categories, profiles, lessonsByUnit, unitsByVersion, offeringsByVersion, teachersByOffering)
+                } catch (e: IllegalArgumentException) {
+                    onReject(course.text("codigo") ?: course.id, e)
+                    null
+                } catch (e: IllegalStateException) {
+                    onReject(course.text("codigo") ?: course.id, e)
+                    null
+                } catch (e: NullPointerException) {
+                    onReject(course.text("codigo") ?: course.id, e)
+                    null
+                } catch (e: java.time.DateTimeException) {
+                    onReject(course.text("codigo") ?: course.id, e)
+                    null
+                }
+            }
+    }
+
+    private fun course(
+        course: RecordResponse,
+        version: RecordResponse,
+        categories: Map<String, RecordResponse>,
+        profiles: Map<String, RecordResponse>,
+        lessonsByUnit: Map<String?, List<RecordResponse>>,
+        unitsByVersion: Map<String?, List<RecordResponse>>,
+        offeringsByVersion: Map<String?, List<RecordResponse>>,
+        teachersByOffering: Map<String?, List<RecordResponse>>,
+    ): PublishedCourse {
+        val slug = requireNotNull(course.text("slug")) { "course without slug" }
+        require(PUBLIC_SLUG.matches(slug)) { "slug '$slug' is not a public slug" }
+        val current =
+            offeringsByVersion[version.id]
+                .orEmpty()
+                .filter { it.text("estado") in CURRENT_OFFERINGS }
+                .map { it to offering(it, teachersByOffering[it.id].orEmpty(), profiles) }
+                .sortedWith(compareBy({ it.second.startDate }, { it.second.code }))
+        val offerings = current.map { it.second }
+        val units =
+            unitsByVersion[version.id]
+                .orEmpty()
+                .sortedWith(compareBy({ it.int("orden") ?: 0 }, { it.id }))
+                .map { unit(it, lessonsByUnit[it.id].orEmpty()) }
+        val teachers =
+            current
+                .flatMap { (record, _) -> teachersByOffering[record.id].orEmpty() }
+                .mapNotNull { profiles[it.ref("perfil_docente")] }
+                .distinctBy { it.id }
+                .map { TeacherView(it.text("nombre_publico") ?: "", it.text("titulo_profesional"), it.text("biografia"), it.text("especialidades")) }
+                .sortedBy { it.name }
+        val workload = workload(version)
+        val category = course.ref("categoria")?.let { categories[it] }
+        return PublishedCourse(
+            detail =
+                CourseDetail(
+                    slug = slug,
+                    code = requireNotNull(course.text("codigo")) { "course without code" },
+                    title = requireNotNull(course.text("titulo")) { "course without title" },
+                    summary = course.text("resumen"),
+                    language = course.text("idioma") ?: "es",
+                    level = course.text("nivel") ?: "INICIAL",
+                    modality = requireNotNull(version.text("modalidad")) { "version without modality" },
+                    category = category?.let { CategoryRef(it.text("slug")!!, it.text("nombre")!!) },
+                    weeks = workload.weeks,
+                    illustrative = version.bool("contenido_ilustrativo") ?: true,
+                    prerequisiteKnowledge = course.text("conocimientos_previos"),
+                    version = VersionView(version.int("numero") ?: 0, version.instant("publicada_en")),
+                    objectives = version.lines("objetivos"),
+                    learningOutcomes = version.lines("resultados_aprendizaje"),
+                    requirements = version.text("requisitos"),
+                    assessment = version.text("sistema_evaluacion"),
+                    certification = version.text("certificacion"),
+                    sources = version.lines("fuentes"),
+                    workload = workloadView(workload),
+                    credits = credits(version, workload),
+                    units = units,
+                    offerings = offerings,
+                    teachers = teachers,
+                ),
+            startDates = offerings.map { it.startDate },
+            endDates = offerings.map { it.endDate },
+        )
     }
 
     private fun workload(version: RecordResponse) =
@@ -181,7 +221,7 @@ class CatalogBuilder(
         objectives = unit.lines("objetivos"),
         estimatedHours = unit.decimal("horas_estimadas")?.plain(),
         lessons =
-            lessons.sortedBy { it.int("orden") ?: 0 }.map {
+            lessons.sortedWith(compareBy({ it.int("orden") ?: 0 }, { it.id })).map {
                 LessonView(
                     order = it.int("orden") ?: 0,
                     title = it.text("titulo") ?: "",
@@ -200,10 +240,10 @@ class CatalogBuilder(
     ): OfferingView {
         val zone = offering.text("zona_horaria")?.takeIf { runCatching { ZoneId.of(it) }.isSuccess } ?: DEFAULT_ZONE
         return OfferingView(
-            code = offering.text("codigo")!!,
-            status = offering.text("estado")!!,
-            startDate = offering.date("fecha_inicio")!!,
-            endDate = offering.date("fecha_fin")!!,
+            code = requireNotNull(offering.text("codigo")) { "offering without code" },
+            status = requireNotNull(offering.text("estado")) { "offering without state" },
+            startDate = requireNotNull(offering.date("fecha_inicio")) { "offering without start" },
+            endDate = requireNotNull(offering.date("fecha_fin")) { "offering without end" },
             timeZone = zone,
             enrollmentFrom = offering.date("inscripcion_desde"),
             enrollmentUntil = offering.date("inscripcion_hasta"),
@@ -213,18 +253,20 @@ class CatalogBuilder(
             schedule = offering.text("calendario"),
             teachers =
                 assignments
-                    .sortedBy { it.text("rol_docente") }
                     .mapNotNull { a ->
                         profiles[a.ref("perfil_docente")]?.let {
                             OfferingTeacher(it.text("nombre_publico") ?: "", it.text("titulo_profesional"), a.text("rol_docente") ?: "TITULAR")
                         }
-                    },
+                    }.sortedWith(compareBy({ it.role }, { it.name })),
         )
     }
 
     companion object {
         const val PUBLISHED = "PUBLICADA"
         const val DEFAULT_ZONE = "America/Lima"
+
+        // lo que acepta la ruta GET /courses/{slug}: un curso con otro slug se listaría pero su ficha daría 404
+        val PUBLIC_SLUG = Regex("^[a-z0-9][a-z0-9-]{0,99}$")
         val CURRENT_OFFERINGS = setOf("PROGRAMADA", "INSCRIPCION_ABIERTA", "EN_CURSO")
     }
 }

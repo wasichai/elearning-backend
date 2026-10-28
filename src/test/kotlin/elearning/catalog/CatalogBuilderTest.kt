@@ -151,6 +151,60 @@ class CatalogBuilderTest {
     }
 
     @Test
+    fun `one broken course is left out and the rest still build`() {
+        val other = record("c2", "codigo" to "OTRO", "slug" to "otro", "titulo" to "Otro", "nivel" to "INICIAL")
+        val broken = version("v9", 1, "PUBLICADA", "curso" to "c2", "semanas" to 0)
+        val rejected = mutableListOf<String>()
+        val records = records(version("v1", 1, "PUBLICADA"), broken).let { it.copy(courses = it.courses + other) }
+
+        val built = CatalogBuilder().build(records) { course, _ -> rejected += course }
+
+        assertEquals(listOf("srtm-anuncios"), built.map { it.detail.slug })
+        assertEquals(listOf("OTRO"), rejected)
+    }
+
+    @Test
+    fun `a slug the public route would refuse is left out`() {
+        val rejected = mutableListOf<String>()
+        val records =
+            records(version("v1", 1, "PUBLICADA")).let { r ->
+                r.copy(
+                    courses =
+                        r.courses.map {
+                            record(
+                                "c1",
+                                *(
+                                    it.attributes +
+                                        ("slug" to "Curso_Básico")
+                                ).toList().toTypedArray(),
+                            )
+                        },
+                )
+            }
+
+        assertTrue(CatalogBuilder().build(records) { course, _ -> rejected += course }.isEmpty())
+        assertEquals(listOf("SRTM-ANU-101"), rejected)
+    }
+
+    @Test
+    fun `the hash does not depend on the order records arrive in`() {
+        val base = records(version("v1", 1, "PUBLICADA"))
+        val twoTeachers =
+            base.copy(
+                profiles = base.profiles + record("p2", "nombre_publico" to "Bruno Ejemplo"),
+                assignments = base.assignments + record("a2", "edicion_curso" to "e1", "perfil_docente" to "p2", "rol_docente" to "TITULAR"),
+            )
+        val shuffled =
+            twoTeachers.copy(
+                units = twoTeachers.units.reversed(),
+                assignments = twoTeachers.assignments.reversed(),
+                profiles = twoTeachers.profiles.reversed(),
+            )
+
+        assertEquals(CatalogBuilder().build(twoTeachers).single().hash, CatalogBuilder().build(shuffled).single().hash)
+    }
+
+    @Test
     fun `the hash changes with the content and only with it`() {
         val a = CatalogBuilder().build(records(version("v1", 1, "PUBLICADA"))).single()
         val b = CatalogBuilder().build(records(version("v1", 1, "PUBLICADA"))).single()

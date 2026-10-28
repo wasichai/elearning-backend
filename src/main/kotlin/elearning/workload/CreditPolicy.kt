@@ -106,12 +106,14 @@ class SemesterCreditHourPolicy(
     override fun propose(workload: Workload): CreditProposal {
         val hoursPerCredit = (instructionHoursPerWeek + outOfClassHoursPerWeek) * referenceWeeks
         val calculated = divide(workload.totalHours, hoursPerCredit)
-        val instructionFloor = calculated * instructionHoursPerWeek * referenceWeeks
+        val proposed = floorToStep(calculated, step)
+        // el piso se mide contra lo que se propone, no contra el cociente sin redondear
+        val instructionFloor = proposed * instructionHoursPerWeek * referenceWeeks
         val warnings =
             if (workload.contactHours < instructionFloor) {
                 listOf(
                     "la instrucción directa (${workload.contactHours.toPlainString()} h) no llega al mínimo de " +
-                        "${instructionFloor.setScale(2, RoundingMode.HALF_UP).toPlainString()} h para ${calculated.toPlainString()} créditos",
+                        "${instructionFloor.setScale(2, RoundingMode.HALF_UP).toPlainString()} h para ${proposed.toPlainString()} créditos",
                 )
             } else {
                 emptyList()
@@ -132,7 +134,7 @@ class SemesterCreditHourPolicy(
             source = "34 CFR 600.2, definición de credit hour",
             totalHours = workload.totalHours,
             calculated = calculated,
-            proposed = floorToStep(calculated, step),
+            proposed = proposed,
             warnings = warnings,
         )
     }

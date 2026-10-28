@@ -1,6 +1,7 @@
 package elearning.catalog
 
 import elearning.common.LmsProperties
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import org.slf4j.LoggerFactory
 import org.springframework.scheduling.annotation.Scheduled
@@ -33,7 +34,13 @@ class CatalogProjection(
     @Scheduled(fixedDelayString = "\${lms.catalog.refresh:30s}", initialDelayString = "\${lms.catalog.initial-delay:5s}")
     suspend fun scheduled() {
         if (!properties.catalog.scheduling) return
-        runCatching { refresh() }.onFailure { log.warn("catalog projection refresh failed", it) }
+        try {
+            refresh()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            log.warn("catalog projection refresh failed", e)
+        }
     }
 
     // null: otra réplica (u otra llamada) está refrescando
@@ -52,10 +59,14 @@ class CatalogProjection(
         val slug = properties.public.organization
         val organization = slug.takeIf { it.isNotBlank() }?.let { s -> tenants.organizationsWithObject(VERSION_OBJECT).firstOrNull { it.slug == s } }
         if (organization == null) {
-            if (slug.isNotBlank()) log.warn("public catalog organization '{}' not found or without the LMS model", slug)
-            return RefreshResult(0, 0, repository.deleteOtherOrganizations(slug))
+            if (slug.isNotBlank()) log.warn("public catalog organization '{}' not found or without the LMS model: catalog emptied", slug)
+            // sin organización pública no hay catálogo: nada de seguir sirviendo lo que se proyectó antes
+            return RefreshResult(0, 0, repository.deleteAll())
         }
-        val courses = builder.build(records.asPlatform(organization.id, SOURCE) { source.load() })
+        val courses =
+            builder.build(records.asPlatform(organization.id, SOURCE) { source.load() }) { course, problem ->
+                log.warn("course {} left out of the public catalog: {}", course, problem.message)
+            }
         val stored = repository.stored(slug).associate { it.slug to it.hash }
         val changed = courses.filter { stored[it.detail.slug] != it.hash }
         changed.forEach { repository.upsert(slug, it) }

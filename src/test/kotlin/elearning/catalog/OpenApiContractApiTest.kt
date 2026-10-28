@@ -32,10 +32,28 @@ class OpenApiContractApiTest : WasichaiIntegrationTest() {
     }
 
     @Test
+    fun `the server url does not come from the Host header`() {
+        val spec =
+            JsonMapper.builder().build().readTree(
+                client
+                    .get()
+                    .uri("/api/lms/public/openapi")
+                    .header("Host", "evil.example")
+                    .exchange()
+                    .expectBody(String::class.java)
+                    .returnResult()
+                    .responseBody,
+            )
+
+        assertEquals("/", spec["servers"][0]["url"].asString())
+    }
+
+    @Test
     fun `only the lms api is in it, not the platform's`() {
         val paths = spec["paths"].propertyNames().toList()
 
-        assertTrue(paths.all { it.startsWith("/api/lms/") }, paths.toString())
+        // solo lo público: una ruta privada futura de /api/lms no debe aparecer en el contrato anónimo
+        assertTrue(paths.all { it.startsWith("/api/lms/public/") }, paths.toString())
         assertFalse(paths.any { it.startsWith("/api/objects") || it.startsWith("/api/auth") }, paths.toString())
     }
 

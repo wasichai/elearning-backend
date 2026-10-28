@@ -20,6 +20,16 @@ class PublicCatalogSecurityApiTest : WasichaiIntegrationTest() {
     }
 
     @Test
+    fun `HEAD is a read like GET`() {
+        client
+            .head()
+            .uri("/api/lms/public/catalog/courses")
+            .exchange()
+            .expectStatus()
+            .isOk
+    }
+
+    @Test
     fun `the public path never takes writes, not even with a token`() {
         client
             .post()
