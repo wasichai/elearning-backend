@@ -181,6 +181,33 @@ class CatalogListApiTest : LmsApiTest() {
         }
     }
 
+    // la proyección ya va hasta lms.catalog.refresh por detrás: un proxy o el navegador pueden guardar la respuesta ese
+    // tiempo (#68). un error no se guarda como público
+    @Test
+    fun `the public listing and course sheets can be cached as long as the projection lags`() {
+        client
+            .get()
+            .uri("/api/lms/public/catalog/courses")
+            .exchange()
+            .expectHeader()
+            .valueEquals("Cache-Control", "max-age=30, public")
+        val slug = list()["content"][0]["slug"].asString()
+        client
+            .get()
+            .uri("/api/lms/public/catalog/courses/$slug")
+            .exchange()
+            .expectHeader()
+            .valueEquals("Cache-Control", "max-age=30, public")
+        client
+            .get()
+            .uri("/api/lms/public/catalog/courses?size=0")
+            .exchange()
+            .expectStatus()
+            .isBadRequest
+            .expectHeader()
+            .value("Cache-Control") { assertTrue("public" !in it, it) }
+    }
+
     @Test
     fun `a refresh without changes writes nothing`() {
         val again = runBlocking { projection.refreshNow() }

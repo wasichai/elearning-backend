@@ -1,5 +1,8 @@
 package elearning.catalog
 
+import elearning.common.LmsProperties
+import org.springframework.http.CacheControl
+import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.RequestMapping
@@ -16,7 +19,11 @@ import java.time.format.DateTimeParseException
 @RequestMapping("/api/lms/public/catalog")
 class CatalogController(
     private val reader: CatalogReader,
+    properties: LmsProperties,
 ) {
+    // la proyección ya va hasta este tiempo por detrás: guardar la respuesta lo mismo no la hace más vieja (#68)
+    private val cache = CacheControl.maxAge(properties.catalog.refresh).cachePublic()
+
     @GetMapping("/courses")
     suspend fun courses(
         @RequestParam(required = false) q: String?,
@@ -27,15 +34,15 @@ class CatalogController(
         @RequestParam(required = false) sort: String?,
         @RequestParam(required = false) page: String?,
         @RequestParam(required = false) size: String?,
-    ): CoursePage = reader.page(parse(q, category, level, modality, startsFrom, sort, page, size))
+    ): ResponseEntity<CoursePage> = ResponseEntity.ok().cacheControl(cache).body(reader.page(parse(q, category, level, modality, startsFrom, sort, page, size)))
 
     // un borrador, un slug inexistente o el de otra organización reciben la misma respuesta: no se distingue qué existe
     @GetMapping("/courses/{slug}")
     suspend fun course(
         @PathVariable slug: String,
-    ): CourseDetail {
+    ): ResponseEntity<CourseDetail> {
         if (!SLUG.matches(slug)) throw NotFoundException(CatalogReader.NOT_FOUND)
-        return reader.detail(slug)
+        return ResponseEntity.ok().cacheControl(cache).body(reader.detail(slug))
     }
 
     // reúne todos los errores de una vez; cada uno nombra su parámetro
