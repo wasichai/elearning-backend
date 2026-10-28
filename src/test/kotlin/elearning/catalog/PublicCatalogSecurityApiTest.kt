@@ -46,6 +46,21 @@ class PublicCatalogSecurityApiTest : WasichaiIntegrationTest() {
             .isUnauthorized
     }
 
+    // un 401 con WWW-Authenticate: Basic hace que el navegador abra su diálogo de usuario y contraseña: aquí no hay
+    // usuario ni contraseña que pedir (hallazgo de las pruebas e2e del frontend)
+    @Test
+    fun `a refused write never asks the browser for basic credentials`() {
+        client
+            .post()
+            .uri("/api/lms/public/catalog/courses")
+            .bodyValue("{}")
+            .exchange()
+            .expectStatus()
+            .isUnauthorized
+            .expectHeader()
+            .doesNotExist(HttpHeaders.WWW_AUTHENTICATE)
+    }
+
     @Test
     fun `the rest of the lms api still needs a session`() {
         client

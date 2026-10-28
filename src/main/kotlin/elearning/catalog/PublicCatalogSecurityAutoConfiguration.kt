@@ -4,8 +4,10 @@ import org.springframework.boot.autoconfigure.AutoConfiguration
 import org.springframework.context.annotation.Bean
 import org.springframework.core.annotation.Order
 import org.springframework.http.HttpMethod
+import org.springframework.http.HttpStatus
 import org.springframework.security.config.web.server.ServerHttpSecurity
 import org.springframework.security.web.server.SecurityWebFilterChain
+import org.springframework.security.web.server.authentication.HttpStatusServerEntryPoint
 import org.springframework.security.web.server.savedrequest.NoOpServerRequestCache
 import org.springframework.security.web.server.util.matcher.ServerWebExchangeMatchers.pathMatchers
 import wasichai.core.autoconfigure.WasichaiSecurityAutoConfiguration
@@ -32,6 +34,9 @@ class PublicCatalogSecurityAutoConfiguration {
             .formLogin { it.disable() }
             .logout { it.disable() }
             .requestCache { it.requestCache(NoOpServerRequestCache.getInstance()) }
+            // 401 a secas: el punto de entrada por defecto añade WWW-Authenticate: Basic y el navegador abriría su
+            // diálogo de credenciales; aquí no hay credenciales que pedir
+            .exceptionHandling { it.authenticationEntryPoint(HttpStatusServerEntryPoint(HttpStatus.UNAUTHORIZED)) }
             .build()
 
     companion object {
