@@ -56,7 +56,8 @@ class CatalogBuilder(
         onReject: (course: String, problem: Throwable) -> Unit = { _, _ -> },
     ): List<PublishedCourse> {
         val categories = records.categories.associateBy { it.id }
-        val profiles = records.profiles.associateBy { it.id }
+        // solo los perfiles con consentimiento (#66): privado por defecto, como pide la especificación
+        val profiles = records.profiles.filter { it.bool("perfil_publico") == true }.associateBy { it.id }
         val lessonsByUnit = records.lessons.groupBy { it.ref("unidad") }
         val unitsByVersion = records.units.groupBy { it.ref("version_curso") }
         val offeringsByVersion = records.offerings.groupBy { it.ref("version_curso") }

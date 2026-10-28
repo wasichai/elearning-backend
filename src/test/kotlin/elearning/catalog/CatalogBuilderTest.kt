@@ -85,7 +85,10 @@ class CatalogBuilderTest {
                         "fecha_fin" to "2027-02-01",
                     ),
                 ),
-            profiles = listOf(record("p1", "nombre_publico" to "Ana Ejemplo", "usuario_id" to "00000000-0000-0000-0000-000000000099")),
+            profiles =
+                listOf(
+                    record("p1", "nombre_publico" to "Ana Ejemplo", "usuario_id" to "00000000-0000-0000-0000-000000000099", "perfil_publico" to true),
+                ),
             assignments = listOf(record("a1", "edicion_curso" to "e1", "perfil_docente" to "p1", "rol_docente" to "TITULAR")),
         )
 
@@ -140,6 +143,29 @@ class CatalogBuilderTest {
         )
         assertFalse(built.json().contains("00000000-0000-0000-0000-000000000099"), "el usuario_id no es público")
         assertEquals(listOf(LocalDate.parse("2026-11-09")), built.startDates)
+    }
+
+    // privado por defecto (#66): sin consentimiento, ni el nombre del docente sale en el catálogo
+    @Test
+    fun `a teacher who has not agreed to a public profile is left out of the catalog`() {
+        val base = records(version("v1", 1, "PUBLICADA"))
+        val hidden =
+            base.copy(
+                profiles = base.profiles + record("p2", "nombre_publico" to "Bruno Reservado", "biografia" to "Privada"),
+                assignments = base.assignments + record("a2", "edicion_curso" to "e1", "perfil_docente" to "p2", "rol_docente" to "ASISTENTE"),
+            )
+
+        val built = CatalogBuilder().build(hidden).single()
+
+        assertEquals(
+            listOf("Ana Ejemplo"),
+            built.detail.offerings
+                .single()
+                .teachers
+                .map { it.name },
+        )
+        assertEquals(listOf("Ana Ejemplo"), built.detail.teachers.map { it.name })
+        assertFalse(built.json().contains("Bruno Reservado") || built.json().contains("Privada"))
     }
 
     @Test

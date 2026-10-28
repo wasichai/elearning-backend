@@ -387,7 +387,7 @@
       "name": "perfil_docente",
       "label": "Perfil docente",
       "pluralLabel": "Perfiles docentes",
-      "description": "Información pública de un docente. La cuenta y sus roles son de Wasichai; aquí solo lo que se publica.",
+      "description": "Información pública de un docente. La cuenta y sus roles son de Wasichai; aquí solo lo que se publica. Solo se publica con consentimiento (perfil_publico); privado por defecto.",
       "fields": [
         {
           "name": "usuario_id",
@@ -415,6 +415,13 @@
           "name": "especialidades",
           "label": "Especialidades",
           "type": "TEXT"
+        },
+        {
+          "name": "perfil_publico",
+          "label": "Consiente publicar este perfil en el catálogo",
+          "type": "BOOLEAN",
+          "required": true,
+          "defaultValue": "false"
         }
       ]
     },
