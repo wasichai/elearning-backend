@@ -451,7 +451,10 @@ No hay conversión entre ECTS y SCH.
 - **F1 — primer incremento (catálogo)**: `categoria`, `curso`, `version_curso` (ficha y carga), `unidad`, `leccion`
   (título, tipo, duración), `edicion_curso`, `docente_edicion`.
 - **F2 — aula**: `matricula`, `progreso_leccion`, `recurso`, `version_recurso`, `recurso_leccion`,
-  `lms.evento_aprendizaje`.
+  `lms.evento_aprendizaje`. Decidido en [ADR-0012](../adr/0012-aula-del-estudiante.md): la matrícula
+  se crea por comando; un `RecordReadScope` limita a quien no tiene la acción declarada `VER_TODAS` (DOCENTE, CREADOR y
+  REVISOR la tienen) a sus matrículas y al contenido de las versiones en que está matriculado; el HTML se muestra en un
+  `iframe` aislado; el progreso exige la evidencia de su tipo de lección.
 - **F3 — evaluación y operación docente**: `evaluacion`, `version_evaluacion` (+ `lms.version_evaluacion_contenido`),
   `intento_evaluacion` (+ `lms.respuesta_intento`), `resultado_evaluacion`, `resultado_criterio`, `entrega`, `rubrica`,
   `criterio_rubrica`, `patron_sesiones`, `sesion`, `asistencia`, `certificado`, `revocacion_certificado`; reglas de
