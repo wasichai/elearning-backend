@@ -1,6 +1,6 @@
 # ADR-0009: La licencia del proyecto se difiere
 
-**Estado**: aceptada · 2026-10-27
+**Estado**: reemplazada por [ADR-0015](0015-licencia-lgpl-provisional.md) · 2026-10-27
 
 ## Contexto
 

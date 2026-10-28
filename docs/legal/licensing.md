@@ -2,8 +2,8 @@
 
 Hechos verificados sobre las licencias de lo que este proyecto usa, sus consecuencias prácticas y las opciones para
 decidir. **No es asesoría legal**: recoge hechos y opciones; la decisión y cualquier interpretación vinculante
-corresponden a los titulares de los derechos, con asesoría si la necesitan. La licencia del proyecto está diferida
-([ADR-0009](../adr/0009-licencia-diferida.md)).
+corresponden a los titulares de los derechos, con asesoría si la necesitan. El proyecto usa la licencia provisional
+**LGPL-3.0-or-later** ([ADR-0015](../adr/0015-licencia-lgpl-provisional.md)).
 
 ## Estado verificado
 
@@ -70,13 +70,13 @@ Para los **materiales de curso** (texto, imágenes, vídeos), una licencia de co
 CC BY 4.0 o CC BY-SA 4.0; cada material puede llevar la suya en sus metadatos (especificación §9). Aplica solo al
 contenido propio; el derivado de los manuales necesita antes el permiso del titular.
 
-## Decisión pendiente
+## Decisión
 
-1. **Elegir la licencia del proyecto** (código y, si se decide, contenido) y registrarla con un ADR que sustituya a
-   ADR-0009; añadir `LICENSE` y la declaración en `build.gradle.kts` y `package.json`.
-2. **Obtener licencia de Wasichai y de los manuales** de la organización `wasichai`: que los titulares añadan una
-   licencia a `wasichai`, `wasichai-ui`, `sgspe` y `sgspe-ui`, y decidan la licencia del texto y las capturas de los
-   manuales en `srtm-backend` y `sgspe`. La licencia de Wasichai condiciona qué opciones de la tabla anterior son
-   compatibles.
-
-Hasta que ambas decisiones existan, el repositorio no declara licencia y no se publican artefactos.
+1. **Licencia del proyecto: LGPL-3.0-or-later, provisional** ([ADR-0015](../adr/0015-licencia-lgpl-provisional.md)),
+   decidida por la dirección el 2026-10-28. `LICENSE` (LGPL-3.0) y `COPYING` (GPL-3.0) en ambos repositorios;
+   `package.json` la declara. Cubre el código, la documentación y los materiales propios de la demo.
+2. **Pendiente: licencia de Wasichai y de los manuales.** Sin ella sigue bloqueado distribuir binarios o imágenes que
+   incluyan Wasichai, y reutilizar el texto o las capturas de los manuales. La licencia que se dé a Wasichai debe ser
+   compatible con la LGPL (por ejemplo Apache-2.0, MIT o la propia LGPL).
+3. **Pendiente: términos de contribución** (DCO o CLA) antes de aceptar la primera aportación externa, y, si se quiere,
+   una licencia de contenido aparte para los materiales de curso.

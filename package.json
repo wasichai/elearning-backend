@@ -1,6 +1,7 @@
 {
   "name": "elearning-backend-build",
   "private": true,
+  "license": "LGPL-3.0-or-later",
   "description": "Solo herramientas de formato y de mensajes de commit; el backend se construye con Gradle.",
   "scripts": {
     "format": "prettier --write \"**/*.{md,json,yml,yaml,mjs}\"",

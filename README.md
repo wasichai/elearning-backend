@@ -7,11 +7,11 @@ canalización de preparación de contenido asistida por IA que propone pero no a
 Este repositorio es el **backend** y la casa de la documentación. La interfaz está en
 [elearning-frontend](https://github.com/wasichai/elearning-frontend).
 
-> **Estado**: Fase 1 completada (2026-10-28) — catálogo público de punta a punta, con flujo editorial protegido. Siguiente: Fase 2, aula del estudiante. Lo que existe y lo que falta está en
+> **Estado**: Fases 1 y 2 completadas (2026-10-28) — catálogo público y aula del estudiante de punta a punta. Siguiente: Fase 3, evaluaciones y operación docente. Lo que existe y lo que falta está en
 > [docs/product/roadmap.md](docs/product/roadmap.md) y en [docs/HISTORY.md](docs/HISTORY.md).
 >
-> **Licencia**: pendiente de decisión ([docs/legal/licensing.md](docs/legal/licensing.md)). Mientras tanto no se
-> concede ninguna licencia sobre este código.
+> **Licencia**: [LGPL-3.0-or-later](LICENSE), provisional ([ADR-0015](docs/adr/0015-licencia-lgpl-provisional.md)). Wasichai, del
+> que depende, aún no tiene licencia: ver [docs/legal/licensing.md](docs/legal/licensing.md).
 
 ## Arquitectura en una línea
 
