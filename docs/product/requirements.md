@@ -366,10 +366,9 @@ el cuándo, en [`roadmap.md`](roadmap.md).
 - **RNF-ARQ-07** · F1 · implementado ([#51](https://github.com/wasichai/elearning-backend/pull/51)) — Cada dependencia de infraestructura nueva responde a un requisito concreto y
   queda justificada en un ADR.
   _Aceptación:_ `compose.yaml` del primer incremento solo contiene PostgreSQL.
-- **RNF-ARQ-08** · F4 · planificado — El núcleo no depende de proveedores concretos de IA, almacenamiento o
+- **RNF-ARQ-08** · F4 · implementado ([#138](https://github.com/wasichai/elearning-backend/pull/138)) — El núcleo no depende de proveedores concretos de IA, almacenamiento o
   videoconferencia.
   _Aceptación:_ prueba de arquitectura sobre los paquetes de dominio.
-  _Pendiente de F2 (#103):_ falta la regla en la prueba de arquitectura.
 - **RNF-ARQ-09** · F4 · planificado — Las tareas bloqueantes o largas (Asciidoctor, PDF, render) corren como
   trabajos persistentes fuera del bucle de eventos.
   _Aceptación:_ prueba de que la API responde mientras un trabajo largo está en curso.

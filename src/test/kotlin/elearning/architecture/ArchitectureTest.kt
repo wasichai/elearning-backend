@@ -4,8 +4,9 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import java.io.File
 
-// los límites de CLAUDE.md (reglas 1, 2, 4 y 7) y de docs/architecture/overview.md §2.3 sobre src/main/kotlin. Que
-// cada regla de verdad detecta lo que dice lo prueba SourceScannerTest, con el mismo escáner y la misma tabla
+// los límites de CLAUDE.md (reglas 1, 2, 4 y 7), de docs/architecture/overview.md §2.3 y de RNF-ARQ-08 sobre
+// src/main/kotlin. Que cada regla de verdad detecta lo que dice lo prueba SourceScannerTest, con el mismo escáner y la
+// misma tabla
 class ArchitectureTest {
     private val root = File("src/main/kotlin")
     private val violations by lazy { SourceScanner(ALLOWED_DEPENDENCIES).scan(readSources(root)) }
@@ -36,6 +37,9 @@ class ArchitectureTest {
 
     @Test
     fun `workload is pure domain`() = assertNoViolations(Rule.PURE_WORKLOAD)
+
+    @Test
+    fun `no concrete ai, storage or videoconference provider outside its adapter`() = assertNoViolations(Rule.CONCRETE_PROVIDER)
 
     @Test
     fun `every capability sits in the dag and uses only what it may`() = assertNoViolations(Rule.PACKAGE_DAG)

@@ -155,6 +155,52 @@ class SourceScannerTest {
     }
 
     @Test
+    fun `concrete ai, storage and videoconference providers are caught in the core, imported, qualified or by their host`() {
+        val path = "src/main/kotlin/elearning/learning/Providers.kt"
+        val violations =
+            scan(
+                path,
+                """
+                package elearning.learning
+
+                import com.openai.client.OpenAIClient
+                import com.anthropic.client.AnthropicClient
+                import software.amazon.awssdk.services.s3.S3Client
+                import io.minio.MinioClient
+                import com.google.cloud.storage.Storage
+                import us.zoom.sdk.ZoomSDK
+                import com.google.apps.meet.v2.SpacesServiceClient
+                import org.springframework.ai.openai.OpenAiChatModel
+
+                class Providers(val bucket: com.amazonaws.services.s3.AmazonS3) {
+                    val endpoint = "https://api.openai.com/v1/chat/completions"
+                    val zoom = "https://api.zoom.us/v2/users/me/meetings"
+                }
+                """,
+            )
+
+        assertThat(violations).allMatch { it.rule == Rule.CONCRETE_PROVIDER }
+        assertThat(violations.map { it.line }).containsExactly(3, 4, 5, 6, 7, 8, 9, 10, 12, 13, 14)
+        assertThat(violations.first().toString()).startsWith("$path:3: usa com.openai.client.OpenAIClient")
+    }
+
+    // el adaptador de cada proveedor es el único sitio donde vive su SDK (docs/architecture/overview.md §2.3)
+    @Test
+    fun `a provider sdk inside its adapter package, or named in a comment, is not a violation`() {
+        val adapters =
+            listOf("elearning.ai", "elearning.media.storage", "elearning.course.meeting").flatMap { pkg ->
+                scan(
+                    "src/main/kotlin/${pkg.replace('.', '/')}/Adapter.kt",
+                    "package $pkg\n\nimport com.anthropic.client.AnthropicClient\nimport us.zoom.sdk.ZoomSDK\n\nval host = \"api.anthropic.com\"\n",
+                )
+            }
+        val comment =
+            scan("src/main/kotlin/elearning/course/Port.kt", "package elearning.course\n\n// nunca com.openai.client ni api.openai.com aquí\nclass Port")
+
+        assertThat(adapters.filter { it.rule == Rule.CONCRETE_PROVIDER } + comment).isEmpty()
+    }
+
+    @Test
     fun `workload depending on another capability is caught`() {
         val path = "src/main/kotlin/elearning/workload/Leak.kt"
         val violations = scan(path, "package elearning.workload\n\nimport elearning.common.Problem\n\nclass Leak")
