@@ -21,26 +21,26 @@ el cuándo, en [`roadmap.md`](roadmap.md).
 
 ### RF-CAT — Catálogo público (§6.1)
 
-- **RF-CAT-01** · F1 · planificado — Un visitante anónimo lista los cursos con versión publicada de la organización
+- **RF-CAT-01** · F1 · implementado ([#55](https://github.com/wasichai/elearning-backend/pull/55)) — Un visitante anónimo lista los cursos con versión publicada de la organización
   configurada (`lms.public.organization`).
   _Aceptación:_ `GET /api/lms/public/catalog/courses` sin credenciales responde 200 y, en una prueba de integración con
   un curso publicado y otro en borrador, solo devuelve el publicado.
-- **RF-CAT-02** · F1 · planificado — Búsqueda por texto sobre título y resumen.
+- **RF-CAT-02** · F1 · implementado ([#55](https://github.com/wasichai/elearning-backend/pull/55), [#63](https://github.com/wasichai/elearning-backend/pull/63)) — Búsqueda por texto sobre título y resumen.
   _Aceptación:_ prueba de integración donde `q` reduce el resultado a los cursos que contienen el término, sin
   distinguir mayúsculas.
-- **RF-CAT-03** · F1 · planificado — Filtros por categoría, nivel, modalidad y fecha de inicio, combinables.
+- **RF-CAT-03** · F1 · implementado ([#55](https://github.com/wasichai/elearning-backend/pull/55)) — Filtros por categoría, nivel, modalidad y fecha de inicio, combinables.
   _Aceptación:_ una prueba por filtro y una de combinación (intersección); un valor de enumeración desconocido devuelve
   `400` con `ProblemDetail`.
-- **RF-CAT-04** · F1 · planificado — Orden configurable y paginación con tamaño máximo.
+- **RF-CAT-04** · F1 · implementado ([#55](https://github.com/wasichai/elearning-backend/pull/55), [#63](https://github.com/wasichai/elearning-backend/pull/63)) — Orden configurable y paginación con tamaño máximo.
   _Aceptación:_ pruebas de cada criterio de orden; un tamaño de página por encima del máximo no devuelve más elementos
   que el máximo (rechazo o recorte, la decisión se documenta en el contrato OpenAPI).
-- **RF-CAT-05** · F1 · planificado — Ficha de curso por `slug` con objetivos, requisitos previos, temario por unidades,
+- **RF-CAT-05** · F1 · implementado ([#56](https://github.com/wasichai/elearning-backend/pull/56), [#16 web](https://github.com/wasichai/elearning-frontend/pull/16)) — Ficha de curso por `slug` con objetivos, requisitos previos, temario por unidades,
   ediciones (fechas en la zona horaria de la edición), docentes, carga por tipo de hora y créditos propuestos.
   _Aceptación:_ prueba de integración que comprueba esos campos; la UI rotula los créditos como «propuestos, no
   oficiales».
-- **RF-CAT-06** · F1 · planificado — Un curso no publicado es indistinguible de uno inexistente.
+- **RF-CAT-06** · F1 · implementado ([#56](https://github.com/wasichai/elearning-backend/pull/56)) — Un curso no publicado es indistinguible de uno inexistente.
   _Aceptación:_ `GET …/courses/{slug}` de un borrador y de un slug inventado devuelven el mismo `404`.
-- **RF-CAT-07** · F1 · planificado — El catálogo solo expone campos públicos (DTO propio, no el registro de Wasichai).
+- **RF-CAT-07** · F1 · implementado ([#56](https://github.com/wasichai/elearning-backend/pull/56), [#64](https://github.com/wasichai/elearning-backend/pull/64)) — El catálogo solo expone campos públicos (DTO propio, no el registro de Wasichai).
   _Aceptación:_ prueba de contrato que falla si la respuesta incluye identificadores de autor, estado editorial,
   comentarios de revisión u otros campos internos.
 - **RF-CAT-08** · F2 · planificado — Filtros adicionales: duración, conocimientos previos, estado de matrícula y horas
@@ -52,11 +52,11 @@ el cuándo, en [`roadmap.md`](roadmap.md).
 
 ### RF-ACA — Gestión académica: cursos, versiones, ediciones y matrículas (§5, §6.2, §16)
 
-- **RF-ACA-01** · F1 · planificado — `CourseDefinition` y `CourseVersion` son entidades distintas; una versión tiene
+- **RF-ACA-01** · F1 · implementado ([#42](https://github.com/wasichai/elearning-backend/pull/42)) — `CourseDefinition` y `CourseVersion` son entidades distintas; una versión tiene
   estado `BORRADOR`, `EN_REVISION`, `APROBADA`, `PUBLICADA` o `RETIRADA`.
   _Aceptación:_ `model/apply.py --validate-only` acepta el modelo; prueba de integración que crea dos versiones de un
   curso y publica solo una.
-- **RF-ACA-02** · F1 · planificado — `CourseOffering` (edición) con inicio, fin, zona horaria IANA, capacidad,
+- **RF-ACA-02** · F1 · implementado ([#42](https://github.com/wasichai/elearning-backend/pull/42), [#56](https://github.com/wasichai/elearning-backend/pull/56)) — `CourseOffering` (edición) con inicio, fin, zona horaria IANA, capacidad,
   ventana de matrícula y docentes asignados.
   _Aceptación:_ el modelo aplicado contiene esos campos y la ficha del catálogo los muestra (RF-CAT-05).
 - **RF-ACA-03** · F2 · planificado — Una versión `PUBLICADA` es inmutable.
@@ -84,21 +84,21 @@ el cuándo, en [`roadmap.md`](roadmap.md).
 
 ### RF-CRE — Carga académica y créditos (§6.3)
 
-- **RF-CRE-01** · F1 · planificado — La versión registra semanas y horas semanales de teoría, práctica/laboratorio,
+- **RF-CRE-01** · F1 · implementado ([#42](https://github.com/wasichai/elearning-backend/pull/42)) — La versión registra semanas y horas semanales de teoría, práctica/laboratorio,
   otras actividades supervisadas y estudio autónomo.
   _Aceptación:_ validación que rechaza horas negativas y semanas < 1.
-- **RF-CRE-02** · F1 · planificado — Cálculo de horas de contacto, autónomas y carga total.
+- **RF-CRE-02** · F1 · implementado ([#49](https://github.com/wasichai/elearning-backend/pull/49)) — Cálculo de horas de contacto, autónomas y carga total.
   _Aceptación:_ prueba unitaria del caso de la especificación: 6 semanas × (12 teoría + 12 laboratorio + 12 autónomo)
   = 144 h de contacto, 72 h autónomas, 216 h totales.
-- **RF-CRE-03** · F1 · planificado — Política ECTS parametrizable (horas por crédito dentro de 25–30) que produce una
+- **RF-CRE-03** · F1 · implementado ([#50](https://github.com/wasichai/elearning-backend/pull/50)) — Política ECTS parametrizable (horas por crédito dentro de 25–30) que produce una
   propuesta con sistema, método, parámetros, fuente y versión de la política.
   _Aceptación:_ con 27 h/crédito el caso anterior propone 8 ECTS; la regla de redondeo es un parámetro probado.
-- **RF-CRE-04** · F1 · planificado — Política de _semester credit hours_ según 34 CFR 600.2, con el tratamiento del
+- **RF-CRE-04** · F1 · implementado ([#50](https://github.com/wasichai/elearning-backend/pull/50), [#63](https://github.com/wasichai/elearning-backend/pull/63)) — Política de _semester credit hours_ según 34 CFR 600.2, con el tratamiento del
   laboratorio y otras actividades como parámetro de la institución, no como constante.
   _Aceptación:_ pruebas unitarias con los parámetros documentados y la fuente citada en la propuesta.
-- **RF-CRE-05** · F1 · planificado — El sistema calcula y **propone**; nunca marca créditos como aprobados.
+- **RF-CRE-05** · F1 · implementado ([#50](https://github.com/wasichai/elearning-backend/pull/50), [#64](https://github.com/wasichai/elearning-backend/pull/64)) — El sistema calcula y **propone**; nunca marca créditos como aprobados.
   _Aceptación:_ el dominio no expone ninguna operación que produzca un crédito aprobado; prueba que lo comprueba.
-- **RF-CRE-06** · F1 · planificado — Sin conversión entre ECTS y SCH.
+- **RF-CRE-06** · F1 · implementado ([#50](https://github.com/wasichai/elearning-backend/pull/50)) — Sin conversión entre ECTS y SCH.
   _Aceptación:_ no existe función de conversión; cada propuesta lleva un único sistema; la UI no muestra
   equivalencias.
 - **RF-CRE-07** · F6 · planificado — Políticas de crédito configurables por programa, institución y jurisdicción, y
@@ -189,10 +189,10 @@ el cuándo, en [`roadmap.md`](roadmap.md).
 
 ### RF-ROL — Roles, permisos y alcance (§7)
 
-- **RF-ROL-01** · F1 · planificado — Roles ESTUDIANTE, DOCENTE, CREADOR y REVISOR declarados en `model/roles.json`,
+- **RF-ROL-01** · F1 · implementado ([#42](https://github.com/wasichai/elearning-backend/pull/42), [#52](https://github.com/wasichai/elearning-backend/pull/52)) (alcance por asignación del DOCENTE y del REVISOR: F3/F4) — Roles ESTUDIANTE, DOCENTE, CREADOR y REVISOR declarados en `model/roles.json`,
   junto al ADMIN de Wasichai.
   _Aceptación:_ `model/apply.py` los aplica de forma idempotente; prueba de integración que los lee.
-- **RF-ROL-02** · F1 · planificado — La autorización se decide en el servidor con los permisos de Wasichai; el código
+- **RF-ROL-02** · F1 · implementado ([#52](https://github.com/wasichai/elearning-backend/pull/52), [#64](https://github.com/wasichai/elearning-backend/pull/64)) — La autorización se decide en el servidor con los permisos de Wasichai; el código
   no compara nombres de rol.
   _Aceptación:_ la prueba de arquitectura falla ante un literal de rol en `src/main`.
 - **RF-ROL-03** · F2 · planificado — Un usuario puede tener varios roles a la vez.
@@ -313,7 +313,7 @@ el cuándo, en [`roadmap.md`](roadmap.md).
 
 ### RF-ADM — Administración, auditoría e informes (§13, §14, §15)
 
-- **RF-ADM-01** · F1 · planificado — El nombre del producto es configurable (`lms.product-name`, `VITE_APP_NAME`) y
+- **RF-ADM-01** · F1 · implementado ([#48](https://github.com/wasichai/elearning-backend/pull/48), [#13 web](https://github.com/wasichai/elearning-frontend/pull/13)) — El nombre del producto es configurable (`lms.product-name`, `VITE_APP_NAME`) y
   no aparece en el dominio.
   _Aceptación:_ prueba de arquitectura sin el literal del nombre en el código de dominio.
 - **RF-ADM-02** · F2 · planificado — Usuarios, roles y categorías se administran con las pantallas de Wasichai.
@@ -331,24 +331,24 @@ el cuándo, en [`roadmap.md`](roadmap.md).
 
 ### RNF-ARQ — Arquitectura y stack (stack, §5, §15)
 
-- **RNF-ARQ-01** · F1 · planificado — Kotlin 2.4.21, Spring Boot 4.1.1 WebFlux, JDK 25, PostgreSQL 18 y la BOM de
+- **RNF-ARQ-01** · F1 · implementado ([#48](https://github.com/wasichai/elearning-backend/pull/48)) — Kotlin 2.4.21, Spring Boot 4.1.1 WebFlux, JDK 25, PostgreSQL 18 y la BOM de
   Wasichai 1.6.0; frontend React 19, Vite 8, Tailwind 4 y `@wasichai/*` 1.3.0.
   _Aceptación:_ `./gradlew build` y `yarn build` pasan con esas versiones fijadas.
-- **RNF-ARQ-02** · F1 · planificado — Sin JPA, Hibernate, Spring Data ni JDBC bloqueante en flujos reactivos.
+- **RNF-ARQ-02** · F1 · implementado ([#53](https://github.com/wasichai/elearning-backend/pull/53)) — Sin JPA, Hibernate, Spring Data ni JDBC bloqueante en flujos reactivos.
   _Aceptación:_ la prueba de arquitectura falla ante esas importaciones en `src/main`.
-- **RNF-ARQ-03** · F1 · planificado — Monolito modular con paquete raíz `elearning` y paquetes por capacidad sin
+- **RNF-ARQ-03** · F1 · implementado ([#53](https://github.com/wasichai/elearning-backend/pull/53)) — Monolito modular con paquete raíz `elearning` y paquetes por capacidad sin
   ciclos (ADR-0003).
   _Aceptación:_ prueba de arquitectura del grafo de paquetes.
-- **RNF-ARQ-04** · F1 · planificado — No se duplican autenticación, autorización, metadatos, formularios, navegación,
+- **RNF-ARQ-04** · F1 · implementado ([#48](https://github.com/wasichai/elearning-backend/pull/48), [#64](https://github.com/wasichai/elearning-backend/pull/64)) — No se duplican autenticación, autorización, metadatos, formularios, navegación,
   documentos ni permisos que Wasichai ya provee; se extiende por SPI (ADR-0004).
   _Aceptación:_ sin tablas propias de usuarios, roles o permisos; revisión en cada PR.
-- **RNF-ARQ-05** · F1 · planificado — Toda la UI se registra como `WasichaiModule`; sin segundo router ni segunda
+- **RNF-ARQ-05** · F1 · implementado ([#14 web](https://github.com/wasichai/elearning-frontend/pull/14)) — Toda la UI se registra como `WasichaiModule`; sin segundo router ni segunda
   biblioteca visual (ADR-0005).
   _Aceptación:_ `boundaries.test.ts` por módulo y ausencia de `createBrowserRouter` propio.
-- **RNF-ARQ-06** · F1 · planificado — API LMS bajo `/api/lms/**` documentada con OpenAPI o, si springdoc no es
+- **RNF-ARQ-06** · F1 · implementado ([#57](https://github.com/wasichai/elearning-backend/pull/57)) — API LMS bajo `/api/lms/**` documentada con OpenAPI o, si springdoc no es
   compatible, a mano (ADR-0008).
   _Aceptación:_ el contrato publicado coincide con las pruebas de contrato.
-- **RNF-ARQ-07** · F1 · planificado — Cada dependencia de infraestructura nueva responde a un requisito concreto y
+- **RNF-ARQ-07** · F1 · implementado ([#51](https://github.com/wasichai/elearning-backend/pull/51)) — Cada dependencia de infraestructura nueva responde a un requisito concreto y
   queda justificada en un ADR.
   _Aceptación:_ `compose.yaml` del primer incremento solo contiene PostgreSQL.
 - **RNF-ARQ-08** · F2 · planificado — El núcleo no depende de proveedores concretos de IA, almacenamiento o
@@ -360,19 +360,19 @@ el cuándo, en [`roadmap.md`](roadmap.md).
 
 ### RNF-SEG — Seguridad, privacidad y auditoría (§13; ver [`docs/security/README.md`](../security/README.md))
 
-- **RNF-SEG-01** · F1 · planificado — Todo `/api/lms/**` exige sesión salvo `GET /api/lms/public/**`, servido por una
+- **RNF-SEG-01** · F1 · implementado ([#54](https://github.com/wasichai/elearning-backend/pull/54), [#62](https://github.com/wasichai/elearning-backend/pull/62)) — Todo `/api/lms/**` exige sesión salvo `GET /api/lms/public/**`, servido por una
   cadena de seguridad acotada (ADR-0006).
   _Aceptación:_ prueba anónima a una ruta privada → `401`.
-- **RNF-SEG-02** · F1 · planificado — Métodos distintos de `GET` en `/api/lms/public/**` se rechazan.
+- **RNF-SEG-02** · F1 · implementado ([#54](https://github.com/wasichai/elearning-backend/pull/54)) — Métodos distintos de `GET` en `/api/lms/public/**` se rechazan.
   _Aceptación:_ `POST` anónimo → `401` o `403`, probado.
 - **RNF-SEG-03** · F2 · planificado — Pruebas de autorización negativa (IDOR) en cada endpoint que recibe un
   identificador.
   _Aceptación:_ cambiar el id por uno ajeno nunca devuelve datos; la respuesta no revela si el recurso existe.
-- **RNF-SEG-04** · F1 · planificado — Separación de datos por organización.
+- **RNF-SEG-04** · F1 · implementado ([#56](https://github.com/wasichai/elearning-backend/pull/56)) (catálogo público; la API autenticada la aísla Wasichai por `organization_id`) — Separación de datos por organización.
   _Aceptación:_ prueba con dos organizaciones: ningún dato cruza.
-- **RNF-SEG-05** · F1 · planificado — Sin secretos en el repositorio; tokens y claves solo desde el entorno.
+- **RNF-SEG-05** · F1 · implementado ([#38](https://github.com/wasichai/elearning-backend/pull/38), [#69](https://github.com/wasichai/elearning-backend/pull/69)) — Sin secretos en el repositorio; tokens y claves solo desde el entorno.
   _Aceptación:_ `.env.example` sin valores reales; escaneo de secretos en CI (herramienta a decidir en E9).
-- **RNF-SEG-06** · F1 · planificado — Validación de entradas y límites en parámetros de consulta.
+- **RNF-SEG-06** · F1 · implementado ([#55](https://github.com/wasichai/elearning-backend/pull/55), [#63](https://github.com/wasichai/elearning-backend/pull/63)) — Validación de entradas y límites en parámetros de consulta.
   _Aceptación:_ texto de búsqueda o página fuera de rango → `400` con `ProblemDetail`.
 - **RNF-SEG-07** · F2 · planificado — Archivos con límites de tamaño y tipo, nombres saneados y descarga solo para
   quien tiene acceso.
@@ -390,16 +390,16 @@ el cuándo, en [`roadmap.md`](roadmap.md).
 
 ### RNF-UX — Experiencia, accesibilidad e idioma (§14)
 
-- **RNF-UX-01** · F1 · planificado — Tema y componentes de `@wasichai/ui`; tono sobrio, jerarquía clara y pocas
+- **RNF-UX-01** · F1 · implementado ([#15 web](https://github.com/wasichai/elearning-frontend/pull/15)) — Tema y componentes de `@wasichai/ui`; tono sobrio, jerarquía clara y pocas
   acciones principales.
   _Aceptación:_ revisión de capturas de Playwright en cada PR con UI.
-- **RNF-UX-02** · F1 · planificado — Estados de carga, vacío, error y éxito en cada vista.
+- **RNF-UX-02** · F1 · implementado ([#15 web](https://github.com/wasichai/elearning-frontend/pull/15), [#16 web](https://github.com/wasichai/elearning-frontend/pull/16)) — Estados de carga, vacío, error y éxito en cada vista.
   _Aceptación:_ pruebas de componente por estado.
-- **RNF-UX-03** · F1 · planificado — Responsive en escritorio y móvil.
+- **RNF-UX-03** · F1 · implementado ([#18 web](https://github.com/wasichai/elearning-frontend/pull/18)) — Responsive en escritorio y móvil.
   _Aceptación:_ E2E en un viewport móvil y uno de escritorio, sin desplazamiento horizontal.
-- **RNF-UX-04** · F1 · planificado — Accesible por teclado, con etiquetas y roles; contraste del tema.
+- **RNF-UX-04** · F1 · implementado ([#18 web](https://github.com/wasichai/elearning-frontend/pull/18)) (teclado y roles probados en e2e; el contraste es el del tema de Wasichai y no se ha medido) — Accesible por teclado, con etiquetas y roles; contraste del tema.
   _Aceptación:_ pruebas por rol y etiqueta en Testing Library y recorrido por teclado en E2E; auditoría completa en F6.
-- **RNF-UX-05** · F1 · planificado — Textos con i18next; español inicial y estructura lista para más idiomas.
+- **RNF-UX-05** · F1 · implementado ([#17 web](https://github.com/wasichai/elearning-frontend/pull/17)) — Textos con i18next; español inicial y estructura lista para más idiomas.
   _Aceptación:_ sin textos literales en componentes; claves `es` completas.
 - **RNF-UX-06** · F2 · planificado — Experiencias separadas por audiencia (catálogo, aula, docente, estudio,
   revisor, administración), no una pantalla universal.
@@ -412,17 +412,17 @@ el cuándo, en [`roadmap.md`](roadmap.md).
 
 ### RNF-OSS — Proyecto abierto y datos de demostración (§18, §19; ver [`docs/legal/licensing.md`](../legal/licensing.md))
 
-- **RNF-OSS-01** · F1 · planificado — Instalación local reproducible y documentada en
+- **RNF-OSS-01** · F1 · implementado ([#58](https://github.com/wasichai/elearning-backend/pull/58)) — Instalación local reproducible y documentada en
   [`docs/development/getting-started.md`](../development/getting-started.md).
   _Aceptación:_ una persona sin contexto previo arranca backend, frontend y datos de demostración siguiendo la guía.
-- **RNF-OSS-02** · F1 · planificado — `.env.example` con todas las variables y sin valores secretos.
+- **RNF-OSS-02** · F1 · implementado ([#51](https://github.com/wasichai/elearning-backend/pull/51)) — `.env.example` con todas las variables y sin valores secretos.
   _Aceptación:_ la aplicación arranca en perfil `dev` copiando el ejemplo y aportando solo el token de paquetes.
-- **RNF-OSS-03** · F1 · planificado — Modelo y migraciones reproducibles e idempotentes.
+- **RNF-OSS-03** · F1 · implementado ([#41](https://github.com/wasichai/elearning-backend/pull/41), [#52](https://github.com/wasichai/elearning-backend/pull/52)) — Modelo y migraciones reproducibles e idempotentes.
   _Aceptación:_ aplicar `model/apply.py` dos veces deja el mismo estado; las pruebas de integración lo ejecutan.
-- **RNF-OSS-04** · F1 · planificado — Datos de demostración sintéticos (cursos A SRTM, B SGSPE, C IA aplicada),
+- **RNF-OSS-04** · F1 · implementado ([#47](https://github.com/wasichai/elearning-backend/pull/47), [#64](https://github.com/wasichai/elearning-backend/pull/64)) — Datos de demostración sintéticos (cursos A SRTM, B SGSPE, C IA aplicada),
   marcados como ilustrativos, sin datos personales reales y sin copiar el cuerpo de los manuales.
   _Aceptación:_ cada curso de demostración cita sus referencias `repositorio@sha:ruta#ancla`.
-- **RNF-OSS-05** · F1 · planificado — Política de seguridad y guía de contribución.
+- **RNF-OSS-05** · F1 · implementado ([#38](https://github.com/wasichai/elearning-backend/pull/38)) — Política de seguridad y guía de contribución.
   _Aceptación:_ `SECURITY.md` y `CONTRIBUTING.md` presentes y enlazados desde el README.
 - **RNF-OSS-06** · F3 · planificado — La semilla de demostración incluye perfiles de todos los roles, matrículas,
   intentos y calificaciones; valoraciones en F6.
@@ -433,10 +433,10 @@ el cuándo, en [`roadmap.md`](roadmap.md).
 
 ### RNF-OPS — Operación y calidad continua (infraestructura, §20, §21)
 
-- **RNF-OPS-01** · F1 · planificado — Entorno local con Docker Compose solo en `127.0.0.1`; ninguna prueba usa el
+- **RNF-OPS-01** · F1 · implementado ([#51](https://github.com/wasichai/elearning-backend/pull/51), [#53](https://github.com/wasichai/elearning-backend/pull/53)) — Entorno local con Docker Compose solo en `127.0.0.1`; ninguna prueba usa el
   puerto 5432.
   _Aceptación:_ `docker compose up` y las pruebas de integración conviven sin conflicto.
-- **RNF-OPS-02** · F1 · planificado — CI con build, formato, pruebas unitarias, de integración y de arquitectura en
+- **RNF-OPS-02** · F1 · implementado ([#59](https://github.com/wasichai/elearning-backend/pull/59), [#20 web](https://github.com/wasichai/elearning-frontend/pull/20)) — CI con build, formato, pruebas unitarias, de integración y de arquitectura en
   backend, y lint, tipos, pruebas, build y E2E en frontend.
   _Aceptación:_ un PR con una prueba rota queda en rojo.
 - **RNF-OPS-03** · F3 · planificado — Correo configurable, con un buzón local de pruebas en desarrollo.
