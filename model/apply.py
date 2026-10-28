@@ -607,10 +607,18 @@ def apply_users(client: Client, users: list[dict], password: str, report: Report
 
 
 def _find_record(client: Client, obj: str, key: dict) -> dict | None:
-    query = urllib.parse.urlencode({**key, "size": 200})
-    # se vuelve a filtrar aquí: un filtro que el servidor no aplicara no debe hacer pasar otro registro por este
-    found = [r for r in _content(client.call("GET", f"/api/objects/{obj}/records?{query}"))
-             if all(_matches((r.get("attributes") or {}).get(k), v) for k, v in key.items())]
+    # se vuelve a filtrar aquí: un filtro que el servidor no aplicara no debe hacer pasar otro registro por este. y se
+    # siguen las páginas por cursor (keyset): si el servidor ignorara el filtro, el registro podría estar más allá de
+    # la primera (#60). con el filtro aplicado, como hace Wasichai, basta una página
+    found: list[dict] = []
+    cursor = None
+    while True:
+        params = {**key, "size": 200, "count": "false"} | ({"after": cursor} if cursor else {})
+        answer = client.call("GET", f"/api/objects/{obj}/records?{urllib.parse.urlencode(params)}")
+        found += [r for r in _content(answer) if all(_matches((r.get("attributes") or {}).get(k), v) for k, v in key.items())]
+        cursor = answer.get("nextCursor") if isinstance(answer, dict) else None
+        if not cursor:
+            break
     if len(found) > 1:
         raise DemoError(f"{obj} {key}: {len(found)} registros con la misma clave natural")
     return found[0] if found else None
