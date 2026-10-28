@@ -1,5 +1,6 @@
 package elearning.enrollment
 
+import elearning.common.ref
 import kotlinx.coroutines.reactor.awaitSingle
 import org.springframework.r2dbc.core.DatabaseClient
 import org.springframework.stereotype.Service
@@ -142,9 +143,3 @@ class EnrollmentService(
 }
 
 // una relación puede llegar como id o expandida
-internal fun Map<String, Any?>.ref(name: String): String? =
-    when (val v = this[name]) {
-        is Map<*, *> -> v["id"]?.toString()
-        null -> null
-        else -> v.toString().takeIf { it.isNotBlank() }
-    }

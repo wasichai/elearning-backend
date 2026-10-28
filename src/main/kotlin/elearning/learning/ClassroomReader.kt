@@ -1,9 +1,9 @@
 package elearning.learning
 
+import elearning.common.listAll
+import elearning.common.ref
 import org.springframework.stereotype.Component
 import wasichai.core.common.NotFoundException
-import wasichai.core.common.PageRequest
-import wasichai.core.data.RecordQuery
 import wasichai.core.data.RecordResponse
 import wasichai.core.data.RecordService
 import wasichai.core.identity.CurrentUser
@@ -171,16 +171,7 @@ class ClassroomReader(
     private suspend fun all(
         objectName: String,
         filters: Map<String, String>,
-    ): List<RecordResponse> {
-        val found = mutableListOf<RecordResponse>()
-        var cursor: String? = null
-        do {
-            val page = records.list(objectName, RecordQuery(page = PageRequest(0, PageRequest.MAX_SIZE), filters = filters, count = false, after = cursor))
-            found += page.content
-            cursor = page.nextCursor
-        } while (cursor != null)
-        return found
-    }
+    ): List<RecordResponse> = records.listAll(objectName, filters)
 
     companion object {
         const val VERSION = "version_curso"
@@ -212,10 +203,3 @@ private fun RecordResponse.text(name: String): String = attributes[name]?.toStri
 private fun RecordResponse.textOrNull(name: String): String? = attributes[name]?.toString()?.takeIf { it.isNotBlank() }
 
 private fun RecordResponse.int(name: String): Int = (attributes[name] as? Number)?.toInt() ?: attributes[name]?.toString()?.toIntOrNull() ?: 0
-
-internal fun Map<String, Any?>.ref(name: String): String? =
-    when (val v = this[name]) {
-        is Map<*, *> -> v["id"]?.toString()
-        null -> null
-        else -> v.toString().takeIf { it.isNotBlank() }
-    }
