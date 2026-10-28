@@ -202,7 +202,10 @@ class EditorialWorkflowGuardApiTest : LmsApiTest() {
         val offering = get("/api/objects/edicion_curso/records?size=1", admin)["content"][0]["id"].asString()
 
         assertEquals(HttpStatus.FORBIDDEN, patch(demoUser("docente"), "edicion_curso", offering, mapOf("capacidad" to 999)).first)
-        assertEquals(HttpStatus.FORBIDDEN, call("GET", "/api/objects/version_curso/records", demoUser("estudiante")).first)
+        // desde ADR-0012 el estudiante lee versiones, pero solo las de sus matrículas activas: ninguna en borrador
+        val (listed, versions) = call("GET", "/api/objects/version_curso/records?size=200", demoUser("estudiante"))
+        assertEquals(HttpStatus.OK, listed)
+        assertTrue(versions!!["content"].values().none { it["attributes"]["estado"].asString() == "BORRADOR" })
         assertTrue(call("GET", "/api/objects/curso/records", demoUser("estudiante")).first.is2xxSuccessful)
     }
 }

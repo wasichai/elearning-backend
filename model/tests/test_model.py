@@ -40,8 +40,14 @@ class RealModelTest(unittest.TestCase):
         # F1: sin alcance por asignación, UPDATE sobre edicion_curso sería sobre cualquier edición
         self.assertFalse(holds("DOCENTE", "edicion_curso", "UPDATE"))
 
-    def test_students_do_not_read_unpublished_content(self):
-        for obj in ("version_curso", "unidad", "leccion", "perfil_docente", "docente_edicion"):
+    def test_students_read_content_only_through_their_enrollments(self):
+        # leen versiones, unidades y lecciones, pero ContentReadScope las limita a sus matrículas activas: sin VER_TODAS
+        for obj in ("version_curso", "unidad", "leccion"):
+            self.assertTrue(holds("ESTUDIANTE", obj, "READ"), obj)
+            self.assertFalse(holds("ESTUDIANTE", obj, "VER_TODAS"), obj)
+            for staff in ("DOCENTE", "CREADOR", "REVISOR"):
+                self.assertTrue(holds(staff, obj, "VER_TODAS"), f"{staff} {obj}")
+        for obj in ("perfil_docente", "docente_edicion"):
             self.assertFalse(holds("ESTUDIANTE", obj, "READ"), obj)
 
     def test_teacher_profiles_are_private_by_default(self):

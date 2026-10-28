@@ -1,5 +1,5 @@
 {
-  "_comentario": "Roles del LMS. ADMIN es de Wasichai y tiene todo, incluidas las acciones declaradas. Una cuenta puede tener varios roles. Las acciones declaradas no protegen nada por sí solas: el flujo editorial lo hace cumplir EditorialWorkflowGuard (transiciones con su acción, sin autoaprobación, lo publicado inmutable). PUBLICAR y RETIRAR solo los tiene ADMIN hasta el estudio editorial (F4). DOCENTE no edita ediciones hasta que su alcance por asignación exista (F3); ESTUDIANTE solo ve categorías y cursos: lo publicado lo lee del catálogo público y su aula llega en F2. perfil_docente.usuario_id (la cuenta que respalda un perfil) solo lo ve ADMIN (#65). matricula es apiOnly: ESTUDIANTE la crea solo por el comando de matrícula y lee solo las suyas (ADR-0012).",
+  "_comentario": "Roles del LMS. ADMIN es de Wasichai y tiene todo, incluidas las acciones declaradas. Una cuenta puede tener varios roles. Las acciones declaradas no protegen nada por sí solas: el flujo editorial lo hace cumplir EditorialWorkflowGuard (transiciones con su acción, sin autoaprobación, lo publicado inmutable). PUBLICAR y RETIRAR solo los tiene ADMIN hasta el estudio editorial (F4). DOCENTE no edita ediciones hasta que su alcance por asignación exista (F3); ESTUDIANTE solo ve categorías y cursos: lo publicado lo lee del catálogo público y su aula llega en F2. perfil_docente.usuario_id (la cuenta que respalda un perfil) solo lo ve ADMIN (#65). matricula es apiOnly: ESTUDIANTE la crea solo por el comando de matrícula y lee solo las suyas (ADR-0012). ESTUDIANTE lee versiones, unidades y lecciones solo a través de ContentReadScope: las de sus matrículas activas; el personal tiene VER_TODAS.",
   "roles": [
     {
       "name": "ESTUDIANTE",
@@ -16,6 +16,18 @@
         {
           "object": "matricula",
           "actions": ["READ", "CREATE"]
+        },
+        {
+          "object": "version_curso",
+          "actions": ["READ"]
+        },
+        {
+          "object": "unidad",
+          "actions": ["READ"]
+        },
+        {
+          "object": "leccion",
+          "actions": ["READ"]
         }
       ]
     },
@@ -33,15 +45,15 @@
         },
         {
           "object": "version_curso",
-          "actions": ["READ"]
+          "actions": ["READ", "VER_TODAS"]
         },
         {
           "object": "unidad",
-          "actions": ["READ"]
+          "actions": ["READ", "VER_TODAS"]
         },
         {
           "object": "leccion",
-          "actions": ["READ"]
+          "actions": ["READ", "VER_TODAS"]
         },
         {
           "object": "edicion_curso",
@@ -83,15 +95,15 @@
         },
         {
           "object": "version_curso",
-          "actions": ["READ", "CREATE", "UPDATE", "ENVIAR_A_REVISION"]
+          "actions": ["READ", "CREATE", "UPDATE", "ENVIAR_A_REVISION", "VER_TODAS"]
         },
         {
           "object": "unidad",
-          "actions": ["READ", "CREATE", "UPDATE", "DELETE"]
+          "actions": ["READ", "CREATE", "UPDATE", "DELETE", "VER_TODAS"]
         },
         {
           "object": "leccion",
-          "actions": ["READ", "CREATE", "UPDATE", "DELETE"]
+          "actions": ["READ", "CREATE", "UPDATE", "DELETE", "VER_TODAS"]
         },
         {
           "object": "edicion_curso",
@@ -129,15 +141,15 @@
         },
         {
           "object": "version_curso",
-          "actions": ["READ", "UPDATE", "APROBAR"]
+          "actions": ["READ", "UPDATE", "APROBAR", "VER_TODAS"]
         },
         {
           "object": "unidad",
-          "actions": ["READ"]
+          "actions": ["READ", "VER_TODAS"]
         },
         {
           "object": "leccion",
-          "actions": ["READ"]
+          "actions": ["READ", "VER_TODAS"]
         },
         {
           "object": "edicion_curso",
