@@ -465,6 +465,12 @@
           "enum": "rol_docente",
           "required": true,
           "defaultValue": "TITULAR"
+        },
+        {
+          "name": "usuario_id",
+          "label": "Cuenta del docente asignado (usuario de Wasichai): de aquí sale su alcance",
+          "type": "UUID",
+          "indexed": true
         }
       ],
       "uniqueConstraints": [["edicion_curso", "perfil_docente"]]
@@ -488,6 +494,11 @@
           "type": "UUID",
           "required": true,
           "indexed": true
+        },
+        {
+          "name": "estudiante_correo",
+          "label": "Correo del estudiante al matricularse (para su docente)",
+          "type": "TEXT"
         },
         {
           "name": "estado",

@@ -1214,6 +1214,9 @@
       "refs": {
         "edicion_curso": "edicion-srtm-a",
         "perfil_docente": "perfil-diego"
+      },
+      "users": {
+        "usuario_id": "docente@demo.wasichai-learning.test"
       }
     },
     {
@@ -1226,6 +1229,9 @@
       "refs": {
         "edicion_curso": "edicion-srtm-a",
         "perfil_docente": "perfil-mara"
+      },
+      "users": {
+        "usuario_id": "docente.revisor@demo.wasichai-learning.test"
       }
     },
     {
@@ -1257,6 +1263,9 @@
       "refs": {
         "edicion_curso": "edicion-srtm-b",
         "perfil_docente": "perfil-diego"
+      },
+      "users": {
+        "usuario_id": "docente@demo.wasichai-learning.test"
       }
     },
     {
@@ -1288,6 +1297,9 @@
       "refs": {
         "edicion_curso": "edicion-sgspe-a",
         "perfil_docente": "perfil-mara"
+      },
+      "users": {
+        "usuario_id": "docente.revisor@demo.wasichai-learning.test"
       }
     },
     {
@@ -1319,6 +1331,9 @@
       "refs": {
         "edicion_curso": "edicion-ia-a",
         "perfil_docente": "perfil-mara"
+      },
+      "users": {
+        "usuario_id": "docente.revisor@demo.wasichai-learning.test"
       }
     },
     {
@@ -1331,6 +1346,9 @@
       "refs": {
         "edicion_curso": "edicion-ia-a",
         "perfil_docente": "perfil-diego"
+      },
+      "users": {
+        "usuario_id": "docente@demo.wasichai-learning.test"
       }
     },
     {

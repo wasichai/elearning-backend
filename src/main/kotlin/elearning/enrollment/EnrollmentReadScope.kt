@@ -1,40 +1,99 @@
 package elearning.enrollment
 
+import org.springframework.beans.factory.ObjectProvider
 import org.springframework.stereotype.Component
+import wasichai.core.common.ForbiddenException
+import wasichai.core.common.PageRequest
 import wasichai.core.data.RecordCriterion
+import wasichai.core.data.RecordQuery
 import wasichai.core.data.RecordReadScope
+import wasichai.core.data.RecordResponse
+import wasichai.core.data.RecordService
 import wasichai.core.identity.AuthenticatedUser
 import wasichai.core.identity.CurrentUser
 import wasichai.core.metadata.ObjectDefinition
 import wasichai.core.platform.SqlIdentifier
+import java.util.UUID
 
-// cada persona lee solo sus matrículas y su progreso, salvo quien tiene la acción declarada VER_TODAS (ADR-0012). Wasichai lo pide
-// para toda lectura de una persona o cuenta de servicio (nunca para ADMIN ni la plataforma) y lo aplica en listas,
-// detalle, relaciones, historial y auditoría: lo ajeno se lee como inexistente (404). nunca por nombre de rol
+// cada persona lee sus matrículas y su progreso; el docente, además, los de las ediciones que tiene asignadas
+// (docente_edicion.usuario_id, ADR-0016). quien tiene la acción declarada VER_TODAS los lee todos, y hoy ningún rol la
+// tiene sobre datos de estudiantes (ADR-0014). Wasichai lo pide para toda lectura de una persona o cuenta de servicio
+// (nunca para ADMIN ni la plataforma) y lo aplica en listas, detalle, relaciones, historial y auditoría: lo ajeno se lee
+// como inexistente (404). nunca por nombre de rol
 @Component
 class EnrollmentReadScope(
     private val currentUser: CurrentUser,
+    // RecordService recibe los alcances: se pide perezosamente para no formar un ciclo
+    private val records: ObjectProvider<RecordService>,
 ) : RecordReadScope {
     override suspend fun criterion(
         caller: AuthenticatedUser,
         definition: ObjectDefinition,
     ): RecordCriterion? {
-        if (definition.obj.name !in OWNED) return null
+        val name = definition.obj.name
+        if (name !in OWNED) return null
         if (currentUser.hasPermission(caller, SEE_ALL, definition.obj.id)) return null
         // sin la columna no se sabe de quién es: no se lee ninguna (falla cerrada)
-        val column =
-            definition.fields.firstOrNull { it.name == STUDENT }?.let { SqlIdentifier.quote(it.columnName) }
-                ?: return RecordCriterion { _, _ -> NOTHING }
+        val student = column(definition, STUDENT) ?: return RecordCriterion { _, _ -> NOTHING }
         val me = caller.userId
-        return RecordCriterion { _, bind -> "$column = ${bind(me)}" }
+        val taught = taughtOfferings(caller)
+        if (taught.isEmpty()) return RecordCriterion { _, bind -> "$student = ${bind(me)}" }
+        // el docente: lo de sus ediciones. la matrícula por su edición; el progreso por las matrículas de esas ediciones
+        val (column, ids) =
+            when (name) {
+                ENROLLMENT -> column(definition, OFFERING) to taught
+                else -> column(definition, ENROLLMENT) to enrollmentsOf(taught)
+            }
+        if (column == null) return RecordCriterion { _, bind -> "$student = ${bind(me)}" }
+        val values = ids.map(UUID::fromString).toTypedArray()
+        return RecordCriterion { _, bind -> "($student = ${bind(me)} OR $column = ANY(${bind(values)}))" }
     }
+
+    // las ediciones asignadas a la persona: docente_edicion no tiene alcance propio, así que no hay recursión. quien no
+    // puede leer asignaciones (un estudiante) no tiene ninguna
+    private suspend fun taughtOfferings(caller: AuthenticatedUser): List<String> =
+        try {
+            all(ASSIGNMENT, mapOf(TEACHER to caller.userId.toString())).mapNotNull { it.attributes.ref(OFFERING_FIELD) }.distinct()
+        } catch (_: ForbiddenException) {
+            emptyList()
+        }
+
+    // con el alcance de la matrícula, que ya deja al docente leer las de sus ediciones
+    private suspend fun enrollmentsOf(offerings: List<String>): List<String> = offerings.flatMap { all(ENROLLMENT, mapOf(OFFERING to it)) }.map { it.id }
+
+    private suspend fun all(
+        objectName: String,
+        filters: Map<String, String>,
+    ): List<RecordResponse> {
+        val found = mutableListOf<RecordResponse>()
+        var cursor: String? = null
+        do {
+            val page =
+                records.getObject().list(
+                    objectName,
+                    RecordQuery(page = PageRequest(0, PageRequest.MAX_SIZE), filters = filters, count = false, after = cursor),
+                )
+            found += page.content
+            cursor = page.nextCursor
+        } while (cursor != null)
+        return found
+    }
+
+    private fun column(
+        definition: ObjectDefinition,
+        field: String,
+    ): String? = definition.fields.firstOrNull { it.name == field }?.let { SqlIdentifier.quote(it.columnName) }
 
     companion object {
         const val ENROLLMENT = "matricula"
         const val PROGRESS = "progreso_leccion"
-        val OWNED = setOf(ENROLLMENT, PROGRESS)
+        const val ASSIGNMENT = "docente_edicion"
+        const val TEACHER = "usuario_id"
+        const val OFFERING = "edicion"
+        const val OFFERING_FIELD = "edicion_curso"
         const val STUDENT = "estudiante_id"
         const val SEE_ALL = "VER_TODAS"
         const val NOTHING = "false"
+        val OWNED = setOf(ENROLLMENT, PROGRESS)
     }
 }
