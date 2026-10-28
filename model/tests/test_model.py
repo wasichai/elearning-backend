@@ -55,9 +55,18 @@ class RealModelTest(unittest.TestCase):
                 hidden = [f for f in role.get("fieldPermissions", []) if f["object"] == "perfil_docente" and f["field"] == "usuario_id"]
                 self.assertEqual([False], [f["read"] for f in hidden], role["name"])
 
-    def test_students_only_read(self):
+    def test_students_only_read_except_enrolling(self):
         student = next(r for r in ROLES["roles"] if r["name"] == "ESTUDIANTE")
-        self.assertEqual({"READ"}, {a for g in student["permissions"] for a in g["actions"]})
+        for grant in student["permissions"]:
+            expected = {"READ", "CREATE"} if grant["object"] == "matricula" else {"READ"}
+            self.assertEqual(expected, set(grant["actions"]), grant["object"])
+
+    def test_enrollments_are_written_only_by_the_command(self):
+        matricula = next(o for o in MODEL["objects"] if o["name"] == "matricula")
+        self.assertTrue(matricula["apiOnly"])
+        self.assertFalse(holds("ESTUDIANTE", "matricula", "VER_TODAS"))
+        for role in ("ESTUDIANTE", "DOCENTE", "CREADOR", "REVISOR"):
+            self.assertFalse(holds(role, "matricula", "UPDATE") or holds(role, "matricula", "DELETE"), role)
 
     def test_versions_start_as_draft_and_illustrative(self):
         version = next(o for o in MODEL["objects"] if o["name"] == "version_curso")
