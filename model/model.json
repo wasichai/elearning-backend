@@ -399,6 +399,12 @@
           "label": "Calendario (descripción)",
           "type": "LONG_TEXT"
         }
+      ],
+      "actions": [
+        {
+          "name": "VER_TODAS",
+          "label": "Ver todas las ediciones, también las de versiones no publicadas"
+        }
       ]
     },
     {
