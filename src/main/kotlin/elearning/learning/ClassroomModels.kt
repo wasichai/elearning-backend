@@ -1,5 +1,6 @@
 package elearning.learning
 
+import com.fasterxml.jackson.annotation.JsonUnwrapped
 import java.time.Instant
 import java.time.LocalDate
 
@@ -41,6 +42,48 @@ data class EnrollmentView(
     val offering: OfferingRef,
     val progress: ProgressSummary,
     val nextLesson: NextLesson?,
+)
+
+data class ClassroomView(
+    @get:JsonUnwrapped val enrollment: EnrollmentView,
+    val units: List<UnitView>,
+)
+
+data class UnitView(
+    val id: String,
+    val order: Int,
+    val title: String,
+    val description: String?,
+    val progress: ProgressSummary,
+    val lessons: List<LessonView>,
+)
+
+data class LessonView(
+    val id: String,
+    val order: Int,
+    val title: String,
+    val type: String,
+    val durationMinutes: Int?,
+    val summary: String?,
+    val completion: String,
+    val progress: LessonProgress,
+    val resources: List<ResourceView>,
+)
+
+data class ResourceView(
+    val id: String,
+    val title: String,
+    val type: String,
+    val version: Int,
+    val file: FileView?,
+)
+
+// la descarga es la de wasichai-files, con la misma sesión y el mismo alcance que el registro
+data class FileView(
+    val name: String,
+    val contentType: String,
+    val size: Long,
+    val url: String,
 )
 
 // el progreso de una lección: sin registro es NO_INICIADA

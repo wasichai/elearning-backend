@@ -3,6 +3,7 @@ package elearning.learning
 import elearning.enrollment.EnrollmentService
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
+import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
@@ -30,6 +31,16 @@ class ClassroomController(
         val result = enrollments.enroll(code)
         return ResponseEntity.status(if (result.created) HttpStatus.CREATED else HttpStatus.OK).body(reader.view(result.enrollment))
     }
+
+    // mis cursos: mis matrículas activas, la de inicio más próximo primero
+    @GetMapping("/classroom/enrollments")
+    suspend fun mine(): List<EnrollmentView> = reader.mine()
+
+    // el aula de una matrícula propia; ajena o inexistente, 404
+    @GetMapping("/classroom/enrollments/{enrollmentId}")
+    suspend fun classroom(
+        @PathVariable enrollmentId: UUID,
+    ): ClassroomView = reader.classroom(enrollmentId)
 
     // un evento de aprendizaje → el progreso de la lección. idempotente por clientEventId
     @PostMapping("/classroom/enrollments/{enrollmentId}/lessons/{lessonId}/events")
