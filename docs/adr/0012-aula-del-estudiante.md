@@ -1,6 +1,6 @@
 # ADR-0012: El aula lee por matrícula, aísla el contenido y exige evidencia para el progreso
 
-**Estado**: aceptada · 2026-10-28
+**Estado**: aceptada · 2026-10-28 · el punto 2 lo precisa [ADR-0013](0013-estructura-publicada-visible-recursos-por-matricula.md)
 
 ## Contexto
 

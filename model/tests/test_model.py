@@ -42,7 +42,7 @@ class RealModelTest(unittest.TestCase):
 
     def test_students_read_content_only_through_their_enrollments(self):
         # leen versiones, unidades y lecciones, pero ContentReadScope las limita a sus matrículas activas: sin VER_TODAS
-        for obj in ("version_curso", "unidad", "leccion"):
+        for obj in ("version_curso", "unidad", "leccion", "edicion_curso"):
             self.assertTrue(holds("ESTUDIANTE", obj, "READ"), obj)
             self.assertFalse(holds("ESTUDIANTE", obj, "VER_TODAS"), obj)
             for staff in ("DOCENTE", "CREADOR", "REVISOR"):

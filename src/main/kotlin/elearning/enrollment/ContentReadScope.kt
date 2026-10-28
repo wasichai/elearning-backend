@@ -14,8 +14,9 @@ import wasichai.core.metadata.ObjectDefinition
 import wasichai.core.platform.SqlIdentifier
 import java.util.UUID
 
-// lo que una persona sin VER_TODAS lee del contenido (ADR-0012): las versiones de sus matrículas ACTIVAS, las unidades de
-// esas versiones y las lecciones de esas unidades. una versión en borrador o de otro curso se lee como inexistente.
+// lo que una persona sin VER_TODAS lee del contenido (ADR-0012, ADR-0013): las versiones PUBLICADAS o de sus matrículas
+// ACTIVAS, y las unidades, lecciones y ediciones de esas versiones. un borrador se lee como inexistente. los recursos
+// (E13.1) quedan solo para las versiones de sus matrículas.
 // las matrículas y las unidades se leen como quien llama, así que sus propios alcances ya aplican. nunca por rol
 @Component
 class ContentReadScope(
@@ -29,10 +30,16 @@ class ContentReadScope(
     ): RecordCriterion? {
         val name = definition.obj.name
         if (name !in SCOPED || currentUser.hasPermission(caller, SEE_ALL, definition.obj.id)) return null
+        // ADR-0013: la versión se ve si está publicada o es de una matrícula activa; lo demás cuelga de las versiones
+        // que se ven (las lee como quien llama, así que el alcance de version_curso ya aplica)
+        if (name == VERSION) {
+            val state = column(definition, STATE) ?: return RecordCriterion { _, _ -> NOTHING }
+            val enrolled = enrolledVersions(caller).map(UUID::fromString).toTypedArray()
+            return RecordCriterion { _, bind -> "($state = ${bind(PUBLISHED)} OR $ID_COLUMN = ANY(${bind(enrolled)}))" }
+        }
         val (column, ids) =
             when (name) {
-                VERSION -> ID_COLUMN to enrolledVersions(caller)
-                UNIT -> column(definition, VERSION) to enrolledVersions(caller)
+                UNIT, OFFERING -> column(definition, VERSION) to all(VERSION).map { it.id }
                 else -> column(definition, UNIT) to all(UNIT).map { it.id }
             }
         if (column == null || ids.isEmpty()) return RecordCriterion { _, _ -> NOTHING }
@@ -70,6 +77,8 @@ class ContentReadScope(
         const val VERSION = "version_curso"
         const val UNIT = "unidad"
         const val LESSON = "leccion"
+        const val OFFERING = "edicion_curso"
+        const val PUBLISHED = "PUBLICADA"
         const val ENROLLMENT = "matricula"
         const val STUDENT = "estudiante_id"
         const val STATE = "estado"
@@ -77,14 +86,6 @@ class ContentReadScope(
         const val SEE_ALL = "VER_TODAS"
         const val NOTHING = "false"
         const val ID_COLUMN = "\"id\""
-        val SCOPED = setOf(VERSION, UNIT, LESSON)
+        val SCOPED = setOf(VERSION, UNIT, LESSON, OFFERING)
     }
 }
-
-// una relación puede llegar como id o expandida
-private fun Map<String, Any?>.ref(name: String): String? =
-    when (val v = this[name]) {
-        is Map<*, *> -> v["id"]?.toString()
-        null -> null
-        else -> v.toString().takeIf { it.isNotBlank() }
-    }

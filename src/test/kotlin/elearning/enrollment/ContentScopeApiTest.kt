@@ -81,40 +81,45 @@ class ContentScopeApiTest : LmsApiTest() {
     }
 
     @Test
-    fun `a student reads only the version they are enrolled in, its units and its lessons`() {
-        assertEquals(listOf(enrolledVersion), ids("/api/objects/version_curso/records?size=200", student))
+    fun `a student reads published versions and their units and lessons, never a draft's`() {
+        val versions = get("/api/objects/version_curso/records?size=200", student)["content"].values()
+        assertTrue(enrolledVersion in versions.map { it["id"].asString() })
+        assertTrue(versions.all { it["attributes"]["estado"].asString() == "PUBLICADA" })
 
         val units = ids("/api/objects/unidad/records?size=200", student)
-        assertEquals(ids("/api/objects/unidad/records?size=200&version_curso=$enrolledVersion", admin).toSet(), units.toSet())
+        assertTrue(ids("/api/objects/unidad/records?size=200&version_curso=$enrolledVersion", admin).all { it in units })
+        val visible = versions.map { it["id"].asString() }.toSet()
+        assertTrue(get("/api/objects/unidad/records?size=200", student)["content"].values().all { it["attributes"]["version_curso"].asString() in visible })
         val lessons = get("/api/objects/leccion/records?size=200", student)["content"].values()
         assertTrue(lessons.isNotEmpty() && lessons.all { it["attributes"]["unidad"].asString() in units })
     }
 
     @Test
-    fun `drafts and other courses read as missing, even by their id`() {
+    fun `drafts read as missing, even by their id`() {
         val draft = ids("/api/objects/version_curso/records?estado=BORRADOR&size=1", admin).single()
-        val otherCourse = offeringOf("SGSPE-101-2027-01")["attributes"]["version_curso"].asString()
-        val otherUnit = ids("/api/objects/unidad/records?version_curso=$otherCourse&size=1", admin).single()
-        val otherLesson = ids("/api/objects/leccion/records?unidad=$otherUnit&size=1", admin).single()
+        val draftUnits = ids("/api/objects/unidad/records?version_curso=$draft&size=1", admin)
 
         assertEquals(HttpStatus.OK, status("/api/objects/version_curso/records/$enrolledVersion", student))
-        for (path in listOf(
-            "version_curso/records/$draft",
-            "version_curso/records/$otherCourse",
-            "unidad/records/$otherUnit",
-            "leccion/records/$otherLesson",
-        )) {
-            assertEquals(HttpStatus.NOT_FOUND, status("/api/objects/$path", student), path)
-        }
+        assertEquals(HttpStatus.NOT_FOUND, status("/api/objects/version_curso/records/$draft", student))
+        for (unit in draftUnits) assertEquals(HttpStatus.NOT_FOUND, status("/api/objects/unidad/records/$unit", student))
+        assertEquals(HttpStatus.NOT_FOUND, status("/api/objects/version_curso/records/${UUID.randomUUID()}", student))
+    }
+
+    // ADR-0013: el temario y las ediciones de lo publicado se ven como en el catálogo; lo que no, es el contenido
+    @Test
+    fun `the structure of other published courses is visible, as in the public catalog`() {
+        val otherCourse = offeringOf("SGSPE-101-2027-01")["attributes"]["version_curso"].asString()
+
+        assertEquals(HttpStatus.OK, status("/api/objects/version_curso/records/$otherCourse", student))
+        assertTrue(ids("/api/objects/edicion_curso/records?size=200", student).isNotEmpty())
     }
 
     @Test
-    fun `a student without enrollments reads no content at all`() {
+    fun `a student without enrollments sees published structure and never a draft`() {
         val nobody = newStudent()
 
-        for (obj in listOf("version_curso", "unidad", "leccion")) {
-            assertEquals(0, get("/api/objects/$obj/records?size=200", nobody)["totalElements"].asInt(), obj)
-        }
+        val states = get("/api/objects/version_curso/records?size=200", nobody)["content"].strings { it["attributes"]["estado"] }
+        assertTrue(states.isNotEmpty() && states.all { it == "PUBLICADA" }, states.toString())
     }
 
     @Test

@@ -28,3 +28,4 @@ secciones Contexto, Decisión, Alternativas consideradas y Consecuencias. El for
 | [0010](0010-importacion-asciidoc-por-etapas.md)                     | La importación AsciiDoc avanza por etapas y nunca publica sola    | aceptada                     | 2026-10-27 |
 | [0011](0011-catalogo-publico-leido-de-una-proyeccion.md)            | El catálogo público se lee de una proyección                      | aceptada                     | 2026-10-27 |
 | [0012](0012-aula-del-estudiante.md)                                 | El aula lee por matrícula, aísla el contenido y exige evidencia   | aceptada                     | 2026-10-28 |
+| [0013](0013-estructura-publicada-visible-recursos-por-matricula.md) | El estudiante ve lo publicado; los recursos, solo matriculado | aceptada | 2026-10-28 |
