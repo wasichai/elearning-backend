@@ -130,6 +130,41 @@ class ResourcesApiTest : LmsApiTest() {
         assertEquals(HttpStatus.OK, patch(creator, "recurso", draft, mapOf("tipo" to "PDF")))
     }
 
+    // RF-CON-01: un recurso es material reutilizable con su descripción; una misma versión publicada sirve a lecciones de
+    // cursos distintos sin copiarse
+    @Test
+    fun `one published resource version is reused by lessons of two courses`() {
+        val description = "Guía breve para entrar y salir del portal; sirve a cualquier curso que use el portal."
+        val resource = create(creator, "recurso", mapOf("titulo" to "Entrar y salir", "tipo" to "HTML", "idioma" to "es", "descripcion" to description))
+        val version = create(creator, "version_recurso", mapOf("recurso" to resource, "numero" to 1, "autor_id" to me(creator)))
+        assertEquals(HttpStatus.OK, upload(creator, version, "portal.html", "<h1>Portal</h1>".toByteArray()))
+        assertEquals(HttpStatus.OK, patch(creator, "version_recurso", version, mapOf("estado" to "EN_REVISION")))
+        assertEquals(HttpStatus.OK, patch(reviewer, "version_recurso", version, mapOf("estado" to "APROBADA")))
+        assertEquals(HttpStatus.OK, patch(admin, "version_recurso", version, mapOf("estado" to "PUBLICADA")))
+        val lessons = listOf(draftLesson(), draftLesson())
+
+        for (lesson in lessons) create(creator, "recurso_leccion", mapOf("leccion" to lesson, "version_recurso" to version, "orden" to 1))
+
+        val links = get("/api/objects/recurso_leccion/records?version_recurso=$version&size=10", admin)["content"].values()
+        assertEquals(lessons.toSet(), links.map { it["attributes"]["leccion"].asString() }.toSet())
+        assertEquals(1, get("/api/objects/version_recurso/records?recurso=$resource", admin)["totalElements"].asInt())
+        assertEquals(description, get("/api/objects/recurso/records/$resource", creator)["attributes"]["descripcion"].asString())
+    }
+
+    // una lección en el temario en borrador de un curso nuevo del creador
+    private fun draftLesson(): String {
+        val slug = uniqueName("reuso-").lowercase()
+        val course = create(creator, "curso", mapOf("codigo" to slug.uppercase(), "slug" to slug, "titulo" to "Curso que reutiliza"))
+        val version =
+            create(
+                creator,
+                "version_curso",
+                mapOf("curso" to course, "numero" to 1, "modalidad" to "ASINCRONA", "semanas" to 2, "autor_id" to me(creator)),
+            )
+        val unit = create(creator, "unidad", mapOf("version_curso" to version, "orden" to 1, "titulo" to "Unidad"))
+        return create(creator, "leccion", mapOf("unidad" to unit, "orden" to 1, "titulo" to "Lección con el recurso", "tipo" to "LECTURA"))
+    }
+
     @Test
     fun `a file over the limit is refused`() {
         val resource = create(creator, "recurso", mapOf("titulo" to "Grande", "tipo" to "PDF", "idioma" to "es"))

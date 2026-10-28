@@ -554,6 +554,11 @@
           "required": true
         },
         {
+          "name": "descripcion",
+          "label": "Descripción (de qué trata y para qué sirve, para reutilizarlo)",
+          "type": "LONG_TEXT"
+        },
+        {
           "name": "tipo",
           "label": "Tipo (decide cómo se muestra)",
           "type": "ENUM",

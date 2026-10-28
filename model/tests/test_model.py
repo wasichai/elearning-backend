@@ -59,6 +59,14 @@ class RealModelTest(unittest.TestCase):
         for obj in ("recurso", "version_recurso", "recurso_leccion"):
             self.assertFalse(holds("ESTUDIANTE", obj, "VER_TODAS"), obj)
 
+    def test_resources_carry_the_learning_resource_fields(self):
+        # RF-CON-01: identificador estable, título, descripción, tipo, idioma y responsable; autor y estado en su versión
+        def fields(name: str) -> set[str]:
+            return {f["name"] for f in next(o for o in MODEL["objects"] if o["name"] == name)["fields"]}
+
+        self.assertLessEqual({"codigo", "titulo", "descripcion", "tipo", "idioma", "responsable_editorial_id"}, fields("recurso"))
+        self.assertLessEqual({"numero", "autor_id", "estado", "archivo"}, fields("version_recurso"))
+
     def test_no_teacher_sees_every_student_before_assignment_scope(self):
         # revisión de la Fase 2: sin alcance por asignación (F3), VER_TODAS abriría matrículas y progreso de todos
         for obj in ("matricula", "progreso_leccion"):
