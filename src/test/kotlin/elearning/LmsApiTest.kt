@@ -15,7 +15,7 @@ import java.util.concurrent.TimeUnit
 // script real (model/apply.py --demo), contra esta misma aplicación: el contrato que se prueba es el que usa producción.
 // la base de datos la comparten todas las clases de la corrida, así que el aprovisionamiento corre una sola vez
 // el catálogo público es el de la organización sembrada por Wasichai («demo»)
-@TestPropertySource(properties = ["lms.public.organization=demo"])
+@TestPropertySource(properties = ["lms.public.organization=demo", "wasichai.files.local.path=build/test-archivos"])
 abstract class LmsApiTest : WasichaiIntegrationTest() {
     @Autowired
     private lateinit var environment: Environment

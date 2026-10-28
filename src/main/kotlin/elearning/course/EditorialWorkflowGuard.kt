@@ -35,9 +35,12 @@ class EditorialWorkflowGuard(
     override suspend fun beforeWrite(change: RecordWrite) {
         if (change.userId == null) return
         when (change.objectName) {
-            VERSION -> version(change, currentUser.require())
+            // una versión de recurso sigue el mismo flujo que una de curso (ADR-0012): autor, transiciones con su acción,
+            // sin autoaprobación, lo publicado inmutable con su archivo
+            VERSION, RESOURCE_VERSION -> version(change, currentUser.require())
             UNIT -> curriculum(change, listOfNotNull(change.before.ref(VERSION), change.attributes.ref(VERSION)))
             LESSON -> curriculum(change, listOfNotNull(change.before.ref(UNIT), change.attributes.ref(UNIT)).mapNotNull { unitVersion(it) })
+            RESOURCE_LINK -> resourceLink(change)
         }
     }
 
@@ -110,6 +113,28 @@ class EditorialWorkflowGuard(
         }
     }
 
+    // el recurso de una lección: solo en temario en borrador y solo una versión de recurso ya publicada
+    private suspend fun resourceLink(change: RecordWrite) {
+        val lessons = listOfNotNull(change.before.ref(LESSON), change.attributes.ref(LESSON))
+        curriculum(change, lessons.mapNotNull { lessonVersion(it) })
+        val resource = change.attributes.ref(RESOURCE_VERSION) ?: return
+        val state =
+            records
+                .getObject()
+                .get(RESOURCE_VERSION, UUID.fromString(resource))
+                .attributes
+                .text(STATE)
+        if (state != PUBLISHED) throw ConflictException("A lesson only uses published resource versions")
+    }
+
+    private suspend fun lessonVersion(lesson: String): String? =
+        records
+            .getObject()
+            .get(LESSON, UUID.fromString(lesson))
+            .attributes
+            .ref(UNIT)
+            ?.let { unitVersion(it) }
+
     private suspend fun unitVersion(unit: String): String? =
         records
             .getObject()
@@ -121,6 +146,8 @@ class EditorialWorkflowGuard(
         const val VERSION = "version_curso"
         const val UNIT = "unidad"
         const val LESSON = "leccion"
+        const val RESOURCE_VERSION = "version_recurso"
+        const val RESOURCE_LINK = "recurso_leccion"
         const val STATE = "estado"
         const val AUTHOR = "autor_id"
         const val APPROVED_CREDITS = "creditos_aprobados"

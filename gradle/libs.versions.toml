@@ -11,6 +11,8 @@ springdoc = "3.2.0"
 [libraries]
 wasichai-bom = { module = "wasichai:wasichai-bom", version.ref = "wasichai" }
 wasichai-starter = { module = "wasichai:wasichai-spring-boot-starter" }
+# archivos de los recursos (ADR-0012): FileStore local en desarrollo, S3 por configuración
+wasichai-starter-files = { module = "wasichai:wasichai-spring-boot-starter-files" }
 wasichai-test = { module = "wasichai:wasichai-test" }
 springdoc-webflux-api = { module = "org.springdoc:springdoc-openapi-starter-webflux-api", version.ref = "springdoc" }
 
