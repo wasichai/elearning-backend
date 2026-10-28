@@ -117,6 +117,10 @@
         {
           "name": "RETIRAR",
           "label": "Retirar"
+        },
+        {
+          "name": "VER_TODAS",
+          "label": "Ver todo el contenido, no solo el de las matrículas propias"
         }
       ],
       "fields": [
@@ -275,7 +279,13 @@
           "type": "DECIMAL"
         }
       ],
-      "uniqueConstraints": [["version_curso", "orden"]]
+      "uniqueConstraints": [["version_curso", "orden"]],
+      "actions": [
+        {
+          "name": "VER_TODAS",
+          "label": "Ver todo el contenido, no solo el de las matrículas propias"
+        }
+      ]
     },
     {
       "name": "leccion",
@@ -319,7 +329,13 @@
           "type": "TEXT"
         }
       ],
-      "uniqueConstraints": [["unidad", "orden"]]
+      "uniqueConstraints": [["unidad", "orden"]],
+      "actions": [
+        {
+          "name": "VER_TODAS",
+          "label": "Ver todo el contenido, no solo el de las matrículas propias"
+        }
+      ]
     },
     {
       "name": "edicion_curso",
