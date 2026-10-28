@@ -10,15 +10,15 @@ ejecutando las pruebas y los recorridos indicados, en local y en CI, y el result
 
 ## Resumen
 
-| Fase | Objetivo                                                                                   | Estado (2026-10-28)                                                  |
-| ---- | ------------------------------------------------------------------------------------------ | -------------------------------------------------------------------- |
-| F0   | Investigación y arquitectura                                                               | completada (épicas E0, E1)                                           |
-| F1   | Esqueleto ejecutable y primer incremento: catálogo público con carga y créditos propuestos | completada (2026-10-28): épicas E2–E10, 42 requisitos implementados  |
-| F2   | LMS básico: aula, matrícula, unidades, lecciones, recursos y progreso                      | criterio cumplido (2026-10-28): épicas E12–E16; 16 pendientes (#103) |
-| F3   | Evaluaciones y operación docente                                                           | planificada                                                          |
-| F4   | Estudio editorial e importador AsciiDoc                                                    | planificada                                                          |
-| F5   | IA y multimedia                                                                            | planificada                                                          |
-| F6   | Calidad, reputación y despliegue                                                           | planificada                                                          |
+| Fase | Objetivo                                                                                   | Estado (2026-10-28)                                                          |
+| ---- | ------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------- |
+| F0   | Investigación y arquitectura                                                               | completada (épicas E0, E1)                                                   |
+| F1   | Esqueleto ejecutable y primer incremento: catálogo público con carga y créditos propuestos | completada (2026-10-28): épicas E2–E10, 42 requisitos implementados          |
+| F2   | LMS básico: aula, matrícula, unidades, lecciones, recursos y progreso                      | criterio cumplido (2026-10-28): épicas E12–E16; pendientes a F3/F4/F6 (#103) |
+| F3   | Evaluaciones y operación docente                                                           | planificada                                                                  |
+| F4   | Estudio editorial e importador AsciiDoc                                                    | planificada                                                                  |
+| F5   | IA y multimedia                                                                            | planificada                                                                  |
+| F6   | Calidad, reputación y despliegue                                                           | planificada                                                                  |
 
 Las épicas viven en [wasichai/elearning-backend](https://github.com/wasichai/elearning-backend/issues); los pasos de
 frontend, en [wasichai/elearning-frontend](https://github.com/wasichai/elearning-frontend/issues). Cada paso es un
@@ -153,7 +153,8 @@ sobre la semilla de demostración; pruebas IDOR en todos los endpoints con ident
 **Estado (2026-10-28).** Criterio cumplido: recorridos 1–4 contra el backend real, en local y en CI (trabajo
 `e2e-real` del frontend), y pruebas IDOR en matrícula, aula, eventos y archivos. Requisitos F2 implementados con su PR
 en [requirements.md](requirements.md); los 16 que aún no cumplen su aceptación se siguen en
-[#103](https://github.com/wasichai/elearning-backend/issues/103), a decidir si cierran en un F2.1 o pasan a F3/F4/F6.
+[#103](https://github.com/wasichai/elearning-backend/issues/103), repartidos por decisión de la dirección: RF-ROL-04, RF-ROL-03/05, RF-AUL-02…05, RF-ACA-05,
+RF-ADM-02 y RNF-UX-06/08 a F3; RF-CON-01/02, RNF-SEG-07 y RNF-ARQ-08 a F4; RF-CAT-08 a F6.
 Diseño: ADR-0012 y ADR-0013.
 
 **Riesgos.** La forma exacta de componer `RecordReadScope` con asignaciones por recurso está a verificar en el código
@@ -171,7 +172,7 @@ sesiones recurrentes y asistencia, adaptador de videoconferencia, vistas del doc
 finalización, certificados, notificaciones de calendario y publicación.
 
 **Requisitos.** RF-CAT-09, RF-ACA-08/09, RF-AUL-08/09, RF-SES-01…05, RF-EVA-01…08, RF-LAB-01…03, RF-ADM-03,
-RNF-OPS-03, RNF-OSS-06.
+RNF-OPS-03, RNF-OSS-06; además RF-ROL-03…05, RF-AUL-02…05, RF-ACA-05, RF-ADM-02, RNF-UX-06/08 (de F2).
 
 **Dependencias.** F2 (matrícula, progreso, alcance por recurso).
 
@@ -196,7 +197,7 @@ servidor: el formato del certificado puede necesitar un generador aparte. Exposi
 (ADR-0010), generación HTML y PDF asíncrona, estudio del creador (`studioModule`), bandeja del revisor
 (`reviewModule`) con diferencias y comentarios por sección, aprobación sin autoaprobación, publicación inmutable.
 
-**Requisitos.** RF-CON-03…07, RF-IMP-01…05, RF-ROL-06, RNF-ARQ-09, RNF-SEG-08.
+**Requisitos.** RF-CON-03…07, RF-IMP-01…05, RF-ROL-06, RNF-ARQ-09, RNF-SEG-08; además RF-CON-01/02, RNF-SEG-07, RNF-ARQ-08 (de F2).
 
 **Dependencias.** F2 (versiones y recursos); F3 no es requisito previo salvo para publicar evaluaciones.
 
@@ -249,7 +250,7 @@ crédito configurables y aprobación humana, lista de espera, informes, salud de
 y privacidad, auditoría de accesibilidad, mediciones de rendimiento, copias de seguridad, despliegue k3s, regresión
 completa y licencia (si el titular la autoriza).
 
-**Requisitos.** RF-ACA-10, RF-CRE-07/08, RF-REP-01…06, RF-ADM-04/05, RNF-SEG-10…12, RNF-OPS-04/05, RNF-OSS-07.
+**Requisitos.** RF-ACA-10, RF-CRE-07/08, RF-REP-01…06, RF-ADM-04/05, RNF-SEG-10…12, RNF-OPS-04/05, RNF-OSS-07; además RF-CAT-08 (de F2).
 
 **Dependencias.** F3 para valoraciones de docentes; F4 para valoraciones de recursos; F5 para los indicadores de la
 canalización.
