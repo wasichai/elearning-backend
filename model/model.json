@@ -6,7 +6,9 @@
     "estado_edicion": ["PROGRAMADA", "INSCRIPCION_ABIERTA", "EN_CURSO", "FINALIZADA", "CANCELADA"],
     "sistema_credito": ["NINGUNO", "ECTS", "SCH"],
     "tipo_leccion": ["LECTURA", "VIDEO", "PRESENTACION", "LABORATORIO", "EVALUACION", "SESION"],
-    "rol_docente": ["TITULAR", "ASISTENTE"]
+    "rol_docente": ["TITULAR", "ASISTENTE"],
+    "estado_matricula": ["ACTIVA", "RETIRADA", "FINALIZADA"],
+    "resultado_matricula": ["SIN_RESULTADO", "APROBADO", "NO_APROBADO"]
   },
   "objects": [
     {
@@ -441,6 +443,55 @@
         }
       ],
       "uniqueConstraints": [["edicion_curso", "perfil_docente"]]
+    },
+    {
+      "name": "matricula",
+      "label": "Matrícula",
+      "pluralLabel": "Matrículas",
+      "description": "Un estudiante en una edición (Enrollment). Solo la crea el comando de matrícula (ADR-0012): ventana, cupo y versión de la edición.",
+      "apiOnly": true,
+      "actions": [
+        {
+          "name": "VER_TODAS",
+          "label": "Ver todas las matrículas, no solo las propias"
+        }
+      ],
+      "fields": [
+        {
+          "name": "estudiante_id",
+          "label": "Estudiante (usuario de Wasichai)",
+          "type": "UUID",
+          "required": true,
+          "indexed": true
+        },
+        {
+          "name": "estado",
+          "label": "Estado",
+          "type": "ENUM",
+          "enum": "estado_matricula",
+          "required": true,
+          "defaultValue": "ACTIVA"
+        },
+        {
+          "name": "resultado",
+          "label": "Resultado",
+          "type": "ENUM",
+          "enum": "resultado_matricula",
+          "required": true,
+          "defaultValue": "SIN_RESULTADO"
+        },
+        {
+          "name": "matriculado_en",
+          "label": "Matriculado en",
+          "type": "DATETIME"
+        },
+        {
+          "name": "finalizado_en",
+          "label": "Finalizado en",
+          "type": "DATETIME"
+        }
+      ],
+      "uniqueConstraints": [["edicion", "estudiante_id"]]
     }
   ],
   "relationships": [
@@ -511,6 +562,26 @@
       "source": "docente_edicion",
       "target": "perfil_docente",
       "fieldName": "perfil_docente",
+      "required": true
+    },
+    {
+      "name": "matricula_edicion",
+      "label": "Edición",
+      "inverseLabel": "Matrículas",
+      "type": "MANY_TO_ONE",
+      "source": "matricula",
+      "target": "edicion_curso",
+      "fieldName": "edicion",
+      "required": true
+    },
+    {
+      "name": "matricula_version",
+      "label": "Versión del curso",
+      "inverseLabel": "Matrículas",
+      "type": "MANY_TO_ONE",
+      "source": "matricula",
+      "target": "version_curso",
+      "fieldName": "version_curso",
       "required": true
     }
   ]

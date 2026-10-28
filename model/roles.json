@@ -1,5 +1,5 @@
 {
-  "_comentario": "Roles del LMS. ADMIN es de Wasichai y tiene todo, incluidas las acciones declaradas. Una cuenta puede tener varios roles. Las acciones declaradas no protegen nada por sí solas: el flujo editorial lo hace cumplir EditorialWorkflowGuard (transiciones con su acción, sin autoaprobación, lo publicado inmutable). PUBLICAR y RETIRAR solo los tiene ADMIN hasta el estudio editorial (F4). DOCENTE no edita ediciones hasta que su alcance por asignación exista (F3); ESTUDIANTE solo ve categorías y cursos: lo publicado lo lee del catálogo público y su aula llega en F2. perfil_docente.usuario_id (la cuenta que respalda un perfil) solo lo ve ADMIN (#65).",
+  "_comentario": "Roles del LMS. ADMIN es de Wasichai y tiene todo, incluidas las acciones declaradas. Una cuenta puede tener varios roles. Las acciones declaradas no protegen nada por sí solas: el flujo editorial lo hace cumplir EditorialWorkflowGuard (transiciones con su acción, sin autoaprobación, lo publicado inmutable). PUBLICAR y RETIRAR solo los tiene ADMIN hasta el estudio editorial (F4). DOCENTE no edita ediciones hasta que su alcance por asignación exista (F3); ESTUDIANTE solo ve categorías y cursos: lo publicado lo lee del catálogo público y su aula llega en F2. perfil_docente.usuario_id (la cuenta que respalda un perfil) solo lo ve ADMIN (#65). matricula es apiOnly: ESTUDIANTE la crea solo por el comando de matrícula y lee solo las suyas (ADR-0012).",
   "roles": [
     {
       "name": "ESTUDIANTE",
@@ -12,6 +12,10 @@
         {
           "object": "curso",
           "actions": ["READ"]
+        },
+        {
+          "object": "matricula",
+          "actions": ["READ", "CREATE"]
         }
       ]
     },
@@ -50,6 +54,10 @@
         {
           "object": "docente_edicion",
           "actions": ["READ"]
+        },
+        {
+          "object": "matricula",
+          "actions": ["READ", "VER_TODAS"]
         }
       ],
       "fieldPermissions": [
