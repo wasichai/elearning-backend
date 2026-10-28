@@ -1,0 +1,81 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# lo mínimo: leer el código y los paquetes de Wasichai (GitHub Packages pide token incluso para leer, ADR-0002)
+permissions:
+  contents: read
+  packages: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: build, pruebas e integración
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      GITHUB_ACTOR: ${{ github.actor }}
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '25'
+      - uses: gradle/actions/setup-gradle@v5
+      # formato (ktlint), unitarias y arquitectura; después integración con Testcontainers postgres:18
+      - run: ./gradlew build --no-daemon
+      - run: ./gradlew integrationTest --no-daemon --max-workers=2
+      - name: informes de pruebas
+        if: failure()
+        uses: actions/upload-artifact@v5
+        with:
+          name: test-reports
+          path: build/reports/tests/
+          retention-days: 7
+
+  model:
+    name: modelo y datos de demostración
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+      - run: python3 model/apply.py --validate-only --demo
+      - run: python3 -m unittest -v
+        working-directory: model
+
+  format:
+    name: formato de documentos y configuración
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .node-version
+      - run: yarn install --frozen-lockfile --ignore-scripts
+      - run: yarn format:check
+
+  commits:
+    name: mensajes de commit
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .node-version
+      - run: yarn install --frozen-lockfile --ignore-scripts
+      - run: npx commitlint --from ${{ github.event.pull_request.base.sha }} --to ${{ github.event.pull_request.head.sha }} --verbose
