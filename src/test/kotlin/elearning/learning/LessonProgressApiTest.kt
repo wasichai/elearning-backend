@@ -1,153 +1,17 @@
 package elearning.learning
 
-import elearning.LmsApiTest
-import kotlinx.coroutines.runBlocking
-import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
-import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
-import tools.jackson.databind.JsonNode
-import wasichai.core.data.RecordRequest
-import wasichai.core.data.RecordService
-import java.time.LocalDate
-import java.time.ZoneId
 import java.util.UUID
 import java.util.concurrent.Callable
 import java.util.concurrent.Executors
 
 // reglas del progreso (ADR-0012): solo avanza, cada tipo de lección se completa con su evidencia y el tiempo con la
-// página abierta no cuenta. cada prueba usa un curso propio con lectura, vídeo y evaluación, puesto por la plataforma
-// como lo haría la carga de la demo (que no tiene vídeos), y retirado al terminar para no aparecer en el catálogo de otras
-// pruebas
-class LessonProgressApiTest : LmsApiTest() {
-    @Autowired
-    private lateinit var records: RecordService
-
-    private val admin by lazy { bearer() }
-    private val published = mutableListOf<String>()
-
-    @AfterEach
-    fun retireCourses() =
-        runBlocking {
-            records.asPlatform(ORG) {
-                published.forEach { records.patch("version_curso", UUID.fromString(it), RecordRequest(mapOf("estado" to "RETIRADA")), null, null) }
-            }
-            published.clear()
-        }
-
-    private class Course(
-        val offering: String,
-        val reading: String,
-        val video: String,
-        val assessment: String,
-    )
-
-    private fun course(): Course =
-        runBlocking {
-            records.asPlatform(ORG) {
-                val code = uniqueName("PRG-").uppercase()
-                val course =
-                    records.create(
-                        "curso",
-                        RecordRequest(
-                            mapOf(
-                                "codigo" to code,
-                                "slug" to code.lowercase(),
-                                "titulo" to "Curso de progreso",
-                                "idioma" to "es",
-                                "nivel" to "INICIAL",
-                            ),
-                        ),
-                    )
-                val version =
-                    records.create(
-                        "version_curso",
-                        RecordRequest(
-                            mapOf(
-                                "curso" to course.id,
-                                "numero" to 1,
-                                "estado" to "BORRADOR",
-                                "modalidad" to "ASINCRONA",
-                                "semanas" to 1,
-                                "sistema_credito" to "NINGUNO",
-                                "contenido_ilustrativo" to true,
-                            ),
-                        ),
-                    )
-                val unit = records.create("unidad", RecordRequest(mapOf("version_curso" to version.id, "orden" to 1, "titulo" to "Unidad 1")))
-
-                suspend fun lesson(
-                    order: Int,
-                    type: String,
-                ) = records.create("leccion", RecordRequest(mapOf("unidad" to unit.id, "orden" to order, "titulo" to "Lección $order", "tipo" to type)))
-                val reading = lesson(1, "LECTURA")
-                val video = lesson(2, "VIDEO")
-                val assessment = lesson(3, "EVALUACION")
-                records.patch("version_curso", UUID.fromString(version.id), RecordRequest(mapOf("estado" to "PUBLICADA")), null, null)
-                published += version.id
-                val today = LocalDate.now(ZoneId.of("America/Lima"))
-                records.create(
-                    "edicion_curso",
-                    RecordRequest(
-                        mapOf(
-                            "codigo" to code,
-                            "version_curso" to version.id,
-                            "estado" to "INSCRIPCION_ABIERTA",
-                            "fecha_inicio" to today.toString(),
-                            "fecha_fin" to today.plusDays(30).toString(),
-                            "zona_horaria" to "America/Lima",
-                            "inscripcion_desde" to today.minusDays(1).toString(),
-                            "inscripcion_hasta" to today.plusDays(5).toString(),
-                        ),
-                    ),
-                )
-                Course(code, reading.id, video.id, assessment.id)
-            }
-        }
-
-    private fun newStudent(): String {
-        val email = "${uniqueName("est")}@demo.wasichai-learning.test"
-        client
-            .post()
-            .uri("/api/users")
-            .header("Authorization", admin)
-            .bodyValue(mapOf("email" to email, "displayName" to "Estudiante", "password" to DEMO_PASSWORD, "roles" to listOf("ESTUDIANTE")))
-            .exchange()
-            .expectStatus()
-            .isCreated
-        return bearer(email, DEMO_PASSWORD)
-    }
-
-    private fun post(
-        token: String?,
-        path: String,
-        body: Map<String, Any?>,
-    ): Pair<HttpStatus, JsonNode?> {
-        val spec = client.post().uri(path).bodyValue(body)
-        val r = (if (token == null) spec else spec.header("Authorization", token)).exchange().expectBody(String::class.java).returnResult()
-        return HttpStatus.valueOf(r.status.value()) to r.responseBody?.let { runCatching { json.readTree(it) }.getOrNull() }
-    }
-
-    private fun enroll(
-        token: String,
-        course: Course,
-    ): JsonNode {
-        val (status, body) = post(token, "/api/lms/enrollments", mapOf("offering" to course.offering))
-        assertTrue(status.is2xxSuccessful, body.toString())
-        return body!!
-    }
-
-    private fun event(
-        token: String?,
-        enrollment: String,
-        lesson: String,
-        type: String,
-        clientEventId: String = UUID.randomUUID().toString(),
-    ) = post(token, "/api/lms/classroom/enrollments/$enrollment/lessons/$lesson/events", mapOf("type" to type, "clientEventId" to clientEventId))
-
+// página abierta no cuenta
+class LessonProgressApiTest : ClassroomApiTestSupport() {
     @Test
     fun `a reading is started and then completed by the student, and never goes back`() {
         val course = course()
@@ -262,7 +126,7 @@ class LessonProgressApiTest : LmsApiTest() {
         assertEquals(HttpStatus.BAD_REQUEST, event(student, enrollment, course.reading, "OPENED_FOR_AN_HOUR").first)
         assertEquals(
             HttpStatus.BAD_REQUEST,
-            post(
+            call(
                 student,
                 "/api/lms/classroom/enrollments/$enrollment/lessons/${course.reading}/events",
                 mapOf("type" to "STARTED"),
@@ -272,11 +136,7 @@ class LessonProgressApiTest : LmsApiTest() {
 
         // el progreso no se escribe por la API genérica, y nadie lee el de otro
         val forged = mapOf("attributes" to mapOf("matricula" to enrollment, "leccion" to course.video, "estudiante_id" to "x", "estado" to "COMPLETADA"))
-        assertTrue(post(student, "/api/objects/progreso_leccion/records", forged).first.is4xxClientError)
+        assertTrue(call(student, "/api/objects/progreso_leccion/records", forged).first.is4xxClientError)
         assertEquals(0, get("/api/objects/progreso_leccion/records?matricula=$enrollment", other)["totalElements"].asInt())
-    }
-
-    companion object {
-        val ORG: UUID = UUID.fromString("00000000-0000-0000-0000-000000000001")
     }
 }

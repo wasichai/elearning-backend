@@ -200,9 +200,12 @@ queda ninguna. `percent` es entero (0–100) sobre las lecciones que se pueden c
 
 ### GET /api/lms/classroom/enrollments
 
-Mis matrículas activas → `Enrollment[]`, la de inicio más próximo primero.
+Mis matrículas `ACTIVA` → `Enrollment[]`, la de inicio más próximo primero. Solo las propias, también para quien puede
+ver todas las matrículas (un docente): el aula es del estudiante.
 
 ### GET /api/lms/classroom/enrollments/{id}
+
+El aula de una matrícula propia; ajena o inexistente → `404`, también para un docente.
 
 `Classroom` = `Enrollment` más:
 
@@ -246,7 +249,10 @@ Mis matrículas activas → `Enrollment[]`, la de inicio más próximo primero.
 - `progress.status`: `NO_INICIADA` · `INICIADA` · `COMPLETADA` · `APROBADA` (F3). `evidence` solo cuando está completada:
   `FINALIZACION_EXPLICITA` (la marcó el estudiante) o `FIN_DE_VIDEO`. `startedAt`, `completedAt` y `evidence` son `null`
   cuando no aplican.
-- `file` puede ser `null` (recurso sin archivo); su `url` es la descarga de `wasichai-files`, con la misma sesión. Un
+- El `id` de un recurso es el de su **versión** (la que usa la lección); `version` es su número.
+- `file` puede ser `null` (recurso sin archivo); su `url` es siempre una ruta del mismo origen,
+  `/api/objects/version_recurso/records/<id>/files/archivo`: la descarga de `wasichai-files`, con la misma sesión y el
+  mismo alcance que el registro. Un
   `HTML` se muestra en un `iframe` con `sandbox` sin `allow-scripts`; `PDF` se descarga; `VIDEO` se reproduce.
 
 ### POST /api/lms/classroom/enrollments/{id}/lessons/{lessonId}/events
