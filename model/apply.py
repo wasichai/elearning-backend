@@ -352,10 +352,28 @@ def validate_demo(data: dict, model: dict, roles: dict | None = None) -> None:
 # ---------------------------------------------------------------------------------------------------------------------
 
 
+# http en claro solo hacia esta máquina: la contraseña del administrador y su token viajan en cada llamada
+LOOPBACK = {"localhost", "127.0.0.1", "::1"}
+
+
+def check_url(url: str) -> None:
+    parts = urllib.parse.urlsplit(url)
+    if parts.scheme == "https" or (parts.scheme == "http" and parts.hostname in LOOPBACK):
+        return
+    raise ValueError(f"{url}: usa https (http solo para localhost)")
+
+
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    # urllib reenvía Authorization al seguir una redirección, aunque cambie de servidor: no se sigue ninguna
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None
+
+
 class Client:
     def __init__(self, base_url: str, token: str | None = None):
         self.base = base_url.rstrip("/")
         self.token = token
+        self.opener = urllib.request.build_opener(_NoRedirect)
 
     def call(self, method: str, path: str, body: object | None = None, ok_statuses: tuple[int, ...] = ()) -> object | None:
         data = None if body is None else json.dumps(body).encode()
@@ -366,7 +384,7 @@ class Client:
         if self.token:
             request.add_header("Authorization", f"Bearer {self.token}")
         try:
-            with urllib.request.urlopen(request, timeout=60) as response:
+            with self.opener.open(request, timeout=60) as response:
                 raw = response.read().decode()
         except urllib.error.HTTPError as error:
             raw = error.read().decode()
@@ -634,6 +652,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--demo", action="store_true", help="valida y aplica también los datos de demostración")
     parser.add_argument("--demo-data", type=Path, default=HERE / "demo" / "data.json")
     args = parser.parse_args(argv)
+    if args.password is not None and args.password != os.environ.get("WASICHAI_PASSWORD"):
+        print("Aviso: --password queda en el historial del shell y en la lista de procesos; usa WASICHAI_PASSWORD.", file=sys.stderr)
 
     model = load(args.model)
     roles = load(args.roles) if args.roles.exists() else None
@@ -655,6 +675,11 @@ def main(argv: list[str] | None = None) -> int:
         print(f"Datos de demostración válidos: {len(demo.get('users', []))} usuarios, {len(demo.get('records', []))} registros.")
     if args.validate_only:
         return 0
+    try:
+        check_url(args.url)
+    except ValueError as error:
+        print(f"Error: {error}", file=sys.stderr)
+        return 2
     if not args.email or not args.password:
         print("Faltan credenciales: --email/--password o WASICHAI_EMAIL/WASICHAI_PASSWORD.", file=sys.stderr)
         return 2
