@@ -209,10 +209,12 @@ el cuándo, en [`roadmap.md`](roadmap.md).
   revisor, solo las versiones asignadas; el estudiante, solo sus matrículas.
   _Aceptación:_ pruebas de autorización negativa cambiando identificadores (RNF-SEG-03).
   _Pendiente de F2 (#103):_ hecho para el estudiante (sus matrículas, su progreso, su contenido); el docente aún ve todas las ediciones (llega con su espacio, F3).
-- **RF-ROL-05** · F3 · planificado — Nadie se asigna privilegios a sí mismo; la gestión de roles queda auditada.
+- **RF-ROL-05** · F3 · implementado ([#135](https://github.com/wasichai/elearning-backend/pull/135)) — Nadie se asigna privilegios a sí mismo; la gestión de roles queda auditada.
   _Aceptación:_ prueba de autoasignación rechazada. Si Wasichai ya lo impide (a verificar), la prueba documenta ese
   comportamiento; si no, se añade una regla propia.
-  _Pendiente de F2 (#103):_ sin verificar todavía en Wasichai.
+  _Verificado en Wasichai 1.6.0:_ usuarios, sus roles y los permisos de un rol exigen `MANAGE_ORGANIZATION`, que solo
+  tiene ADMIN (`apply.py` no deja dar permisos globales a un rol LMS); los cambios quedan en `/api/audit`. Sin regla
+  propia: Wasichai no distingue «a sí mismo», pero quien puede asignar roles ya es administrador.
 - **RF-ROL-06** · F4 · planificado — Sin autoaprobación: el autor de una versión no puede aprobarla cuando la
   política exige revisión independiente.
   _Aceptación:_ prueba con un usuario CREADOR + REVISOR sobre su propia versión → rechazo.
