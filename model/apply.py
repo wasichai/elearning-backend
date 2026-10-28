@@ -194,6 +194,16 @@ def validate(model: dict, roles: dict | None = None) -> None:
                 for action in grant.get("actions", []):
                     if action not in RECORD_ACTIONS | declared:
                         problems.append(f"rol '{rname}': acción '{action}' no existe en '{obj}'")
+            for fp in role.get("fieldPermissions", []):
+                obj, fname = fp.get("object"), fp.get("field")
+                if obj not in objects:
+                    problems.append(f"rol '{rname}': permiso de campo sobre objeto desconocido {obj!r}")
+                    continue
+                known = {f.get("name") for f in objects[obj].get("fields", [])} | relationship_fields.get(obj, set())
+                if fname not in known:
+                    problems.append(f"rol '{rname}': permiso de campo sobre campo desconocido '{obj}.{fname}'")
+                if not isinstance(fp.get("read"), bool) or not isinstance(fp.get("write"), bool):
+                    problems.append(f"rol '{rname}': '{obj}.{fname}' necesita read y write booleanos")
     if problems:
         raise ModelError(problems)
 
@@ -541,6 +551,17 @@ def apply_roles(client: Client, roles: dict, report: Report) -> None:
             entries = [{"objectName": o, "action": a} for o, a in sorted(wanted, key=lambda p: (p[0] or "", p[1]))]
             client.call("PUT", f"/api/roles/{name}/permissions", {"permissions": entries})
             report.add(f"permisos de {name} ({len(entries)})")
+        # permisos de campo (#65): solo si el rol los declara; el PUT reemplaza el conjunto, así que va entero o no va
+        if "fieldPermissions" in role:
+            want_fields = sorted((f["object"], f["field"], f["read"], f["write"]) for f in role["fieldPermissions"])
+            have_fields = sorted(
+                (f.get("objectName"), f.get("fieldName"), bool(f.get("read")), bool(f.get("write")))
+                for f in (have.get(name) or {}).get("fieldPermissions", [])
+            )
+            if want_fields != have_fields:
+                fields = [{"objectName": o, "fieldName": f, "read": r, "write": w} for o, f, r, w in want_fields]
+                client.call("PUT", f"/api/roles/{name}/field-permissions", {"fields": fields})
+                report.add(f"permisos de campo de {name} ({len(fields)})")
 
 
 def _content(answer: object) -> list[dict]:

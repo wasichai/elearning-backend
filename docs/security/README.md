@@ -282,8 +282,8 @@ comprueba también que **nada cambió**, releyendo como propietario.
 Rechazos de `EditorialWorkflowGuard`: `403` falta la acción o es autoaprobación o borrador ajeno; `409` transición
 inexistente o contenido congelado; `400` versión a nombre de otro. Pruebas: `EditorialWorkflowGuardApiTest`.
 
-**Residual conocido (F1)**: DOCENTE, CREADOR y REVISOR siguen leyendo `perfil_docente.usuario_id` por la API de la
-plataforma; ocultarlo pide permisos de campo, que `model/apply.py` aún no aplica (issue propio).
+**Permisos de campo**: `perfil_docente.usuario_id` (la cuenta que respalda un perfil) solo lo lee ADMIN; DOCENTE,
+CREADOR y REVISOR ven el perfil sin ese campo (`fieldPermissions` en `model/roles.json`, aplicados por `apply.py`; #65).
 
 ## 10. Pendientes y a verificar
 

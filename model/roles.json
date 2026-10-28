@@ -1,5 +1,5 @@
 {
-  "_comentario": "Roles del LMS. ADMIN es de Wasichai y tiene todo, incluidas las acciones declaradas. Una cuenta puede tener varios roles. Las acciones declaradas no protegen nada por sí solas: el flujo editorial lo hace cumplir EditorialWorkflowGuard (transiciones con su acción, sin autoaprobación, lo publicado inmutable). PUBLICAR y RETIRAR solo los tiene ADMIN hasta el estudio editorial (F4). DOCENTE no edita ediciones hasta que su alcance por asignación exista (F3); ESTUDIANTE solo ve categorías y cursos: lo publicado lo lee del catálogo público y su aula llega en F2.",
+  "_comentario": "Roles del LMS. ADMIN es de Wasichai y tiene todo, incluidas las acciones declaradas. Una cuenta puede tener varios roles. Las acciones declaradas no protegen nada por sí solas: el flujo editorial lo hace cumplir EditorialWorkflowGuard (transiciones con su acción, sin autoaprobación, lo publicado inmutable). PUBLICAR y RETIRAR solo los tiene ADMIN hasta el estudio editorial (F4). DOCENTE no edita ediciones hasta que su alcance por asignación exista (F3); ESTUDIANTE solo ve categorías y cursos: lo publicado lo lee del catálogo público y su aula llega en F2. perfil_docente.usuario_id (la cuenta que respalda un perfil) solo lo ve ADMIN (#65).",
   "roles": [
     {
       "name": "ESTUDIANTE",
@@ -51,6 +51,14 @@
           "object": "docente_edicion",
           "actions": ["READ"]
         }
+      ],
+      "fieldPermissions": [
+        {
+          "object": "perfil_docente",
+          "field": "usuario_id",
+          "read": false,
+          "write": false
+        }
       ]
     },
     {
@@ -89,6 +97,14 @@
           "object": "docente_edicion",
           "actions": ["READ"]
         }
+      ],
+      "fieldPermissions": [
+        {
+          "object": "perfil_docente",
+          "field": "usuario_id",
+          "read": false,
+          "write": false
+        }
       ]
     },
     {
@@ -126,6 +142,14 @@
         {
           "object": "docente_edicion",
           "actions": ["READ"]
+        }
+      ],
+      "fieldPermissions": [
+        {
+          "object": "perfil_docente",
+          "field": "usuario_id",
+          "read": false,
+          "write": false
         }
       ]
     }
