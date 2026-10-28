@@ -305,6 +305,9 @@ class FakeWasichai:
                 return 200, list(self.roles.values())
             self.roles[body["name"]] = {**body, "permissions": []}
             return 201, {}
+        if m := re.fullmatch(r"/api/roles/(\w+)/field-permissions", path):
+            self.roles[m[1]]["fieldPermissions"] = body["fields"]
+            return 200, {}
         if m := re.fullmatch(r"/api/roles/(\w+)/permissions", path):
             self.roles[m[1]]["permissions"] = [{**p, "allowed": True} for p in body["permissions"]]
             return 200, {}

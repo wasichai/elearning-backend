@@ -81,6 +81,18 @@ class ModelProvisioningApiTest : LmsApiTest() {
         assertTrue("ENVIAR_A_REVISION" in creator && "APROBAR" !in creator, creator.toString())
     }
 
+    // #65: el personal ve el perfil docente pero no la cuenta que lo respalda; el administrador sí
+    @Test
+    fun `staff read teacher profiles without the account behind them`() {
+        for (role in listOf("docente", "creador", "revisor")) {
+            val profiles = get("/api/objects/perfil_docente/records?size=50", demoUser(role))["content"].values()
+            assertTrue(profiles.isNotEmpty(), role)
+            assertTrue(profiles.none { it["attributes"].has("usuario_id") }, "$role ve usuario_id")
+        }
+        val admin = get("/api/objects/perfil_docente/records?size=50", bearer())["content"].values()
+        assertTrue(admin.all { it["attributes"].has("usuario_id") })
+    }
+
     @Test
     fun `one account holds several roles at once`() {
         val permissions = get("/api/auth/me/permissions", demoUser("docente.revisor"))["objects"]

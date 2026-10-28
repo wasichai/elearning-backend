@@ -35,7 +35,8 @@ MODEL = {
     ],
 }
 ROLES = {"roles": [{"name": "CREADOR", "label": "Creador", "permissions": [
-    {"object": "curso", "actions": ["READ", "CREATE"]}, {"object": "version_curso", "actions": ["READ", "PUBLICAR"]}]}]}
+    {"object": "curso", "actions": ["READ", "CREATE"]}, {"object": "version_curso", "actions": ["READ", "PUBLICAR"]}],
+    "fieldPermissions": [{"object": "curso", "field": "titulo", "read": True, "write": False}]}]}
 
 
 class ValidationTest(unittest.TestCase):
@@ -84,6 +85,14 @@ class ValidationTest(unittest.TestCase):
         bad = copy.deepcopy(MODEL)
         bad["objects"][1]["uniqueConstraints"] = [["numero", "inexistente"]]
         self.assertTrue(any("inexistente" in p for p in self.problems(bad)))
+
+    def test_field_permissions_name_existing_fields(self):
+        roles = copy.deepcopy(ROLES)
+        roles["roles"][0]["fieldPermissions"].append({"object": "curso", "field": "no_existe", "read": False, "write": False})
+        roles["roles"][0]["fieldPermissions"].append({"object": "nada", "field": "x", "read": False, "write": False})
+        found = self.problems(MODEL, roles)
+        self.assertTrue(any("no_existe" in p for p in found), found)
+        self.assertTrue(any("nada" in p for p in found), found)
 
     def test_role_grants_only_existing_actions(self):
         roles = copy.deepcopy(ROLES)
@@ -139,8 +148,11 @@ class FakeWasichai:
         if path == "/api/roles":
             if method == "GET":
                 return 200, list(self.roles.values())
-            self.roles[body["name"]] = {"ownRecordsOnly": False, **body, "permissions": []}
+            self.roles[body["name"]] = {"ownRecordsOnly": False, **body, "permissions": [], "fieldPermissions": []}
             return 201, {}
+        if m := re.fullmatch(r"/api/roles/(\w+)/field-permissions", path):
+            self.roles[m[1]]["fieldPermissions"] = body["fields"]
+            return 200, {}
         if m := re.fullmatch(r"/api/roles/(\w+)/permissions", path):
             self.roles[m[1]]["permissions"] = [{**p, "allowed": True} for p in body["permissions"]]
             return 200, {}
@@ -200,6 +212,11 @@ class IdempotencyTest(unittest.TestCase):
         self.assertTrue(created)
         self.assertEqual({("curso", "CREATE"), ("curso", "READ"), ("version_curso", "PUBLICAR"), ("version_curso", "READ")},
                          {(p["objectName"], p["action"]) for p in self.fake.roles["CREADOR"]["permissions"]})
+
+    def test_field_permissions_are_applied_once(self):
+        self.assertIn("permisos de campo de CREADOR (1)", self.run_once())
+        self.assertEqual([{"objectName": "curso", "fieldName": "titulo", "read": True, "write": False}], self.fake.roles["CREADOR"]["fieldPermissions"])
+        self.assertEqual([], self.run_once())
 
     def test_second_run_changes_nothing(self):
         self.run_once()

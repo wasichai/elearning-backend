@@ -48,6 +48,13 @@ class RealModelTest(unittest.TestCase):
         fields = {f["name"]: f for o in MODEL["objects"] if o["name"] == "perfil_docente" for f in o["fields"]}
         self.assertEqual("false", fields["perfil_publico"]["defaultValue"])
 
+    def test_staff_do_not_read_the_teachers_user_id(self):
+        # #65: el usuario_id une el perfil público con una cuenta; solo ADMIN lo necesita
+        for role in ROLES["roles"]:
+            if holds(role["name"], "perfil_docente", "READ"):
+                hidden = [f for f in role.get("fieldPermissions", []) if f["object"] == "perfil_docente" and f["field"] == "usuario_id"]
+                self.assertEqual([False], [f["read"] for f in hidden], role["name"])
+
     def test_students_only_read(self):
         student = next(r for r in ROLES["roles"] if r["name"] == "ESTUDIANTE")
         self.assertEqual({"READ"}, {a for g in student["permissions"] for a in g["actions"]})
