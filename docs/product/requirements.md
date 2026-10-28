@@ -14,8 +14,8 @@ el cuándo, en [`roadmap.md`](roadmap.md).
   reproducible en un PR fusionado; entonces pasa a `implementado` citando ese PR. Escribir código o documentación no
   basta.
 - «A verificar» marca un detalle de Wasichai o de terceros que se confirmará al implementar, leyendo su código.
-- A fecha de 2026-10-27 **ningún requisito está implementado**: solo existen el wrapper de Gradle (#2) y la
-  documentación de Fase 0.
+- A fecha de 2026-10-28, F1 y el criterio de fase de F2 están cumplidos; los requisitos F2 aún `planificado` llevan
+  su «Pendiente tras F2» y se siguen en el issue de pendientes de la fase.
 
 ## Requisitos funcionales
 
@@ -46,6 +46,7 @@ el cuándo, en [`roadmap.md`](roadmap.md).
 - **RF-CAT-08** · F2 · planificado — Filtros adicionales: duración, conocimientos previos, estado de matrícula y horas
   por tipo (teoría, práctica/laboratorio, autónomo).
   _Aceptación:_ pruebas de integración por filtro y control de la UI con estado vacío.
+  _Pendiente tras F2:_ faltan los filtros nuevos.
 - **RF-CAT-09** · F3 · planificado — La ficha describe evaluación y requisitos de certificación, y el estado de
   matrícula de cada edición (abierta, cerrada, completa).
   _Aceptación:_ prueba de integración con ediciones en cada estado.
@@ -59,19 +60,22 @@ el cuándo, en [`roadmap.md`](roadmap.md).
 - **RF-ACA-02** · F1 · implementado ([#42](https://github.com/wasichai/elearning-backend/pull/42), [#56](https://github.com/wasichai/elearning-backend/pull/56)) — `CourseOffering` (edición) con inicio, fin, zona horaria IANA, capacidad,
   ventana de matrícula y docentes asignados.
   _Aceptación:_ el modelo aplicado contiene esos campos y la ficha del catálogo los muestra (RF-CAT-05).
-- **RF-ACA-03** · F2 · planificado — Una versión `PUBLICADA` es inmutable.
+- **RF-ACA-03** · F2 · implementado ([#64](https://github.com/wasichai/elearning-backend/pull/64)) — Una versión `PUBLICADA` es inmutable.
   _Aceptación:_ prueba de integración: modificar o borrar una versión publicada se rechaza con `ProblemDetail`
   (`RecordWriteGuard`); los cambios exigen una versión nueva.
-- **RF-ACA-04** · F2 · planificado — Un creador autorizado crea cursos y versiones en borrador; sin el permiso, no.
+- **RF-ACA-04** · F2 · implementado ([#42](https://github.com/wasichai/elearning-backend/pull/42), [#64](https://github.com/wasichai/elearning-backend/pull/64)) — Un creador autorizado crea cursos y versiones en borrador; sin el permiso, no.
   _Aceptación:_ prueba con un usuario CREADOR (éxito) y uno ESTUDIANTE (`403`).
 - **RF-ACA-05** · F2 · planificado — Duración de 1 a 8 semanas o semestral, y modalidad presencial, virtual síncrona,
   asíncrona o híbrida.
   _Aceptación:_ validación del modelo con casos límite (0 semanas rechazado; 1, 8 y semestral aceptados).
-- **RF-ACA-06** · F2 · planificado — Matrícula (`Enrollment`) de un estudiante en una edición identificable, única
+  _Pendiente tras F2:_ el modelo no tiene modalidad presencial ni duración semestral, y no valida de 1 a 8 semanas.
+- **RF-ACA-06** · F2 · implementado ([#94](https://github.com/wasichai/elearning-backend/pull/94), [#97](https://github.com/wasichai/elearning-backend/pull/97)) — Matrícula (`Enrollment`) de un estudiante en una edición identificable, única
   e idempotente.
   _Aceptación:_ repetir la orden con la misma `Idempotency-Key` no crea un duplicado; matricularse dos veces en la
   misma edición se rechaza.
-- **RF-ACA-07** · F2 · planificado — La matrícula respeta capacidad y ventana de inscripción.
+  _Nota:_ la idempotencia va por la clave natural (edición, estudiante): repetir devuelve la misma matrícula
+  (`200`), sin duplicado, con o sin `Idempotency-Key` (`docs/api/lms.md`).
+- **RF-ACA-07** · F2 · implementado ([#97](https://github.com/wasichai/elearning-backend/pull/97)) — La matrícula respeta capacidad y ventana de inscripción.
   _Aceptación:_ pruebas fuera de ventana y con cupo agotado, incluida una prueba concurrente que no sobrepasa la
   capacidad.
 - **RF-ACA-08** · F3 · planificado — Prerrequisitos declarados por versión, comprobados al matricular.
@@ -109,22 +113,26 @@ el cuándo, en [`roadmap.md`](roadmap.md).
 
 ### RF-AUL — Aula del estudiante y progreso (§6.4)
 
-- **RF-AUL-01** · F2 · planificado — Panel con cursos matriculados y próximos.
+- **RF-AUL-01** · F2 · implementado ([#101](https://github.com/wasichai/elearning-backend/pull/101), [front#28](https://github.com/wasichai/elearning-frontend/pull/28)) — Panel con cursos matriculados y próximos.
   _Aceptación:_ prueba de UI y de integración: un estudiante ve solo sus matrículas.
 - **RF-AUL-02** · F2 · planificado — Curso por unidades con navegación lateral persistente, lectura amplia y siguiente
   actividad evidente.
   _Aceptación:_ prueba E2E que recorre una unidad completa usando solo la acción «siguiente».
+  _Pendiente tras F2:_ la navegación existe (front#29); falta el e2e que recorre una unidad entera solo con «siguiente».
 - **RF-AUL-03** · F2 · planificado — Lecciones de lectura HTML, PDF, vídeo y presentación, con material descargable.
   _Aceptación:_ prueba E2E que abre una lección de cada tipo de la semilla de demostración.
+  _Pendiente tras F2:_ HTML, PDF y vídeo verificados contra el backend real (front#33); falta una presentación en la demo.
 - **RF-AUL-04** · F2 · planificado — Estados de progreso definidos: iniciada, completada, aprobada. Una lectura se
   completa por acción explícita; un vídeo, por eventos reales del reproductor con umbral parametrizable. El tiempo
   con la página abierta no cuenta.
   _Aceptación:_ pruebas unitarias de cada transición; abrir una lectura sin marcarla no la completa.
+  _Pendiente tras F2:_ estados y evidencias por tipo verificados (#100); falta el umbral parametrizable del vídeo (hoy, fin de reproducción).
 - **RF-AUL-05** · F2 · planificado — Progreso persistido en servidor, ligado a la matrícula y a la versión del curso.
   _Aceptación:_ prueba E2E: tras cerrar sesión y entrar desde otro navegador, «continuar» lleva a la última lección.
-- **RF-AUL-06** · F2 · planificado — Eventos de aprendizaje registrados de forma idempotente para progreso e informes.
+  _Pendiente tras F2:_ persistencia verificada al recargar (front#33); falta el e2e en otro navegador con «continuar».
+- **RF-AUL-06** · F2 · implementado ([#99](https://github.com/wasichai/elearning-backend/pull/99), [#100](https://github.com/wasichai/elearning-backend/pull/100)) — Eventos de aprendizaje registrados de forma idempotente para progreso e informes.
   _Aceptación:_ reenviar un evento con el mismo identificador no altera el progreso.
-- **RF-AUL-07** · F2 · planificado — Progreso general y por unidad visible al estudiante.
+- **RF-AUL-07** · F2 · implementado ([#101](https://github.com/wasichai/elearning-backend/pull/101), [front#30](https://github.com/wasichai/elearning-frontend/pull/30)) — Progreso general y por unidad visible al estudiante.
   _Aceptación:_ prueba de UI con progreso parcial y completo.
 - **RF-AUL-08** · F3 · planificado — El aula muestra próximas sesiones, plazos, evaluaciones, calificaciones,
   intentos, retroalimentación, logros y certificados.
@@ -197,12 +205,15 @@ el cuándo, en [`roadmap.md`](roadmap.md).
   _Aceptación:_ la prueba de arquitectura falla ante un literal de rol en `src/main`.
 - **RF-ROL-03** · F2 · planificado — Un usuario puede tener varios roles a la vez.
   _Aceptación:_ prueba con un usuario ESTUDIANTE + CREADOR que obtiene la unión de permisos.
+  _Pendiente tras F2:_ falta la prueba de unión de permisos con ESTUDIANTE + CREADOR.
 - **RF-ROL-04** · F2 · planificado — Alcance por recurso: el docente gestiona solo sus ediciones asignadas; el
   revisor, solo las versiones asignadas; el estudiante, solo sus matrículas.
   _Aceptación:_ pruebas de autorización negativa cambiando identificadores (RNF-SEG-03).
+  _Pendiente tras F2:_ hecho para el estudiante (sus matrículas, su progreso, su contenido); el docente aún ve todas las ediciones (llega con su espacio, F3).
 - **RF-ROL-05** · F2 · planificado — Nadie se asigna privilegios a sí mismo; la gestión de roles queda auditada.
   _Aceptación:_ prueba de autoasignación rechazada. Si Wasichai ya lo impide (a verificar), la prueba documenta ese
   comportamiento; si no, se añade una regla propia.
+  _Pendiente tras F2:_ sin verificar todavía en Wasichai.
 - **RF-ROL-06** · F4 · planificado — Sin autoaprobación: el autor de una versión no puede aprobarla cuando la
   política exige revisión independiente.
   _Aceptación:_ prueba con un usuario CREADOR + REVISOR sobre su propia versión → rechazo.
@@ -212,9 +223,11 @@ el cuándo, en [`roadmap.md`](roadmap.md).
 - **RF-CON-01** · F2 · planificado — `LearningResource` versionado y reutilizable con identificador estable, título,
   descripción, idioma, ubicación (curso, unidad, lección), autor, responsable editorial y estado de revisión.
   _Aceptación:_ el modelo aplicado contiene esos campos; un recurso se reutiliza en dos lecciones.
+  _Pendiente tras F2:_ versionado, identificador estable, idioma, autor, responsable y estado (#98, #102); faltan la descripción y la prueba de reutilización en dos lecciones.
 - **RF-CON-02** · F2 · planificado — Los binarios (PDF, vídeo, imágenes) van a almacenamiento de objetos, no a
   PostgreSQL, con hash registrado.
   _Aceptación:_ prueba de integración con almacenamiento S3 compatible local; el hash se comprueba al descargar.
+  _Pendiente tras F2:_ los archivos van a `wasichai-files` con su sha256, nunca a PostgreSQL (#98); falta la prueba con S3 local y la comprobación del hash al descargar.
 - **RF-CON-03** · F4 · planificado — Fuente canónica (AsciiDoc o LaTeX) separada de los artefactos generados, con
   relación fuente↔producto (versión de la fuente, generador, hash).
   _Aceptación:_ cada artefacto publicado identifica su fuente exacta.
@@ -318,6 +331,7 @@ el cuándo, en [`roadmap.md`](roadmap.md).
   _Aceptación:_ prueba de arquitectura sin el literal del nombre en el código de dominio.
 - **RF-ADM-02** · F2 · planificado — Usuarios, roles y categorías se administran con las pantallas de Wasichai.
   _Aceptación:_ recorrido manual documentado; no existen pantallas LMS paralelas para ello.
+  _Pendiente tras F2:_ falta el recorrido documentado.
 - **RF-ADM-03** · F3 · planificado — Auditoría de contenidos, calificaciones, roles y publicaciones con la auditoría
   de Wasichai.
   _Aceptación:_ cada operación sensible deja un registro consultable por ADMIN.
@@ -354,6 +368,7 @@ el cuándo, en [`roadmap.md`](roadmap.md).
 - **RNF-ARQ-08** · F2 · planificado — El núcleo no depende de proveedores concretos de IA, almacenamiento o
   videoconferencia.
   _Aceptación:_ prueba de arquitectura sobre los paquetes de dominio.
+  _Pendiente tras F2:_ falta la regla en la prueba de arquitectura.
 - **RNF-ARQ-09** · F4 · planificado — Las tareas bloqueantes o largas (Asciidoctor, PDF, render) corren como
   trabajos persistentes fuera del bucle de eventos.
   _Aceptación:_ prueba de que la API responde mientras un trabajo largo está en curso.
@@ -365,7 +380,7 @@ el cuándo, en [`roadmap.md`](roadmap.md).
   _Aceptación:_ prueba anónima a una ruta privada → `401`.
 - **RNF-SEG-02** · F1 · implementado ([#54](https://github.com/wasichai/elearning-backend/pull/54)) — Métodos distintos de `GET` en `/api/lms/public/**` se rechazan.
   _Aceptación:_ `POST` anónimo → `401` o `403`, probado.
-- **RNF-SEG-03** · F2 · planificado — Pruebas de autorización negativa (IDOR) en cada endpoint que recibe un
+- **RNF-SEG-03** · F2 · implementado ([#95](https://github.com/wasichai/elearning-backend/pull/95), [#98](https://github.com/wasichai/elearning-backend/pull/98), [#100](https://github.com/wasichai/elearning-backend/pull/100), [#101](https://github.com/wasichai/elearning-backend/pull/101)) — Pruebas de autorización negativa (IDOR) en cada endpoint que recibe un
   identificador.
   _Aceptación:_ cambiar el id por uno ajeno nunca devuelve datos; la respuesta no revela si el recurso existe.
 - **RNF-SEG-04** · F1 · implementado ([#56](https://github.com/wasichai/elearning-backend/pull/56)) (catálogo público; la API autenticada la aísla Wasichai por `organization_id`) — Separación de datos por organización.
@@ -377,6 +392,7 @@ el cuándo, en [`roadmap.md`](roadmap.md).
 - **RNF-SEG-07** · F2 · planificado — Archivos con límites de tamaño y tipo, nombres saneados y descarga solo para
   quien tiene acceso.
   _Aceptación:_ pruebas de tipo prohibido, tamaño excedido y descarga ajena.
+  _Pendiente tras F2:_ tamaño y descarga ajena probados (#98); no hay lista de tipos permitidos (Wasichai deja HTML y vídeo como `octet-stream`; ver #98).
 - **RNF-SEG-08** · F4 · planificado — Control de URLs externas contra SSRF (importador, enlaces de laboratorio).
   _Aceptación:_ URLs a direcciones internas o con redirecciones hacia ellas se rechazan.
 - **RNF-SEG-09** · F5 · planificado — Claves de proveedores de IA protegidas; nunca en registros ni en `AgentRun`.
@@ -404,11 +420,13 @@ el cuándo, en [`roadmap.md`](roadmap.md).
 - **RNF-UX-06** · F2 · planificado — Experiencias separadas por audiencia (catálogo, aula, docente, estudio,
   revisor, administración), no una pantalla universal.
   _Aceptación:_ un módulo de frontend por experiencia con su navegación filtrada por permisos.
-- **RNF-UX-07** · F2 · planificado — Fechas mostradas en la zona de la edición, indicándola.
+  _Pendiente tras F2:_ catálogo y aula son módulos propios; falta filtrar la navegación por permisos y los módulos de docente, estudio y revisor.
+- **RNF-UX-07** · F2 · implementado ([front#16](https://github.com/wasichai/elearning-frontend/pull/16), [front#28](https://github.com/wasichai/elearning-frontend/pull/28)) — Fechas mostradas en la zona de la edición, indicándola.
   _Aceptación:_ prueba de componente con zona distinta a la del navegador.
 - **RNF-UX-08** · F2 · planificado — Confirmación en acciones destructivas y errores comprensibles a partir de
   `ProblemDetail`.
   _Aceptación:_ pruebas de componente del diálogo y del mapeo de errores.
+  _Pendiente tras F2:_ aún no hay acciones destructivas en las experiencias LMS.
 
 ### RNF-OSS — Proyecto abierto y datos de demostración (§18, §19; ver [`docs/legal/licensing.md`](../legal/licensing.md))
 

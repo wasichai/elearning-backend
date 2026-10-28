@@ -114,6 +114,22 @@ class ResourcesApiTest : LmsApiTest() {
         assertTrue(upload(admin, version, "otra.html", "<p>otra</p>".toByteArray()) in setOf(HttpStatus.CONFLICT, HttpStatus.FORBIDDEN))
     }
 
+    // revisión de la Fase 2: el título y el tipo (que decide cómo se muestra el archivo) de un recurso que ya ven los
+    // estudiantes no cambian; mientras todas sus versiones son borrador, sí
+    @Test
+    fun `a resource whose versions left draft keeps its title and type`() {
+        val version = publishedResource()
+        val resource = get("/api/objects/version_recurso/records/$version", admin)["attributes"]["recurso"].asString()
+
+        assertEquals(HttpStatus.CONFLICT, patch(creator, "recurso", resource, mapOf("tipo" to "PDF")))
+        assertEquals(HttpStatus.CONFLICT, patch(admin, "recurso", resource, mapOf("titulo" to "Otro título")))
+        assertEquals("HTML", get("/api/objects/recurso/records/$resource", admin)["attributes"]["tipo"].asString())
+
+        val draft = create(creator, "recurso", mapOf("titulo" to "En borrador", "tipo" to "HTML", "idioma" to "es"))
+        create(creator, "version_recurso", mapOf("recurso" to draft, "numero" to 1, "autor_id" to me(creator)))
+        assertEquals(HttpStatus.OK, patch(creator, "recurso", draft, mapOf("tipo" to "PDF")))
+    }
+
     @Test
     fun `a file over the limit is refused`() {
         val resource = create(creator, "recurso", mapOf("titulo" to "Grande", "tipo" to "PDF", "idioma" to "es"))

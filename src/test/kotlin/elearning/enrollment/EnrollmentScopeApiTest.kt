@@ -103,10 +103,15 @@ class EnrollmentScopeApiTest : LmsApiTest() {
     }
 
     @Test
-    fun `whoever may see them all, does`() {
-        val ids = get("/api/objects/matricula/records?size=200", demoUser("docente"))["content"].strings { it["id"] }
+    fun `the administrator sees them all, a teacher none until their assignment scope exists`() {
+        val all = get("/api/objects/matricula/records?size=200", bearer())["content"].strings { it["id"] }
+        assertTrue(mine in all && theirs in all, all.toString())
 
-        assertTrue(mine in ids && theirs in ids, ids.toString())
+        // revisión de la Fase 2: sin alcance por asignación (F3), VER_TODAS daría a todo docente las matrículas y el
+        // progreso de toda la organización
+        for (obj in listOf("matricula", "progreso_leccion")) {
+            assertEquals(0, get("/api/objects/$obj/records?size=200", demoUser("docente"))["totalElements"].asInt(), obj)
+        }
     }
 
     @Test

@@ -5,8 +5,10 @@ import org.springframework.core.annotation.Order
 import org.springframework.stereotype.Component
 import wasichai.core.common.ConflictException
 import wasichai.core.common.ForbiddenException
+import wasichai.core.common.PageRequest
 import wasichai.core.common.ValidationException
 import wasichai.core.data.RecordChangeKind
+import wasichai.core.data.RecordQuery
 import wasichai.core.data.RecordService
 import wasichai.core.data.RecordWrite
 import wasichai.core.data.RecordWriteGuard
@@ -41,6 +43,7 @@ class EditorialWorkflowGuard(
             UNIT -> curriculum(change, listOfNotNull(change.before.ref(VERSION), change.attributes.ref(VERSION)))
             LESSON -> curriculum(change, listOfNotNull(change.before.ref(UNIT), change.attributes.ref(UNIT)).mapNotNull { unitVersion(it) })
             RESOURCE_LINK -> resourceLink(change)
+            RESOURCE -> resource(change)
         }
     }
 
@@ -113,6 +116,32 @@ class EditorialWorkflowGuard(
         }
     }
 
+    // un recurso con alguna versión fuera de borrador ya lo ven revisores o estudiantes: su título y su tipo (que decide
+    // cómo se muestra el archivo) no cambian ni se borra; para cambiarlo, un recurso nuevo (revisión de la Fase 2)
+    private suspend fun resource(change: RecordWrite) {
+        if (change.kind == RecordChangeKind.CREATED) return
+        val before = change.before.orEmpty()
+        val attributes = change.attributes.orEmpty()
+        if (change.kind != RecordChangeKind.DELETED && attributes.keys.all { same(attributes[it], before[it]) }) return
+        var cursor: String? = null
+        do {
+            val page =
+                records.getObject().list(
+                    RESOURCE_VERSION,
+                    RecordQuery(
+                        page = PageRequest(0, PageRequest.MAX_SIZE),
+                        filters = mapOf(RESOURCE to change.recordId.toString()),
+                        count = false,
+                        after = cursor,
+                    ),
+                )
+            if (page.content.any { (it.attributes.text(STATE) ?: DRAFT) != DRAFT }) {
+                throw ConflictException("A resource with versions beyond draft does not change: create a new resource")
+            }
+            cursor = page.nextCursor
+        } while (cursor != null)
+    }
+
     // el recurso de una lección: solo en temario en borrador y solo una versión de recurso ya publicada
     private suspend fun resourceLink(change: RecordWrite) {
         val lessons = listOfNotNull(change.before.ref(LESSON), change.attributes.ref(LESSON))
@@ -146,6 +175,7 @@ class EditorialWorkflowGuard(
         const val VERSION = "version_curso"
         const val UNIT = "unidad"
         const val LESSON = "leccion"
+        const val RESOURCE = "recurso"
         const val RESOURCE_VERSION = "version_recurso"
         const val RESOURCE_LINK = "recurso_leccion"
         const val STATE = "estado"
