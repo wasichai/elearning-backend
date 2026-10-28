@@ -1,0 +1,51 @@
+%PDF-1.4
+%âãÏÓ
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 5 0 R >> >> /Contents 4 0 R >>
+endobj
+4 0 obj
+<< /Length 1053 >>
+stream
+BT
+/F1 18 Tf 1 0 0 1 56 780 Tm (Guía rápida: los estados de un anuncio) Tj
+/F1 11 Tf 1 0 0 1 56 752 Tm (Contenido ilustrativo de la demostración de wasichai-learning. Sin datos reales.) Tj
+/F1 12 Tf 1 0 0 1 56 731 Tm () Tj
+/F1 12 Tf 1 0 0 1 56 709 Tm (El estado de un anuncio no se escribe a mano: se deduce de sus movimientos) Tj
+/F1 12 Tf 1 0 0 1 56 687 Tm (a una fecha dada. Para leerlo:) Tj
+/F1 12 Tf 1 0 0 1 56 665 Tm () Tj
+/F1 12 Tf 1 0 0 1 56 643 Tm (1. Elija la fecha de consulta \(hoy o una fecha pasada\).) Tj
+/F1 12 Tf 1 0 0 1 56 621 Tm (2. Revise el último movimiento anterior o igual a esa fecha.) Tj
+/F1 12 Tf 1 0 0 1 56 599 Tm (3. Un registro o una renovación vigente dejan el anuncio activo;) Tj
+/F1 12 Tf 1 0 0 1 56 577 Tm (   un cese o un retiro lo dejan fuera del padrón desde su fecha.) Tj
+/F1 12 Tf 1 0 0 1 56 555 Tm (4. Si la vigencia terminó y no hay renovación, el anuncio está vencido.) Tj
+/F1 12 Tf 1 0 0 1 56 533 Tm () Tj
+/F1 12 Tf 1 0 0 1 56 511 Tm (Compruebe su lectura en el padrón a esa misma fecha: debe coincidir.) Tj
+ET
+endstream
+endobj
+5 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>
+endobj
+6 0 obj
+<< /Title (Guia rapida: los estados de un anuncio) /Producer (wasichai-learning demo) >>
+endobj
+xref
+0 7
+0000000000 65535 f 
+0000000015 00000 n 
+0000000064 00000 n 
+0000000121 00000 n 
+0000000247 00000 n 
+0000001352 00000 n 
+0000001449 00000 n 
+trailer
+<< /Size 7 /Root 1 0 R /Info 6 0 R >>
+startxref
+1553
+%%EOF

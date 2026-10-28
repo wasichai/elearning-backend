@@ -61,7 +61,7 @@ class ContentScopeApiTest : LmsApiTest() {
     @BeforeEach
     fun enrolledInTheAiCourse() {
         student = newStudent()
-        val offering = offeringOf("IA-AGT-201-2027-04")
+        val offering = offeringOf("IA-AGT-201-A")
         enrolledVersion = offering["attributes"]["version_curso"].asString()
         val me = get("/api/auth/me", student)["userId"].asString()
         runBlocking {
@@ -108,7 +108,7 @@ class ContentScopeApiTest : LmsApiTest() {
     // ADR-0013: el temario y las ediciones de lo publicado se ven como en el catálogo; lo que no, es el contenido
     @Test
     fun `the structure of other published courses is visible, as in the public catalog`() {
-        val otherCourse = offeringOf("SGSPE-101-2027-01")["attributes"]["version_curso"].asString()
+        val otherCourse = offeringOf("SGSPE-101-A")["attributes"]["version_curso"].asString()
 
         assertEquals(HttpStatus.OK, status("/api/objects/version_curso/records/$otherCourse", student))
         assertTrue(ids("/api/objects/edicion_curso/records?size=200", student).isNotEmpty())

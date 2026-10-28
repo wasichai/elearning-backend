@@ -159,7 +159,7 @@ class ResourcesApiTest : LmsApiTest() {
     fun `only an enrolled student reads a lesson's resources and downloads their files`() {
         val enrolled = newStudent()
         val outsider = newStudent()
-        val offering = get("/api/objects/edicion_curso/records?codigo=IA-AGT-201-2027-04", admin)["content"][0]
+        val offering = get("/api/objects/edicion_curso/records?codigo=IA-AGT-201-A", admin)["content"][0]
         val courseVersion = offering["attributes"]["version_curso"].asString()
         runBlocking {
             records.asPlatform(ORG) {
