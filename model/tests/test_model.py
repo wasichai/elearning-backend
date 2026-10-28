@@ -59,6 +59,12 @@ class RealModelTest(unittest.TestCase):
         for obj in ("recurso", "version_recurso", "recurso_leccion"):
             self.assertFalse(holds("ESTUDIANTE", obj, "VER_TODAS"), obj)
 
+    def test_no_teacher_sees_every_student_before_assignment_scope(self):
+        # revisión de la Fase 2: sin alcance por asignación (F3), VER_TODAS abriría matrículas y progreso de todos
+        for obj in ("matricula", "progreso_leccion"):
+            for role in ROLES["roles"]:
+                self.assertFalse(holds(role["name"], obj, "VER_TODAS"), f"{role['name']} {obj}")
+
     def test_progress_is_written_only_by_the_classroom(self):
         progress = next(o for o in MODEL["objects"] if o["name"] == "progreso_leccion")
         self.assertTrue(progress.get("apiOnly"))

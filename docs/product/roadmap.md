@@ -10,19 +10,19 @@ ejecutando las pruebas y los recorridos indicados, en local y en CI, y el result
 
 ## Resumen
 
-| Fase | Objetivo                                                                                   | Estado (2026-10-28)                                                 |
-| ---- | ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------- |
-| F0   | Investigación y arquitectura                                                               | completada (épicas E0, E1)                                          |
-| F1   | Esqueleto ejecutable y primer incremento: catálogo público con carga y créditos propuestos | completada (2026-10-28): épicas E2–E10, 42 requisitos implementados |
-| F2   | LMS básico: aula, matrícula, unidades, lecciones, recursos y progreso                      | planificada                                                         |
-| F3   | Evaluaciones y operación docente                                                           | planificada                                                         |
-| F4   | Estudio editorial e importador AsciiDoc                                                    | planificada                                                         |
-| F5   | IA y multimedia                                                                            | planificada                                                         |
-| F6   | Calidad, reputación y despliegue                                                           | planificada                                                         |
+| Fase | Objetivo                                                                                   | Estado (2026-10-28)                                                  |
+| ---- | ------------------------------------------------------------------------------------------ | -------------------------------------------------------------------- |
+| F0   | Investigación y arquitectura                                                               | completada (épicas E0, E1)                                           |
+| F1   | Esqueleto ejecutable y primer incremento: catálogo público con carga y créditos propuestos | completada (2026-10-28): épicas E2–E10, 42 requisitos implementados  |
+| F2   | LMS básico: aula, matrícula, unidades, lecciones, recursos y progreso                      | criterio cumplido (2026-10-28): épicas E12–E16; 16 pendientes (#103) |
+| F3   | Evaluaciones y operación docente                                                           | planificada                                                          |
+| F4   | Estudio editorial e importador AsciiDoc                                                    | planificada                                                          |
+| F5   | IA y multimedia                                                                            | planificada                                                          |
+| F6   | Calidad, reputación y despliegue                                                           | planificada                                                          |
 
 Las épicas viven en [wasichai/elearning-backend](https://github.com/wasichai/elearning-backend/issues); los pasos de
 frontend, en [wasichai/elearning-frontend](https://github.com/wasichai/elearning-frontend/issues). Cada paso es un
-sub-issue que se cierra con su PR. Las fases F2–F6 aún no tienen issues: sus épicas se crean al planificar cada fase.
+sub-issue que se cierra con su PR. Las fases F3–F6 aún no tienen issues: sus épicas se crean al planificar cada fase.
 
 ## F0 — Investigación y arquitectura
 
@@ -149,6 +149,12 @@ progreso, `classroomModule`.
 
 **Criterio de aceptación.** Recorridos E2E 1–4 de §20 (login de estudiante, matrícula, unidad y recurso, progreso)
 sobre la semilla de demostración; pruebas IDOR en todos los endpoints con identificador.
+
+**Estado (2026-10-28).** Criterio cumplido: recorridos 1–4 contra el backend real, en local y en CI (trabajo
+`e2e-real` del frontend), y pruebas IDOR en matrícula, aula, eventos y archivos. Requisitos F2 implementados con su PR
+en [requirements.md](requirements.md); los 16 que aún no cumplen su aceptación se siguen en
+[#103](https://github.com/wasichai/elearning-backend/issues/103), a decidir si cierran en un F2.1 o pasan a F3/F4/F6.
+Diseño: ADR-0012 y ADR-0013.
 
 **Riesgos.** La forma exacta de componer `RecordReadScope` con asignaciones por recurso está a verificar en el código
 de Wasichai. Los eventos de vídeo pueden ser muchos: se define el volumen esperado antes de elegir tabla fija frente a
