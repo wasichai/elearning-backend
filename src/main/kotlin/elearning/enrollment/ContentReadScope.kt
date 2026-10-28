@@ -1,10 +1,10 @@
 package elearning.enrollment
 
+import elearning.common.listAll
+import elearning.common.ref
 import org.springframework.beans.factory.ObjectProvider
 import org.springframework.stereotype.Component
-import wasichai.core.common.PageRequest
 import wasichai.core.data.RecordCriterion
-import wasichai.core.data.RecordQuery
 import wasichai.core.data.RecordReadScope
 import wasichai.core.data.RecordResponse
 import wasichai.core.data.RecordService
@@ -63,20 +63,7 @@ class ContentReadScope(
     private suspend fun all(
         objectName: String,
         filters: Map<String, String> = emptyMap(),
-    ): List<RecordResponse> {
-        val found = mutableListOf<RecordResponse>()
-        var cursor: String? = null
-        do {
-            val page =
-                records.getObject().list(
-                    objectName,
-                    RecordQuery(page = PageRequest(0, PageRequest.MAX_SIZE), filters = filters, count = false, after = cursor),
-                )
-            found += page.content
-            cursor = page.nextCursor
-        } while (cursor != null)
-        return found
-    }
+    ): List<RecordResponse> = records.getObject().listAll(objectName, filters)
 
     private fun column(
         definition: ObjectDefinition,
