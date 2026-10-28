@@ -15,6 +15,8 @@ import tools.jackson.databind.JsonNode
 import wasichai.core.data.RecordService
 import wasichai.core.platform.ClusterLock
 import wasichai.core.platform.TenantDirectory
+import java.time.LocalDate
+import java.time.ZoneId
 
 // el listado público lee la proyección (ADR-0011). los datos son los de model/demo, aplicados por LmsApiTest;
 // la organización pública es la semilla «demo» de Wasichai
@@ -82,7 +84,8 @@ class CatalogListApiTest : LmsApiTest() {
         assertEquals(listOf("IA-AGT-201"), list("?modality=HIBRIDA").codes())
         assertEquals(listOf("SRTM-ANU-101"), list("?q=srtm").codes(), "el borrador SRTM-ATC-001 no aparece aunque coincida")
         assertTrue(list("?q=SRTM").codes().isNotEmpty())
-        assertEquals(listOf("IA-AGT-201"), list("?startsFrom=2027-03-15").codes())
+        // la demo fecha sus ediciones respecto del día en que se aplica: IA empieza en hoy+159, la segunda de SRTM en hoy+124
+        assertEquals(listOf("IA-AGT-201"), list("?startsFrom=${LocalDate.now(ZoneId.of("America/Lima")).plusDays(138)}").codes())
         assertEquals(0, list("?q=no-existe-ningun-curso-asi")["totalElements"].asInt())
     }
 
@@ -105,7 +108,7 @@ class CatalogListApiTest : LmsApiTest() {
         assertEquals(byDuration.sorted(), byDuration)
 
         val upcoming = list("?sort=upcoming").codes()
-        assertEquals("SRTM-ANU-101", upcoming.first(), "la edición de noviembre de 2026 es la más próxima")
+        assertEquals("SRTM-ANU-101", upcoming.first(), "la edición abierta de SRTM (hoy+12) es la más próxima")
 
         val second = list("?sort=title&size=2&page=1")
         assertEquals(1, second["content"].size())

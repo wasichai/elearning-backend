@@ -6,6 +6,7 @@ que imita solo el contrato que usa el script (el mismo patrón que test_apply.py
 
 import contextlib
 import copy
+import datetime
 import io
 import json
 import os
@@ -133,22 +134,49 @@ class DemoDataTest(unittest.TestCase):
         for v in records("version_curso"):
             self.assertNotIn("creditos_aprobados", v["attributes"], "los créditos aprobados los pone una persona")
 
-    def test_editions_are_future_in_lima_and_only_of_published_versions(self):
+    def test_editions_are_future_relative_to_today_and_only_of_published_versions(self):
+        # fechas relativas al día en que se aplica la demo (#96): nunca envejecen; una sola con la inscripción abierta hoy
         refs = by_ref()
-        per_course = {}
+        per_course, open_today = {}, []
         for edition in records("edicion_curso"):
             a = edition["attributes"]
             version = refs[edition["refs"]["version_curso"]]
             self.assertEqual("PUBLICADA", version["attributes"]["estado"], edition["ref"])
             self.assertEqual("America/Lima", a["zona_horaria"])
-            self.assertTrue("2026-11-01" <= a["fecha_inicio"] < a["fecha_fin"] <= "2027-06-30", edition["ref"])
-            self.assertTrue(a["inscripcion_desde"] < a["inscripcion_hasta"] <= a["fecha_inicio"], edition["ref"])
+            days = {k: apply._days(a[k]) for k in ("inscripcion_desde", "inscripcion_hasta", "fecha_inicio", "fecha_fin")}
+            self.assertTrue(0 < days["fecha_inicio"] < days["fecha_fin"] <= 240, edition["ref"])
+            self.assertTrue(days["inscripcion_desde"] < days["inscripcion_hasta"] <= days["fecha_inicio"], edition["ref"])
+            if a["estado"] == "INSCRIPCION_ABIERTA":
+                self.assertTrue(days["inscripcion_desde"] <= 0 <= days["inscripcion_hasta"], edition["ref"])
+                open_today.append(edition["ref"])
             self.assertGreater(a["capacidad"], 0)
             self.assertTrue(children("docente_edicion", "edicion_curso", edition["ref"]), f"{edition['ref']} sin docente")
             course = version["refs"]["curso"]
             per_course[course] = per_course.get(course, 0) + 1
         self.assertEqual(3, len(per_course))
         self.assertTrue(all(1 <= n <= 2 for n in per_course.values()))
+        self.assertEqual(["edicion-srtm-a"], open_today)
+
+    def test_the_classroom_has_a_reading_a_pdf_and_a_video_with_their_own_synthetic_files(self):
+        refs = by_ref()
+        kinds = {}
+        for link in records("recurso_leccion"):
+            version = refs[link["refs"]["version_recurso"]]
+            resource = refs[version["refs"]["recurso"]]
+            lesson = refs[link["refs"]["leccion"]]
+            course_version = refs[refs[lesson["refs"]["unidad"]]["refs"]["version_curso"]]
+            self.assertEqual("PUBLICADA", version["attributes"]["estado"])
+            self.assertEqual("PUBLICADA", course_version["attributes"]["estado"], "solo en lo que un estudiante puede cursar")
+            file = HERE / "demo" / version["files"]["archivo"]
+            self.assertTrue(file.is_file() and 0 < file.stat().st_size < 200_000, file)
+            kinds[resource["attributes"]["tipo"]] = (lesson["attributes"]["tipo"], file.suffix)
+        self.assertEqual({"HTML": ("LECTURA", ".html"), "PDF": ("LECTURA", ".pdf"), "VIDEO": ("VIDEO", ".webm")}, kinds)
+        html = (HERE / "demo" / "archivos" / "lectura-entrar-y-salir.html").read_text()
+        self.assertNotIn("<script", html.lower(), "la lectura no necesita scripts: el iframe los bloquea igual")
+        self.assertTrue((HERE / "demo" / "archivos" / "guia-estados-del-anuncio.pdf").read_bytes().startswith(b"%PDF-"))
+
+    def test_the_demo_student_is_enrolled_in_the_open_offering(self):
+        self.assertEqual([{"user": "estudiante@demo.wasichai-learning.test", "offering": "edicion-srtm-a"}], DATA["enrollments"])
 
     def test_one_user_per_role_and_one_multi_role(self):
         role_sets = [tuple(sorted(u["roles"])) for u in DATA["users"]]
@@ -206,7 +234,7 @@ class DemoValidationTest(unittest.TestCase):
         def change(data):
             del self.record(data, "curso-srtm")["attributes"]["titulo"]
             del self.record(data, "srtm-v1-u1-l1")["refs"]
-            self.record(data, "edicion-ia-2027-04")["attributes"]["fecha_inicio"] = "05/04/2027"
+            self.record(data, "edicion-ia-a")["attributes"]["fecha_inicio"] = "05/04/2027"
             self.record(data, "version-ia-1")["attributes"]["publicada_en"] = "2026-10-22T16:00:00"
             data["users"][0]["email"] = "alguien@ejemplo.com"
         found = self.broken(change)
@@ -215,6 +243,30 @@ class DemoValidationTest(unittest.TestCase):
         self.assertTrue(any("'05/04/2027' no es un DATE" in p for p in found))
         self.assertTrue(any("lleva zona horaria" in p for p in found))
         self.assertTrue(any("dominio demo.wasichai-learning.test" in p for p in found))
+
+    def test_files_dates_and_enrollments_are_checked(self):
+        def change(data):
+            self.record(data, "version-recurso-guia-estados")["files"]["archivo"] = "../../model.json"
+            self.record(data, "version-recurso-lectura-acceso")["files"]["archivo"] = "archivos/no-existe.html"
+            self.record(data, "version-recurso-recorrido-portal")["files"] = {"numero": "archivos/recorrido-del-portal.webm"}
+            self.record(data, "curso-ia")["attributes"]["titulo"] = "hoy+3"
+            self.record(data, "version-ia-1")["attributes"]["publicada_en"] = "hoy"
+            data["enrollments"].append({"user": "nadie@demo.wasichai-learning.test", "offering": "edicion-srtm-a"})
+            data["enrollments"].append({"user": "estudiante@demo.wasichai-learning.test", "offering": "edicion-ia-a"})
+            data["workflows"]["version_recurso"]["inmediato"] = "sí"
+        found = self.broken(change)
+        self.assertTrue(any("debe estar dentro de la carpeta de la demo" in p for p in found), found)
+        self.assertTrue(any("no existe el archivo 'archivos/no-existe.html'" in p for p in found))
+        self.assertTrue(any("'numero' no es un campo FILE o IMAGE" in p for p in found))
+        self.assertEqual(2, sum("solo va en un campo DATE" in p for p in found), found)
+        self.assertTrue(any("'nadie@demo.wasichai-learning.test' no está en 'users'" in p for p in found))
+        self.assertTrue(any("'edicion-ia-a' debe tener la inscripción abierta hoy" in p for p in found))
+        self.assertTrue(any("'inmediato' es true o false" in p for p in found))
+
+    def test_relative_dates_resolve_against_the_day_of_application(self):
+        today = datetime.date(2027, 2, 27)
+        resolved = apply.resolve_dates({"a": "hoy", "b": "hoy+3", "c": "hoy-30", "d": "hoyo", "e": 7}, today)
+        self.assertEqual({"a": "2027-02-27", "b": "2027-03-02", "c": "2027-01-28", "d": "hoyo", "e": 7}, resolved)
 
     def test_validate_only_with_demo_rejects_bad_data(self):
         tmp = Path(self.id().replace(".", "_") + ".json")
@@ -235,16 +287,36 @@ class FakeWasichai:
     def __init__(self):
         self.objects, self.actions, self.relationships, self.roles, self.writes = {}, {}, {}, {}, []
         self.users, self.records, self.transitions = {}, {}, []
+        self.uploads, self.tokens = [], {}
         # un servidor que no aplicara el filtro por clave natural (#60)
         self.ignore_filters = False
 
-    def handle(self, method, raw_path, body):
+    def handle(self, method, raw_path, body, auth=None):
         url = urllib.parse.urlsplit(raw_path)
         path, query = url.path, dict(urllib.parse.parse_qsl(url.query))
         if method != "GET":
             self.writes.append(f"{method} {path}")
         if (method, path) == ("POST", "/api/auth/login"):
-            return (200, {"token": "t"}) if body == {"email": "a@b.c", "password": "p"} else (401, {"detail": "bad credentials"})
+            if body == {"email": "a@b.c", "password": "p"}:
+                return 200, {"token": "t"}
+            user = next((u for u in self.users.values() if u["email"] == body["email"] and u["password"] == body["password"]), None)
+            if user is None:
+                return 401, {"detail": "bad credentials"}
+            self.tokens[f"u-{user['id']}"] = user
+            return 200, {"token": f"u-{user['id']}"}
+        if (method, path) == ("POST", "/api/lms/enrollments"):
+            return self.enroll((auth or "").removeprefix("Bearer "), body)
+        if m := re.fullmatch(r"/api/objects/(\w+)/records/([\w-]+)/files/(\w+)", path):
+            # como wasichai-files: un PATCH del campo, que pasa por la guarda (solo un borrador cambia)
+            record = next((r for r in self.records.get(m[1], []) if r["id"] == m[2]), None)
+            if record is None:
+                return 404, {"detail": "no record"}
+            if record["attributes"].get("estado", "BORRADOR") != "BORRADOR":
+                return 409, {"detail": "only a draft changes"}
+            name = re.search(rb'filename="([^"]+)"', body)[1].decode()
+            record["attributes"][m[3]] = {"id": str(uuid.uuid4()), "name": name, "size": len(body)}
+            self.uploads.append((m[1], m[2], name))
+            return 200, record
         if path == "/api/users":
             if method == "GET":
                 return 200, [{k: v for k, v in u.items() if k != "password"} for u in self.users.values()]
@@ -267,7 +339,7 @@ class FakeWasichai:
             if method == "PATCH":
                 # como EditorialWorkflowGuard: un estado nuevo debe ser el siguiente del camino
                 state = body["attributes"].get("estado")
-                if state is not None and m[1] == "version_curso":
+                if state is not None and m[1] in ("version_curso", "version_recurso"):
                     path_ = ["BORRADOR", "EN_REVISION", "APROBADA", "PUBLICADA"]
                     if path_.index(state) != path_.index(record["attributes"]["estado"]) + 1:
                         return 409, {"detail": f"transition {record['attributes']['estado']} -> {state} not allowed"}
@@ -315,9 +387,37 @@ class FakeWasichai:
             return 200, {}
         return 404, {"detail": f"no route {method} {raw_path}"}
 
+    def enroll(self, token, body):
+        # el comando de matrícula: como la persona, con la versión de la edición publicada
+        student = self.tokens.get(token)
+        if student is None:
+            return 401, {"detail": "no session"}
+        offering = next((r for r in self.records.get("edicion_curso", []) if r["attributes"]["codigo"] == body["offering"]), None)
+        if offering is None:
+            return 404, {"detail": "no offering"}
+        version = next(r for r in self.records["version_curso"] if r["id"] == offering["attributes"]["version_curso"])
+        if version["attributes"]["estado"] != "PUBLICADA":
+            return 409, {"detail": "version not published"}
+        enrollment = {"id": str(uuid.uuid4()), "attributes": {"edicion": offering["id"], "version_curso": version["id"],
+                                                               "estudiante_id": student["id"], "estado": "ACTIVA"}}
+        self.records.setdefault("matricula", []).append(enrollment)
+        return 201, enrollment
+
     def handle_records(self, method, obj, query, body):
         if obj not in self.objects:
             return 404, {"detail": f"unknown object {obj}"}
+        if method == "POST" and self.objects[obj].get("apiOnly"):
+            return 405, {"detail": f"{obj} is written only by its command"}
+        if method == "POST" and obj == "recurso_leccion":
+            # como EditorialWorkflowGuard: un recurso publicado, en el temario de una versión en borrador
+            find = lambda o, i: next(r for r in self.records[o] if r["id"] == i)  # noqa: E731
+            attributes = body["attributes"]
+            lesson = find("leccion", attributes["leccion"])
+            course = find("version_curso", find("unidad", lesson["attributes"]["unidad"])["attributes"]["version_curso"])
+            if find("version_recurso", attributes["version_recurso"])["attributes"]["estado"] != "PUBLICADA":
+                return 409, {"detail": "a lesson only uses published resource versions"}
+            if course["attributes"]["estado"] != "BORRADOR":
+                return 409, {"detail": "the curriculum of a published version does not change"}
         stored = self.records.setdefault(obj, [])
         if method == "GET":
             filters = {k: v for k, v in query.items() if k not in ("size", "page", "sort", "count", "after")}
@@ -360,8 +460,10 @@ class ApplyDemoTest(unittest.TestCase):
         class Handler(BaseHTTPRequestHandler):
             def _serve(self):
                 length = int(self.headers.get("Content-Length") or 0)
-                body = json.loads(self.rfile.read(length)) if length else None
-                status, answer = fake.handle(self.command, self.path, body)
+                raw = self.rfile.read(length) if length else b""
+                is_json = (self.headers.get("Content-Type") or "").startswith("application/json")
+                body = (json.loads(raw) if is_json else raw) if length else None
+                status, answer = fake.handle(self.command, self.path, body, self.headers.get("Authorization"))
                 raw = json.dumps(answer).encode()
                 self.send_response(status)
                 self.send_header("Content-Type", "application/json")
@@ -408,18 +510,45 @@ class ApplyDemoTest(unittest.TestCase):
         self.assertEqual(0, code, err)
         published = [r for r in DATA["records"] if r["object"] == "version_curso" and r["attributes"].get("estado") == "PUBLICADA"]
         walked = {}
+        course_versions = {r["id"] for r in self.fake.records["version_curso"]}
         for record_id, state, body in self.fake.transitions:
-            walked.setdefault(record_id, []).append((state, body))
+            if record_id in course_versions:
+                walked.setdefault(record_id, []).append((state, body))
         self.assertEqual(len(published), len(walked))
         for steps in walked.values():
             self.assertEqual(["EN_REVISION", "APROBADA", "PUBLICADA"], [s for s, _ in steps])
             # la fecha de publicación llega con la publicación, no antes
             self.assertTrue(all("publicada_en" not in b for s, b in steps[:-1]))
         # el temario se creó mientras la versión era borrador: ningún POST de unidad/lección tras la primera transición
-        first_patch = next(i for i, w in enumerate(self.fake.writes) if w.startswith("PATCH"))
+        first_patch = next(i for i, w in enumerate(self.fake.writes) if w.startswith("PATCH /api/objects/version_curso"))
         self.assertFalse(any(w.startswith(("POST /api/objects/unidad", "POST /api/objects/leccion")) for w in self.fake.writes[first_patch:]))
         drafts = [r for r in self.fake.records["version_curso"] if r["attributes"]["estado"] == "BORRADOR"]
         self.assertEqual(sum(1 for r in DATA["records"] if r["object"] == "version_curso" and r["attributes"].get("estado") == "BORRADOR"), len(drafts))
+
+    def test_resources_get_their_file_and_are_published_before_a_lesson_uses_them(self):
+        code, _, err = self.run_main()
+        self.assertEqual(0, code, err)
+        # el simulador rechaza (409) un recurso sin publicar en una lección o un temario ya publicado: llegar aquí lo prueba
+        self.assertEqual(len(records("recurso_leccion")), len(self.fake.records["recurso_leccion"]))
+        self.assertEqual({"lectura-entrar-y-salir.html", "guia-estados-del-anuncio.pdf", "recorrido-del-portal.webm"}, {name for _, _, name in self.fake.uploads})
+        self.assertTrue(all(r["attributes"]["estado"] == "PUBLICADA" for r in self.fake.records["version_recurso"]))
+        self.assertTrue(all(r["attributes"].get("archivo") for r in self.fake.records["version_recurso"]))
+
+    def test_dates_are_written_relative_to_today(self):
+        self.assertEqual(0, self.run_main()[0])
+        today = datetime.date.today()
+        open_offering = next(r for r in self.fake.records["edicion_curso"] if r["attributes"]["codigo"] == "SRTM-ANU-101-A")
+        self.assertEqual((today + datetime.timedelta(days=12)).isoformat(), open_offering["attributes"]["fecha_inicio"])
+        self.assertEqual((today - datetime.timedelta(days=2)).isoformat(), open_offering["attributes"]["inscripcion_desde"])
+
+    def test_the_demo_student_enrolls_through_the_command_as_themselves(self):
+        code, _, err = self.run_main()
+        self.assertEqual(0, code, err)
+        student = next(u for u in self.fake.users.values() if u["email"] == "estudiante@demo.wasichai-learning.test")
+        (enrollment,) = self.fake.records["matricula"]
+        self.assertEqual(student["id"], enrollment["attributes"]["estudiante_id"])
+        self.assertIn("POST /api/lms/enrollments", self.fake.writes)
+        self.assertNotIn("POST /api/objects/matricula/records", self.fake.writes)
 
     def test_existing_records_are_found_beyond_the_first_page_even_if_the_server_ignores_the_filter(self):
         self.assertEqual(0, self.run_main()[0])

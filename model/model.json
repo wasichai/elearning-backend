@@ -531,6 +531,12 @@
       ],
       "fields": [
         {
+          "name": "codigo",
+          "label": "Código (identificador estable, para importar y para la demo)",
+          "type": "TEXT",
+          "unique": true
+        },
+        {
           "name": "titulo",
           "label": "Título",
           "type": "TEXT",

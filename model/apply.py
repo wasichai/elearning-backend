@@ -26,6 +26,7 @@ import argparse
 from decimal import Decimal, InvalidOperation
 import datetime
 import json
+import mimetypes
 import os
 import re
 import sys
@@ -49,6 +50,8 @@ FIELD_KEYS = ("name", "label", "type", "required", "unique", "enumOptions", "def
 DEMO_DOMAIN = "demo.wasichai-learning.test"
 DEMO_EMAIL = re.compile(r"^[a-z0-9][a-z0-9._-]*@" + re.escape(DEMO_DOMAIN) + "$")
 ALIAS = re.compile(r"^[a-z0-9][a-z0-9-]{0,79}$")
+# una fecha relativa al día en que se aplica la demo ("hoy", "hoy+12", "hoy-2"): las ediciones no envejecen (#96)
+RELATIVE_DATE = re.compile(r"^hoy(?:([+-]\d{1,4}))?$")
 UUID = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
 
 
@@ -229,6 +232,8 @@ def _natural_keys(obj: dict) -> list[set[str]]:
 def _value_problem(f: dict, value: object, enums: dict) -> str | None:
     ftype = f.get("type")
     if ftype in ("TEXT", "LONG_TEXT", "EMAIL", "URL"):
+        if isinstance(value, str) and RELATIVE_DATE.match(value):
+            return "una fecha relativa (hoy±N) solo va en un campo DATE"
         return None if isinstance(value, str) and value.strip() else "se esperaba un texto no vacío"
     if ftype == "INTEGER":
         return None if isinstance(value, int) and not isinstance(value, bool) else "se esperaba un entero"
@@ -240,6 +245,10 @@ def _value_problem(f: dict, value: object, enums: dict) -> str | None:
         return None if value in enums.get(f.get("enum"), []) else f"{value!r} no es una opción de '{f.get('enum')}'"
     if ftype == "UUID":
         return None if isinstance(value, str) and UUID.match(value) else "se esperaba un UUID"
+    if ftype == "DATE" and isinstance(value, str) and RELATIVE_DATE.match(value):
+        return None
+    if isinstance(value, str) and RELATIVE_DATE.match(value):
+        return "una fecha relativa (hoy±N) solo va en un campo DATE"
     if ftype in ("DATE", "DATETIME"):
         try:
             if ftype == "DATE":
@@ -252,7 +261,7 @@ def _value_problem(f: dict, value: object, enums: dict) -> str | None:
     return f"el tipo {ftype} no se admite en los datos de demostración"
 
 
-def validate_demo(data: dict, model: dict, roles: dict | None = None) -> None:
+def validate_demo(data: dict, model: dict, roles: dict | None = None, base: Path = HERE / "demo") -> None:
     """Valida model/demo/data.json contra el modelo y los roles, sin red. Reúne todos los problemas, como validate()."""
     problems: list[str] = []
     enums = model.get("enums", {})
@@ -261,7 +270,7 @@ def validate_demo(data: dict, model: dict, roles: dict | None = None) -> None:
     known_roles = {"ADMIN"} | {r["name"] for r in (roles or {}).get("roles", [])}
 
     for key in data:
-        if key not in ("users", "records", "workflows") and not key.startswith("_"):
+        if key not in ("users", "records", "workflows", "enrollments") and not key.startswith("_"):
             problems.append(f"clave desconocida '{key}' en los datos de demostración")
 
     # workflows: el camino de estados que un registro recorre hasta su estado final, como lo haría una persona
@@ -275,6 +284,8 @@ def validate_demo(data: dict, model: dict, roles: dict | None = None) -> None:
         path = flow.get("path") or []
         if not path or any(s not in enums.get(state["enum"], []) for s in path):
             problems.append(f"workflow de '{obj_name}': el camino {path} no son estados de '{state['enum']}'")
+        if not isinstance(flow.get("inmediato", False), bool):
+            problems.append(f"workflow de '{obj_name}': 'inmediato' es true o false")
         for deferred in flow.get("deferred", []):
             if deferred not in fields:
                 problems.append(f"workflow de '{obj_name}': campo diferido desconocido '{deferred}'")
@@ -311,7 +322,7 @@ def validate_demo(data: dict, model: dict, roles: dict | None = None) -> None:
         elif alias in aliases:
             problems.append(f"{where}: 'ref' repetido")
         for key in record:
-            if key not in ("ref", "object", "key", "attributes", "refs", "users"):
+            if key not in ("ref", "object", "key", "attributes", "refs", "users", "files"):
                 problems.append(f"{where}: clave desconocida '{key}'")
         if oname not in objects:
             problems.append(f"{where}: objeto desconocido")
@@ -338,6 +349,19 @@ def validate_demo(data: dict, model: dict, roles: dict | None = None) -> None:
                 problems.append(f"{where}: '{fname}' no es un campo UUID donde poner un usuario")
             elif email not in emails:
                 problems.append(f"{where}: '{fname}' apunta al usuario '{email}', que no está en 'users'")
+        # archivos: rutas dentro de la carpeta de la demo, a un campo FILE o IMAGE y dentro de su límite
+        for fname, rel_path in record.get("files", {}).items():
+            spec = fields.get(fname, {})
+            if spec.get("type") not in ("FILE", "IMAGE"):
+                problems.append(f"{where}: '{fname}' no es un campo FILE o IMAGE")
+                continue
+            target = (base / str(rel_path)).resolve()
+            if Path(str(rel_path)).is_absolute() or not target.is_relative_to(base.resolve()):
+                problems.append(f"{where}: el archivo {rel_path!r} debe estar dentro de la carpeta de la demo")
+            elif not target.is_file():
+                problems.append(f"{where}: no existe el archivo {rel_path!r}")
+            elif "maxBytes" in spec and target.stat().st_size > spec["maxBytes"]:
+                problems.append(f"{where}: {rel_path!r} supera los {spec['maxBytes']} bytes de '{fname}'")
         given = set(attributes) | set(refs) | set(users)
         for f in fields.values():
             if f.get("required") and f.get("defaultValue") is None and f["name"] not in given:
@@ -357,8 +381,34 @@ def validate_demo(data: dict, model: dict, roles: dict | None = None) -> None:
             keys_seen.add((oname, values))
         if ALIAS.match(alias) and alias not in aliases:
             aliases[alias] = oname
+
+    # matrículas: por el comando, como el estudiante; solo en ediciones abiertas hoy
+    records_by_ref = {r.get("ref"): r for r in data.get("records", [])}
+    for i, enrollment in enumerate(data.get("enrollments", [])):
+        where = f"matrícula #{i + 1}"
+        if enrollment.get("user") not in emails:
+            problems.append(f"{where}: el usuario {enrollment.get('user')!r} no está en 'users'")
+        offering = records_by_ref.get(enrollment.get("offering"))
+        if offering is None or offering.get("object") != "edicion_curso":
+            problems.append(f"{where}: {enrollment.get('offering')!r} no es una edicion_curso del archivo")
+            continue
+        a = offering.get("attributes", {})
+        window = [a.get("inscripcion_desde"), a.get("inscripcion_hasta")]
+        open_today = all(isinstance(d, str) and RELATIVE_DATE.match(d) for d in window) and _days(window[0]) <= 0 <= _days(window[1])
+        if a.get("estado") != "INSCRIPCION_ABIERTA" or not open_today:
+            problems.append(f"{where}: la edición {enrollment['offering']!r} debe tener la inscripción abierta hoy (fechas relativas)")
     if problems:
         raise ModelError(problems)
+
+
+def _days(relative: str) -> int:
+    return int(RELATIVE_DATE.match(relative)[1] or 0)
+
+
+def resolve_dates(attributes: dict, today: datetime.date) -> dict:
+    """Las fechas relativas ("hoy+12") pasan a fechas ISO del día en que se aplica la demo."""
+    return {k: (today + datetime.timedelta(days=_days(v))).isoformat() if isinstance(v, str) and RELATIVE_DATE.match(v) else v
+            for k, v in attributes.items()}
 
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -411,6 +461,24 @@ class Client:
             return json.loads(raw)
         except ValueError:
             raise ApiError(200, method, path, f"la respuesta no es JSON (¿--url apunta a otro servicio?): {raw[:120]}") from None
+
+    def upload(self, path: str, file: Path) -> object | None:
+        """multipart/form-data con una parte "file", como la ruta de archivos de wasichai-files."""
+        boundary = f"----wasichai-learning-{os.urandom(12).hex()}"
+        content_type = mimetypes.guess_type(file.name)[0] or "application/octet-stream"
+        body = (f'--{boundary}\r\nContent-Disposition: form-data; name="file"; filename="{file.name}"\r\n'
+                f"Content-Type: {content_type}\r\n\r\n").encode() + file.read_bytes() + f"\r\n--{boundary}--\r\n".encode()
+        request = urllib.request.Request(self.base + path, data=body, method="POST")
+        request.add_header("Accept", "application/json")
+        request.add_header("Content-Type", f"multipart/form-data; boundary={boundary}")
+        if self.token:
+            request.add_header("Authorization", f"Bearer {self.token}")
+        try:
+            with self.opener.open(request, timeout=120) as response:
+                raw = response.read().decode()
+        except urllib.error.HTTPError as error:
+            raise ApiError(error.code, "POST", path, error.read().decode()) from None
+        return json.loads(raw) if raw.strip() else None
 
     def login(self, email: str, password: str) -> None:
         answer = self.call("POST", "/api/auth/login", {"email": email, "password": password})
@@ -628,22 +696,24 @@ def _find_record(client: Client, obj: str, key: dict) -> dict | None:
     return found[0] if found else None
 
 
-def apply_demo(client: Client, data: dict, password: str, report: Report) -> None:
+def apply_demo(client: Client, data: dict, password: str, report: Report, base: Path = HERE / "demo",
+               today: datetime.date | None = None) -> None:
     """Usuarios y registros de demostración: cada registro se busca por su clave natural y solo se crea si falta."""
+    today = today or datetime.date.today()
     user_ids = apply_users(client, data.get("users", []), password, report)
     workflows = data.get("workflows") or {}
     ids: dict[str, str] = {}
     pending: list[tuple[dict, str, dict]] = []
     for record in data.get("records", []):
         obj = record["object"]
-        attributes = dict(record.get("attributes", {}))
+        attributes = resolve_dates(dict(record.get("attributes", {})), today)
         attributes.update({f: ids[alias] for f, alias in record.get("refs", {}).items()})
         attributes.update({f: user_ids[email] for f, email in record.get("users", {}).items()})
         flow = workflows.get(obj)
         final: dict = {}
         if flow:
             # nace en el primer estado del camino y sin lo que se pone al final (fecha de publicación, créditos):
-            # su contenido (temario incluido) se escribe mientras aún es borrador
+            # su contenido (temario y archivos incluidos) se escribe mientras aún es borrador
             final = {flow["field"]: attributes.get(flow["field"], flow["path"][0])}
             final |= {f: attributes.pop(f) for f in flow.get("deferred", []) if f in attributes}
             attributes[flow["field"]] = flow["path"][0]
@@ -652,21 +722,46 @@ def apply_demo(client: Client, data: dict, password: str, report: Report) -> Non
             found = client.call("POST", f"/api/objects/{obj}/records", {"attributes": attributes})
             report.add(f"{obj} {record['ref']}")
         ids[record["ref"]] = found["id"]
-        if flow:
+        for fname, rel_path in record.get("files", {}).items():
+            if not (found.get("attributes") or {}).get(fname):
+                client.upload(f"/api/objects/{obj}/records/{found['id']}/files/{fname}", base / rel_path)
+                report.add(f"{obj} {record['ref']}: archivo {Path(rel_path).name}")
+        if flow and flow.get("inmediato"):
+            # lo que otro registro del archivo necesita ya publicado (un recurso que usa una lección en borrador)
+            _walk(client, record, found["id"], flow, final, report)
+        elif flow:
             pending.append((record, found["id"], final))
     # después de todo lo demás: cada registro recorre su camino hasta el estado final, una transición por vez
     for record, record_id, final in pending:
-        flow = workflows[record["object"]]
-        field, path = flow["field"], flow["path"]
-        current = (client.call("GET", f"/api/objects/{record['object']}/records/{record_id}") or {}).get("attributes", {}).get(field)
-        target = final[field]
-        if current not in path or path.index(current) >= path.index(target):
+        _walk(client, record, record_id, workflows[record["object"]], final, report)
+    _enroll(client, data, ids, user_ids, password, report)
+
+
+def _walk(client: Client, record: dict, record_id: str, flow: dict, final: dict, report: Report) -> None:
+    field, path = flow["field"], flow["path"]
+    current = (client.call("GET", f"/api/objects/{record['object']}/records/{record_id}") or {}).get("attributes", {}).get(field)
+    target = final[field]
+    if current not in path or path.index(current) >= path.index(target):
+        return
+    steps = path[path.index(current) + 1 : path.index(target) + 1]
+    for step in steps:
+        body = {field: step} | ({k: v for k, v in final.items() if k != field} if step == target else {})
+        client.call("PATCH", f"/api/objects/{record['object']}/records/{record_id}", {"attributes": body})
+    report.add(f"{record['object']} {record['ref']}: {' → '.join([current, *steps])}")
+
+
+def _enroll(client: Client, data: dict, ids: dict, user_ids: dict, password: str, report: Report) -> None:
+    """Matrícula de los usuarios demo por el comando del aula, iniciando sesión como cada uno: ventana, cupo y versión
+    se comprueban como para cualquier estudiante. Si ya existe, no se toca."""
+    codes = {r["ref"]: r["attributes"]["codigo"] for r in data.get("records", []) if r["object"] == "edicion_curso"}
+    for enrollment in data.get("enrollments", []):
+        email, offering = enrollment["user"], enrollment["offering"]
+        if _find_record(client, "matricula", {"estudiante_id": user_ids[email], "edicion": ids[offering]}):
             continue
-        steps = path[path.index(current) + 1 : path.index(target) + 1]
-        for step in steps:
-            body = {field: step} | ({k: v for k, v in final.items() if k != field} if step == target else {})
-            client.call("PATCH", f"/api/objects/{record['object']}/records/{record_id}", {"attributes": body})
-        report.add(f"{record['object']} {record['ref']}: {' → '.join([current, *steps])}")
+        student = Client(client.base)
+        student.login(email, password)
+        student.call("POST", "/api/lms/enrollments", {"offering": codes[offering]})
+        report.add(f"matrícula de {email} en {codes[offering]}")
 
 
 def load(path: Path) -> dict:
@@ -701,7 +796,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.demo:
         demo = load(args.demo_data)
         try:
-            validate_demo(demo, model, roles)
+            validate_demo(demo, model, roles, args.demo_data.parent)
         except ModelError as error:
             print("Datos de demostración inválidos:", *(f"  - {p}" for p in error.problems), sep="\n", file=sys.stderr)
             return 2
@@ -728,7 +823,7 @@ def main(argv: list[str] | None = None) -> int:
         if roles is not None:
             apply_roles(client, roles, report)
         if demo is not None:
-            apply_demo(client, demo, demo_password, report)
+            apply_demo(client, demo, demo_password, report, base=args.demo_data.parent)
     except (ApiError, DemoError, urllib.error.URLError, TimeoutError, ConnectionError) as error:
         print(f"Error: {error}", file=sys.stderr)
         return 1

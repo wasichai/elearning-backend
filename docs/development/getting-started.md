@@ -66,8 +66,21 @@ export WASICHAI_DEMO_PASSWORD='elige-una-contraseña-de-desarrollo'   # la de lo
 python3 model/apply.py --demo
 ```
 
-La primera ejecución crea el modelo (8 objetos, relaciones, acciones), los 4 roles, 5 usuarios y 79 registros; una
+La primera ejecución crea el modelo (13 objetos, relaciones, acciones), los 4 roles, 5 usuarios y 89 registros; una
 segunda responde «Sin cambios». Sin `--demo` aplica solo el modelo y los roles. `--validate-only` valida sin servidor.
+
+Lo que deja la demo para el aula (F2):
+
+- **Fechas relativas** al día en que se aplica (`"hoy+12"` en `model/demo/data.json`): la edición `SRTM-ANU-101-A`
+  tiene la inscripción abierta hoy y empieza en 12 días; las demás, más adelante. No envejecen.
+- **Recursos con archivo** (`model/demo/archivos/`, todos propios o sintéticos): una lectura HTML en la primera lección
+  de SRTM, una guía PDF en «Cómo se deduce el estado» y un vídeo de 4 s (patrón de prueba de FFmpeg) en la lección de
+  vídeo. Se suben al borrador y se publican antes de que la lección los use, como lo haría una persona.
+- **`estudiante@…` matriculado** en `SRTM-ANU-101-A` por el comando de matrícula, iniciando sesión como él: entra y
+  encuentra el curso en «Mis cursos».
+
+Si aplicaste una demo anterior a estos cambios, el temario de SRTM ya está publicado y no admite la lección ni los
+recursos nuevos: recrea la base (`docker compose down -v && docker compose up -d`) y vuelve a aplicar.
 
 Usuarios de demostración (contraseña: la de `WASICHAI_DEMO_PASSWORD`):
 

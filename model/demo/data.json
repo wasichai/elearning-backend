@@ -33,6 +33,12 @@
       "field": "estado",
       "path": ["BORRADOR", "EN_REVISION", "APROBADA", "PUBLICADA"],
       "deferred": ["publicada_en", "creditos_aprobados"]
+    },
+    "version_recurso": {
+      "_comentario": "Un recurso se publica antes de que una lección lo use (EditorialWorkflowGuard): recorre su flujo en cuanto se crea y se sube su archivo, mientras el temario del curso aún es borrador.",
+      "field": "estado",
+      "path": ["BORRADOR", "EN_REVISION", "APROBADA", "PUBLICADA"],
+      "inmediato": true
     }
   },
   "records": [
@@ -204,6 +210,22 @@
         "duracion_minutos": 20,
         "resumen": "Cuánto dura una sesión, qué se pierde cuando vence y por qué cerrarla siempre en una ventanilla compartida.",
         "referencia_fuente": "wasichai/srtm-backend@6daacd3:docs/manuales/comun/acceso.adoc#cerrar-sesion"
+      },
+      "refs": {
+        "unidad": "srtm-v1-u1"
+      }
+    },
+    {
+      "ref": "srtm-v1-u1-l4",
+      "object": "leccion",
+      "key": ["unidad", "orden"],
+      "attributes": {
+        "orden": 4,
+        "titulo": "Recorrido en vídeo: entrar y salir",
+        "tipo": "VIDEO",
+        "duracion_minutos": 5,
+        "resumen": "Un vídeo breve que ocupa el lugar del recorrido grabado del portal (en la demostración, un patrón de prueba sintético). La lección se completa al terminar la reproducción.",
+        "referencia_fuente": "wasichai/srtm-backend@6daacd3:docs/manuales/comun/acceso.adoc#ingresar"
       },
       "refs": {
         "unidad": "srtm-v1-u1"
@@ -1164,17 +1186,17 @@
       }
     },
     {
-      "ref": "edicion-srtm-2026-11",
+      "ref": "edicion-srtm-a",
       "object": "edicion_curso",
       "key": ["codigo"],
       "attributes": {
-        "codigo": "SRTM-ANU-101-2026-11",
+        "codigo": "SRTM-ANU-101-A",
         "estado": "INSCRIPCION_ABIERTA",
-        "fecha_inicio": "2026-11-09",
-        "fecha_fin": "2026-11-27",
+        "fecha_inicio": "hoy+12",
+        "fecha_fin": "hoy+30",
         "zona_horaria": "America/Lima",
-        "inscripcion_desde": "2026-10-26",
-        "inscripcion_hasta": "2026-11-06",
+        "inscripcion_desde": "hoy-2",
+        "inscripcion_hasta": "hoy+9",
         "capacidad": 40,
         "calendario": "Asíncrona, tres semanas. Consultas con el docente los miércoles de 16:00 a 17:00 (hora de Lima)."
       },
@@ -1190,7 +1212,7 @@
         "rol_docente": "TITULAR"
       },
       "refs": {
-        "edicion_curso": "edicion-srtm-2026-11",
+        "edicion_curso": "edicion-srtm-a",
         "perfil_docente": "perfil-diego"
       }
     },
@@ -1202,22 +1224,22 @@
         "rol_docente": "ASISTENTE"
       },
       "refs": {
-        "edicion_curso": "edicion-srtm-2026-11",
+        "edicion_curso": "edicion-srtm-a",
         "perfil_docente": "perfil-mara"
       }
     },
     {
-      "ref": "edicion-srtm-2027-03",
+      "ref": "edicion-srtm-b",
       "object": "edicion_curso",
       "key": ["codigo"],
       "attributes": {
-        "codigo": "SRTM-ANU-101-2027-03",
+        "codigo": "SRTM-ANU-101-B",
         "estado": "PROGRAMADA",
-        "fecha_inicio": "2027-03-01",
-        "fecha_fin": "2027-03-19",
+        "fecha_inicio": "hoy+124",
+        "fecha_fin": "hoy+142",
         "zona_horaria": "America/Lima",
-        "inscripcion_desde": "2027-02-01",
-        "inscripcion_hasta": "2027-02-26",
+        "inscripcion_desde": "hoy+96",
+        "inscripcion_hasta": "hoy+121",
         "capacidad": 40,
         "calendario": "Asíncrona, tres semanas. Consultas con el docente los jueves de 16:00 a 17:00 (hora de Lima)."
       },
@@ -1233,24 +1255,24 @@
         "rol_docente": "TITULAR"
       },
       "refs": {
-        "edicion_curso": "edicion-srtm-2027-03",
+        "edicion_curso": "edicion-srtm-b",
         "perfil_docente": "perfil-diego"
       }
     },
     {
-      "ref": "edicion-sgspe-2027-01",
+      "ref": "edicion-sgspe-a",
       "object": "edicion_curso",
       "key": ["codigo"],
       "attributes": {
-        "codigo": "SGSPE-101-2027-01",
+        "codigo": "SGSPE-101-A",
         "estado": "PROGRAMADA",
-        "fecha_inicio": "2027-01-11",
-        "fecha_fin": "2027-01-22",
+        "fecha_inicio": "hoy+75",
+        "fecha_fin": "hoy+86",
         "zona_horaria": "America/Lima",
-        "inscripcion_desde": "2026-12-01",
-        "inscripcion_hasta": "2027-01-08",
+        "inscripcion_desde": "hoy+34",
+        "inscripcion_hasta": "hoy+72",
         "capacidad": 30,
-        "calendario": "Asíncrona, dos semanas. Revisión de la práctica en una sesión opcional el viernes 15 de enero, de 10:00 a 11:30 (hora de Lima)."
+        "calendario": "Asíncrona, dos semanas. Revisión de la práctica en una sesión opcional el viernes de la primera semana, de 10:00 a 11:30 (hora de Lima)."
       },
       "refs": {
         "version_curso": "version-sgspe-1"
@@ -1264,22 +1286,22 @@
         "rol_docente": "TITULAR"
       },
       "refs": {
-        "edicion_curso": "edicion-sgspe-2027-01",
+        "edicion_curso": "edicion-sgspe-a",
         "perfil_docente": "perfil-mara"
       }
     },
     {
-      "ref": "edicion-ia-2027-04",
+      "ref": "edicion-ia-a",
       "object": "edicion_curso",
       "key": ["codigo"],
       "attributes": {
-        "codigo": "IA-AGT-201-2027-04",
+        "codigo": "IA-AGT-201-A",
         "estado": "PROGRAMADA",
-        "fecha_inicio": "2027-04-05",
-        "fecha_fin": "2027-05-14",
+        "fecha_inicio": "hoy+159",
+        "fecha_fin": "hoy+198",
         "zona_horaria": "America/Lima",
-        "inscripcion_desde": "2027-02-15",
-        "inscripcion_hasta": "2027-03-26",
+        "inscripcion_desde": "hoy+110",
+        "inscripcion_hasta": "hoy+149",
         "capacidad": 25,
         "calendario": "Híbrida, seis semanas. Teoría síncrona lunes, miércoles y viernes de 08:00 a 12:00; laboratorio martes y jueves de 08:00 a 14:00 (hora de Lima). Estudio autónomo: 12 h por semana."
       },
@@ -1295,7 +1317,7 @@
         "rol_docente": "TITULAR"
       },
       "refs": {
-        "edicion_curso": "edicion-ia-2027-04",
+        "edicion_curso": "edicion-ia-a",
         "perfil_docente": "perfil-mara"
       }
     },
@@ -1307,9 +1329,141 @@
         "rol_docente": "ASISTENTE"
       },
       "refs": {
-        "edicion_curso": "edicion-ia-2027-04",
+        "edicion_curso": "edicion-ia-a",
         "perfil_docente": "perfil-diego"
       }
+    },
+    {
+      "ref": "recurso-lectura-acceso",
+      "object": "recurso",
+      "key": ["codigo"],
+      "attributes": {
+        "codigo": "DEMO-LECTURA-ACCESO",
+        "titulo": "Entrar y salir del portal (lectura)",
+        "tipo": "HTML",
+        "idioma": "es"
+      }
+    },
+    {
+      "ref": "version-recurso-lectura-acceso",
+      "object": "version_recurso",
+      "key": ["recurso", "numero"],
+      "attributes": {
+        "numero": 1,
+        "estado": "PUBLICADA",
+        "referencias": "Texto propio de la demostración: resume con palabras propias wasichai/srtm-backend@6daacd3:docs/manuales/comun/acceso.adoc; no reproduce el manual."
+      },
+      "refs": {
+        "recurso": "recurso-lectura-acceso"
+      },
+      "users": {
+        "autor_id": "creador@demo.wasichai-learning.test"
+      },
+      "files": {
+        "archivo": "archivos/lectura-entrar-y-salir.html"
+      }
+    },
+    {
+      "ref": "recurso-leccion-lectura-acceso",
+      "object": "recurso_leccion",
+      "key": ["leccion", "version_recurso"],
+      "attributes": {
+        "orden": 1
+      },
+      "refs": {
+        "leccion": "srtm-v1-u1-l1",
+        "version_recurso": "version-recurso-lectura-acceso"
+      }
+    },
+    {
+      "ref": "recurso-guia-estados",
+      "object": "recurso",
+      "key": ["codigo"],
+      "attributes": {
+        "codigo": "DEMO-GUIA-ESTADOS",
+        "titulo": "Guía rápida: los estados de un anuncio",
+        "tipo": "PDF",
+        "idioma": "es"
+      }
+    },
+    {
+      "ref": "version-recurso-guia-estados",
+      "object": "version_recurso",
+      "key": ["recurso", "numero"],
+      "attributes": {
+        "numero": 1,
+        "estado": "PUBLICADA",
+        "referencias": "Guía sintética de la demostración, escrita para este curso a partir de wasichai/srtm-backend@6daacd3:docs/manuales/usuario/anuncios.adoc#estados; no reproduce el manual."
+      },
+      "refs": {
+        "recurso": "recurso-guia-estados"
+      },
+      "users": {
+        "autor_id": "creador@demo.wasichai-learning.test"
+      },
+      "files": {
+        "archivo": "archivos/guia-estados-del-anuncio.pdf"
+      }
+    },
+    {
+      "ref": "recurso-leccion-guia-estados",
+      "object": "recurso_leccion",
+      "key": ["leccion", "version_recurso"],
+      "attributes": {
+        "orden": 1
+      },
+      "refs": {
+        "leccion": "srtm-v1-u2-l2",
+        "version_recurso": "version-recurso-guia-estados"
+      }
+    },
+    {
+      "ref": "recurso-recorrido-portal",
+      "object": "recurso",
+      "key": ["codigo"],
+      "attributes": {
+        "codigo": "DEMO-RECORRIDO-PORTAL",
+        "titulo": "Recorrido del portal (vídeo de demostración)",
+        "tipo": "VIDEO",
+        "idioma": "es"
+      }
+    },
+    {
+      "ref": "version-recurso-recorrido-portal",
+      "object": "version_recurso",
+      "key": ["recurso", "numero"],
+      "attributes": {
+        "numero": 1,
+        "estado": "PUBLICADA",
+        "referencias": "Vídeo sintético (patrón de prueba testsrc2 de FFmpeg, 4 s, VP9): ocupa el lugar de una grabación real del portal."
+      },
+      "refs": {
+        "recurso": "recurso-recorrido-portal"
+      },
+      "users": {
+        "autor_id": "creador@demo.wasichai-learning.test"
+      },
+      "files": {
+        "archivo": "archivos/recorrido-del-portal.webm"
+      }
+    },
+    {
+      "ref": "recurso-leccion-recorrido-portal",
+      "object": "recurso_leccion",
+      "key": ["leccion", "version_recurso"],
+      "attributes": {
+        "orden": 1
+      },
+      "refs": {
+        "leccion": "srtm-v1-u1-l4",
+        "version_recurso": "version-recurso-recorrido-portal"
+      }
+    }
+  ],
+  "enrollments": [
+    {
+      "user": "estudiante@demo.wasichai-learning.test",
+      "offering": "edicion-srtm-a"
     }
   ]
 }
