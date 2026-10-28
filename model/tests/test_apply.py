@@ -4,7 +4,9 @@ El simulado imita solo el contrato que usa el script (docs/api/rest.md de Wasich
 prueba la integración (LmsApiTest), que ejecuta este mismo script contra la aplicación.
 """
 
+import contextlib
 import copy
+import io
 import json
 import re
 import sys
@@ -275,6 +277,59 @@ class RobustnessTest(unittest.TestCase):
         self.assertTrue(apply._matches("true", True))
         self.assertFalse(apply._matches(Decimal("10.5"), 10))
         self.assertFalse(apply._matches(None, ""))
+
+
+class TransportTest(unittest.TestCase):
+    """Revisión de seguridad (E10.1): credenciales y token por canales seguros."""
+
+    def test_plain_http_is_only_for_this_machine(self):
+        for url in ("http://localhost:8090", "http://127.0.0.1:8090", "http://[::1]:8090", "https://lms.example.org"):
+            apply.check_url(url)
+        with self.assertRaises(ValueError):
+            apply.check_url("http://lms.example.org")
+
+    def test_a_redirect_is_never_followed_with_the_token(self):
+        seen = []
+
+        class Elsewhere(BaseHTTPRequestHandler):
+            def do_GET(self):
+                seen.append(self.headers.get("Authorization"))
+                self.send_response(200)
+                self.end_headers()
+
+            def log_message(self, *args):
+                pass
+
+        target = ThreadingHTTPServer(("127.0.0.1", 0), Elsewhere)
+        port = target.server_port
+
+        class Redirector(BaseHTTPRequestHandler):
+            def do_GET(self):
+                self.send_response(302)
+                self.send_header("Location", f"http://127.0.0.1:{port}/robado")
+                self.end_headers()
+
+            def log_message(self, *args):
+                pass
+
+        source = ThreadingHTTPServer(("127.0.0.1", 0), Redirector)
+        for server in (target, source):
+            threading.Thread(target=server.serve_forever, daemon=True).start()
+        try:
+            client = apply.Client(f"http://127.0.0.1:{source.server_port}", token="secreto")
+            with self.assertRaises(apply.ApiError):
+                client.call("GET", "/api/objects")
+            self.assertEqual([], seen, "el token no debe llegar a otro servidor por una redirección")
+        finally:
+            for server in (target, source):
+                server.shutdown()
+                server.server_close()
+
+    def test_password_on_the_command_line_is_warned_about(self):
+        err = io.StringIO()
+        with contextlib.redirect_stderr(err):
+            apply.main(["--validate-only", "--password", "x"])
+        self.assertIn("WASICHAI_PASSWORD", err.getvalue())
 
 
 class CommandLineTest(unittest.TestCase):
