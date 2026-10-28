@@ -1,6 +1,8 @@
 package elearning.catalog
 
 import elearning.LmsApiTest
+import elearning.common.LmsProperties
+import kotlinx.coroutines.reactor.awaitSingle
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
@@ -8,13 +10,29 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.r2dbc.core.DatabaseClient
 import tools.jackson.databind.JsonNode
+import wasichai.core.data.RecordService
+import wasichai.core.platform.ClusterLock
+import wasichai.core.platform.TenantDirectory
 
 // el listado público lee la proyección (ADR-0011). los datos son los de model/demo, aplicados por LmsApiTest;
 // la organización pública es la semilla «demo» de Wasichai
 class CatalogListApiTest : LmsApiTest() {
     @Autowired
     private lateinit var projection: CatalogProjection
+
+    @Autowired private lateinit var db: DatabaseClient
+
+    @Autowired private lateinit var tenants: TenantDirectory
+
+    @Autowired private lateinit var records: RecordService
+
+    @Autowired private lateinit var source: CatalogSource
+
+    @Autowired private lateinit var repository: CatalogRepository
+
+    @Autowired private lateinit var clusterLock: ClusterLock
 
     @BeforeEach
     fun refresh() {
@@ -113,6 +131,53 @@ class CatalogListApiTest : LmsApiTest() {
                 .expectBody()
                 .jsonPath("$.errors[0].field")
                 .isEqualTo(field)
+        }
+    }
+
+    @Test
+    fun `an ongoing offering counts as the next one when sorting by upcoming`() {
+        // el curso de IA pasa a tener una edición que empezó en enero y sigue en curso: debe ir primero
+        runBlocking {
+            db
+                .sql("UPDATE lms.catalogo_publicado SET inicios = '{2026-01-05}', fines = '{2099-01-01}', hash = 'x' WHERE codigo = 'IA-AGT-201'")
+                .fetch()
+                .rowsUpdated()
+                .awaitSingle()
+        }
+        try {
+            assertEquals("IA-AGT-201", list("?sort=upcoming").codes().first())
+        } finally {
+            runBlocking { projection.refreshNow() }
+        }
+    }
+
+    @Test
+    fun `when the public organization cannot be resolved the catalog is emptied, not left stale`() {
+        val lost =
+            CatalogProjection(LmsProperties(public = LmsProperties.Public("organizacion-que-no-existe")), tenants, records, source, repository, clusterLock)
+        try {
+            runBlocking { lost.refreshNow() }
+            assertEquals(0, list()["totalElements"].asInt())
+        } finally {
+            runBlocking { projection.refreshNow() }
+        }
+        assertEquals(3, list()["totalElements"].asInt())
+    }
+
+    // un NUL llegaba a PostgreSQL y salía como 500 anónimo (revisión de seguridad). uri(String) volvería a codificar
+    // el %, así que el carácter real se pasa por el UriBuilder
+    @Test
+    fun `control characters in the search are a 400, not a 500`() {
+        for (q in listOf("\u0000", "a\nb", "\u001b[31m")) {
+            client
+                .get()
+                .uri { it.path("/api/lms/public/catalog/courses").queryParam("q", q).build() }
+                .exchange()
+                .expectStatus()
+                .isBadRequest
+                .expectBody()
+                .jsonPath("$.errors[0].field")
+                .isEqualTo("q")
         }
     }
 

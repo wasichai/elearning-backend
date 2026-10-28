@@ -1,6 +1,8 @@
 package elearning.catalog
 
 import elearning.common.LmsProperties
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import org.springframework.stereotype.Component
 import tools.jackson.module.kotlin.readValue
 import wasichai.core.common.NotFoundException
@@ -17,17 +19,29 @@ class CatalogReader(
     private val repository: CatalogRepository,
     private val clock: Clock,
 ) {
-    suspend fun page(query: CatalogQuery): CoursePage {
-        val (rows, total) = repository.page(query)
-        return CoursePage(
+    suspend fun page(query: CatalogQuery): CoursePage =
+        coroutineScope {
+            // consultas independientes: en paralelo, no una tras otra
+            val page = async { repository.page(query) }
+            val facets = async { repository.categoryFacets(query) }
+            val (rows, total) = page.await()
+            build(query, rows, total, facets.await())
+        }
+
+    private fun build(
+        query: CatalogQuery,
+        rows: List<String>,
+        total: Long,
+        facets: List<CategoryFacet>,
+    ): CoursePage =
+        CoursePage(
             content = rows.map { summary(parse(it)) },
             page = query.page,
             size = query.size,
             totalElements = total,
             totalPages = ceil(total.toDouble() / query.size).toInt(),
-            facets = Facets(repository.categoryFacets(query)),
+            facets = Facets(facets),
         )
-    }
 
     suspend fun detail(slug: String): CourseDetail {
         val row = repository.detail(properties.public.organization, slug) ?: throw NotFoundException(NOT_FOUND)

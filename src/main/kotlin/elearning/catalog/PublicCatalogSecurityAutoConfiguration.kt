@@ -25,6 +25,7 @@ class PublicCatalogSecurityAutoConfiguration {
             .securityMatcher(pathMatchers(PUBLIC_PATH))
             .authorizeExchange {
                 it.pathMatchers(HttpMethod.GET, PUBLIC_PATH).permitAll()
+                it.pathMatchers(HttpMethod.HEAD, PUBLIC_PATH).permitAll()
                 it.anyExchange().denyAll()
             }
             // la misma CorsConfigurationSource que la cadena de Wasichai

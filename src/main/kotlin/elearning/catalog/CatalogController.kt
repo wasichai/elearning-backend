@@ -52,6 +52,8 @@ class CatalogController(
         val errors = mutableListOf<FieldViolation>()
         val text = q?.trim()?.takeIf { it.isNotEmpty() }
         if (text != null && text.length > MAX_Q) errors += FieldViolation("q", "must be at most $MAX_Q characters")
+        // un carácter de control (NUL incluido) no es una búsqueda y PostgreSQL rechaza el NUL en un text
+        if (text != null && text.any { it.isISOControl() }) errors += FieldViolation("q", "must not contain control characters")
         val categorySlug = category?.trim()?.takeIf { it.isNotEmpty() }
         if (categorySlug != null && !SLUG.matches(categorySlug)) errors += FieldViolation("category", "is not a slug")
         if (level != null && level !in LEVELS) errors += FieldViolation("level", "must be one of ${LEVELS.joinToString()}")
@@ -79,7 +81,7 @@ class CatalogController(
         const val MAX_Q = 100
         const val DEFAULT_SIZE = 12
         const val MAX_SIZE = 50
-        val SLUG = Regex("^[a-z0-9][a-z0-9-]{0,99}$")
+        val SLUG = CatalogBuilder.PUBLIC_SLUG
         val LEVELS = setOf("INICIAL", "INTERMEDIO", "AVANZADO")
         val MODALITIES = setOf("ASINCRONA", "SINCRONA", "HIBRIDA")
     }

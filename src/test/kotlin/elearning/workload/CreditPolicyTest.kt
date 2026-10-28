@@ -58,6 +58,16 @@ class CreditPolicyTest {
     }
 
     @Test
+    fun `the instruction floor is checked against the credits actually proposed`() {
+        // 100 h con 30 de contacto: calculado 2,22, propuesto 2; 2 créditos piden 30 h de instrucción y las hay
+        val workload = Workload(weeks = 10, weekly = WeeklyHours(theory = d("3"), autonomous = d("7")))
+        val proposal = SemesterCreditHourPolicy().propose(workload)
+
+        same("2", proposal.proposed)
+        assertTrue(proposal.warnings.isEmpty(), proposal.warnings.toString())
+    }
+
+    @Test
     fun `a proposal carries everything needed to audit it and is never an approval`() {
         val proposal = EctsPolicy(hoursPerCredit = d("27")).propose(example)
 

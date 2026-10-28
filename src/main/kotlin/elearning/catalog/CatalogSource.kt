@@ -28,13 +28,14 @@ class CatalogSource(
         objectName: String,
         filters: Map<String, String> = emptyMap(),
     ): List<RecordResponse> {
+        // por cursor (keyset) y no por OFFSET: un alta o baja entre páginas no hace saltar ni repetir registros
         val found = mutableListOf<RecordResponse>()
-        var page = 0
+        var cursor: String? = null
         do {
-            val chunk = records.list(objectName, RecordQuery(page = PageRequest(page, PAGE), filters = filters, count = false)).content
-            found += chunk
-            page++
-        } while (chunk.size == PAGE)
+            val page = records.list(objectName, RecordQuery(page = PageRequest(0, PAGE), filters = filters, count = false, after = cursor))
+            found += page.content
+            cursor = page.nextCursor
+        } while (cursor != null)
         return found
     }
 
