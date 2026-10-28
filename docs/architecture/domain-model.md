@@ -149,8 +149,9 @@ se completa por tiempo abierto) [guarda].
 **`recurso`** y **`version_recurso`** (LearningResource) — material reutilizable y versionado, independiente del formato
 de salida. F2 (subida de archivos) · F4 (flujo editorial).
 
-- `recurso`: `titulo · TEXT` · `tipo · ENUM(HTML, PDF, VIDEO, PRESENTACION, LABORATORIO, CUESTIONARIO, IMAGEN, DIAGRAMA)` ·
-  `idioma · TEXT` · `responsable_editorial_id · UUID`.
+- `recurso`: `codigo · TEXT · unique` · `titulo · TEXT` · `descripcion · LONG_TEXT` ·
+  `tipo · ENUM(HTML, PDF, VIDEO, PRESENTACION, LABORATORIO, CUESTIONARIO, IMAGEN, DIAGRAMA)` · `idioma · TEXT` ·
+  `responsable_editorial_id · UUID`. Una misma `version_recurso` publicada sirve a lecciones de cursos distintos (RF-CON-01).
 - `version_recurso`: `recurso · RELATION → recurso` · `numero · INTEGER` · `estado · ENUM` (mismo ciclo que
   `version_curso`) · `fuente_canonica · ENUM(ASCIIDOC, LATEX, HTML, NINGUNA)` · `fuente · FILE` · `origen · TEXT ·
 repo@sha:ruta#ancla` · `referencias · LONG_TEXT` · `autor_id · UUID` · `revisada_en · DATETIME`;
