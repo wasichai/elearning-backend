@@ -50,6 +50,15 @@ class RealModelTest(unittest.TestCase):
         for obj in ("perfil_docente", "docente_edicion"):
             self.assertFalse(holds("ESTUDIANTE", obj, "READ"), obj)
 
+    def test_resources_follow_the_editorial_separation_of_duties(self):
+        for role in ROLES["roles"]:
+            self.assertFalse(holds(role["name"], "version_recurso", "PUBLICAR") or holds(role["name"], "version_recurso", "RETIRAR"), role["name"])
+        self.assertFalse(holds("CREADOR", "version_recurso", "APROBAR"))
+        for action in ("CREATE", "DELETE", "ENVIAR_A_REVISION"):
+            self.assertFalse(holds("REVISOR", "version_recurso", action))
+        for obj in ("recurso", "version_recurso", "recurso_leccion"):
+            self.assertFalse(holds("ESTUDIANTE", obj, "VER_TODAS"), obj)
+
     def test_teacher_profiles_are_private_by_default(self):
         fields = {f["name"]: f for o in MODEL["objects"] if o["name"] == "perfil_docente" for f in o["fields"]}
         self.assertEqual("false", fields["perfil_publico"]["defaultValue"])

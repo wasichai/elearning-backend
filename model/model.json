@@ -8,7 +8,8 @@
     "tipo_leccion": ["LECTURA", "VIDEO", "PRESENTACION", "LABORATORIO", "EVALUACION", "SESION"],
     "rol_docente": ["TITULAR", "ASISTENTE"],
     "estado_matricula": ["ACTIVA", "RETIRADA", "FINALIZADA"],
-    "resultado_matricula": ["SIN_RESULTADO", "APROBADO", "NO_APROBADO"]
+    "resultado_matricula": ["SIN_RESULTADO", "APROBADO", "NO_APROBADO"],
+    "tipo_recurso": ["HTML", "PDF", "VIDEO", "PRESENTACION", "LABORATORIO", "CUESTIONARIO", "IMAGEN", "DIAGRAMA"]
   },
   "objects": [
     {
@@ -514,6 +515,139 @@
         }
       ],
       "uniqueConstraints": [["edicion", "estudiante_id"]]
+    },
+    {
+      "name": "recurso",
+      "label": "Recurso",
+      "pluralLabel": "Recursos",
+      "description": "Material educativo reutilizable (LearningResource). Su contenido está en sus versiones.",
+      "actions": [
+        {
+          "name": "VER_TODAS",
+          "label": "Ver todos los recursos, no solo los de las matrículas propias"
+        }
+      ],
+      "fields": [
+        {
+          "name": "titulo",
+          "label": "Título",
+          "type": "TEXT",
+          "required": true
+        },
+        {
+          "name": "tipo",
+          "label": "Tipo (decide cómo se muestra)",
+          "type": "ENUM",
+          "enum": "tipo_recurso",
+          "required": true
+        },
+        {
+          "name": "idioma",
+          "label": "Idioma (BCP 47)",
+          "type": "TEXT",
+          "required": true,
+          "defaultValue": "es"
+        },
+        {
+          "name": "responsable_editorial_id",
+          "label": "Responsable editorial (usuario de Wasichai)",
+          "type": "UUID"
+        }
+      ]
+    },
+    {
+      "name": "version_recurso",
+      "label": "Versión del recurso",
+      "pluralLabel": "Versiones del recurso",
+      "description": "Versión de un recurso con su archivo. Mismo flujo editorial que una versión de curso: publicada, inmutable con su archivo.",
+      "actions": [
+        {
+          "name": "ENVIAR_A_REVISION",
+          "label": "Enviar a revisión"
+        },
+        {
+          "name": "APROBAR",
+          "label": "Aprobar"
+        },
+        {
+          "name": "PUBLICAR",
+          "label": "Publicar"
+        },
+        {
+          "name": "RETIRAR",
+          "label": "Retirar"
+        },
+        {
+          "name": "VER_TODAS",
+          "label": "Ver todos los recursos, no solo los de las matrículas propias"
+        }
+      ],
+      "fields": [
+        {
+          "name": "numero",
+          "label": "Número de versión",
+          "type": "INTEGER",
+          "required": true
+        },
+        {
+          "name": "autor_id",
+          "label": "Autor (usuario de Wasichai)",
+          "type": "UUID",
+          "indexed": true
+        },
+        {
+          "name": "estado",
+          "label": "Estado",
+          "type": "ENUM",
+          "enum": "estado_version",
+          "required": true,
+          "defaultValue": "BORRADOR",
+          "indexed": true
+        },
+        {
+          "name": "archivo",
+          "label": "Archivo (máx. 25 MB; se descarga, nunca se ejecuta)",
+          "type": "FILE",
+          "maxBytes": 26214400
+        },
+        {
+          "name": "origen",
+          "label": "Origen (repo@sha:ruta#ancla)",
+          "type": "TEXT"
+        },
+        {
+          "name": "referencias",
+          "label": "Fuentes y referencias",
+          "type": "LONG_TEXT"
+        },
+        {
+          "name": "revisada_en",
+          "label": "Revisada en",
+          "type": "DATETIME"
+        }
+      ],
+      "uniqueConstraints": [["recurso", "numero"]]
+    },
+    {
+      "name": "recurso_leccion",
+      "label": "Recurso de la lección",
+      "pluralLabel": "Recursos de la lección",
+      "description": "Qué versión de recurso usa una lección y en qué orden. Solo versiones publicadas, solo en temario en borrador.",
+      "actions": [
+        {
+          "name": "VER_TODAS",
+          "label": "Ver todos los recursos, no solo los de las matrículas propias"
+        }
+      ],
+      "fields": [
+        {
+          "name": "orden",
+          "label": "Orden",
+          "type": "INTEGER",
+          "required": true
+        }
+      ],
+      "uniqueConstraints": [["leccion", "version_recurso"]]
     }
   ],
   "relationships": [
@@ -604,6 +738,36 @@
       "source": "matricula",
       "target": "version_curso",
       "fieldName": "version_curso",
+      "required": true
+    },
+    {
+      "name": "version_recurso_recurso",
+      "label": "Recurso",
+      "inverseLabel": "Versiones",
+      "type": "MANY_TO_ONE",
+      "source": "version_recurso",
+      "target": "recurso",
+      "fieldName": "recurso",
+      "required": true
+    },
+    {
+      "name": "recurso_leccion_leccion",
+      "label": "Lección",
+      "inverseLabel": "Recursos",
+      "type": "MANY_TO_ONE",
+      "source": "recurso_leccion",
+      "target": "leccion",
+      "fieldName": "leccion",
+      "required": true
+    },
+    {
+      "name": "recurso_leccion_version",
+      "label": "Versión del recurso",
+      "inverseLabel": "Lecciones que la usan",
+      "type": "MANY_TO_ONE",
+      "source": "recurso_leccion",
+      "target": "version_recurso",
+      "fieldName": "version_recurso",
       "required": true
     }
   ]

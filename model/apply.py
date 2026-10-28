@@ -45,7 +45,7 @@ RECORD_ACTIONS = {"READ", "CREATE", "UPDATE", "DELETE"}
 BUILT_IN_ACTIONS = RECORD_ACTIONS | {"MANAGE_METADATA", "MANAGE_ORGANIZATION", "MANAGE_TENANTS"}
 # los que la plataforma se reserva (GET /api/metadata/system-fields)
 RESERVED_FIELDS = {"id", "organization_id", "created_at", "updated_at", "created_by", "updated_by", "workflow_state", "version", "count", "after"}
-FIELD_KEYS = ("name", "label", "type", "required", "unique", "enumOptions", "defaultValue", "indexed", "timeZone")
+FIELD_KEYS = ("name", "label", "type", "required", "unique", "enumOptions", "defaultValue", "indexed", "timeZone", "maxBytes", "contentTypes")
 DEMO_DOMAIN = "demo.wasichai-learning.test"
 DEMO_EMAIL = re.compile(r"^[a-z0-9][a-z0-9._-]*@" + re.escape(DEMO_DOMAIN) + "$")
 ALIAS = re.compile(r"^[a-z0-9][a-z0-9-]{0,79}$")
@@ -130,6 +130,10 @@ def validate(model: dict, roles: dict | None = None) -> None:
                 problems.append(f"campo '{where}': solo un ENUM lleva 'enum'")
             if f.get("timeZone") and ftype != "DATETIME":
                 problems.append(f"campo '{where}': solo un DATETIME lleva timeZone")
+            if ("maxBytes" in f or "contentTypes" in f) and ftype not in ("FILE", "IMAGE"):
+                problems.append(f"campo '{where}': maxBytes y contentTypes son de FILE o IMAGE")
+            if "maxBytes" in f and (not isinstance(f["maxBytes"], int) or f["maxBytes"] <= 0):
+                problems.append(f"campo '{where}': maxBytes debe ser un entero positivo")
             if f.get("indexed") and ftype == "LONG_TEXT":
                 problems.append(f"campo '{where}': un LONG_TEXT no se indexa")
         actions: set[str] = set()

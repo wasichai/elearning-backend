@@ -32,6 +32,18 @@
         {
           "object": "edicion_curso",
           "actions": ["READ"]
+        },
+        {
+          "object": "recurso",
+          "actions": ["READ"]
+        },
+        {
+          "object": "version_recurso",
+          "actions": ["READ"]
+        },
+        {
+          "object": "recurso_leccion",
+          "actions": ["READ"]
         }
       ]
     },
@@ -73,6 +85,18 @@
         },
         {
           "object": "matricula",
+          "actions": ["READ", "VER_TODAS"]
+        },
+        {
+          "object": "recurso",
+          "actions": ["READ", "VER_TODAS"]
+        },
+        {
+          "object": "version_recurso",
+          "actions": ["READ", "VER_TODAS"]
+        },
+        {
+          "object": "recurso_leccion",
           "actions": ["READ", "VER_TODAS"]
         }
       ],
@@ -120,6 +144,18 @@
         {
           "object": "docente_edicion",
           "actions": ["READ"]
+        },
+        {
+          "object": "recurso",
+          "actions": ["READ", "CREATE", "UPDATE", "VER_TODAS"]
+        },
+        {
+          "object": "version_recurso",
+          "actions": ["READ", "CREATE", "UPDATE", "DELETE", "ENVIAR_A_REVISION", "VER_TODAS"]
+        },
+        {
+          "object": "recurso_leccion",
+          "actions": ["READ", "CREATE", "UPDATE", "DELETE", "VER_TODAS"]
         }
       ],
       "fieldPermissions": [
@@ -166,6 +202,18 @@
         {
           "object": "docente_edicion",
           "actions": ["READ"]
+        },
+        {
+          "object": "recurso",
+          "actions": ["READ", "VER_TODAS"]
+        },
+        {
+          "object": "version_recurso",
+          "actions": ["READ", "UPDATE", "APROBAR", "VER_TODAS"]
+        },
+        {
+          "object": "recurso_leccion",
+          "actions": ["READ", "VER_TODAS"]
         }
       ],
       "fieldPermissions": [

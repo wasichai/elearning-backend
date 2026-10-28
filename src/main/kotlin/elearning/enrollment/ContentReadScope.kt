@@ -40,12 +40,22 @@ class ContentReadScope(
         val (column, ids) =
             when (name) {
                 UNIT, OFFERING -> column(definition, VERSION) to all(VERSION).map { it.id }
-                else -> column(definition, UNIT) to all(UNIT).map { it.id }
+                LESSON -> column(definition, UNIT) to all(UNIT).map { it.id }
+                // los recursos, solo por las lecciones de las versiones en que está matriculado (ADR-0013)
+                RESOURCE_LINK -> column(definition, LESSON) to enrolledLessons(caller)
+                RESOURCE_VERSION -> ID_COLUMN to all(RESOURCE_LINK).mapNotNull { it.attributes.ref(RESOURCE_VERSION) }.distinct()
+                else -> ID_COLUMN to all(RESOURCE_VERSION).mapNotNull { it.attributes.ref(RESOURCE) }.distinct()
             }
         if (column == null || ids.isEmpty()) return RecordCriterion { _, _ -> NOTHING }
         val values = ids.map(UUID::fromString).toTypedArray()
         return RecordCriterion { _, bind -> "$column = ANY(${bind(values)})" }
     }
+
+    private suspend fun enrolledLessons(caller: AuthenticatedUser): List<String> =
+        enrolledVersions(caller)
+            .flatMap { version -> all(UNIT, mapOf(VERSION to version)) }
+            .flatMap { unit -> all(LESSON, mapOf(UNIT to unit.id)) }
+            .map { it.id }
 
     private suspend fun enrolledVersions(caller: AuthenticatedUser): List<String> =
         all(ENROLLMENT, mapOf(STUDENT to caller.userId.toString(), STATE to ACTIVE)).mapNotNull { it.attributes.ref(VERSION) }.distinct()
@@ -78,6 +88,9 @@ class ContentReadScope(
         const val UNIT = "unidad"
         const val LESSON = "leccion"
         const val OFFERING = "edicion_curso"
+        const val RESOURCE = "recurso"
+        const val RESOURCE_VERSION = "version_recurso"
+        const val RESOURCE_LINK = "recurso_leccion"
         const val PUBLISHED = "PUBLICADA"
         const val ENROLLMENT = "matricula"
         const val STUDENT = "estudiante_id"
@@ -86,6 +99,6 @@ class ContentReadScope(
         const val SEE_ALL = "VER_TODAS"
         const val NOTHING = "false"
         const val ID_COLUMN = "\"id\""
-        val SCOPED = setOf(VERSION, UNIT, LESSON, OFFERING)
+        val SCOPED = setOf(VERSION, UNIT, LESSON, OFFERING, RESOURCE, RESOURCE_VERSION, RESOURCE_LINK)
     }
 }
