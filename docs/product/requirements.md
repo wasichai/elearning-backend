@@ -221,10 +221,9 @@ el cuándo, en [`roadmap.md`](roadmap.md).
 
 ### RF-CON — Contenido, versiones y flujo editorial (§9, §10.7–10.10)
 
-- **RF-CON-01** · F4 · planificado — `LearningResource` versionado y reutilizable con identificador estable, título,
+- **RF-CON-01** · F4 · implementado ([#140](https://github.com/wasichai/elearning-backend/pull/140)) — `LearningResource` versionado y reutilizable con identificador estable, título,
   descripción, idioma, ubicación (curso, unidad, lección), autor, responsable editorial y estado de revisión.
   _Aceptación:_ el modelo aplicado contiene esos campos; un recurso se reutiliza en dos lecciones.
-  _Pendiente de F2 (#103):_ versionado, identificador estable, idioma, autor, responsable y estado (#98, #102); faltan la descripción y la prueba de reutilización en dos lecciones.
 - **RF-CON-02** · F4 · planificado — Los binarios (PDF, vídeo, imágenes) van a almacenamiento de objetos, no a
   PostgreSQL, con hash registrado.
   _Aceptación:_ prueba de integración con almacenamiento S3 compatible local; el hash se comprueba al descargar.
