@@ -77,7 +77,8 @@
         "nombre_publico": "Diego Docente (demo)",
         "titulo_profesional": "Ingeniero de sistemas (perfil ficticio)",
         "especialidades": "Sistemas tributarios municipales; atención al contribuyente",
-        "biografia": "Perfil ficticio de demostración. Representa a un docente con experiencia en la implantación de sistemas de rentas y en la capacitación de personal de ventanilla."
+        "biografia": "Perfil ficticio de demostración. Representa a un docente con experiencia en la implantación de sistemas de rentas y en la capacitación de personal de ventanilla.",
+        "perfil_publico": true
       },
       "users": {
         "usuario_id": "docente@demo.wasichai-learning.test"
@@ -91,7 +92,8 @@
         "nombre_publico": "Mara Multirrol (demo)",
         "titulo_profesional": "Magíster en gestión pública (perfil ficticio)",
         "especialidades": "Gestión social de proyectos; automatización con revisión humana",
-        "biografia": "Perfil ficticio de demostración. Enseña y, con otra cuenta de rol, revisa contenido: sirve para probar que un mismo usuario no aprueba lo que imparte."
+        "biografia": "Perfil ficticio de demostración. Enseña y, con otra cuenta de rol, revisa contenido: sirve para probar que un mismo usuario no aprueba lo que imparte.",
+        "perfil_publico": true
       },
       "users": {
         "usuario_id": "docente.revisor@demo.wasichai-learning.test"

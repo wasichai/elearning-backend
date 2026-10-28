@@ -232,8 +232,11 @@ aplicación se conecta con un rol que no es dueño de las tablas, para que nadie
 
 - **Mínimo de datos**: nombre, correo, matrículas, progreso, intentos y calificaciones. Sin datos de pago (no hay
   pasarela) ni documentos de identidad.
-- **Privado por defecto**: perfiles públicos y valoraciones agregadas exigen muestra suficiente y consentimiento
-  explícito (F6). Ningún visitante publica valoraciones académicas verificadas.
+- **Privado por defecto**: un `perfil_docente` solo aparece en el catálogo público si `perfil_publico` es verdadero
+  (falso por omisión; implementado en F1, #66): sin consentimiento no sale ni su nombre. Las valoraciones agregadas
+  exigen muestra suficiente y consentimiento explícito (F6). Ningún visitante publica valoraciones académicas verificadas.
+- **`calendario` de una edición** es texto público: sin enlaces de reunión ni datos de contacto personales. Los enlaces
+  de las sesiones síncronas llegan por el adaptador de videoconferencia (F3) y solo a los matriculados.
 - **IA**: la canalización editorial no recibe datos de estudiantes; el asistente de Wasichai, si se habilita, filtra
   con `AgentResultFilter` lo que sale al proveedor.
 - **Retención**: plazos por tipo de dato en F6 (cuentas inactivas, eventos de aprendizaje, intentos, registros IA).
