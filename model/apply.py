@@ -23,6 +23,7 @@ solo por WASICHAI_DEMO_PASSWORD. Nunca se escriben en disco.
 from __future__ import annotations
 
 import argparse
+from decimal import Decimal, InvalidOperation
 import datetime
 import json
 import os
@@ -68,12 +69,13 @@ class ApiError(Exception):
         detail = body
         try:
             problem = json.loads(body)
-            detail = problem.get("detail") or body
-            errors = problem.get("errors") or []
-            if errors:
-                detail += " — " + "; ".join(f"{e.get('field')}: {e.get('message')}" for e in errors)
         except ValueError:
-            pass
+            problem = None
+        if isinstance(problem, dict):
+            detail = str(problem.get("detail") or body)
+            errors = problem.get("errors") if isinstance(problem.get("errors"), list) else []
+            if errors:
+                detail += " — " + "; ".join(f"{e.get('field')}: {e.get('message')}" if isinstance(e, dict) else str(e) for e in errors)
         super().__init__(f"{method} {path} → {status}: {detail}")
         self.status = status
 
@@ -89,7 +91,7 @@ def validate(model: dict, roles: dict | None = None) -> None:
     for enum, options in enums.items():
         if not NAME.match(enum):
             problems.append(f"enum '{enum}': nombre inválido")
-        if not options or len(set(options)) != len(options) or any(not isinstance(o, str) or not o.strip() for o in options):
+        if not options or any(not isinstance(o, str) or not o.strip() for o in options) or len(set(options)) != len(options):
             problems.append(f"enum '{enum}': necesita opciones no vacías y sin repetir")
 
     objects: dict[str, dict] = {}
@@ -155,24 +157,24 @@ def validate(model: dict, roles: dict | None = None) -> None:
             if not NAME.match(fname) or fname in RESERVED_FIELDS:
                 problems.append(f"relación '{rname}': fieldName inválido")
             elif owner in objects:
-                if any(f["name"] == fname for f in objects[owner].get("fields", [])) or fname in relationship_fields[owner]:
+                if any(f.get("name") == fname for f in objects[owner].get("fields", [])) or fname in relationship_fields[owner]:
                     problems.append(f"relación '{rname}': el campo '{owner}.{fname}' ya existe")
                 relationship_fields[owner].add(fname)
         elif rel.get("required"):
             problems.append(f"relación '{rname}': un MANY_TO_MANY no puede ser obligatorio")
 
     for obj in model.get("objects", []):
-        known = {f["name"] for f in obj.get("fields", [])} | relationship_fields.get(obj["name"], set())
-        long_text = {f["name"] for f in obj.get("fields", []) if f.get("type") == "LONG_TEXT"}
+        known = {f.get("name", "") for f in obj.get("fields", [])} | relationship_fields.get(obj.get("name", ""), set())
+        long_text = {f.get("name", "") for f in obj.get("fields", []) if f.get("type") == "LONG_TEXT"}
         for key, minimum in (("indexes", 1), ("uniqueConstraints", 2)):
             for entry in obj.get(key, []):
                 if len(entry) < minimum or len(set(entry)) != len(entry):
-                    problems.append(f"{key} de '{obj['name']}': entrada {entry} inválida")
+                    problems.append(f"{key} de '{obj.get('name')}': entrada {entry} inválida")
                 for fname in entry:
                     if fname not in known:
-                        problems.append(f"{key} de '{obj['name']}': campo desconocido '{fname}'")
+                        problems.append(f"{key} de '{obj.get('name')}': campo desconocido '{fname}'")
                     elif fname in long_text:
-                        problems.append(f"{key} de '{obj['name']}': '{fname}' es LONG_TEXT")
+                        problems.append(f"{key} de '{obj.get('name')}': '{fname}' es LONG_TEXT")
 
     if roles is not None:
         seen: set[str] = set()
@@ -188,7 +190,7 @@ def validate(model: dict, roles: dict | None = None) -> None:
                 if obj not in objects:
                     problems.append(f"rol '{rname}': objeto desconocido {obj!r}")
                     continue
-                declared = {a["name"] for a in objects[obj].get("actions", [])}
+                declared = {a.get("name") for a in objects[obj].get("actions", [])}
                 for action in grant.get("actions", []):
                     if action not in RECORD_ACTIONS | declared:
                         problems.append(f"rol '{rname}': acción '{action}' no existe en '{obj}'")
@@ -352,7 +354,12 @@ class Client:
             if error.code in ok_statuses:
                 return None
             raise ApiError(error.code, method, path, raw) from None
-        return json.loads(raw) if raw.strip() else None
+        if not raw.strip():
+            return None
+        try:
+            return json.loads(raw)
+        except ValueError:
+            raise ApiError(200, method, path, f"la respuesta no es JSON (¿--url apunta a otro servicio?): {raw[:120]}") from None
 
     def login(self, email: str, password: str) -> None:
         answer = self.call("POST", "/api/auth/login", {"email": email, "password": password})
@@ -367,6 +374,13 @@ class Client:
 @dataclass
 class Report:
     changes: list[str] = field(default_factory=list)
+
+    warnings: list[str] = field(default_factory=list)
+
+    # algo existente difiere del modelo y el script no lo cambia a propósito: lo decide una persona
+    def warn(self, what: str) -> None:
+        self.warnings.append(what)
+        print(f"  ! {what}", flush=True)
 
     def add(self, what: str) -> None:
         self.changes.append(what)
@@ -418,7 +432,11 @@ def apply_model(client: Client, model: dict, report: Report) -> None:
             if f["name"] not in current:
                 client.call("POST", f"/api/metadata/objects/{name}/fields", _field_payload(f, enums))
                 report.add(f"campo {name}.{f['name']}")
-            elif f.get("type") == "ENUM":
+            else:
+                for prop in ("required", "unique"):
+                    if bool(f.get(prop)) != bool(current[f["name"]].get(prop)):
+                        report.warn(f"{name}.{f['name']}: {prop} es {bool(current[f['name']].get(prop))} en el servidor y {bool(f.get(prop))} en el modelo (no se cambia)")
+            if f["name"] in current and f.get("type") == "ENUM":
                 have = list(current[f["name"]].get("enumOptions") or [])
                 missing = [o for o in enums[f["enum"]] if o not in have]
                 if missing:
@@ -450,15 +468,17 @@ def apply_model(client: Client, model: dict, report: Report) -> None:
                 client.call("PUT", f"/api/metadata/objects/{owner}/fields/{fname}", {"required": True})
                 report.add(f"obligatorio {owner}.{fname}")
     for obj in model.get("objects", []):
-        mine = rel_fields.get(obj["name"], set())
-        wanted = {key: obj.get(key, []) for key in ("indexes", "uniqueConstraints") if _deferred(obj, mine, key)}
+        # los que nombran un campo de relación ya existen; los demás pueden faltar en un objeto creado antes
+        wanted = {key: obj[key] for key in ("indexes", "uniqueConstraints") if obj.get(key)}
         if not wanted:
             continue
         definition = client.call("GET", f"/api/metadata/objects/{obj['name']}")
-        changed = {key: value for key, value in wanted.items() if _same(definition.get(key) or [], value) is False}
+        changed = {key: value for key, value in wanted.items() if not _same(definition.get(key) or [], value)}
         if changed:
-            # UpdateObjectRequest exige label y su enabled vale true por omisión: se reenvían los del modelo
-            body = {k: obj[k] for k in ("label", "pluralLabel", "description") if k in obj} | changed
+            # UpdateObjectRequest exige label y su enabled vale true por omisión: label del modelo y enabled del servidor,
+            # para que actualizar una restricción no vuelva a habilitar un objeto que alguien deshabilitó
+            body = {k: obj[k] for k in ("label", "pluralLabel", "description") if k in obj}
+            body |= {"enabled": definition.get("enabled", True)} | changed
             client.call("PUT", f"/api/objects/{obj['name']}", body)
             report.add(f"{', '.join(changed)} de {obj['name']}")
 
@@ -477,6 +497,8 @@ def apply_roles(client: Client, roles: dict, report: Report) -> None:
             current: set[tuple[str | None, str]] = set()
         else:
             current = {(p["objectName"], p["action"]) for p in have[name].get("permissions", []) if p.get("allowed", True)}
+            if bool(have[name].get("ownRecordsOnly")) != bool(role.get("ownRecordsOnly", False)):
+                report.warn(f"rol {name}: ownRecordsOnly es {bool(have[name].get('ownRecordsOnly'))} en el servidor (no se cambia)")
         wanted = {(g["object"], a) for g in role.get("permissions", []) for a in g["actions"]}
         if wanted != current:
             entries = [{"objectName": o, "action": a} for o, a in sorted(wanted, key=lambda p: (p[0] or "", p[1]))]
@@ -497,7 +519,14 @@ def _role_names(roles: object) -> set[str]:
 def _matches(have: object, want: object) -> bool:
     if isinstance(have, dict):  # una relación puede volver expandida
         have = have.get("id")
-    return have is not None and str(have) == str(want)
+    if have is None:
+        return False
+    if isinstance(have, bool) or isinstance(want, bool) or str(have).lower() in ("true", "false"):
+        return str(have).lower() == str(want).lower()
+    try:
+        return Decimal(str(have)) == Decimal(str(want))
+    except InvalidOperation:
+        return str(have) == str(want)
 
 
 def apply_users(client: Client, users: list[dict], password: str, report: Report) -> dict[str, str]:
@@ -598,11 +627,13 @@ def main(argv: list[str] | None = None) -> int:
             apply_roles(client, roles, report)
         if demo is not None:
             apply_demo(client, demo, demo_password, report)
-    except (ApiError, DemoError, urllib.error.URLError) as error:
+    except (ApiError, DemoError, urllib.error.URLError, TimeoutError, ConnectionError) as error:
         print(f"Error: {error}", file=sys.stderr)
         return 1
     done = "el modelo y los datos de demostración" if demo is not None else "el modelo"
     print(f"{len(report.changes)} cambios." if report.changes else f"Sin cambios: el servidor ya tiene {done}.")
+    if report.warnings:
+        print(f"{len(report.warnings)} diferencias con el modelo sin aplicar: revísalas a mano (el script no cambia lo existente).")
     return 0
 
 
