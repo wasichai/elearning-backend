@@ -3,10 +3,13 @@ package elearning.catalog
 import org.junit.jupiter.api.Test
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpMethod
+import org.springframework.test.context.TestPropertySource
 import wasichai.test.WasichaiIntegrationTest
 
 // la cadena pública (ADR-0006) deja pasar sin sesión solo GET bajo /api/lms/public/**, y no le quita nada a la de
 // Wasichai: si la nuestra la hiciera retroceder (@ConditionalOnMissingBean), toda la plataforma quedaría abierta
+// el origen permitido se declara por entorno (#67): aquí, el de la UI de desarrollo y ningún otro
+@TestPropertySource(properties = ["wasichai.web.cors-allowed-origin-patterns=http://localhost:5180"])
 class PublicCatalogSecurityApiTest : WasichaiIntegrationTest() {
     @Test
     fun `an anonymous GET under the public path passes security`() {
@@ -17,6 +20,18 @@ class PublicCatalogSecurityApiTest : WasichaiIntegrationTest() {
             .exchange()
             .expectStatus()
             .isNotFound
+    }
+
+    @Test
+    fun `an origin that is not declared is refused`() {
+        client
+            .options()
+            .uri("/api/lms/public/catalog/courses")
+            .header(HttpHeaders.ORIGIN, "http://localhost:1")
+            .header(HttpHeaders.ACCESS_CONTROL_REQUEST_METHOD, "GET")
+            .exchange()
+            .expectStatus()
+            .isForbidden
     }
 
     @Test

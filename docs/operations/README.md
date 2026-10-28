@@ -23,21 +23,22 @@ también solo en loopback.
 Lista prevista; `.env.example` es la referencia ejecutable y nunca lleva valores reales. Wasichai lee
 `wasichai.*` también como `WASICHAI_*` (enlace relajado de Spring).
 
-| Variable                                                              | Uso                                                                                        | Obligatoria          | Fase |
-| --------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ | -------------------- | ---- |
-| `WASICHAI_JWT_SECRET`                                                 | Firma de los JWT, ≥ 32 bytes; sin ella el backend no arranca                               | Sí                   | F1   |
-| `WASICHAI_DB_HOST`, `WASICHAI_DB_PORT`                                | Servidor PostgreSQL. Wasichai pone por defecto `localhost:5432`: en local se fija `5436`   | Sí en local          | F1   |
-| `WASICHAI_DB_NAME`, `WASICHAI_DB_USERNAME`, `WASICHAI_DB_PASSWORD`    | Base y credenciales (Wasichai: `wasichai` las tres)                                        | Fuera de local       | F1   |
-| `SPRING_PROFILES_ACTIVE`                                              | `dev` en local (activa la semilla de Wasichai)                                             | No                   | F1   |
-| `WASICHAI_SEED_DEV`                                                   | `true` solo en desarrollo: crea `admin@wasichai.local` / `admin`                           | Nunca en producción  | F1   |
-| `WASICHAI_WEB_CORS_ALLOWED_ORIGIN_PATTERNS`                           | Orígenes de la UI (por defecto de Wasichai `http://localhost:*`)                           | En despliegue        | F1   |
-| `LMS_PUBLIC_ORGANIZATION`                                             | Organización cuyo catálogo es público (`lms.public.organization`)                          | Sí                   | F1   |
-| `LMS_PRODUCT_NAME` / `VITE_APP_NAME`                                  | Nombre visible del producto (backend / build del frontend)                                 | No                   | F1   |
-| `WASICHAI_SECURITY_JWT_REVOCATION`, `…_LOGIN_ENABLED`, `…_PASSWORD_*` | Endurecimiento del login                                                                   | Antes de producción  | F6   |
-| `WASICHAI_FILES_*`                                                    | Almacén de archivos (`store`, `s3.*`, `max-bytes`)                                         | Cuando haya archivos | F2   |
-| `ANTHROPIC_API_KEY`, `WASICHAI_AGENT_ENABLED`                         | IA; sin clave, [doble determinista](../ai/README.md#7-doble-determinista-sin-credenciales) | No                   | F5   |
-| `GITHUB_ACTOR`, `GITHUB_TOKEN`                                        | **Solo build**: Wasichai desde GitHub Packages (`read:packages`), `$(gh auth token)`       | Solo build           | F1   |
-| `WASICHAI_TEST_DB_*`                                                  | Base externa para pruebas de integración; el nombre debe terminar en `_test`               | No                   | F1   |
+| Variable                                                              | Uso                                                                                                                                            | Obligatoria                    | Fase |
+| --------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------ | ---- |
+| `WASICHAI_JWT_SECRET`                                                 | Firma de los JWT, ≥ 32 bytes; sin ella el backend no arranca                                                                                   | Sí                             | F1   |
+| `WASICHAI_DB_HOST`, `WASICHAI_DB_PORT`                                | Servidor PostgreSQL. Wasichai pone por defecto `localhost:5432`: en local se fija `5436`                                                       | Sí en local                    | F1   |
+| `WASICHAI_DB_NAME`, `WASICHAI_DB_USERNAME`, `WASICHAI_DB_PASSWORD`    | Base y credenciales (Wasichai: `wasichai` las tres)                                                                                            | Fuera de local                 | F1   |
+| `SPRING_PROFILES_ACTIVE`                                              | `dev` en local (activa la semilla de Wasichai)                                                                                                 | No                             | F1   |
+| `WASICHAI_SEED_DEV`                                                   | `true` solo en desarrollo: crea `admin@wasichai.local` / `admin`                                                                               | Nunca en producción            | F1   |
+| `WASICHAI_WEB_CORS_ALLOWED_ORIGIN_PATTERNS`                           | Orígenes de la UI (por defecto de Wasichai `http://localhost:*`)                                                                               | En despliegue                  | F1   |
+| `LMS_PUBLIC_ORGANIZATION`                                             | Organización cuyo catálogo es público (`lms.public.organization`)                                                                              | Sí                             | F1   |
+| `WASICHAI_CORS_ALLOWED_ORIGINS`                                       | Orígenes de navegador permitidos, separados por comas. Vacío: ninguno ajeno (UI y API en el mismo dominio); `dev` permite `http://localhost:*` | Solo con la UI en otro dominio | F1   |
+| `LMS_PRODUCT_NAME` / `VITE_APP_NAME`                                  | Nombre visible del producto (backend / build del frontend)                                                                                     | No                             | F1   |
+| `WASICHAI_SECURITY_JWT_REVOCATION`, `…_LOGIN_ENABLED`, `…_PASSWORD_*` | Endurecimiento del login                                                                                                                       | Antes de producción            | F6   |
+| `WASICHAI_FILES_*`                                                    | Almacén de archivos (`store`, `s3.*`, `max-bytes`)                                                                                             | Cuando haya archivos           | F2   |
+| `ANTHROPIC_API_KEY`, `WASICHAI_AGENT_ENABLED`                         | IA; sin clave, [doble determinista](../ai/README.md#7-doble-determinista-sin-credenciales)                                                     | No                             | F5   |
+| `GITHUB_ACTOR`, `GITHUB_TOKEN`                                        | **Solo build**: Wasichai desde GitHub Packages (`read:packages`), `$(gh auth token)`                                                           | Solo build                     | F1   |
+| `WASICHAI_TEST_DB_*`                                                  | Base externa para pruebas de integración; el nombre debe terminar en `_test`                                                                   | No                             | F1   |
 
 El frontend necesita además el token de `npm.pkg.github.com` en `~/.npmrc` del desarrollador o en un secreto de CI,
 nunca en el `.npmrc` del repositorio. Nombres de variables `LMS_*`: a confirmar al crear las propiedades en F1.
