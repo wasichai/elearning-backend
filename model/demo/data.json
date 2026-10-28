@@ -27,6 +27,14 @@
       "roles": ["DOCENTE", "REVISOR"]
     }
   ],
+  "workflows": {
+    "version_curso": {
+      "_comentario": "Como en el flujo editorial real (EditorialWorkflowGuard): la versión nace en borrador, se escribe su temario y la recorre el administrador, que no es su autor. publicada_en y creditos_aprobados se ponen al llegar.",
+      "field": "estado",
+      "path": ["BORRADOR", "EN_REVISION", "APROBADA", "PUBLICADA"],
+      "deferred": ["publicada_en", "creditos_aprobados"]
+    }
+  },
   "records": [
     {
       "ref": "cat-sistemas-municipales",
@@ -131,6 +139,9 @@
       },
       "refs": {
         "curso": "curso-srtm"
+      },
+      "users": {
+        "autor_id": "creador@demo.wasichai-learning.test"
       }
     },
     {
@@ -437,6 +448,9 @@
       },
       "refs": {
         "curso": "curso-srtm"
+      },
+      "users": {
+        "autor_id": "creador@demo.wasichai-learning.test"
       }
     },
     {
@@ -528,6 +542,9 @@
       },
       "refs": {
         "curso": "curso-sgspe"
+      },
+      "users": {
+        "autor_id": "creador@demo.wasichai-learning.test"
       }
     },
     {
@@ -840,6 +857,9 @@
       },
       "refs": {
         "curso": "curso-ia"
+      },
+      "users": {
+        "autor_id": "creador@demo.wasichai-learning.test"
       }
     },
     {
@@ -1107,6 +1127,9 @@
       },
       "refs": {
         "curso": "curso-borrador"
+      },
+      "users": {
+        "autor_id": "creador@demo.wasichai-learning.test"
       }
     },
     {

@@ -29,10 +29,20 @@ class RealModelTest(unittest.TestCase):
             for action in ("PUBLICAR", "RETIRAR"):
                 self.assertFalse(holds(role["name"], "version_curso", action), f"{role['name']} no debe {action}")
 
-    def test_creator_does_not_approve_and_reviewer_does_not_edit(self):
+    def test_creator_does_not_approve_and_reviewer_does_not_author(self):
         self.assertFalse(holds("CREADOR", "version_curso", "APROBAR"))
-        for action in ("CREATE", "UPDATE", "DELETE", "ENVIAR_A_REVISION"):
+        # el revisor necesita UPDATE para aprobar por la API de registros; qué puede cambiar lo decide
+        # EditorialWorkflowGuard (solo la transición que su acción permite, nunca el contenido de otro)
+        for action in ("CREATE", "DELETE", "ENVIAR_A_REVISION"):
             self.assertFalse(holds("REVISOR", "version_curso", action))
+
+    def test_teachers_do_not_edit_offerings_until_their_scope_exists(self):
+        # F1: sin alcance por asignación, UPDATE sobre edicion_curso sería sobre cualquier edición
+        self.assertFalse(holds("DOCENTE", "edicion_curso", "UPDATE"))
+
+    def test_students_do_not_read_unpublished_content(self):
+        for obj in ("version_curso", "unidad", "leccion", "perfil_docente", "docente_edicion"):
+            self.assertFalse(holds("ESTUDIANTE", obj, "READ"), obj)
 
     def test_students_only_read(self):
         student = next(r for r in ROLES["roles"] if r["name"] == "ESTUDIANTE")

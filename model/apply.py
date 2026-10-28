@@ -247,8 +247,27 @@ def validate_demo(data: dict, model: dict, roles: dict | None = None) -> None:
     known_roles = {"ADMIN"} | {r["name"] for r in (roles or {}).get("roles", [])}
 
     for key in data:
-        if key not in ("users", "records") and not key.startswith("_"):
+        if key not in ("users", "records", "workflows") and not key.startswith("_"):
             problems.append(f"clave desconocida '{key}' en los datos de demostración")
+
+    # workflows: el camino de estados que un registro recorre hasta su estado final, como lo haría una persona
+    for obj_name, flow in (data.get("workflows") or {}).items():
+        obj = objects.get(obj_name)
+        fields = {f.get("name"): f for f in (obj or {}).get("fields", [])}
+        state = fields.get(flow.get("field"))
+        if obj is None or state is None or state.get("type") != "ENUM":
+            problems.append(f"workflow de '{obj_name}': objeto o campo ENUM desconocido")
+            continue
+        path = flow.get("path") or []
+        if not path or any(s not in enums.get(state["enum"], []) for s in path):
+            problems.append(f"workflow de '{obj_name}': el camino {path} no son estados de '{state['enum']}'")
+        for deferred in flow.get("deferred", []):
+            if deferred not in fields:
+                problems.append(f"workflow de '{obj_name}': campo diferido desconocido '{deferred}'")
+        for record in data.get("records", []):
+            target = record.get("attributes", {}).get(flow["field"])
+            if record.get("object") == obj_name and target is not None and target not in path:
+                problems.append(f"registro '{record.get('ref')}': el estado {target!r} no está en el camino de '{obj_name}'")
 
     emails: set[str] = set()
     for user in data.get("users", []):
@@ -561,17 +580,42 @@ def _find_record(client: Client, obj: str, key: dict) -> dict | None:
 def apply_demo(client: Client, data: dict, password: str, report: Report) -> None:
     """Usuarios y registros de demostración: cada registro se busca por su clave natural y solo se crea si falta."""
     user_ids = apply_users(client, data.get("users", []), password, report)
+    workflows = data.get("workflows") or {}
     ids: dict[str, str] = {}
+    pending: list[tuple[dict, str, dict]] = []
     for record in data.get("records", []):
         obj = record["object"]
         attributes = dict(record.get("attributes", {}))
         attributes.update({f: ids[alias] for f, alias in record.get("refs", {}).items()})
         attributes.update({f: user_ids[email] for f, email in record.get("users", {}).items()})
+        flow = workflows.get(obj)
+        final: dict = {}
+        if flow:
+            # nace en el primer estado del camino y sin lo que se pone al final (fecha de publicación, créditos):
+            # su contenido (temario incluido) se escribe mientras aún es borrador
+            final = {flow["field"]: attributes.get(flow["field"], flow["path"][0])}
+            final |= {f: attributes.pop(f) for f in flow.get("deferred", []) if f in attributes}
+            attributes[flow["field"]] = flow["path"][0]
         found = _find_record(client, obj, {k: attributes[k] for k in record["key"]})
         if found is None:
             found = client.call("POST", f"/api/objects/{obj}/records", {"attributes": attributes})
             report.add(f"{obj} {record['ref']}")
         ids[record["ref"]] = found["id"]
+        if flow:
+            pending.append((record, found["id"], final))
+    # después de todo lo demás: cada registro recorre su camino hasta el estado final, una transición por vez
+    for record, record_id, final in pending:
+        flow = workflows[record["object"]]
+        field, path = flow["field"], flow["path"]
+        current = (client.call("GET", f"/api/objects/{record['object']}/records/{record_id}") or {}).get("attributes", {}).get(field)
+        target = final[field]
+        if current not in path or path.index(current) >= path.index(target):
+            continue
+        steps = path[path.index(current) + 1 : path.index(target) + 1]
+        for step in steps:
+            body = {field: step} | ({k: v for k, v in final.items() if k != field} if step == target else {})
+            client.call("PATCH", f"/api/objects/{record['object']}/records/{record_id}", {"attributes": body})
+        report.add(f"{record['object']} {record['ref']}: {' → '.join([current, *steps])}")
 
 
 def load(path: Path) -> dict:
