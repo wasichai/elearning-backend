@@ -203,9 +203,8 @@ el cuándo, en [`roadmap.md`](roadmap.md).
 - **RF-ROL-02** · F1 · implementado ([#52](https://github.com/wasichai/elearning-backend/pull/52), [#64](https://github.com/wasichai/elearning-backend/pull/64)) — La autorización se decide en el servidor con los permisos de Wasichai; el código
   no compara nombres de rol.
   _Aceptación:_ la prueba de arquitectura falla ante un literal de rol en `src/main`.
-- **RF-ROL-03** · F3 · planificado — Un usuario puede tener varios roles a la vez.
+- **RF-ROL-03** · F3 · implementado ([#111](https://github.com/wasichai/elearning-backend/pull/111)) — Un usuario puede tener varios roles a la vez.
   _Aceptación:_ prueba con un usuario ESTUDIANTE + CREADOR que obtiene la unión de permisos.
-  _Pendiente de F2 (#103):_ falta la prueba de unión de permisos con ESTUDIANTE + CREADOR.
 - **RF-ROL-04** · F3 · planificado — Alcance por recurso: el docente gestiona solo sus ediciones asignadas; el
   revisor, solo las versiones asignadas; el estudiante, solo sus matrículas.
   _Aceptación:_ pruebas de autorización negativa cambiando identificadores (RNF-SEG-03).
