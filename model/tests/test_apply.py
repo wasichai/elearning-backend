@@ -125,6 +125,7 @@ class FakeWasichai:
             if not body.get("label"):  # como el real: UpdateObjectRequest.label es @NotBlank
                 return 400, {"detail": "Failed to read HTTP message"}
             self.objects[m[1]].update(body)
+            self.objects[m[1]]["enabled"] = body.get("enabled", True)  # como el real: enabled vale true por omisión
             return 200, {}
         if path == "/api/relationships":
             if method == "GET":
@@ -136,11 +137,15 @@ class FakeWasichai:
         if path == "/api/roles":
             if method == "GET":
                 return 200, list(self.roles.values())
-            self.roles[body["name"]] = {**body, "permissions": []}
+            self.roles[body["name"]] = {"ownRecordsOnly": False, **body, "permissions": []}
             return 201, {}
         if m := re.fullmatch(r"/api/roles/(\w+)/permissions", path):
             self.roles[m[1]]["permissions"] = [{**p, "allowed": True} for p in body["permissions"]]
             return 200, {}
+        if path == "/api/no-json":
+            return 200, "<html>proxy</html>"
+        if path == "/api/lista":
+            return 500, ["error"]
         return 404, {"detail": f"no route {method} {path}"}
 
 
@@ -154,7 +159,7 @@ class IdempotencyTest(unittest.TestCase):
                 length = int(self.headers.get("Content-Length") or 0)
                 body = json.loads(self.rfile.read(length)) if length else None
                 status, answer = fake.handle(self.command, self.path, body)
-                raw = json.dumps(answer).encode()
+                raw = answer.encode() if isinstance(answer, str) else json.dumps(answer).encode()
                 self.send_response(status)
                 self.send_header("Content-Type", "application/json")
                 self.send_header("Content-Length", str(len(raw)))
@@ -214,6 +219,62 @@ class IdempotencyTest(unittest.TestCase):
             self.client.call("GET", "/api/nada")
         self.assertEqual(404, raised.exception.status)
         self.assertIn("no route", str(raised.exception))
+
+
+class ReviewFindingsTest(IdempotencyTest):
+    """Hallazgos de la revisión de código (E10.1): cada prueba reproduce uno."""
+
+    def test_indexes_of_an_existing_object_are_applied(self):
+        self.run_once()
+        grown = copy.deepcopy(MODEL)
+        grown["objects"][0]["indexes"] = [["titulo"]]
+        self.assertIn("indexes de curso", self.run_once(grown))
+        self.assertEqual([["titulo"]], self.fake.objects["curso"]["indexes"])
+
+    def test_updating_constraints_keeps_a_disabled_object_disabled(self):
+        self.run_once()
+        self.fake.objects["version_curso"]["enabled"] = False
+        self.fake.objects["version_curso"]["uniqueConstraints"] = []
+        self.run_once()
+        self.assertFalse(self.fake.objects["version_curso"]["enabled"], "el PUT de restricciones no debe re-habilitar")
+
+    def test_drift_on_existing_fields_and_roles_is_reported_not_written(self):
+        self.run_once()
+        drifted = copy.deepcopy(MODEL)
+        drifted["objects"][0]["fields"][0]["required"] = False
+        roles = copy.deepcopy(ROLES)
+        roles["roles"][0]["ownRecordsOnly"] = True
+        writes = len(self.fake.writes)
+        report = apply.Report()
+        apply.apply_model(self.client, drifted, report)
+        apply.apply_roles(self.client, roles, report)
+        self.assertEqual(writes, len(self.fake.writes), "una diferencia en algo existente se avisa, no se escribe")
+        self.assertTrue(any("curso.titulo" in w and "required" in w for w in report.warnings), report.warnings)
+        self.assertTrue(any("CREADOR" in w and "ownRecordsOnly" in w for w in report.warnings), report.warnings)
+
+    def test_unexpected_bodies_become_api_errors(self):
+        with self.assertRaises(apply.ApiError) as html:
+            self.client.call("GET", "/api/no-json")
+        self.assertIn("JSON", str(html.exception))
+        with self.assertRaises(apply.ApiError) as listed:
+            self.client.call("GET", "/api/lista")
+        self.assertEqual(500, listed.exception.status)
+
+
+class RobustnessTest(unittest.TestCase):
+    def test_validation_reports_missing_names_instead_of_crashing(self):
+        broken = {"enums": {"e": [{"no": "hashable"}]}, "objects": [{"label": "Sin nombre", "fields": [{"type": "TEXT"}], "actions": [{}]}]}
+        with self.assertRaises(apply.ModelError) as raised:
+            apply.validate(broken, {"roles": []})
+        self.assertGreaterEqual(len(raised.exception.problems), 3)
+
+    def test_natural_keys_compare_values_not_spellings(self):
+        from decimal import Decimal
+        self.assertTrue(apply._matches(Decimal("10.00"), 10))
+        self.assertTrue(apply._matches(1, "1"))
+        self.assertTrue(apply._matches("true", True))
+        self.assertFalse(apply._matches(Decimal("10.5"), 10))
+        self.assertFalse(apply._matches(None, ""))
 
 
 class CommandLineTest(unittest.TestCase):
