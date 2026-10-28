@@ -271,3 +271,183 @@ nada (el cliente genera uno por intento y lo reutiliza al reintentar la misma ac
 - `409` si la regla no se cumple: `MARKED_COMPLETE` en un vídeo o en una lección `NOT_YET`; `VIDEO_ENDED` en una
   lección que no es vídeo. El estado nunca retrocede.
 - `404` matrícula o lección ajena, o lección de otra versión.
+
+## Evaluaciones, sesiones y certificado del estudiante (F3, ADR-0016)
+
+Con sesión, siempre sobre una matrícula propia: lo ajeno o inexistente responde `404`. Instantes en ISO 8601 con zona
+(`Z`); fechas civiles `YYYY-MM-DD`; horas locales `HH:mm` en la zona de la edición.
+
+### Cambios en `Classroom`
+
+- `completion` gana `ASSESSMENT` (se completa al aprobar su evaluación) y `ATTENDANCE` (al asistir a su sesión).
+  `NOT_YET` queda para una lección de evaluación o sesión aún sin definir. `percent` y `nextLesson` cuentan todas las
+  lecciones salvo las `NOT_YET`.
+- Una lección con evaluación lleva `assessment`:
+
+```json
+{
+  "id": "…",
+  "title": "Evaluación final",
+  "maxAttempts": 2,
+  "timeLimitMinutes": 30,
+  "passingPercent": 70,
+  "attemptsUsed": 1,
+  "openAttemptId": null,
+  "best": { "percent": 80, "passed": true, "pending": false }
+}
+```
+
+`timeLimitMinutes` y `best` pueden ser `null`. `progress.status` es `APROBADA` cuando un intento aprobó.
+
+### Intentos
+
+| Método | Ruta                                                                        | Resultado                                               |
+| ------ | --------------------------------------------------------------------------- | ------------------------------------------------------- |
+| POST   | `/api/lms/classroom/enrollments/{id}/lessons/{lessonId}/attempts`           | `201` intento nuevo · `200` el abierto si ya hay uno    |
+| GET    | `/api/lms/classroom/attempts/{attemptId}`                                   | `Attempt`                                               |
+| PUT    | `/api/lms/classroom/attempts/{attemptId}/answers`                           | guarda respuestas (solo abierto y en plazo) → `Attempt` |
+| POST   | `/api/lms/classroom/attempts/{attemptId}/submit`                            | envía y califica lo automático → `Attempt`              |
+| POST   | `/api/lms/classroom/attempts/{attemptId}/questions/{questionId}/submission` | crea la entrega de una pregunta `FILE` → `Submission`   |
+
+`409` (`detail` legible): intentos agotados, plazo vencido (el servidor lo comprueba; el envío tardío se rechaza),
+intento ya enviado, lección sin evaluación o matrícula no activa. `400`: respuesta que no corresponde al tipo de pregunta.
+
+`Attempt`:
+
+```json
+{
+  "id": "…",
+  "number": 1,
+  "status": "OPEN",
+  "startedAt": "…",
+  "deadline": "…",
+  "submittedAt": null,
+  "questions": [
+    {
+      "id": "…",
+      "order": 1,
+      "type": "SINGLE",
+      "prompt": "…",
+      "points": 2,
+      "options": [{ "id": "…", "text": "…" }],
+      "rubric": []
+    }
+  ],
+  "answers": [{ "questionId": "…", "optionIds": ["…"], "text": null, "submissionId": null }],
+  "result": null
+}
+```
+
+- `type`: `SINGLE` · `MULTIPLE` · `TRUE_FALSE` (dos opciones) · `SHORT` (texto corto, se compara sin mayúsculas ni
+  espacios extremos) · `OPEN` (texto, se corrige con la rúbrica) · `FILE` (una entrega). `rubric`
+  (`[{ "description", "points" }]`) solo en `OPEN` y `FILE`. Las opciones salen en el orden de la instantánea (barajado
+  por intento si la evaluación lo pide).
+- `status`: `OPEN` · `SUBMITTED` (enviado, con preguntas pendientes de corrección manual) · `GRADED`.
+- **Mientras está abierto no hay soluciones ni puntos ganados.** `result` tras enviar:
+
+```json
+{
+  "score": 7,
+  "maxScore": 10,
+  "percent": 70,
+  "passed": true,
+  "pending": false,
+  "questions": [{ "questionId": "…", "points": 2, "maxPoints": 2, "correct": true, "comment": null, "solution": null }]
+}
+```
+
+`percent` y `passed` son `null` mientras `pending`. `solution` (`{ "optionIds": [...], "acceptedAnswers": [...] }`) solo
+si la evaluación muestra las soluciones al enviar (`showSolutions: "ON_SUBMIT"`); con `NEVER`, siempre `null`.
+
+`Submission`: `{ "id", "file": null | { "name", "contentType", "size", "url" }, "uploadUrl" }`. El archivo se sube con
+`POST uploadUrl` (multipart, parte `file`, máx. 25 MB) y la misma sesión; queda fijo al enviar el intento.
+
+### Sesiones
+
+`GET /api/lms/classroom/enrollments/{id}/sessions` → `Session[]` por inicio:
+
+```json
+{
+  "id": "…",
+  "title": "…",
+  "type": "TEORIA",
+  "modality": "VIRTUAL",
+  "start": "2026-11-10T13:00:00Z",
+  "end": "2026-11-10T14:30:00Z",
+  "timeZone": "America/Lima",
+  "status": "PROGRAMADA",
+  "link": "https://…",
+  "location": null,
+  "lessonId": null,
+  "originalSessionId": null,
+  "attendance": null
+}
+```
+
+`type`: `TEORIA` · `LABORATORIO` · `CONSULTA` · `RECUPERACION`. `modality`: `PRESENCIAL` · `VIRTUAL`. `status`:
+`PROGRAMADA` · `REPROGRAMADA` · `CANCELADA`. `attendance`: `null` o `PRESENTE` · `TARDE` · `AUSENTE` · `JUSTIFICADO`. El
+enlace solo es `https`.
+
+### Finalización y certificado
+
+- `GET /api/lms/classroom/enrollments/{id}/completion` → `{ "met": false, "rules": [{ "rule": "LESSONS", "met": true,
+"detail": "16 de 16 lecciones" }] }`. `rule`: `LESSONS` (todas las lecciones completables), `ASSESSMENTS` (todas las
+  evaluaciones aprobadas), `ATTENDANCE` (asistencia mínima, %). Solo aparecen las que declara la versión.
+- `POST /api/lms/classroom/enrollments/{id}/certificate` `{ "holderName": "Nombre para el certificado" }` → `201`
+  `Certificate` (la matrícula pasa a `FINALIZADA` con resultado `APROBADO`) · `200` el ya emitido · `409` con
+  `rules` pendientes · `400` nombre vacío o de más de 120 caracteres.
+- `GET /api/lms/public/certificates/{code}` (sin sesión) → `Certificate` o `404`:
+
+```json
+{
+  "code": "K7Q2-M9XW-4RTB",
+  "issuedAt": "…",
+  "holderName": "…",
+  "course": { "code": "SRTM-ANU-101", "title": "…" },
+  "version": 1,
+  "offering": { "code": "…", "startDate": "…", "endDate": "…", "timeZone": "America/Lima" },
+  "totalHours": 18,
+  "result": "APROBADO",
+  "rules": [{ "rule": "LESSONS", "met": true, "detail": "…" }]
+}
+```
+
+Congelado al emitirse: no cambia aunque cambien después el curso o la matrícula.
+
+## Espacio docente (F3, ADR-0016)
+
+Con sesión, solo sobre las ediciones **asignadas** a la persona (`docente_edicion.usuario_id`); otra edición o un
+registro de otra edición → `404`. Nadie lo usa por su rol: lo decide la asignación.
+
+| Método | Ruta                                            | Resultado                                                             |
+| ------ | ----------------------------------------------- | --------------------------------------------------------------------- |
+| GET    | `/api/lms/teaching/offerings`                   | `TeachingOffering[]`                                                  |
+| GET    | `/api/lms/teaching/offerings/{code}/students`   | `Roster[]`                                                            |
+| GET    | `/api/lms/teaching/offerings/{code}/attempts`   | cola de corrección: intentos `SUBMITTED` → `PendingAttempt[]`         |
+| GET    | `/api/lms/teaching/attempts/{attemptId}`        | `Attempt` con soluciones, respuestas y entregas                       |
+| POST   | `/api/lms/teaching/attempts/{attemptId}/grades` | `{ questionId, points, comment, reason }` → `Attempt`                 |
+| GET    | `/api/lms/teaching/offerings/{code}/sessions`   | `Session[]` (sin `attendance`)                                        |
+| POST   | `/api/lms/teaching/offerings/{code}/sessions`   | crea una sesión o una serie → `Session[]`                             |
+| POST   | `/api/lms/teaching/sessions/{id}/reschedule`    | `{ date, localTime, reason }` → `Session`                             |
+| POST   | `/api/lms/teaching/sessions/{id}/cancel`        | `{ reason }` → `Session`                                              |
+| GET    | `/api/lms/teaching/sessions/{id}/attendance`    | `AttendanceRow[]`                                                     |
+| PUT    | `/api/lms/teaching/sessions/{id}/attendance`    | `{ records: [{ enrollmentId, status }], reason }` → `AttendanceRow[]` |
+
+- `TeachingOffering`: `{ "code", "status", "startDate", "endDate", "timeZone", "course": { "slug", "code", "title" },
+"enrolled": 12, "pendingAttempts": 3 }`.
+- `Roster`: `{ "enrollmentId", "email", "status", "progress": ProgressSummary, "attendance": { "attended": 3,
+"total": 4 }, "assessments": [{ "lessonId", "title", "bestPercent": 80, "passed": true, "pending": false }] }`.
+- `PendingAttempt`: `{ "attemptId", "enrollmentId", "email", "lessonId", "lessonTitle", "submittedAt",
+"pendingQuestions": 1 }`.
+- Calificar: `points` entre 0 y los de la pregunta (`400` si no); `reason` obligatorio al **cambiar** una nota ya puesta
+  (`409` sin él). Cada calificación queda en un historial que no se borra; al no quedar pendientes, el intento pasa a
+  `GRADED` con su `percent` y `passed`.
+- Crear sesiones: `{ "title", "type", "modality", "durationMinutes", "link": null, "location": null, "lessonId": null,
+"recurrence": { "pattern": "ONCE" | "DAILY" | "ALTERNATE_DAYS" | "WEEKDAYS", "days": ["MONDAY", "WEDNESDAY"],
+"startDate": "2026-11-09", "endDate": "2026-11-27", "localTime": "08:00" } }`. Cada ocurrencia conserva la hora
+  local en la zona de la edición, también al cruzar el horario de verano. `link` solo `https` (`400` si no). Una
+  sesión `RECUPERACION` lleva `originalSessionId`.
+- Reprogramar o cancelar avisa a los matriculados de esa edición (y a nadie más) por las alertas de Wasichai y, si está
+  configurado, por correo. Ambas guardan el motivo en el historial de la sesión.
+- `AttendanceRow`: `{ "enrollmentId", "email", "status": null | "PRESENTE" | "TARDE" | "AUSENTE" | "JUSTIFICADO" }`.
+  Cambiar una asistencia ya registrada exige `reason` (`409` sin él). La asistencia no toca el progreso de materiales.
