@@ -44,6 +44,10 @@
         {
           "object": "recurso_leccion",
           "actions": ["READ"]
+        },
+        {
+          "object": "progreso_leccion",
+          "actions": ["READ", "CREATE", "UPDATE"]
         }
       ]
     },
@@ -97,6 +101,10 @@
         },
         {
           "object": "recurso_leccion",
+          "actions": ["READ", "VER_TODAS"]
+        },
+        {
+          "object": "progreso_leccion",
           "actions": ["READ", "VER_TODAS"]
         }
       ],

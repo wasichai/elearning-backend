@@ -9,7 +9,9 @@
     "rol_docente": ["TITULAR", "ASISTENTE"],
     "estado_matricula": ["ACTIVA", "RETIRADA", "FINALIZADA"],
     "resultado_matricula": ["SIN_RESULTADO", "APROBADO", "NO_APROBADO"],
-    "tipo_recurso": ["HTML", "PDF", "VIDEO", "PRESENTACION", "LABORATORIO", "CUESTIONARIO", "IMAGEN", "DIAGRAMA"]
+    "tipo_recurso": ["HTML", "PDF", "VIDEO", "PRESENTACION", "LABORATORIO", "CUESTIONARIO", "IMAGEN", "DIAGRAMA"],
+    "estado_progreso": ["INICIADA", "COMPLETADA", "APROBADA"],
+    "evidencia_progreso": ["FINALIZACION_EXPLICITA", "FIN_DE_VIDEO"]
   },
   "objects": [
     {
@@ -648,6 +650,53 @@
         }
       ],
       "uniqueConstraints": [["leccion", "version_recurso"]]
+    },
+    {
+      "name": "progreso_leccion",
+      "label": "Progreso de la lección",
+      "pluralLabel": "Progreso de las lecciones",
+      "description": "Avance de un estudiante en una lección de su matrícula (ADR-0012). Solo lo escribe el aula, solo avanza y guarda su evidencia.",
+      "apiOnly": true,
+      "actions": [
+        {
+          "name": "VER_TODAS",
+          "label": "Ver el progreso de todos, no solo el propio"
+        }
+      ],
+      "fields": [
+        {
+          "name": "estudiante_id",
+          "label": "Estudiante (usuario de Wasichai)",
+          "type": "UUID",
+          "required": true,
+          "indexed": true
+        },
+        {
+          "name": "estado",
+          "label": "Estado",
+          "type": "ENUM",
+          "enum": "estado_progreso",
+          "required": true,
+          "defaultValue": "INICIADA"
+        },
+        {
+          "name": "iniciado_en",
+          "label": "Iniciada en",
+          "type": "DATETIME"
+        },
+        {
+          "name": "completado_en",
+          "label": "Completada en",
+          "type": "DATETIME"
+        },
+        {
+          "name": "evidencia",
+          "label": "Evidencia de la finalización",
+          "type": "ENUM",
+          "enum": "evidencia_progreso"
+        }
+      ],
+      "uniqueConstraints": [["matricula", "leccion"]]
     }
   ],
   "relationships": [
@@ -768,6 +817,26 @@
       "source": "recurso_leccion",
       "target": "version_recurso",
       "fieldName": "version_recurso",
+      "required": true
+    },
+    {
+      "name": "progreso_leccion_matricula",
+      "label": "Matrícula",
+      "inverseLabel": "Progreso",
+      "type": "MANY_TO_ONE",
+      "source": "progreso_leccion",
+      "target": "matricula",
+      "fieldName": "matricula",
+      "required": true
+    },
+    {
+      "name": "progreso_leccion_leccion",
+      "label": "Lección",
+      "inverseLabel": "Progreso de los estudiantes",
+      "type": "MANY_TO_ONE",
+      "source": "progreso_leccion",
+      "target": "leccion",
+      "fieldName": "leccion",
       "required": true
     }
   ]
