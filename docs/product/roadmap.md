@@ -10,15 +10,15 @@ ejecutando las pruebas y los recorridos indicados, en local y en CI, y el result
 
 ## Resumen
 
-| Fase | Objetivo                                                                                   | Estado (2026-10-27)        |
-| ---- | ------------------------------------------------------------------------------------------ | -------------------------- |
-| F0   | Investigación y arquitectura                                                               | en curso: #2 y #6 cerrados |
-| F1   | Esqueleto ejecutable y primer incremento: catálogo público con carga y créditos propuestos | planificada, con épicas    |
-| F2   | LMS básico: aula, matrícula, unidades, lecciones, recursos y progreso                      | planificada                |
-| F3   | Evaluaciones y operación docente                                                           | planificada                |
-| F4   | Estudio editorial e importador AsciiDoc                                                    | planificada                |
-| F5   | IA y multimedia                                                                            | planificada                |
-| F6   | Calidad, reputación y despliegue                                                           | planificada                |
+| Fase | Objetivo                                                                                   | Estado (2026-10-28)                                                 |
+| ---- | ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------- |
+| F0   | Investigación y arquitectura                                                               | completada (épicas E0, E1)                                          |
+| F1   | Esqueleto ejecutable y primer incremento: catálogo público con carga y créditos propuestos | completada (2026-10-28): épicas E2–E10, 42 requisitos implementados |
+| F2   | LMS básico: aula, matrícula, unidades, lecciones, recursos y progreso                      | planificada                                                         |
+| F3   | Evaluaciones y operación docente                                                           | planificada                                                         |
+| F4   | Estudio editorial e importador AsciiDoc                                                    | planificada                                                         |
+| F5   | IA y multimedia                                                                            | planificada                                                         |
+| F6   | Calidad, reputación y despliegue                                                           | planificada                                                         |
 
 Las épicas viven en [wasichai/elearning-backend](https://github.com/wasichai/elearning-backend/issues); los pasos de
 frontend, en [wasichai/elearning-frontend](https://github.com/wasichai/elearning-frontend/issues). Cada paso es un

@@ -7,7 +7,7 @@ canalización de preparación de contenido asistida por IA que propone pero no a
 Este repositorio es el **backend** y la casa de la documentación. La interfaz está en
 [elearning-frontend](https://github.com/wasichai/elearning-frontend).
 
-> **Estado**: Fase 1 en curso — esqueleto ejecutable y catálogo público. Lo que existe y lo que falta está en
+> **Estado**: Fase 1 completada (2026-10-28) — catálogo público de punta a punta, con flujo editorial protegido. Siguiente: Fase 2, aula del estudiante. Lo que existe y lo que falta está en
 > [docs/product/roadmap.md](docs/product/roadmap.md) y en [docs/HISTORY.md](docs/HISTORY.md).
 >
 > **Licencia**: pendiente de decisión ([docs/legal/licensing.md](docs/legal/licensing.md)). Mientras tanto no se
