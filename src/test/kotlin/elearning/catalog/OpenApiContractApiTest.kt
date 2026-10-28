@@ -23,6 +23,20 @@ class OpenApiContractApiTest : WasichaiIntegrationTest() {
         )
     }
 
+    // sin configurar, ningún origen ajeno: un despliegue con la UI y la API en el mismo dominio no necesita CORS, y
+    // antes se heredaba http://localhost:* de Wasichai en cualquier entorno (#67)
+    @Test
+    fun `without configuration no other origin is allowed, not even localhost`() {
+        client
+            .options()
+            .uri("/api/lms/public/openapi")
+            .header("Origin", "http://localhost:5180")
+            .header("Access-Control-Request-Method", "GET")
+            .exchange()
+            .expectStatus()
+            .isForbidden
+    }
+
     @Test
     fun `the contract is public and describes the catalog`() {
         assertTrue(spec["openapi"].asString().startsWith("3."))

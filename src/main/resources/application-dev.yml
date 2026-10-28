@@ -2,3 +2,6 @@
 wasichai:
   seed:
     dev: true
+  # la UI de desarrollo (yarn dev en 5180, o cualquier puerto local)
+  web:
+    cors-allowed-origin-patterns: http://localhost:*
