@@ -80,14 +80,28 @@ Wasichai, y cada controlador comprueba permiso y alcance antes de actuar. Ningú
 
 ## 3. Separación de deberes
 
-- **Sin autoaprobación** (F4). Un `RecordWriteGuard` sobre `version_curso` rechaza la transición a `APROBADA` si quien
-  aprueba figura como autor o corrector de esa versión. La decisión del revisor queda ligada a la versión.
-- **Sin publicación sin revisión** (F1 inmutabilidad, F4 flujo). Solo una versión `APROBADA` pasa a `PUBLICADA`, y la
-  publicada es inmutable; ambas reglas son guards.
+**Implementado en F1** por `elearning.course.EditorialWorkflowGuard`, sobre **toda** escritura —la API genérica de
+registros de Wasichai incluida—. Las acciones declaradas (`PUBLICAR`, `APROBAR`…) no protegen nada por sí solas: se
+conceden y se consultan, y es la guarda la que las exige. Lo encontró la revisión de seguridad de E10.1: antes de la
+guarda, un CREADOR podía publicar escribiendo `estado` con un `PATCH`.
+
+- **Solo transiciones legales, cada una con su acción**: `BORRADOR→EN_REVISION` (`ENVIAR_A_REVISION`),
+  `EN_REVISION→BORRADOR` (`ENVIAR_A_REVISION` o `APROBAR`), `EN_REVISION→APROBADA` (`APROBAR`), `APROBADA→PUBLICADA`
+  (`PUBLICAR`), `PUBLICADA→RETIRADA` (`RETIRAR`). Cualquier otra es `409`; una legal sin la acción, `403`. Crear
+  directamente en otro estado (importar historia) pide la acción de ese estado.
+- **Sin autoaprobación**: nadie aprueba una versión cuyo `autor_id` es él, tampoco el administrador (`403`). Quien crea
+  una versión figura como autor (`400` si pone a otro), salvo quien tiene `PUBLICAR`; el autor no cambia (`409`).
+- **El contenido solo cambia en borrador y solo lo cambia su autor** (o quien tiene `PUBLICAR`): en revisión, aprobada,
+  publicada o retirada la versión **y su temario** (`unidad`, `leccion`) no se crean, cambian ni borran (`409`). El
+  revisor tiene `UPDATE` sobre `version_curso` solo para poder transitar; no reescribe borradores ajenos (`403`).
+- `creditos_aprobados` exige `APROBAR`; `publicada_en` solo se pone al publicar. Solo se borra un borrador.
 - **Sin autoasignación de roles** (a verificar). Los roles se administran solo con `MANAGE_ORGANIZATION` de Wasichai y
   quedan en `audit_log` como `admin:*`. Que Wasichai impida a un administrador cambiar sus **propios** roles no está
   documentado; si no lo impide, se cubre con revisión periódica de las entradas `admin:*`.
-- **Sin autoasignación de alcance** (F1 docente, F4 revisor). Un guard sobre las asignaciones (`docente_edicion`,
+- **Docentes y estudiantes en F1**: DOCENTE solo **lee** ediciones (editar las suyas llega en F3 con su alcance por
+  asignación; hasta entonces `UPDATE` sería sobre cualquiera) y ESTUDIANTE solo lee categorías y cursos (lo publicado lo
+  ve en el catálogo público; borradores y `usuario_id` quedan fuera de su alcance).
+- **Sin autoasignación de alcance** (F3 docente, F4 revisor). Un guard sobre las asignaciones (`docente_edicion`,
   revisor asignado) impide que quien crea la asignación sea el asignado.
 - **Notas solo por el docente asignado** (F3). Un guard sobre calificaciones e intentos solo admite a un DOCENTE con
   asignación vigente a la edición del intento; cada cambio de nota exige motivo (`requiresReason`, ADR-041 de
@@ -262,8 +276,11 @@ comprueba también que **nada cambió**, releyendo como propietario.
 | Nota sin motivo               | `PATCH` de calificación sin motivo                                                      | `400`                                |
 | Listados                      | Filtros que incluirían recursos ajenos                                                  | Solo los propios, conteos coherentes |
 
-El código HTTP del rechazo de un guard (`WasichaiException` y su estado) se fija al implementar el primer guard y se
-anota aquí.
+Rechazos de `EditorialWorkflowGuard`: `403` falta la acción o es autoaprobación o borrador ajeno; `409` transición
+inexistente o contenido congelado; `400` versión a nombre de otro. Pruebas: `EditorialWorkflowGuardApiTest`.
+
+**Residual conocido (F1)**: DOCENTE, CREADOR y REVISOR siguen leyendo `perfil_docente.usuario_id` por la API de la
+plataforma; ocultarlo pide permisos de campo, que `model/apply.py` aún no aplica (issue propio).
 
 ## 10. Pendientes y a verificar
 

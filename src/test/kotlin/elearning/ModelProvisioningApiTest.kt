@@ -73,7 +73,8 @@ class ModelProvisioningApiTest : LmsApiTest() {
     @Test
     fun `nobody but the administrator may publish, and the creator may not approve`() {
         for (role in listOf("estudiante", "docente", "creador", "revisor", "docente.revisor")) {
-            val actions = get("/api/auth/me/permissions", demoUser(role))["objects"]["version_curso"].strings()
+            // un rol que ni siquiera ve version_curso no la publica
+            val actions = get("/api/auth/me/permissions", demoUser(role))["objects"]["version_curso"]?.strings().orEmpty()
             assertTrue("PUBLICAR" !in actions && "RETIRAR" !in actions, "$role: $actions")
         }
         val creator = get("/api/auth/me/permissions", demoUser("creador"))["objects"]["version_curso"].strings()
@@ -84,8 +85,8 @@ class ModelProvisioningApiTest : LmsApiTest() {
     fun `one account holds several roles at once`() {
         val permissions = get("/api/auth/me/permissions", demoUser("docente.revisor"))["objects"]
 
-        // DOCENTE: actualiza ediciones; REVISOR: aprueba versiones. la misma cuenta, sin cambiar de sesión
-        assertTrue("UPDATE" in permissions["edicion_curso"].strings(), permissions.toString())
+        // DOCENTE: lee las ediciones; REVISOR: aprueba versiones. la misma cuenta, sin cambiar de sesión
+        assertTrue("READ" in permissions["edicion_curso"].strings(), permissions.toString())
         assertTrue("APROBAR" in permissions["version_curso"].strings(), permissions.toString())
     }
 }

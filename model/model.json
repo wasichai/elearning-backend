@@ -15,10 +15,30 @@
       "pluralLabel": "Categorías",
       "description": "Temática del catálogo.",
       "fields": [
-        { "name": "nombre", "label": "Nombre", "type": "TEXT", "required": true },
-        { "name": "slug", "label": "Identificador en URL", "type": "TEXT", "required": true, "unique": true },
-        { "name": "descripcion", "label": "Descripción", "type": "LONG_TEXT" },
-        { "name": "orden", "label": "Orden", "type": "INTEGER", "defaultValue": "0" }
+        {
+          "name": "nombre",
+          "label": "Nombre",
+          "type": "TEXT",
+          "required": true
+        },
+        {
+          "name": "slug",
+          "label": "Identificador en URL",
+          "type": "TEXT",
+          "required": true,
+          "unique": true
+        },
+        {
+          "name": "descripcion",
+          "label": "Descripción",
+          "type": "LONG_TEXT"
+        },
+        {
+          "name": "orden",
+          "label": "Orden",
+          "type": "INTEGER",
+          "defaultValue": "0"
+        }
       ]
     },
     {
@@ -27,13 +47,51 @@
       "pluralLabel": "Cursos",
       "description": "Definición reutilizable del programa formativo (CourseDefinition). No tiene fechas: eso es la edición.",
       "fields": [
-        { "name": "codigo", "label": "Código", "type": "TEXT", "required": true, "unique": true },
-        { "name": "slug", "label": "Identificador en URL", "type": "TEXT", "required": true, "unique": true },
-        { "name": "titulo", "label": "Título", "type": "TEXT", "required": true },
-        { "name": "resumen", "label": "Resumen", "type": "LONG_TEXT" },
-        { "name": "idioma", "label": "Idioma (BCP 47)", "type": "TEXT", "required": true, "defaultValue": "es" },
-        { "name": "nivel", "label": "Nivel", "type": "ENUM", "enum": "nivel", "required": true, "defaultValue": "INICIAL" },
-        { "name": "conocimientos_previos", "label": "Conocimientos previos", "type": "LONG_TEXT" }
+        {
+          "name": "codigo",
+          "label": "Código",
+          "type": "TEXT",
+          "required": true,
+          "unique": true
+        },
+        {
+          "name": "slug",
+          "label": "Identificador en URL",
+          "type": "TEXT",
+          "required": true,
+          "unique": true
+        },
+        {
+          "name": "titulo",
+          "label": "Título",
+          "type": "TEXT",
+          "required": true
+        },
+        {
+          "name": "resumen",
+          "label": "Resumen",
+          "type": "LONG_TEXT"
+        },
+        {
+          "name": "idioma",
+          "label": "Idioma (BCP 47)",
+          "type": "TEXT",
+          "required": true,
+          "defaultValue": "es"
+        },
+        {
+          "name": "nivel",
+          "label": "Nivel",
+          "type": "ENUM",
+          "enum": "nivel",
+          "required": true,
+          "defaultValue": "INICIAL"
+        },
+        {
+          "name": "conocimientos_previos",
+          "label": "Conocimientos previos",
+          "type": "LONG_TEXT"
+        }
       ]
     },
     {
@@ -42,29 +100,130 @@
       "pluralLabel": "Versiones del curso",
       "description": "Plan formativo versionado (CourseVersion). Publicada es inmutable; un cambio es una versión nueva.",
       "actions": [
-        { "name": "ENVIAR_A_REVISION", "label": "Enviar a revisión" },
-        { "name": "APROBAR", "label": "Aprobar" },
-        { "name": "PUBLICAR", "label": "Publicar" },
-        { "name": "RETIRAR", "label": "Retirar" }
+        {
+          "name": "ENVIAR_A_REVISION",
+          "label": "Enviar a revisión"
+        },
+        {
+          "name": "APROBAR",
+          "label": "Aprobar"
+        },
+        {
+          "name": "PUBLICAR",
+          "label": "Publicar"
+        },
+        {
+          "name": "RETIRAR",
+          "label": "Retirar"
+        }
       ],
       "fields": [
-        { "name": "numero", "label": "Número de versión", "type": "INTEGER", "required": true },
-        { "name": "estado", "label": "Estado", "type": "ENUM", "enum": "estado_version", "required": true, "defaultValue": "BORRADOR", "indexed": true },
-        { "name": "modalidad", "label": "Modalidad", "type": "ENUM", "enum": "modalidad", "required": true },
-        { "name": "semanas", "label": "Duración en semanas", "type": "INTEGER", "required": true },
-        { "name": "horas_teoria_semana", "label": "Horas de teoría por semana", "type": "DECIMAL", "defaultValue": "0" },
-        { "name": "horas_practica_semana", "label": "Horas de práctica o laboratorio por semana", "type": "DECIMAL", "defaultValue": "0" },
-        { "name": "horas_supervisadas_semana", "label": "Horas de otras actividades supervisadas por semana", "type": "DECIMAL", "defaultValue": "0" },
-        { "name": "horas_autonomas_semana", "label": "Horas de estudio autónomo por semana", "type": "DECIMAL", "defaultValue": "0" },
-        { "name": "sistema_credito", "label": "Sistema de crédito", "type": "ENUM", "enum": "sistema_credito", "required": true, "defaultValue": "NINGUNO" },
-        { "name": "creditos_aprobados", "label": "Créditos aprobados", "type": "DECIMAL" },
-        { "name": "politica_creditos", "label": "Política de créditos aplicada (id@versión)", "type": "TEXT" },
-        { "name": "objetivos", "label": "Objetivos (uno por línea)", "type": "LONG_TEXT" },
-        { "name": "resultados_aprendizaje", "label": "Resultados de aprendizaje (uno por línea)", "type": "LONG_TEXT" },
-        { "name": "requisitos", "label": "Requisitos", "type": "LONG_TEXT" },
-        { "name": "sistema_evaluacion", "label": "Sistema de evaluación", "type": "LONG_TEXT" },
-        { "name": "certificacion", "label": "Certificación", "type": "LONG_TEXT" },
-        { "name": "fuentes", "label": "Fuentes y referencias (una por línea)", "type": "LONG_TEXT" },
+        {
+          "name": "numero",
+          "label": "Número de versión",
+          "type": "INTEGER",
+          "required": true
+        },
+        {
+          "name": "autor_id",
+          "label": "Autor (usuario de Wasichai)",
+          "type": "UUID",
+          "indexed": true
+        },
+        {
+          "name": "estado",
+          "label": "Estado",
+          "type": "ENUM",
+          "enum": "estado_version",
+          "required": true,
+          "defaultValue": "BORRADOR",
+          "indexed": true
+        },
+        {
+          "name": "modalidad",
+          "label": "Modalidad",
+          "type": "ENUM",
+          "enum": "modalidad",
+          "required": true
+        },
+        {
+          "name": "semanas",
+          "label": "Duración en semanas",
+          "type": "INTEGER",
+          "required": true
+        },
+        {
+          "name": "horas_teoria_semana",
+          "label": "Horas de teoría por semana",
+          "type": "DECIMAL",
+          "defaultValue": "0"
+        },
+        {
+          "name": "horas_practica_semana",
+          "label": "Horas de práctica o laboratorio por semana",
+          "type": "DECIMAL",
+          "defaultValue": "0"
+        },
+        {
+          "name": "horas_supervisadas_semana",
+          "label": "Horas de otras actividades supervisadas por semana",
+          "type": "DECIMAL",
+          "defaultValue": "0"
+        },
+        {
+          "name": "horas_autonomas_semana",
+          "label": "Horas de estudio autónomo por semana",
+          "type": "DECIMAL",
+          "defaultValue": "0"
+        },
+        {
+          "name": "sistema_credito",
+          "label": "Sistema de crédito",
+          "type": "ENUM",
+          "enum": "sistema_credito",
+          "required": true,
+          "defaultValue": "NINGUNO"
+        },
+        {
+          "name": "creditos_aprobados",
+          "label": "Créditos aprobados",
+          "type": "DECIMAL"
+        },
+        {
+          "name": "politica_creditos",
+          "label": "Política de créditos aplicada (id@versión)",
+          "type": "TEXT"
+        },
+        {
+          "name": "objetivos",
+          "label": "Objetivos (uno por línea)",
+          "type": "LONG_TEXT"
+        },
+        {
+          "name": "resultados_aprendizaje",
+          "label": "Resultados de aprendizaje (uno por línea)",
+          "type": "LONG_TEXT"
+        },
+        {
+          "name": "requisitos",
+          "label": "Requisitos",
+          "type": "LONG_TEXT"
+        },
+        {
+          "name": "sistema_evaluacion",
+          "label": "Sistema de evaluación",
+          "type": "LONG_TEXT"
+        },
+        {
+          "name": "certificacion",
+          "label": "Certificación",
+          "type": "LONG_TEXT"
+        },
+        {
+          "name": "fuentes",
+          "label": "Fuentes y referencias (una por línea)",
+          "type": "LONG_TEXT"
+        },
         {
           "name": "contenido_ilustrativo",
           "label": "Contenido ilustrativo no validado por un experto",
@@ -72,7 +231,11 @@
           "required": true,
           "defaultValue": "true"
         },
-        { "name": "publicada_en", "label": "Publicada en", "type": "DATETIME" }
+        {
+          "name": "publicada_en",
+          "label": "Publicada en",
+          "type": "DATETIME"
+        }
       ],
       "uniqueConstraints": [["curso", "numero"]]
     },
@@ -82,11 +245,33 @@
       "pluralLabel": "Unidades",
       "description": "Unidad de aprendizaje de una versión (LearningUnit).",
       "fields": [
-        { "name": "orden", "label": "Orden", "type": "INTEGER", "required": true },
-        { "name": "titulo", "label": "Título", "type": "TEXT", "required": true },
-        { "name": "descripcion", "label": "Descripción", "type": "LONG_TEXT" },
-        { "name": "objetivos", "label": "Objetivos (uno por línea)", "type": "LONG_TEXT" },
-        { "name": "horas_estimadas", "label": "Horas estimadas", "type": "DECIMAL" }
+        {
+          "name": "orden",
+          "label": "Orden",
+          "type": "INTEGER",
+          "required": true
+        },
+        {
+          "name": "titulo",
+          "label": "Título",
+          "type": "TEXT",
+          "required": true
+        },
+        {
+          "name": "descripcion",
+          "label": "Descripción",
+          "type": "LONG_TEXT"
+        },
+        {
+          "name": "objetivos",
+          "label": "Objetivos (uno por línea)",
+          "type": "LONG_TEXT"
+        },
+        {
+          "name": "horas_estimadas",
+          "label": "Horas estimadas",
+          "type": "DECIMAL"
+        }
       ],
       "uniqueConstraints": [["version_curso", "orden"]]
     },
@@ -96,12 +281,41 @@
       "pluralLabel": "Lecciones",
       "description": "Actividad individual de una unidad (Lesson).",
       "fields": [
-        { "name": "orden", "label": "Orden", "type": "INTEGER", "required": true },
-        { "name": "titulo", "label": "Título", "type": "TEXT", "required": true },
-        { "name": "tipo", "label": "Tipo", "type": "ENUM", "enum": "tipo_leccion", "required": true, "defaultValue": "LECTURA" },
-        { "name": "duracion_minutos", "label": "Duración estimada (minutos)", "type": "INTEGER" },
-        { "name": "resumen", "label": "Resumen", "type": "LONG_TEXT" },
-        { "name": "referencia_fuente", "label": "Fuente (repo@sha:ruta#ancla)", "type": "TEXT" }
+        {
+          "name": "orden",
+          "label": "Orden",
+          "type": "INTEGER",
+          "required": true
+        },
+        {
+          "name": "titulo",
+          "label": "Título",
+          "type": "TEXT",
+          "required": true
+        },
+        {
+          "name": "tipo",
+          "label": "Tipo",
+          "type": "ENUM",
+          "enum": "tipo_leccion",
+          "required": true,
+          "defaultValue": "LECTURA"
+        },
+        {
+          "name": "duracion_minutos",
+          "label": "Duración estimada (minutos)",
+          "type": "INTEGER"
+        },
+        {
+          "name": "resumen",
+          "label": "Resumen",
+          "type": "LONG_TEXT"
+        },
+        {
+          "name": "referencia_fuente",
+          "label": "Fuente (repo@sha:ruta#ancla)",
+          "type": "TEXT"
+        }
       ],
       "uniqueConstraints": [["unidad", "orden"]]
     },
@@ -111,15 +325,62 @@
       "pluralLabel": "Ediciones del curso",
       "description": "Ejecución concreta de una versión en un intervalo (CourseOffering). Fechas en la zona horaria de la edición.",
       "fields": [
-        { "name": "codigo", "label": "Código", "type": "TEXT", "required": true, "unique": true },
-        { "name": "estado", "label": "Estado", "type": "ENUM", "enum": "estado_edicion", "required": true, "defaultValue": "PROGRAMADA", "indexed": true },
-        { "name": "fecha_inicio", "label": "Fecha de inicio", "type": "DATE", "required": true, "indexed": true },
-        { "name": "fecha_fin", "label": "Fecha de fin", "type": "DATE", "required": true },
-        { "name": "zona_horaria", "label": "Zona horaria (IANA)", "type": "TEXT", "required": true, "defaultValue": "America/Lima" },
-        { "name": "inscripcion_desde", "label": "Inscripción desde", "type": "DATE" },
-        { "name": "inscripcion_hasta", "label": "Inscripción hasta", "type": "DATE" },
-        { "name": "capacidad", "label": "Capacidad máxima", "type": "INTEGER" },
-        { "name": "calendario", "label": "Calendario (descripción)", "type": "LONG_TEXT" }
+        {
+          "name": "codigo",
+          "label": "Código",
+          "type": "TEXT",
+          "required": true,
+          "unique": true
+        },
+        {
+          "name": "estado",
+          "label": "Estado",
+          "type": "ENUM",
+          "enum": "estado_edicion",
+          "required": true,
+          "defaultValue": "PROGRAMADA",
+          "indexed": true
+        },
+        {
+          "name": "fecha_inicio",
+          "label": "Fecha de inicio",
+          "type": "DATE",
+          "required": true,
+          "indexed": true
+        },
+        {
+          "name": "fecha_fin",
+          "label": "Fecha de fin",
+          "type": "DATE",
+          "required": true
+        },
+        {
+          "name": "zona_horaria",
+          "label": "Zona horaria (IANA)",
+          "type": "TEXT",
+          "required": true,
+          "defaultValue": "America/Lima"
+        },
+        {
+          "name": "inscripcion_desde",
+          "label": "Inscripción desde",
+          "type": "DATE"
+        },
+        {
+          "name": "inscripcion_hasta",
+          "label": "Inscripción hasta",
+          "type": "DATE"
+        },
+        {
+          "name": "capacidad",
+          "label": "Capacidad máxima",
+          "type": "INTEGER"
+        },
+        {
+          "name": "calendario",
+          "label": "Calendario (descripción)",
+          "type": "LONG_TEXT"
+        }
       ]
     },
     {
@@ -128,11 +389,33 @@
       "pluralLabel": "Perfiles docentes",
       "description": "Información pública de un docente. La cuenta y sus roles son de Wasichai; aquí solo lo que se publica.",
       "fields": [
-        { "name": "usuario_id", "label": "Usuario de Wasichai", "type": "UUID", "unique": true },
-        { "name": "nombre_publico", "label": "Nombre público", "type": "TEXT", "required": true },
-        { "name": "titulo_profesional", "label": "Título profesional", "type": "TEXT" },
-        { "name": "biografia", "label": "Biografía", "type": "LONG_TEXT" },
-        { "name": "especialidades", "label": "Especialidades", "type": "TEXT" }
+        {
+          "name": "usuario_id",
+          "label": "Usuario de Wasichai",
+          "type": "UUID",
+          "unique": true
+        },
+        {
+          "name": "nombre_publico",
+          "label": "Nombre público",
+          "type": "TEXT",
+          "required": true
+        },
+        {
+          "name": "titulo_profesional",
+          "label": "Título profesional",
+          "type": "TEXT"
+        },
+        {
+          "name": "biografia",
+          "label": "Biografía",
+          "type": "LONG_TEXT"
+        },
+        {
+          "name": "especialidades",
+          "label": "Especialidades",
+          "type": "TEXT"
+        }
       ]
     },
     {
@@ -140,7 +423,16 @@
       "label": "Docente de la edición",
       "pluralLabel": "Docentes de la edición",
       "description": "Asignación de un docente a una edición: el alcance de sus permisos sale de aquí, no de su rol.",
-      "fields": [{ "name": "rol_docente", "label": "Rol en la edición", "type": "ENUM", "enum": "rol_docente", "required": true, "defaultValue": "TITULAR" }],
+      "fields": [
+        {
+          "name": "rol_docente",
+          "label": "Rol en la edición",
+          "type": "ENUM",
+          "enum": "rol_docente",
+          "required": true,
+          "defaultValue": "TITULAR"
+        }
+      ],
       "uniqueConstraints": [["edicion_curso", "perfil_docente"]]
     }
   ],

@@ -234,7 +234,7 @@ class FakeWasichai:
 
     def __init__(self):
         self.objects, self.actions, self.relationships, self.roles, self.writes = {}, {}, {}, {}, []
-        self.users, self.records = {}, {}
+        self.users, self.records, self.transitions = {}, {}, []
 
     def handle(self, method, raw_path, body):
         url = urllib.parse.urlsplit(raw_path)
@@ -258,6 +258,20 @@ class FakeWasichai:
             return 200, {}
         if m := re.fullmatch(r"/api/objects/(\w+)/records", path):
             return self.handle_records(method, m[1], query, body)
+        if m := re.fullmatch(r"/api/objects/(\w+)/records/([\w-]+)", path):
+            record = next((r for r in self.records.get(m[1], []) if r["id"] == m[2]), None)
+            if record is None:
+                return 404, {"detail": "no record"}
+            if method == "PATCH":
+                # como EditorialWorkflowGuard: un estado nuevo debe ser el siguiente del camino
+                state = body["attributes"].get("estado")
+                if state is not None and m[1] == "version_curso":
+                    path_ = ["BORRADOR", "EN_REVISION", "APROBADA", "PUBLICADA"]
+                    if path_.index(state) != path_.index(record["attributes"]["estado"]) + 1:
+                        return 409, {"detail": f"transition {record['attributes']['estado']} -> {state} not allowed"}
+                    self.transitions.append((m[2], state, dict(body["attributes"])))
+                record["attributes"].update(body["attributes"])
+            return 200, record
         if (method, path) == ("GET", "/api/objects"):
             return 200, [{"name": n} for n in self.objects]
         if (method, path) == ("POST", "/api/objects"):
@@ -317,6 +331,16 @@ class FakeWasichai:
         return 201, record
 
 
+class WorkflowTest(unittest.TestCase):
+    """Las versiones demo recorren el flujo editorial como lo haría una persona (EditorialWorkflowGuard)."""
+
+    def test_workflow_must_name_states_of_the_enum(self):
+        data = copy.deepcopy(DATA)
+        data["workflows"]["version_curso"]["path"] = ["BORRADOR", "PUBLICADISIMA"]
+        with self.assertRaises(apply.ModelError):
+            apply.validate_demo(data, MODEL, ROLES)
+
+
 class ApplyDemoTest(unittest.TestCase):
     def setUp(self):
         self.fake = FakeWasichai()
@@ -334,7 +358,7 @@ class ApplyDemoTest(unittest.TestCase):
                 self.end_headers()
                 self.wfile.write(raw)
 
-            do_GET = do_POST = do_PUT = _serve
+            do_GET = do_POST = do_PUT = do_PATCH = _serve
 
             def log_message(self, *args):
                 pass
@@ -367,6 +391,24 @@ class ApplyDemoTest(unittest.TestCase):
         user_ids = {u["email"]: u["id"] for u in self.fake.users.values()}
         profiles = {r["attributes"]["nombre_publico"]: r["attributes"]["usuario_id"] for r in self.fake.records["perfil_docente"]}
         self.assertEqual(user_ids["docente@demo.wasichai-learning.test"], profiles["Diego Docente (demo)"])
+
+    def test_versions_are_born_drafts_and_walk_the_editorial_flow_after_their_curriculum(self):
+        code, out, err = self.run_main()
+        self.assertEqual(0, code, err)
+        published = [r for r in DATA["records"] if r["object"] == "version_curso" and r["attributes"].get("estado") == "PUBLICADA"]
+        walked = {}
+        for record_id, state, body in self.fake.transitions:
+            walked.setdefault(record_id, []).append((state, body))
+        self.assertEqual(len(published), len(walked))
+        for steps in walked.values():
+            self.assertEqual(["EN_REVISION", "APROBADA", "PUBLICADA"], [s for s, _ in steps])
+            # la fecha de publicación llega con la publicación, no antes
+            self.assertTrue(all("publicada_en" not in b for s, b in steps[:-1]))
+        # el temario se creó mientras la versión era borrador: ningún POST de unidad/lección tras la primera transición
+        first_patch = next(i for i, w in enumerate(self.fake.writes) if w.startswith("PATCH"))
+        self.assertFalse(any(w.startswith(("POST /api/objects/unidad", "POST /api/objects/leccion")) for w in self.fake.writes[first_patch:]))
+        drafts = [r for r in self.fake.records["version_curso"] if r["attributes"]["estado"] == "BORRADOR"]
+        self.assertEqual(sum(1 for r in DATA["records"] if r["object"] == "version_curso" and r["attributes"].get("estado") == "BORRADOR"), len(drafts))
 
     def test_second_run_writes_nothing(self):
         self.assertEqual(0, self.run_main()[0])
