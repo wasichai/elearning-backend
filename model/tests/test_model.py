@@ -59,6 +59,14 @@ class RealModelTest(unittest.TestCase):
         for obj in ("recurso", "version_recurso", "recurso_leccion"):
             self.assertFalse(holds("ESTUDIANTE", obj, "VER_TODAS"), obj)
 
+    def test_progress_is_written_only_by_the_classroom(self):
+        progress = next(o for o in MODEL["objects"] if o["name"] == "progreso_leccion")
+        self.assertTrue(progress.get("apiOnly"))
+        self.assertIn(["matricula", "leccion"], progress["uniqueConstraints"])
+        for role in ROLES["roles"]:
+            if role["name"] != "ESTUDIANTE":
+                self.assertFalse(holds(role["name"], "progreso_leccion", "CREATE") or holds(role["name"], "progreso_leccion", "UPDATE"), role["name"])
+
     def test_teacher_profiles_are_private_by_default(self):
         fields = {f["name"]: f for o in MODEL["objects"] if o["name"] == "perfil_docente" for f in o["fields"]}
         self.assertEqual("false", fields["perfil_publico"]["defaultValue"])
@@ -70,10 +78,12 @@ class RealModelTest(unittest.TestCase):
                 hidden = [f for f in role.get("fieldPermissions", []) if f["object"] == "perfil_docente" and f["field"] == "usuario_id"]
                 self.assertEqual([False], [f["read"] for f in hidden], role["name"])
 
-    def test_students_only_read_except_enrolling(self):
+    def test_students_only_read_except_enrolling_and_their_progress(self):
+        # matricula y progreso_leccion son apiOnly: esas escrituras solo pasan por los comandos del aula
         student = next(r for r in ROLES["roles"] if r["name"] == "ESTUDIANTE")
+        writes = {"matricula": {"READ", "CREATE"}, "progreso_leccion": {"READ", "CREATE", "UPDATE"}}
         for grant in student["permissions"]:
-            expected = {"READ", "CREATE"} if grant["object"] == "matricula" else {"READ"}
+            expected = writes.get(grant["object"], {"READ"})
             self.assertEqual(expected, set(grant["actions"]), grant["object"])
 
     def test_enrollments_are_written_only_by_the_command(self):

@@ -43,6 +43,19 @@ data class EnrollmentView(
     val nextLesson: NextLesson?,
 )
 
+// el progreso de una lección: sin registro es NO_INICIADA
+data class LessonProgress(
+    val status: String,
+    val startedAt: Instant?,
+    val completedAt: Instant?,
+    val evidence: String?,
+)
+
+data class LearningEventRequest(
+    val type: String? = null,
+    val clientEventId: String? = null,
+)
+
 data class EnrollRequest(
     val offering: String? = null,
 )

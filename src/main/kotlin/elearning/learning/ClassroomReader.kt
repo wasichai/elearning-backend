@@ -20,8 +20,12 @@ class ClassroomReader(
         val course = records.get(COURSE, UUID.fromString(version.attributes.ref(COURSE)!!))
         val offering = records.get(OFFERING, UUID.fromString(a.ref(OFFERING_FIELD)!!))
         val lessons = lessonsInOrder(version.id).filter { it.type !in NOT_YET }
-        // F2 sin progreso guardado todavía (E14): ninguna completada
-        val completed = 0
+        val done =
+            all(PROGRESS, mapOf(ENROLLMENT to enrollment.id))
+                .filter { it.attributes[STATE]?.toString() in LessonProgressService.DONE }
+                .mapNotNull { it.attributes.ref(LESSON) }
+                .toSet()
+        val completed = lessons.count { it.id in done }
         return EnrollmentView(
             id = enrollment.id,
             status = a[STATE].toString(),
@@ -37,7 +41,7 @@ class ClassroomReader(
                     timeZone = offering.text("zona_horaria"),
                 ),
             progress = ProgressSummary(completed, lessons.size, if (lessons.isEmpty()) 0 else completed * 100 / lessons.size),
-            nextLesson = lessons.firstOrNull()?.let { NextLesson(it.id, it.title, it.unitOrder, it.order) },
+            nextLesson = lessons.firstOrNull { it.id !in done }?.let { NextLesson(it.id, it.title, it.unitOrder, it.order) },
         )
     }
 
@@ -81,6 +85,8 @@ class ClassroomReader(
         const val UNIT = "unidad"
         const val LESSON = "leccion"
         const val STATE = "estado"
+        const val PROGRESS = "progreso_leccion"
+        const val ENROLLMENT = "matricula"
 
         // se completan en F3 (evaluación y sesión): no cuentan para el progreso de F2
         val NOT_YET = setOf("EVALUACION", "SESION")
@@ -91,7 +97,7 @@ private fun RecordResponse.text(name: String): String = attributes[name]?.toStri
 
 private fun RecordResponse.int(name: String): Int = (attributes[name] as? Number)?.toInt() ?: attributes[name]?.toString()?.toIntOrNull() ?: 0
 
-private fun Map<String, Any?>.ref(name: String): String? =
+internal fun Map<String, Any?>.ref(name: String): String? =
     when (val v = this[name]) {
         is Map<*, *> -> v["id"]?.toString()
         null -> null

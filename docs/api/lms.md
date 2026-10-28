@@ -195,8 +195,8 @@ Cuerpo `{ "offering": "<código de la edición>" }`. Cabecera opcional `Idempote
 }
 ```
 
-`nextLesson` es la primera lección no completada en orden (unidad, lección), o `null` si no queda ninguna.
-`percent` es entero (0–100) sobre las lecciones que se pueden completar en F2.
+`nextLesson` es la primera lección no completada en orden (unidad, lección), sin contar las `NOT_YET`, o `null` si no
+queda ninguna. `percent` es entero (0–100) sobre las lecciones que se pueden completar en F2 (las mismas).
 
 ### GET /api/lms/classroom/enrollments
 
@@ -243,14 +243,24 @@ Mis matrículas activas → `Enrollment[]`, la de inicio más próximo primero.
 
 - `completion`: cómo se completa la lección — `EXPLICIT` (el estudiante la marca: `LECTURA`, `PRESENTACION`,
   `LABORATORIO`), `VIDEO_END` (al terminar el vídeo), `NOT_YET` (`EVALUACION`, `SESION`: llegan en F3).
-- `progress.status`: `NO_INICIADA` · `INICIADA` · `COMPLETADA` · `APROBADA` (F3). `evidence` solo cuando está completada.
+- `progress.status`: `NO_INICIADA` · `INICIADA` · `COMPLETADA` · `APROBADA` (F3). `evidence` solo cuando está completada:
+  `FINALIZACION_EXPLICITA` (la marcó el estudiante) o `FIN_DE_VIDEO`. `startedAt`, `completedAt` y `evidence` son `null`
+  cuando no aplican.
 - `file` puede ser `null` (recurso sin archivo); su `url` es la descarga de `wasichai-files`, con la misma sesión. Un
   `HTML` se muestra en un `iframe` con `sandbox` sin `allow-scripts`; `PDF` se descarga; `VIDEO` se reproduce.
 
 ### POST /api/lms/classroom/enrollments/{id}/lessons/{lessonId}/events
 
 Cuerpo `{ "type": "STARTED" | "VIDEO_ENDED" | "MARKED_COMPLETE", "clientEventId": "<uuid>" }` → `200` con el
-`progress` de la lección. Idempotente por `clientEventId`: repetir el mismo evento no cambia nada.
+`progress` de la lección. Idempotente por `clientEventId`: repetir el mismo evento devuelve el progreso actual sin cambiar
+nada (el cliente genera uno por intento y lo reutiliza al reintentar la misma acción).
+
+- `STARTED` vale en cualquier lección, también `NOT_YET`; en una ya iniciada o completada no cambia nada.
+- `MARKED_COMPLETE` (lectura, presentación, laboratorio) o `VIDEO_ENDED` (vídeo) completan, aunque no se haya enviado
+  `STARTED`; `startedAt` toma entonces el mismo instante.
+- Solo la persona matriculada registra su progreso, sobre su matrícula `ACTIVA` (otra → `409`). Los eventos llegan a la
+  vez sin carreras: uno por lección a la vez.
+- `400` si `type` no es uno de los tres o `clientEventId` no es un UUID.
 
 - `409` si la regla no se cumple: `MARKED_COMPLETE` en un vídeo o en una lección `NOT_YET`; `VIDEO_ENDED` en una
   lección que no es vídeo. El estado nunca retrocede.

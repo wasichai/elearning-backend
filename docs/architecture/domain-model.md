@@ -202,19 +202,23 @@ El LMS no ofrece videollamada propia: `enlace_reunion` lo pone una persona o un 
 NO_APROBADO)` · `matriculado_en · DATETIME` · `finalizado_en · DATETIME`;
 `uniqueConstraints: [[edicion, estudiante_id]]`.
 Invariantes: se crea dentro de la ventana de inscripción y bajo cupo, contando bajo
-`ClusterLock.withXactLock("lms.edicion.<id>")` para que dos altas simultáneas no pasen el cupo [servicio];
+la fila de `lms.ocupacion_edicion` bloqueada con `FOR UPDATE` en la transacción del alta para que dos altas
+simultáneas no pasen el cupo (ADR-0013) [servicio];
 `version_curso` = la de la edición y no cambia [guarda]; `resultado` lo fija la regla de finalización, no una persona
 [servicio, F3].
 
-**`progreso_leccion`** (LearningProgress) — estado de una lección para una matrícula. F2. `apiOnly`.
-`matricula · RELATION → matricula · requerido` · `leccion · RELATION → leccion · requerido` · `estado ·
-ENUM(INICIADA, COMPLETADA, APROBADA)` · `evidencia · ENUM(FINALIZACION_EXPLICITA, VIDEO_COMPLETO, EVALUACION_APROBADA,
-ENTREGA_CALIFICADA)` · `iniciada_en · DATETIME` · `completada_en · DATETIME`;
-`uniqueConstraints: [[matricula, leccion]]`.
-Invariantes: la lección pertenece a la `version_curso` de la matrícula [guarda]; el estado solo avanza; `COMPLETADA`
-exige la evidencia que pide `criterio_finalizacion` [servicio]. El progreso por unidad y total se calcula, no se guarda.
-Los eventos crudos que respaldan la evidencia (reproducción de vídeo, navegación) van a `lms.evento_aprendizaje`; el
-tiempo con la página abierta no cuenta como evidencia.
+**`progreso_leccion`** (LearningProgress) — estado de una lección para una matrícula. F2. `apiOnly`: solo lo escribe
+el aula (`POST …/lessons/{id}/events`).
+`matricula · RELATION → matricula · requerido` · `leccion · RELATION → leccion · requerido` · `estudiante_id · UUID ·
+indexado` (para el alcance) · `estado · ENUM(INICIADA, COMPLETADA, APROBADA)` · `evidencia ·
+ENUM(FINALIZACION_EXPLICITA, FIN_DE_VIDEO)` (F3 añade la de evaluación y entrega) · `iniciado_en · DATETIME` ·
+`completado_en · DATETIME`; `uniqueConstraints: [[matricula, leccion]]`.
+Invariantes [servicio, `LessonProgressService`]: solo el estudiante, sobre su matrícula `ACTIVA` y una lección de la
+`version_curso` de esa matrícula; el estado solo avanza; lectura, presentación y laboratorio se completan cuando el
+estudiante la marca, vídeo al terminar la reproducción, evaluación y sesión en F3; un cerrojo consultivo por (matrícula,
+lección) serializa los eventos simultáneos. Lectura por `estudiante_id` (`EnrollmentReadScope`), salvo `VER_TODAS`. El
+progreso por unidad y total se calcula, no se guarda. Cada evento aceptado va a `lms.evento_aprendizaje`, una vez por
+`clientEventId`, en la misma transacción; el tiempo con la página abierta no cuenta como evidencia.
 
 **`asistencia`** (AttendanceRecord) — F3. `requiresReason`.
 `sesion · RELATION → sesion` · `matricula · RELATION → matricula` · `estado · ENUM(PRESENTE, TARDE, AUSENTE,
