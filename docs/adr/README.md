@@ -24,9 +24,10 @@ secciones Contexto, Decisión, Alternativas consideradas y Consecuencias. El for
 | [0006](0006-catalogo-publico-con-cadena-de-seguridad-acotada.md)    | Catálogo público con cadena de seguridad acotada                           | aceptada (lectura: ver 0011) | 2026-10-27 |
 | [0007](0007-carga-academica-y-creditos-como-politica-versionada.md) | Carga y créditos como política versionada que propone                      | aceptada                     | 2026-10-27 |
 | [0008](0008-openapi-con-springdoc.md)                               | La API propia se documenta con OpenAPI vía springdoc 3.x                   | aceptada                     | 2026-10-27 |
-| [0009](0009-licencia-diferida.md)                                   | La licencia del proyecto se difiere                                        | aceptada                     | 2026-10-27 |
+| [0009](0009-licencia-diferida.md)                                   | La licencia del proyecto se difiere                                        | reemplazada por 0015         | 2026-10-27 |
 | [0010](0010-importacion-asciidoc-por-etapas.md)                     | La importación AsciiDoc avanza por etapas y nunca publica sola             | aceptada                     | 2026-10-27 |
 | [0011](0011-catalogo-publico-leido-de-una-proyeccion.md)            | El catálogo público se lee de una proyección                               | aceptada                     | 2026-10-27 |
 | [0012](0012-aula-del-estudiante.md)                                 | El aula lee por matrícula, aísla el contenido y exige evidencia            | aceptada                     | 2026-10-28 |
 | [0013](0013-estructura-publicada-visible-recursos-por-matricula.md) | El estudiante ve lo publicado; los recursos, solo matriculado              | aceptada                     | 2026-10-28 |
 | [0014](0014-docente-sin-ver-todas-y-recurso-congelado.md)           | Sin «ver todas» del docente sobre matrículas y progreso; recurso congelado | aceptada                     | 2026-10-28 |
+| [0015](0015-licencia-lgpl-provisional.md)                           | Licencia provisional LGPL-3.0-or-later                                     | aceptada                     | 2026-10-28 |
