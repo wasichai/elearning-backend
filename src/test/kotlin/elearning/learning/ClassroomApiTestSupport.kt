@@ -159,6 +159,45 @@ abstract class ClassroomApiTestSupport : LmsApiTest() {
         return bearer(email, DEMO_PASSWORD)
     }
 
+    protected fun userId(token: String): String = get("/api/auth/me", token)["userId"].asString()
+
+    // una persona DOCENTE nueva, sin ediciones hasta que se le asigne una
+    protected fun newTeacher(): String {
+        val email = "${uniqueName("doc")}@demo.wasichai-learning.test"
+        client
+            .post()
+            .uri("/api/users")
+            .header("Authorization", admin)
+            .bodyValue(mapOf("email" to email, "displayName" to "Docente", "password" to DEMO_PASSWORD, "roles" to listOf("DOCENTE")))
+            .exchange()
+            .expectStatus()
+            .isCreated
+        return bearer(email, DEMO_PASSWORD)
+    }
+
+    // la asignación que da al docente el alcance sobre la edición (ADR-0016): su perfil y su cuenta
+    protected fun assign(
+        teacher: String,
+        course: Course,
+    ) {
+        val account = userId(teacher)
+        val offering = get("/api/objects/edicion_curso/records?codigo=${course.offering}", admin)["content"][0]["id"].asString()
+        val profile =
+            call(
+                admin,
+                "/api/objects/perfil_docente/records",
+                mapOf("attributes" to mapOf("nombre_publico" to "Docente", "usuario_id" to account, "perfil_publico" to false)),
+            ).second!!["id"]
+                .asString()
+        val (status, body) =
+            call(
+                admin,
+                "/api/objects/docente_edicion/records",
+                mapOf("attributes" to mapOf("edicion_curso" to offering, "perfil_docente" to profile, "usuario_id" to account)),
+            )
+        assertEquals(HttpStatus.CREATED, status, body.toString())
+    }
+
     protected fun call(
         token: String?,
         path: String,

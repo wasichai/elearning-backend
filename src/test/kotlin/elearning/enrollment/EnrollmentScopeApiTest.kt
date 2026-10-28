@@ -103,14 +103,24 @@ class EnrollmentScopeApiTest : LmsApiTest() {
     }
 
     @Test
-    fun `the administrator sees them all, a teacher none until their assignment scope exists`() {
+    fun `the administrator sees them all, a teacher without assignments none`() {
         val all = get("/api/objects/matricula/records?size=200", bearer())["content"].strings { it["id"] }
         assertTrue(mine in all && theirs in all, all.toString())
 
-        // revisión de la Fase 2: sin alcance por asignación (F3), VER_TODAS daría a todo docente las matrículas y el
-        // progreso de toda la organización
+        // un docente sin ediciones asignadas no ve matrículas ni progreso de nadie: ningún rol tiene VER_TODAS sobre ellos
+        // (ADR-0014) y su alcance sale de sus asignaciones (ADR-0016)
+        val email = "${uniqueName("doc")}@demo.wasichai-learning.test"
+        client
+            .post()
+            .uri("/api/users")
+            .header("Authorization", bearer())
+            .bodyValue(mapOf("email" to email, "displayName" to "Docente sin edición", "password" to DEMO_PASSWORD, "roles" to listOf("DOCENTE")))
+            .exchange()
+            .expectStatus()
+            .isCreated
+        val teacher = bearer(email, DEMO_PASSWORD)
         for (obj in listOf("matricula", "progreso_leccion")) {
-            assertEquals(0, get("/api/objects/$obj/records?size=200", demoUser("docente"))["totalElements"].asInt(), obj)
+            assertEquals(0, get("/api/objects/$obj/records?size=200", teacher)["totalElements"].asInt(), obj)
         }
     }
 

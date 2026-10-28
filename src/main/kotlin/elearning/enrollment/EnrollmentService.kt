@@ -59,6 +59,7 @@ class EnrollmentService(
                             OFFERING_FIELD to offering.id,
                             VERSION to version,
                             STUDENT to user.userId.toString(),
+                            STUDENT_EMAIL to user.email,
                             STATE to ACTIVE,
                             ENROLLED_AT to Instant.now(clock).toString(),
                         ),
@@ -125,6 +126,7 @@ class EnrollmentService(
         const val OFFERING_FIELD = "edicion"
         const val VERSION = "version_curso"
         const val STUDENT = "estudiante_id"
+        const val STUDENT_EMAIL = "estudiante_correo"
         const val STATE = "estado"
         const val CODE = "codigo"
         const val CAPACITY = "capacidad"
