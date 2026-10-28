@@ -17,6 +17,7 @@ enum class Rule(
     ROLE_NAME_LITERAL("nunca se compara un nombre de rol en código (CLAUDE.md, regla 4)"),
     PURE_WORKLOAD("elearning.workload es dominio puro: ni Spring, ni Wasichai, ni R2DBC"),
     PACKAGE_DAG("solo las dependencias de docs/architecture/overview.md §2.3"),
+    CONCRETE_PROVIDER("ningún proveedor concreto de IA, almacenamiento ni videoconferencia fuera de su adaptador (RNF-ARQ-08)"),
 }
 
 data class Violation(
@@ -66,6 +67,9 @@ class SourceScanner(
             BLOCKING_PERSISTENCE.findAll(line).forEach { report(Rule.BLOCKING_PERSISTENCE, index, "usa ${it.value}") }
             WASICHAI_INTERNALS.findAll(line).forEach { report(Rule.WASICHAI_INTERNALS, index, "usa ${it.value}") }
             ROLE_NAME_LITERAL.findAll(line).forEach { report(Rule.ROLE_NAME_LITERAL, index, "literal de rol ${it.value}") }
+            if (!isProviderAdapter(packageName)) {
+                CONCRETE_PROVIDER.findAll(line).forEach { report(Rule.CONCRETE_PROVIDER, index, "usa ${it.value}") }
+            }
             if (isWorkload(packageName)) {
                 FRAMEWORK_REFERENCE.findAll(line).forEach { report(Rule.PURE_WORKLOAD, index, "$packageName usa ${it.value}") }
             }
@@ -73,6 +77,9 @@ class SourceScanner(
         violations += dagViolations(source, lines, packageIndex, packageName)
         return violations
     }
+
+    private fun isProviderAdapter(packageName: String) =
+        PROVIDER_ADAPTERS.any { packageName == "$rootPackage.$it" || packageName.startsWith("$rootPackage.$it.") }
 
     private fun isWorkload(packageName: String) = packageName == "$rootPackage.workload" || packageName.startsWith("$rootPackage.workload.")
 
@@ -116,6 +123,21 @@ class SourceScanner(
 
         // entre comillas dobles (Kotlin) o simples (SQL dentro de una cadena), con o sin ROLE_ de Spring Security
         private val ROLE_NAME_LITERAL = Regex("""(["'])(?:ROLE_)?(ESTUDIANTE|DOCENTE|CREADOR|REVISOR|ADMIN)\1""", RegexOption.IGNORE_CASE)
+
+        // SDK concretos (por paquete) y hosts de sus API (en cadenas, para quien llamara con WebClient): IA, almacenamiento
+        // de objetos y videoconferencia. Solo sus adaptadores, previstos en docs/architecture/overview.md §2.3, los usan
+        private val CONCRETE_PROVIDER =
+            Regex(
+                """\b(com\.openai|com\.anthropic|com\.aallam\.openai|com\.theokanning\.openai|com\.google\.genai|com\.google\.cloud\.vertexai|""" +
+                    """com\.azure\.ai|org\.springframework\.ai\.(?:openai|anthropic|vertexai|bedrock|ollama|mistralai|azure)|""" +
+                    """dev\.langchain4j\.model\.(?:openai|anthropic|vertexai|bedrock|ollama|mistralai|azure)|""" +
+                    """software\.amazon\.awssdk|com\.amazonaws|io\.minio|com\.google\.cloud\.storage|com\.azure\.storage|""" +
+                    """us\.zoom|com\.zoom|com\.google\.apps\.meet|com\.google\.api\.services\.meet|com\.microsoft\.graph|org\.jitsi|""" +
+                    """com\.twilio|io\.agora)\.[\w.*]*|""" +
+                    """\b(?:api\.openai\.com|api\.anthropic\.com|generativelanguage\.googleapis\.com|[\w-]+\.amazonaws\.com|""" +
+                    """api\.zoom\.us|meet\.googleapis\.com|graph\.microsoft\.com)\b""",
+            )
+        private val PROVIDER_ADAPTERS = setOf("ai", "media", "course.meeting")
         private val FRAMEWORK_REFERENCE = Regex("""\b(org\.springframework|wasichai|io\.r2dbc)\.[\w.*]*""")
     }
 }
