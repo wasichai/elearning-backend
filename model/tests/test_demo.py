@@ -235,6 +235,8 @@ class FakeWasichai:
     def __init__(self):
         self.objects, self.actions, self.relationships, self.roles, self.writes = {}, {}, {}, {}, []
         self.users, self.records, self.transitions = {}, {}, []
+        # un servidor que no aplicara el filtro por clave natural (#60)
+        self.ignore_filters = False
 
     def handle(self, method, raw_path, body):
         url = urllib.parse.urlsplit(raw_path)
@@ -318,9 +320,15 @@ class FakeWasichai:
             return 404, {"detail": f"unknown object {obj}"}
         stored = self.records.setdefault(obj, [])
         if method == "GET":
-            filters = {k: v for k, v in query.items() if k not in ("size", "page", "sort")}
-            found = [r for r in stored if all(str(r["attributes"].get(k)) == v for k, v in filters.items())]
-            return 200, {"content": found, "totalElements": len(found)}
+            filters = {k: v for k, v in query.items() if k not in ("size", "page", "sort", "count", "after")}
+            found = stored if self.ignore_filters else [r for r in stored if all(str(r["attributes"].get(k)) == v for k, v in filters.items())]
+            # páginas por cursor, como Wasichai (keyset): after = índice de inicio
+            size, start = int(query.get("size", 25)), int(query.get("after", 0))
+            page = found[start : start + size]
+            answer = {"content": page, "totalElements": len(found)}
+            if start + size < len(found):
+                answer["nextCursor"] = str(start + size)
+            return 200, answer
         fields = {f["name"]: f for f in self.objects[obj]["fields"]}
         attributes = body["attributes"]
         if unknown := set(attributes) - set(fields):
@@ -412,6 +420,18 @@ class ApplyDemoTest(unittest.TestCase):
         self.assertFalse(any(w.startswith(("POST /api/objects/unidad", "POST /api/objects/leccion")) for w in self.fake.writes[first_patch:]))
         drafts = [r for r in self.fake.records["version_curso"] if r["attributes"]["estado"] == "BORRADOR"]
         self.assertEqual(sum(1 for r in DATA["records"] if r["object"] == "version_curso" and r["attributes"].get("estado") == "BORRADOR"), len(drafts))
+
+    def test_existing_records_are_found_beyond_the_first_page_even_if_the_server_ignores_the_filter(self):
+        self.assertEqual(0, self.run_main()[0])
+        # 250 lecciones de relleno delante: el registro buscado queda más allá de la primera página de 200
+        filler = [{"id": f"x{i}", "attributes": {"titulo": f"relleno {i}"}} for i in range(250)]
+        self.fake.records["leccion"] = filler + self.fake.records["leccion"]
+        self.fake.ignore_filters = True
+        writes = len(self.fake.writes)
+        code, out, err = self.run_main()
+        self.assertEqual(0, code, err)
+        # como en la segunda ejecución normal: solo el inicio de sesión, ningún registro demo creado de nuevo
+        self.assertEqual(["POST /api/auth/login"], self.fake.writes[writes:])
 
     def test_second_run_writes_nothing(self):
         self.assertEqual(0, self.run_main()[0])
