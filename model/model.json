@@ -1,7 +1,8 @@
 {
   "enums": {
     "nivel": ["INICIAL", "INTERMEDIO", "AVANZADO"],
-    "modalidad": ["ASINCRONA", "SINCRONA", "HIBRIDA"],
+    "modalidad": ["ASINCRONA", "SINCRONA", "HIBRIDA", "PRESENCIAL"],
+    "tipo_duracion": ["SEMANAS", "SEMESTRAL"],
     "estado_version": ["BORRADOR", "EN_REVISION", "APROBADA", "PUBLICADA", "RETIRADA"],
     "estado_edicion": ["PROGRAMADA", "INSCRIPCION_ABIERTA", "EN_CURSO", "FINALIZADA", "CANCELADA"],
     "sistema_credito": ["NINGUNO", "ECTS", "SCH"],
@@ -154,6 +155,14 @@
           "type": "ENUM",
           "enum": "modalidad",
           "required": true
+        },
+        {
+          "name": "duracion",
+          "label": "Duración: por semanas (de 1 a 8) o semestral (de 12 a 26 semanas)",
+          "type": "ENUM",
+          "enum": "tipo_duracion",
+          "required": true,
+          "defaultValue": "SEMANAS"
         },
         {
           "name": "semanas",

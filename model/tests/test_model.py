@@ -67,6 +67,14 @@ class RealModelTest(unittest.TestCase):
         self.assertLessEqual({"codigo", "titulo", "descripcion", "tipo", "idioma", "responsable_editorial_id"}, fields("recurso"))
         self.assertLessEqual({"numero", "autor_id", "estado", "archivo"}, fields("version_recurso"))
 
+    def test_course_versions_have_every_modality_and_a_kind_of_duration(self):
+        # RF-ACA-05: presencial, virtual síncrona, asíncrona o híbrida; por semanas o semestral (el rango, en CourseDurationGuard)
+        self.assertEqual({"PRESENCIAL", "SINCRONA", "ASINCRONA", "HIBRIDA"}, set(MODEL["enums"]["modalidad"]))
+        version = next(o for o in MODEL["objects"] if o["name"] == "version_curso")
+        duration = next(f for f in version["fields"] if f["name"] == "duracion")
+        self.assertEqual(("tipo_duracion", "SEMANAS", True), (duration["enum"], duration["defaultValue"], duration["required"]))
+        self.assertEqual(["SEMANAS", "SEMESTRAL"], MODEL["enums"]["tipo_duracion"])
+
     def test_no_teacher_sees_every_student_before_assignment_scope(self):
         # revisión de la Fase 2: sin alcance por asignación (F3), VER_TODAS abriría matrículas y progreso de todos
         for obj in ("matricula", "progreso_leccion"):

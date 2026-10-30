@@ -15,16 +15,16 @@ como el modelo (`INICIAL`, `ASINCRONA`, …).
 
 Parámetros (todos opcionales):
 
-| nombre       | tipo                                          | regla                                                                          |
-| ------------ | --------------------------------------------- | ------------------------------------------------------------------------------ |
-| `q`          | texto ≤ 100                                   | búsqueda sin distinguir mayúsculas en título y resumen                         |
-| `category`   | slug                                          | slug de la categoría                                                           |
-| `level`      | `INICIAL` \| `INTERMEDIO` \| `AVANZADO`       |                                                                                |
-| `modality`   | `ASINCRONA` \| `SINCRONA` \| `HIBRIDA`        |                                                                                |
-| `startsFrom` | `YYYY-MM-DD`                                  | solo cursos con una edición abierta o programada que empieza ese día o después |
-| `sort`       | `upcoming` (defecto) \| `title` \| `duration` | `upcoming`: próxima edición primero, sin edición al final                      |
-| `page`       | entero ≥ 0 (defecto 0)                        |                                                                                |
-| `size`       | 1–50 (defecto 12)                             | fuera de rango → **400** con `errors[{field:"size"}]`                          |
+| nombre       | tipo                                                   | regla                                                                          |
+| ------------ | ------------------------------------------------------ | ------------------------------------------------------------------------------ |
+| `q`          | texto ≤ 100                                            | búsqueda sin distinguir mayúsculas en título y resumen                         |
+| `category`   | slug                                                   | slug de la categoría                                                           |
+| `level`      | `INICIAL` \| `INTERMEDIO` \| `AVANZADO`                |                                                                                |
+| `modality`   | `ASINCRONA` \| `SINCRONA` \| `HIBRIDA` \| `PRESENCIAL` |                                                                                |
+| `startsFrom` | `YYYY-MM-DD`                                           | solo cursos con una edición abierta o programada que empieza ese día o después |
+| `sort`       | `upcoming` (defecto) \| `title` \| `duration`          | `upcoming`: próxima edición primero, sin edición al final                      |
+| `page`       | entero ≥ 0 (defecto 0)                                 |                                                                                |
+| `size`       | 1–50 (defecto 12)                                      | fuera de rango → **400** con `errors[{field:"size"}]`                          |
 
 Un valor inválido (enum desconocido, fecha mal formada, `size` fuera de rango, `q` > 100) → **400** con `errors`.
 
@@ -150,7 +150,7 @@ Respuesta 200 `CourseDetail` = todos los campos de `CourseSummary` (salvo `nextO
 ## Valores y nulos
 
 - **Enumeraciones** (las del modelo, `model/model.json`): `level` `INICIAL` \| `INTERMEDIO` \| `AVANZADO`; `modality`
-  `ASINCRONA` \| `SINCRONA` \| `HIBRIDA`; edición `status` `PROGRAMADA` \| `INSCRIPCION_ABIERTA` \| `EN_CURSO` (las
+  `ASINCRONA` \| `SINCRONA` \| `HIBRIDA` \| `PRESENCIAL`; edición `status` `PROGRAMADA` \| `INSCRIPCION_ABIERTA` \| `EN_CURSO` (las
   `FINALIZADA` y `CANCELADA` no se publican); lección `type` `LECTURA` \| `VIDEO` \| `PRESENTACION` \| `LABORATORIO` \|
   `EVALUACION` \| `SESION`; docente `role` `TITULAR` \| `ASISTENTE`. Un valor nuevo llega primero al modelo y aquí.
 - **Pueden ser `null`**: `summary`, `category`, `nextOffering`, `prerequisiteKnowledge`, `version.publishedAt`,
@@ -159,7 +159,7 @@ Respuesta 200 `CourseDetail` = todos los campos de `CourseSummary` (salvo `nextO
   `enrollmentFrom`, `enrollmentUntil`, `capacity` y `schedule`; en docentes `professionalTitle`, `bio` y `specialties`.
   Las listas nunca son `null` (como mucho, vacías).
 - `credits.proposal.parameters` es un mapa de texto a texto (`"27"`, no `27`).
-- `weeks` y `workload.weeks` son el mismo valor.
+- `weeks` y `workload.weeks` son el mismo valor: de 1 a 8, o de 12 a 26 en un curso semestral (RF-ACA-05).
 - `sort` no admite dirección: cada orden tiene la suya (próximos y duración ascendentes, título alfabético).
 
 ## Contrato OpenAPI

@@ -90,6 +90,6 @@ class CatalogController(
         const val MAX_SIZE = 50
         val SLUG = CatalogBuilder.PUBLIC_SLUG
         val LEVELS = setOf("INICIAL", "INTERMEDIO", "AVANZADO")
-        val MODALITIES = setOf("ASINCRONA", "SINCRONA", "HIBRIDA")
+        val MODALITIES = setOf("ASINCRONA", "SINCRONA", "HIBRIDA", "PRESENCIAL")
     }
 }

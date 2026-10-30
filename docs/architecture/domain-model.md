@@ -118,8 +118,8 @@ EN_REVISION, APROBADA, PUBLICADA, RETIRADA)` · `version_anterior · RELATION �
 - Contenido de ficha: `titulo · TEXT` · `resumen · LONG_TEXT` · `objetivos · LONG_TEXT` · `resultados_aprendizaje ·
 LONG_TEXT` · `conocimientos_previos · LONG_TEXT` · `requisitos · LONG_TEXT` · `evaluacion_resumen · LONG_TEXT` ·
   `certificacion_resumen · LONG_TEXT`.
-- Carga académica ([ADR-0007](../adr/0007-carga-academica-y-creditos-como-politica-versionada.md)): `semanas · INTEGER` ·
-  `horas_teoria_semana · DECIMAL` · `horas_practica_lab_semana · DECIMAL` · `horas_supervisadas_semana · DECIMAL` ·
+- Carga académica ([ADR-0007](../adr/0007-carga-academica-y-creditos-como-politica-versionada.md)): `duracion · ENUM` ·
+  `semanas · INTEGER` · `horas_teoria_semana · DECIMAL` · `horas_practica_lab_semana · DECIMAL` · `horas_supervisadas_semana · DECIMAL` ·
   `horas_autonomas_semana · DECIMAL`.
 - Reglas de finalización (F3): `nota_minima_aprobacion · DECIMAL` · `asistencia_minima_pct · DECIMAL` ·
   `requiere_obligatorias · BOOLEAN`.
@@ -128,8 +128,9 @@ LONG_TEXT` · `conocimientos_previos · LONG_TEXT` · `requisitos · LONG_TEXT` 
 Invariantes: solo se edita en `BORRADOR`, y con ella sus unidades y lecciones [guarda]; las transiciones son las de §5.1
 [guarda + comando]; quien aprueba no es el autor [guarda, F4]; un curso tiene a lo sumo una versión `PUBLICADA` a la vez:
 publicar retira la anterior en la misma transacción, bajo `ClusterLock.withXactLock("lms.curso.<id>")` [servicio];
-`semanas` entre 1 y 52 y horas ≥ 0 [guarda]. Los créditos **no se guardan** en F1: `workload` los calcula al leer a
-partir de las horas y de la política configurada, y la respuesta dice «propuestos», con sistema, método, parámetros,
+`duracion · ENUM(SEMANAS, SEMESTRAL)` (por defecto `SEMANAS`) y `semanas`: de 1 a 8, o de 12 a 26 si es semestral
+(`CourseDurationGuard`, RF-ACA-05) [guarda]; horas ≥ 0. Los créditos **no se guardan** en F1: `workload` los calcula al
+leer a partir de las horas y de la política configurada, y la respuesta dice «propuestos», con sistema, método, parámetros,
 fuente y versión de la política.
 
 **`unidad`** (LearningUnit) — F1.
@@ -166,7 +167,7 @@ Invariantes: una lección apunta a una **versión** exacta del recurso, nunca al
 
 **`edicion_curso`** (CourseOffering) — una convocatoria con calendario, docentes y cupo. F1.
 `curso · RELATION → curso · requerido` · `version_curso · RELATION → version_curso · requerido` · `codigo · TEXT ·
-unique` · `modalidad · ENUM(ASINCRONA, SINCRONA, HIBRIDA)` · `zona_horaria · TEXT · IANA, p. ej. America/Lima` ·
+unique` · `modalidad · ENUM(ASINCRONA, SINCRONA, HIBRIDA, PRESENCIAL)` · `zona_horaria · TEXT · IANA, p. ej. America/Lima` ·
 `fecha_inicio · DATE` · `fecha_fin · DATE` · `inscripcion_desde · DATETIME` · `inscripcion_hasta · DATETIME` ·
 `capacidad · INTEGER · vacío = sin límite` · `estado · ENUM(BORRADOR, PUBLICADA, CANCELADA, FINALIZADA)`.
 Invariantes: `version_curso` pertenece a `curso` y está `PUBLICADA` cuando la edición se publica [guarda]; la versión no
