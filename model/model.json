@@ -161,7 +161,6 @@
           "label": "Duración: por semanas (de 1 a 8) o semestral (de 12 a 26 semanas)",
           "type": "ENUM",
           "enum": "tipo_duracion",
-          "required": true,
           "defaultValue": "SEMANAS"
         },
         {
