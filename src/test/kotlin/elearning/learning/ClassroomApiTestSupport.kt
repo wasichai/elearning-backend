@@ -269,6 +269,16 @@ abstract class ClassroomApiTestSupport : LmsApiTest() {
         return HttpStatus.valueOf(r.status.value()) to r.responseBody?.let { runCatching { json.readTree(it) }.getOrNull() }
     }
 
+    protected fun put(
+        token: String?,
+        path: String,
+        body: Map<String, Any?>,
+    ): Pair<HttpStatus, JsonNode?> {
+        val spec = client.put().uri(path).bodyValue(body)
+        val r = (if (token == null) spec else spec.header("Authorization", token)).exchange().expectBody(String::class.java).returnResult()
+        return HttpStatus.valueOf(r.status.value()) to r.responseBody?.let { runCatching { json.readTree(it) }.getOrNull() }
+    }
+
     protected fun enroll(
         token: String,
         course: Course,
