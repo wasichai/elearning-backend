@@ -50,6 +50,8 @@ class SessionService(
     suspend fun forStudent(enrollmentId: UUID): List<SessionView> {
         val enrollment = records.get(ENROLLMENT, enrollmentId)
         if (enrollment.attributes[STUDENT]?.toString() != currentUser.require().userId.toString()) throw NotFoundException(NOT_FOUND)
+        // como el aula: una retirada ya no ve las sesiones ni su enlace
+        if (enrollment.attributes[STATE]?.toString() == WITHDRAWN) throw NotFoundException(NOT_FOUND)
         val offering = records.get(OFFERING, UUID.fromString(enrollment.attributes.ref(OFFERING_FIELD)!!))
         val attended =
             records.listAll(ATTENDANCE, mapOf(ENROLLMENT to enrollment.id)).associate {

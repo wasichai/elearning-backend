@@ -205,7 +205,8 @@ ver todas las matrículas (un docente): el aula es del estudiante.
 
 ### GET /api/lms/classroom/enrollments/{id}
 
-El aula de una matrícula propia; ajena o inexistente → `404`, también para un docente.
+El aula de una matrícula propia; ajena, inexistente o `RETIRADA` → `404`, también para un docente. Una `FINALIZADA` sigue
+legible. Lo mismo vale para sus sesiones y su finalización.
 
 `Classroom` = `Enrollment` más:
 
