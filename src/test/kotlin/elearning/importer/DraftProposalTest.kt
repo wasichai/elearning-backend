@@ -43,7 +43,8 @@ class DraftProposalTest {
     @Test
     fun `a document with only its title is one unit, and sections before any chapter hang from the title`() {
         val titleOnly = DraftProposal.of(root, analysis(section(0, "Manual", id = null, path = "manual.adoc")))
-        assertThat(titleOnly.single().lessons.single().trace).isEqualTo("acme/manuales@$sha:manual.adoc")
+        val lesson = titleOnly.single().lessons.single()
+        assertThat(lesson.trace).isEqualTo("acme/manuales@$sha:manual.adoc")
 
         val early = DraftProposal.of(root, analysis(section(0, "Manual", id = null, path = "manual.adoc"), section(2, "Suelta")))
         assertThat(early.single().title).isEqualTo("Manual")
