@@ -152,6 +152,9 @@ la barrera contra filtrar borradores es física, y aun así las pruebas negativa
   `appendOnly`; ETag e `If-Match`.
 - **R** Aprobaciones sin rastro → transiciones y decisiones en `audit_log`; motivo obligatorio al rechazar.
 - **I** Borradores visibles a estudiantes → visibilidad por estado más alcance.
+- **I** Comentarios de revisión de versiones ajenas → `ReviewCommentReadScope`: los lee quien publica, el autor de la
+  versión, quien la puede revisar (sin revisor asignado, o siéndolo) y quien escribió el comentario; para los demás no
+  existen (`404`), tampoco por la API de registros (L5 de #216).
 - **D** Versiones o adjuntos masivos → límites de tamaño y número por versión.
 - **E** Autoaprobación o publicación sin revisión → §3.
 

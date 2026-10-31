@@ -536,7 +536,8 @@ en borrador.
 - `ReviewComment`: `{ "id", "section", "text", "authorId", "createdAt", "resolved": false }`. `section` es texto libre que
   identifica la parte (`unidad:1/leccion:2`), hasta 200 caracteres; `text`, hasta 4000. Ambos obligatorios (`400`). Solo se
   comenta una versión `EN_REVISION` (`409`); resolver lo ya resuelto no cambia nada. `comentario_revision` es `apiOnly`: la API
-  de registros no lo escribe. `openComments` cuenta los no resueltos.
+  de registros no lo escribe, y por ella solo lo lee quien publica, el autor de la versión, quien la puede revisar y quien lo
+  escribió (lo demás, `404`). `openComments` cuenta los no resueltos.
 - `ReviewDecision`: `{ "decision", "reason", "authorId", "at" }`, la más antigua primero; historial de solo inserción en
   `lms.decision_revision`. Comentarios y decisiones quedan con su versión: una versión nueva a partir de ella empieza sin ellos.
 - `publish`: solo una versión `APROBADA` (`409`); pone `publicada_en` el servidor.
