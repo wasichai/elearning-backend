@@ -4,6 +4,10 @@ Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este
 
 ## 2026-10-31 — Hallazgos de la revisión de la Fase 4 ([#216](https://github.com/wasichai/elearning-backend/issues/216))
 
+- **L4**: el detalle del estudio y de la bandeja, las diferencias, la bandeja y «mis versiones» leen por niveles o de una vez,
+  no por lección ni por versión (`listAllIn`, `listByIds`); su coste ya no crece con el temario ni con la bandeja. La copia
+  lee cada nivel de una vez y lo escribe con `createAll`: ≈23 sentencias por unidad de dos lecciones, antes ≈40
+  (`AuthoringCostApiTest`).
 - **L5, comentarios**: `comentario_revision` tiene alcance de lectura (`ReviewCommentReadScope`); un CREADOR ya no lee por la
   API de registros los comentarios de versiones ajenas. `ScopeMemo` pasa a `elearning.common`.
 - **M1**: la revisión de un curso se decide solo en la bandeja, que deja la decisión y su motivo en `lms.decision_revision`;
