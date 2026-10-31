@@ -60,8 +60,8 @@ class CatalogListApiTest : LmsApiTest() {
     fun `anyone sees the published courses and nothing else`() {
         val page = list()
 
-        assertEquals(setOf("SRTM-ANU-101", "SGSPE-101", "IA-AGT-201"), page.codes().toSet())
-        assertEquals(3, page["totalElements"].asInt())
+        assertEquals(setOf("SRTM-ANU-101", "SGSPE-101", "IA-AGT-201", "CORTO-101"), page.codes().toSet())
+        assertEquals(4, page["totalElements"].asInt())
         // SRTM-ATC-001 solo tiene borrador; la v2 en borrador de SRTM-ANU-101 no cambia lo publicado
         assertTrue("SRTM-ATC-001" !in page.codes())
     }
@@ -81,7 +81,7 @@ class CatalogListApiTest : LmsApiTest() {
 
     @Test
     fun `filters narrow the list`() {
-        assertEquals(listOf("IA-AGT-201"), list("?modality=HIBRIDA").codes())
+        assertEquals(setOf("IA-AGT-201", "CORTO-101"), list("?modality=HIBRIDA").codes().toSet())
         assertEquals(listOf("SRTM-ANU-101"), list("?q=srtm").codes(), "el borrador SRTM-ATC-001 no aparece aunque coincida")
         assertTrue(list("?q=SRTM").codes().isNotEmpty())
         // la demo fecha sus ediciones respecto del día en que se aplica: IA empieza en hoy+159, la segunda de SRTM en hoy+124
@@ -111,7 +111,7 @@ class CatalogListApiTest : LmsApiTest() {
         assertEquals("SRTM-ANU-101", upcoming.first(), "la edición abierta de SRTM (hoy+12) es la más próxima")
 
         val second = list("?sort=title&size=2&page=1")
-        assertEquals(1, second["content"].size())
+        assertEquals(2, second["content"].size())
         assertEquals(2, second["totalPages"].asInt())
     }
 
@@ -164,7 +164,7 @@ class CatalogListApiTest : LmsApiTest() {
         } finally {
             runBlocking { projection.refreshNow() }
         }
-        assertEquals(3, list()["totalElements"].asInt())
+        assertEquals(4, list()["totalElements"].asInt())
     }
 
     // un NUL llegaba a PostgreSQL y salía como 500 anónimo (revisión de seguridad). uri(String) volvería a codificar
@@ -217,6 +217,6 @@ class CatalogListApiTest : LmsApiTest() {
 
         assertEquals(0, again.written)
         assertEquals(0, again.deleted)
-        assertEquals(3, again.published)
+        assertEquals(4, again.published)
     }
 }
