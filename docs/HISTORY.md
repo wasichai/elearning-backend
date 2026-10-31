@@ -2,6 +2,20 @@
 
 Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este archivo registra lo que se entregó.
 
+## 2026-10-31 — Hallazgos de las revisiones de las Fases 2 y 3 ([#104](https://github.com/wasichai/elearning-backend/issues/104), [#183](https://github.com/wasichai/elearning-backend/issues/183))
+
+- **Matrícula**: estado, ventana, versión y cupo se comprueban con el cerrojo del cupo tomado (#189). Una `RETIRADA` no abre
+  su aula, sus sesiones ni su finalización (#190), ni escribe en su intento abierto, igual que una `FINALIZADA` (#194).
+- **Temario**: el de un borrador solo lo cambia su autor o quien publica (#187).
+- **Eventos**: un `clientEventId` reutilizado con otro contenido es `409` (#186); el conteo de pruebas, por organización (#185).
+- **Calificación**: corregir el cero automático de una pregunta sin responder exige motivo (#191).
+- **Sesiones**: reprogramar, cancelar y pasar lista leen la sesión con su cerrojo; una cancelada no vuelve a reprogramarse
+  (#192). El enlace rechaza IPv4 privadas escritas de otra forma (#193).
+- **Permisos**: cada persona lee solo sus asignaciones docentes (#196).
+- **`apply.py`**: el nombre de archivo se escapa en la subida (#185).
+- **Decisiones** (ADR-0020): el certificado lleva el nombre tal como se escribe, asistir completa la lección y los eventos se
+  guardan mientras el estudiante acepte los términos.
+
 ## 2026-10-31 — Pendientes de la Fase 2 ([#103](https://github.com/wasichai/elearning-backend/issues/103))
 
 - **Roles**: una cuenta ESTUDIANTE + CREADOR tiene la unión exacta de permisos (RF-ROL-03, #111). Nadie se da privilegios

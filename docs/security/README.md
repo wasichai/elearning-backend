@@ -239,7 +239,8 @@ aplicación se conecta con un rol que no es dueño de las tablas, para que nadie
   de las sesiones síncronas llegan por el adaptador de videoconferencia (F3) y solo a los matriculados.
 - **IA**: la canalización editorial no recibe datos de estudiantes; el asistente de Wasichai, si se habilita, filtra
   con `AgentResultFilter` lo que sale al proveedor.
-- **Retención**: plazos por tipo de dato en F6 (cuentas inactivas, eventos de aprendizaje, intentos, registros IA).
+- **Retención**: plazos por tipo de dato en F6 (cuentas inactivas, intentos, registros IA). Los eventos de aprendizaje se
+  guardan mientras el estudiante acepte los términos y se suprimen al retirarla (ADR-0020).
   La purga de `audit_log` solo la hace el rol de purga de Wasichai (`wasichai.audit.purge-role`), nunca la aplicación.
 - **Eliminación de cuenta**: a diseñar en F6, conservando lo que deba conservarse (calificaciones emitidas,
   certificados, auditoría). Plazos legales: a verificar con la organización; este documento no fija ninguno.
