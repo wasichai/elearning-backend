@@ -545,13 +545,28 @@ en borrador.
 
 ### Importación
 
-| Método | Ruta                             | Resultado                                                         |
-| ------ | -------------------------------- | ----------------------------------------------------------------- |
-| GET    | `/api/lms/studio/import/sources` | orígenes permitidos → `[{ "id", "repository", "sha", "master" }]` |
-| POST   | `/api/lms/studio/import`         | `{ "sourceId", "courseId" }` → `202` `ImportJob`                  |
-| GET    | `/api/lms/studio/import/{id}`    | `ImportJob`                                                       |
+| Método | Ruta                             | Resultado                                                                          |
+| ------ | -------------------------------- | ---------------------------------------------------------------------------------- |
+| GET    | `/api/lms/studio/import/sources` | orígenes permitidos → `[{ "repository": "owner/repo", "sha": null }]`              |
+| POST   | `/api/lms/studio/import`         | `{ "source": "owner/repo@sha:ruta/maestro.adoc", "courseId" }` → `202` `ImportJob` |
+| GET    | `/api/lms/studio/import/{id}`    | `ImportJob`                                                                        |
 
-`ImportJob`: `{ "id", "status": "PENDIENTE" | "EN_CURSO" | "HECHO" | "FALLIDO", "error": null, "versionId": null, "report": null |
-{ "includes": 12, "sections": 40, "images": 9, "problems": [{ "kind": "INCLUDE_ROTO" | "IMAGEN_FALTANTE" | "ANCLA_ROTA", "origin":
-"repo@sha:ruta#ancla", "detail" }] } }`. Un origen fuera de la lista → `404`. El resultado es siempre un `BORRADOR` con
-`sourceRef` en cada lección y sin el texto del manual.
+- Importar (y ver los orígenes) exige `CREATE` sobre `version_curso`, `unidad` y `leccion` (`403`). `source` es un archivo de un
+  repositorio en un commit exacto: el `sha` completo (40 caracteres hexadecimales) y una ruta relativa sin `..` (`400` si no). Un
+  repositorio (o un commit) fuera de `lms.importer.allowed-sources` → `403`; `sha: null` en los orígenes significa cualquier
+  commit. `courseId` tiene que ser un curso que quien importa puede leer (`400` si no es un id, `404` si no existe).
+- El trabajo corre en la cola persistente: se consulta con `GET` hasta que `status` sea `HECHO` o `FALLIDO`. Solo lo ve quien lo
+  pidió; para cualquier otro, también el administrador, es `404`.
+- `ImportJob`: `{ "id", "status": "PENDIENTE" | "EN_CURSO" | "HECHO" | "FALLIDO", "error": null, "versionId": null, "report": null }`.
+  `error` es el motivo de `FALLIDO` (o el último fallo pasajero mientras se reintenta). Con `HECHO`, `versionId` es la versión
+  nueva del curso y `report`: `{ "source", "files", "includes", "sections", "images", "units", "lessons", "problemCount",
+"problems": [{ "kind", "origin": "owner/repo@sha:ruta", "line", "detail" }] }` (a lo sumo 500 problemas; `line` 0 es el archivo
+  entero). `kind`: `MISSING_INCLUDE` · `INCLUDE_OUTSIDE_ROOT` · `INCLUDE_CYCLE` · `INCLUDE_TOO_DEEP` · `UNRESOLVED_ATTRIBUTE` ·
+  `UNSUPPORTED_INCLUDE_OPTION` · `MISSING_IMAGE` · `IMAGE_OUTSIDE_ROOT` · `BROKEN_REFERENCE` · `DUPLICATE_ANCHOR` · `FILE_TOO_LARGE`.
+  Un problema no detiene la importación: queda en el informe.
+- El resultado es siempre una versión `BORRADOR` nueva del curso (número siguiente), con `autor_id` de quien la pidió y la
+  duración y la modalidad de la última versión: una unidad por capítulo (sección de nivel 1, tras `leveloffset`) y una lección
+  `LECTURA` por sección de nivel 2, con su título y `sourceRef` (`owner/repo@sha:ruta#ancla`); un capítulo sin secciones lleva
+  una lección con su propio título. **Sin el texto del manual** (ADR-0018 §6) y **nunca publica**. Falla (`FALLIDO`, sin
+  borrador) si el maestro no existe, el origen dejó de estar permitido, el curso desapareció o la fuente pasa de
+  `lms.importer.max-files` archivos.

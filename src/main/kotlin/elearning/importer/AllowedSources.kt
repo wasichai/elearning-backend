@@ -5,11 +5,13 @@ package elearning.importer
 class AllowedSources(
     entries: List<String>,
 ) {
-    private val origins: List<Origin> = entries.map { it.trim() }.filter { it.isNotEmpty() }.map(::origin)
+    // en el orden configurado; lo que el estudio ofrece al creador
+    val origins: List<Origin> = entries.map { it.trim() }.filter { it.isNotEmpty() }.map(::origin)
 
     fun permits(ref: SourceRef): Boolean = origins.any { it.repository.equals(ref.repository, ignoreCase = true) && (it.sha == null || it.sha == ref.sha) }
 
-    private data class Origin(
+    // sha null: cualquier commit del repositorio
+    data class Origin(
         val repository: String,
         val sha: String?,
     )
