@@ -54,6 +54,7 @@ abstract class ClassroomApiTestSupport : LmsApiTest() {
         startsIn: Long = 0,
         withEvaluation: Boolean = false,
         withFileQuestion: Boolean = false,
+        assessmentLessonType: String = "EVALUACION",
     ): Course {
         val resource = publishedHtml()
         return runBlocking {
@@ -95,7 +96,7 @@ abstract class ClassroomApiTestSupport : LmsApiTest() {
                 ) = records.create("leccion", RecordRequest(mapOf("unidad" to unit.id, "orden" to order, "titulo" to "Lección $order", "tipo" to type)))
                 val reading = lesson(1, "LECTURA")
                 val video = lesson(2, "VIDEO")
-                val assessment = lesson(3, "EVALUACION")
+                val assessment = lesson(3, assessmentLessonType)
                 records.create("recurso_leccion", RecordRequest(mapOf("leccion" to reading.id, "version_recurso" to resource, "orden" to 1)))
                 val (evaluation, questions) = if (withEvaluation) evaluation(assessment.id, withFileQuestion) else null to emptyMap()
                 records.patch("version_curso", UUID.fromString(version.id), RecordRequest(mapOf("estado" to "PUBLICADA")), null, null)

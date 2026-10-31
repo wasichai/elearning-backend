@@ -56,6 +56,14 @@ class AssessmentContentListener(
     }
 }
 
+data class EvaluationSummary(
+    val id: String,
+    val title: String,
+    val maxAttempts: Int,
+    val timeLimitMinutes: Int?,
+    val passingPercent: Int,
+)
+
 // compone la instantánea de la evaluación de una lección a partir de la copia
 @Component
 class AssessmentContent(
@@ -116,6 +124,22 @@ class AssessmentContent(
                 },
         )
     }
+
+    // la evaluación de cada lección que tiene una, sin componer sus preguntas
+    suspend fun summaries(
+        organization: UUID,
+        lessons: List<UUID>,
+    ): Map<String, EvaluationSummary> =
+        rows(organization, "evaluacion", lessons).associate {
+            it.parent to
+                EvaluationSummary(
+                    id = it.id,
+                    title = it.data["titulo"].toString(),
+                    maxAttempts = int(it.data["intentos_max"]) ?: 1,
+                    timeLimitMinutes = int(it.data["tiempo_limite_min"]),
+                    passingPercent = int(it.data["nota_minima"]) ?: 60,
+                )
+        }
 
     private suspend fun rows(
         organization: UUID,

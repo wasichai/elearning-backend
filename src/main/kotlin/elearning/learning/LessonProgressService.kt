@@ -30,6 +30,7 @@ class LessonProgressService(
     private val currentUser: CurrentUser,
     private val records: RecordService,
     private val events: LearningEvents,
+    private val facts: AssessmentFacts,
     private val transactions: TransactionalOperator,
     private val db: DatabaseClient,
     private val clock: Clock,
@@ -48,6 +49,12 @@ class LessonProgressService(
         val lesson = records.get(LESSON, lessonId)
         val unit = lesson.attributes.ref(UNIT)?.let { records.get(UNIT, UUID.fromString(it)) }
         if (unit == null || unit.attributes.ref(VERSION) != enrollment.attributes.ref(VERSION)) throw NotFoundException(NOT_FOUND)
+        // con evaluación solo la completa aprobarla, sea del tipo que sea (ADR-0016 §4)
+        if (type != LearningEventType.STARTED &&
+            facts.hasEvaluation(user.organizationId, lessonId)
+        ) {
+            throw ConflictException("Esta lección se completa aprobando su evaluación")
+        }
         val evidence = evidence(type, lesson.attributes[TYPE]?.toString())
 
         return transactions.executeAndAwait {
