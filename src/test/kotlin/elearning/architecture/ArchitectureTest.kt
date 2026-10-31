@@ -72,7 +72,7 @@ class ArchitectureTest {
                 "learning" to setOf("common", "enrollment", "course", "workload"),
                 "assessment" to setOf("common", "learning", "enrollment"),
                 "authoring" to setOf("common", "course"),
-                "importer" to setOf("common"),
+                "importer" to setOf("common", "jobs"),
                 "ai" to setOf("common", "authoring"),
                 // la generación encola y maneja sus trabajos en la cola persistente (ADR-0018 §7)
                 "media" to setOf("common", "authoring", "jobs"),

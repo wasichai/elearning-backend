@@ -77,7 +77,7 @@ class JobQueue(
         db
             .sql(
                 """
-                SELECT id, tipo, estado, intentos, max_intentos, error, resultado::text AS resultado, creado_en, terminado_en
+                SELECT id, tipo, datos::text AS datos, estado, intentos, max_intentos, error, resultado::text AS resultado, creado_en, terminado_en
                 FROM lms.trabajo WHERE organizacion_id = :org AND id = :id
                 """.trimIndent(),
             ).bind("org", organization)
@@ -180,6 +180,7 @@ class JobQueue(
         JobStatus(
             id = row.get("id", UUID::class.java)!!,
             type = row.get("tipo", String::class.java)!!,
+            payload = row.get("datos", String::class.java)!!,
             state = JobState.valueOf(row.get("estado", String::class.java)!!),
             attempts = row.get("intentos", Number::class.java)!!.toInt(),
             maxAttempts = row.get("max_intentos", Number::class.java)!!.toInt(),

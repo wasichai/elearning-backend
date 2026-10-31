@@ -38,6 +38,8 @@ data class ImporterProperties(
     val allowedSources: List<String> = emptyList(),
     val timeout: Duration = Duration.ofSeconds(10),
     val maxBytes: DataSize = DataSize.ofMegabytes(2),
+    // archivos que una importación puede leer (textos e imágenes comprobadas): pasarse la hace fallar, no la recorta
+    val maxFiles: Int = 300,
     // opcional: repositorios privados y más cuota de la API. nunca en un archivo, solo por entorno
     val githubToken: String = "",
 )

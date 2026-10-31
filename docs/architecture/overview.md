@@ -131,7 +131,7 @@ flowchart BT
     media --> authoring
     media --> jobs
     reputation --> enrollment
-    importer
+    importer --> jobs
 ```
 
 Una flecha `A --> B` significa «A puede usar B». Todo paquete puede usar `common`; se omite para no cargar el diagrama.
