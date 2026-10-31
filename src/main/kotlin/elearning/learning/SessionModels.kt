@@ -20,6 +20,16 @@ data class SessionView(
     val attendance: String?,
 )
 
+data class RescheduleRequest(
+    val date: String? = null,
+    val localTime: String? = null,
+    val reason: String? = null,
+)
+
+data class CancelRequest(
+    val reason: String? = null,
+)
+
 data class RecurrenceRequest(
     val pattern: String? = null,
     val days: List<String>? = null,

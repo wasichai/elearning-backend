@@ -7,17 +7,27 @@ import elearning.course.meeting.MeetingProvider
 import org.springframework.stereotype.Service
 import org.springframework.transaction.reactive.TransactionalOperator
 import org.springframework.transaction.reactive.executeAndAwait
+import wasichai.core.common.ConflictException
+import wasichai.core.common.ForbiddenException
 import wasichai.core.common.NotFoundException
 import wasichai.core.common.ValidationException
 import wasichai.core.data.RecordRequest
 import wasichai.core.data.RecordResponse
 import wasichai.core.data.RecordService
 import wasichai.core.identity.CurrentUser
+import wasichai.notifications.Audience
+import wasichai.notifications.NotificationDraft
+import wasichai.notifications.NotificationKind
+import wasichai.notifications.Notifications
 import java.time.DayOfWeek
+import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId
+import java.time.ZonedDateTime
+import java.time.format.DateTimeFormatter
+import java.time.format.DateTimeParseException
 import java.time.temporal.ChronoUnit
 import java.util.UUID
 
@@ -30,6 +40,7 @@ class SessionService(
     private val teaching: TeachingReader,
     private val meeting: MeetingProvider,
     private val transactions: TransactionalOperator,
+    private val notifications: Notifications,
 ) {
     suspend fun forTeacher(code: String): List<SessionView> {
         val offering = teaching.assignedOffering(code)
@@ -94,6 +105,88 @@ class SessionService(
         return created.map { view(it, zone, null) }
     }
 
+    suspend fun reschedule(
+        id: UUID,
+        request: RescheduleRequest,
+    ): SessionView {
+        val (session, offering) = assigned(id)
+        val zone = zone(offering)
+        val reason = reason(request.reason)
+        val start =
+            try {
+                ZonedDateTime.of(LocalDate.parse(request.date.orEmpty()), LocalTime.parse(request.localTime.orEmpty()), zone).toInstant()
+            } catch (e: DateTimeParseException) {
+                invalid("date", e.message ?: "invalid")
+            }
+        if (session.attributes[STATE] == CANCELLED) throw ConflictException("Esta sesión está cancelada")
+        val duration = Duration.between(instantOf(session.attributes["inicio"]), instantOf(session.attributes["fin"]))
+        val moment = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm").withZone(zone).format(start)
+        return change(
+            session,
+            offering,
+            mapOf("inicio" to start.toString(), "fin" to start.plus(duration).toString(), STATE to "REPROGRAMADA"),
+            reason,
+            "Sesión reprogramada: ${session.attributes["titulo"]}",
+            "Nueva fecha: $moment (${zone.id}). Motivo: $reason",
+        )
+    }
+
+    suspend fun cancel(
+        id: UUID,
+        request: CancelRequest,
+    ): SessionView {
+        val (session, offering) = assigned(id)
+        val reason = reason(request.reason)
+        if (session.attributes[STATE] == CANCELLED) throw ConflictException("Esta sesión ya está cancelada")
+        return change(session, offering, mapOf(STATE to CANCELLED), reason, "Sesión cancelada: ${session.attributes["titulo"]}", "Motivo: $reason")
+    }
+
+    // el cambio y su aviso en la misma transacción: si uno falla, no hay ninguno
+    private suspend fun change(
+        session: RecordResponse,
+        offering: RecordResponse,
+        attributes: Map<String, Any?>,
+        reason: String,
+        title: String,
+        body: String,
+    ): SessionView {
+        val organization = currentUser.require().organizationId
+        val audience =
+            records
+                .listAll(ENROLLMENT, mapOf(OFFERING_FIELD to offering.id))
+                .filter { it.attributes[STATE]?.toString() != WITHDRAWN }
+                .mapNotNull { it.attributes[STUDENT]?.toString() }
+                .map { Audience.User(UUID.fromString(it)) }
+        val updated =
+            transactions.executeAndAwait {
+                val written = records.patch(SESSION, UUID.fromString(session.id), RecordRequest(attributes), reason, null)
+                if (audience.isNotEmpty()) {
+                    notifications.publish(
+                        organization,
+                        NOTICE_SOURCE,
+                        NotificationDraft(kind = NotificationKind.WARNING, title = title, audience = audience, body = body),
+                    )
+                }
+                written
+            }
+        return view(updated, zone(offering), null)
+    }
+
+    // la sesión y su edición, solo para el docente asignado; lo demás no existe
+    private suspend fun assigned(id: UUID): Pair<RecordResponse, RecordResponse> {
+        val session =
+            try {
+                records.get(SESSION, id)
+            } catch (_: ForbiddenException) {
+                throw NotFoundException(NOT_FOUND)
+            }
+        val offering = session.attributes.ref(OFFERING_FIELD)
+        if (offering == null || offering !in teaching.assigned()) throw NotFoundException(NOT_FOUND)
+        return session to records.get(OFFERING, UUID.fromString(offering))
+    }
+
+    private fun reason(value: String?) = value?.trim()?.takeIf { it.isNotEmpty() } ?: invalid("reason", "required")
+
     private fun occurrences(
         recurrence: RecurrenceRequest,
         zone: ZoneId,
@@ -109,7 +202,7 @@ class SessionService(
             )
         } catch (e: IllegalArgumentException) {
             invalid("recurrence", e.message ?: "invalid")
-        } catch (e: java.time.format.DateTimeParseException) {
+        } catch (e: DateTimeParseException) {
             invalid("recurrence", e.message ?: "invalid")
         }
 
@@ -178,6 +271,10 @@ class SessionService(
         const val VERSION = "version_curso"
         const val STUDENT = "estudiante_id"
         const val RECOVERY = "RECUPERACION"
+        const val STATE = "estado"
+        const val CANCELLED = "CANCELADA"
+        const val WITHDRAWN = "RETIRADA"
+        const val NOTICE_SOURCE = "lms.sesiones"
         const val NOT_FOUND = "No encontrado"
         const val MAX_MINUTES = 1440
         val TYPES = setOf("TEORIA", "LABORATORIO", "CONSULTA", RECOVERY)

@@ -32,4 +32,16 @@ class SessionController(
         @PathVariable code: String,
         @RequestBody body: CreateSessionsRequest,
     ): List<SessionView> = sessions.create(code, body)
+
+    @PostMapping("/teaching/sessions/{id}/reschedule")
+    suspend fun reschedule(
+        @PathVariable id: UUID,
+        @RequestBody body: RescheduleRequest,
+    ): SessionView = sessions.reschedule(id, body)
+
+    @PostMapping("/teaching/sessions/{id}/cancel")
+    suspend fun cancel(
+        @PathVariable id: UUID,
+        @RequestBody body: CancelRequest,
+    ): SessionView = sessions.cancel(id, body)
 }
