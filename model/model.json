@@ -18,7 +18,8 @@
     "tipo_sesion": ["TEORIA", "LABORATORIO", "CONSULTA", "RECUPERACION"],
     "modalidad_sesion": ["PRESENCIAL", "VIRTUAL"],
     "estado_sesion": ["PROGRAMADA", "REPROGRAMADA", "CANCELADA"],
-    "estado_asistencia": ["PRESENTE", "TARDE", "AUSENTE", "JUSTIFICADO"]
+    "estado_asistencia": ["PRESENTE", "TARDE", "AUSENTE", "JUSTIFICADO"],
+    "formato_artefacto": ["HTML", "PDF"]
   },
   "objects": [
     {
@@ -709,6 +710,86 @@
       "uniqueConstraints": [["leccion", "version_recurso"]]
     },
     {
+      "name": "fuente_recurso",
+      "label": "Fuente del recurso",
+      "pluralLabel": "Fuentes del recurso",
+      "appendOnly": true,
+      "description": "Fuente canónica AsciiDoc de un recurso (RF-CON-03, ADR-0018 §7). De solo inserción: corregirla es subir otra con el número siguiente. De ella se generan los artefactos HTML y PDF.",
+      "fields": [
+        {
+          "name": "numero",
+          "label": "Número de la fuente",
+          "type": "INTEGER",
+          "required": true
+        },
+        {
+          "name": "archivo",
+          "label": "Archivo AsciiDoc (texto UTF-8, máx. 1 MB; se procesa en modo seguro)",
+          "type": "FILE",
+          "required": true,
+          "maxBytes": 1048576,
+          "contentTypes": ["text/plain"]
+        }
+      ],
+      "uniqueConstraints": [["recurso", "numero"]]
+    },
+    {
+      "name": "artefacto_generado",
+      "label": "Artefacto generado",
+      "pluralLabel": "Artefactos generados",
+      "appendOnly": true,
+      "apiOnly": true,
+      "description": "HTML o PDF generado desde una fuente (GeneratedArtifact, RF-CON-03/07). Lo escribe solo el trabajo de generación; regenerar crea otra versión del recurso, nunca sobrescribe.",
+      "fields": [
+        {
+          "name": "formato",
+          "label": "Formato",
+          "type": "ENUM",
+          "enum": "formato_artefacto",
+          "required": true
+        },
+        {
+          "name": "archivo",
+          "label": "Archivo generado (máx. 25 MB; se descarga, nunca se ejecuta)",
+          "type": "FILE",
+          "required": true,
+          "maxBytes": 26214400
+        },
+        {
+          "name": "sha256",
+          "label": "SHA-256 de lo generado",
+          "type": "TEXT",
+          "required": true
+        },
+        {
+          "name": "hash_fuente",
+          "label": "SHA-256 de la fuente generada",
+          "type": "TEXT",
+          "required": true
+        },
+        {
+          "name": "generador",
+          "label": "Generador",
+          "type": "TEXT",
+          "required": true
+        },
+        {
+          "name": "version_generador",
+          "label": "Versión del generador",
+          "type": "TEXT",
+          "required": true
+        },
+        {
+          "name": "trabajo_id",
+          "label": "Trabajo de generación (lms.trabajo)",
+          "type": "UUID",
+          "required": true,
+          "indexed": true
+        }
+      ],
+      "uniqueConstraints": [["trabajo_id", "formato"]]
+    },
+    {
       "name": "progreso_leccion",
       "label": "Progreso de la lección",
       "pluralLabel": "Progreso de las lecciones",
@@ -1208,6 +1289,36 @@
       "source": "recurso_leccion",
       "target": "version_recurso",
       "fieldName": "version_recurso",
+      "required": true
+    },
+    {
+      "name": "fuente_recurso_recurso",
+      "label": "Recurso",
+      "inverseLabel": "Fuentes",
+      "type": "MANY_TO_ONE",
+      "source": "fuente_recurso",
+      "target": "recurso",
+      "fieldName": "recurso",
+      "required": true
+    },
+    {
+      "name": "artefacto_generado_version",
+      "label": "Versión del recurso",
+      "inverseLabel": "Artefactos generados",
+      "type": "MANY_TO_ONE",
+      "source": "artefacto_generado",
+      "target": "version_recurso",
+      "fieldName": "version_recurso",
+      "required": true
+    },
+    {
+      "name": "artefacto_generado_fuente",
+      "label": "Fuente",
+      "inverseLabel": "Artefactos generados",
+      "type": "MANY_TO_ONE",
+      "source": "artefacto_generado",
+      "target": "fuente_recurso",
+      "fieldName": "fuente_recurso",
       "required": true
     },
     {

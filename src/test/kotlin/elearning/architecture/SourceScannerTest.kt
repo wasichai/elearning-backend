@@ -201,6 +201,35 @@ class SourceScannerTest {
         assertThat(adapters.filter { it.rule == Rule.CONCRETE_PROVIDER } + comment).isEmpty()
     }
 
+    // ADR-0018 §7: la fuente de un documento no es de confianza; el único proceso externo es el generador, en su adaptador
+    @Test
+    fun `an external process outside the renderer adapter is caught`() {
+        val path = "src/main/kotlin/elearning/authoring/Shell.kt"
+        val violations =
+            scan(
+                path,
+                """
+                package elearning.authoring
+
+                class Shell {
+                    fun a() = ProcessBuilder("sh", "-c", "ls").start()
+                    fun b() = Runtime.getRuntime().exec(arrayOf("ls"))
+                    fun c() = ProcessHandle.current()
+                }
+                """,
+            )
+        val adapter =
+            scan(
+                "src/main/kotlin/elearning/media/asciidoctor/Adapter.kt",
+                "package elearning.media.asciidoctor\n\nval p = ProcessBuilder(\"asciidoctor\")\n",
+            )
+        val comment = scan("src/main/kotlin/elearning/media/Port.kt", "package elearning.media\n\n// nunca un ProcessBuilder aquí\nclass Port")
+
+        assertThat(violations).allMatch { it.rule == Rule.EXTERNAL_PROCESS }
+        assertThat(violations.map { it.line }).containsExactly(4, 5, 6)
+        assertThat(adapter + comment).isEmpty()
+    }
+
     @Test
     fun `workload depending on another capability is caught`() {
         val path = "src/main/kotlin/elearning/workload/Leak.kt"

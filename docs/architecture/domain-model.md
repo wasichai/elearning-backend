@@ -155,10 +155,14 @@ de salida. F2 (subida de archivos) · F4 (flujo editorial).
   `tipo · ENUM(HTML, PDF, VIDEO, PRESENTACION, LABORATORIO, CUESTIONARIO, IMAGEN, DIAGRAMA)` · `idioma · TEXT` ·
   `responsable_editorial_id · UUID`. Una misma `version_recurso` publicada sirve a lecciones de cursos distintos (RF-CON-01).
 - `version_recurso`: `recurso · RELATION → recurso` · `numero · INTEGER` · `estado · ENUM` (mismo ciclo que
-  `version_curso`) · `fuente_canonica · ENUM(ASCIIDOC, LATEX, HTML, NINGUNA)` · `fuente · FILE` · `origen · TEXT ·
-repo@sha:ruta#ancla` · `referencias · LONG_TEXT` · `autor_id · UUID` · `revisada_en · DATETIME`;
+  `version_curso`) · `archivo · FILE` · `origen · TEXT · repo@sha:ruta#ancla` · `referencias · LONG_TEXT` · `autor_id ·
+UUID` · `revisada_en · DATETIME`;
   `uniqueConstraints: [[recurso, numero]]`. Su archivo es de un tipo que admite el `tipo` de su recurso, sobre lo que
   detecta `wasichai-files` (`FileTypeGuard`, RNF-SEG-07; lista en [seguridad §4.4](../security/README.md#44-archivos-f2-en-adelante)).
+- `fuente_recurso` (F4, `appendOnly`): `recurso · RELATION → recurso` · `numero · INTEGER` · `archivo · FILE · text/plain,
+máx. 1 MB`; `uniqueConstraints: [[recurso, numero]]`. La fuente canónica AsciiDoc, separada de lo que se genera
+  (RF-CON-03): corregirla es subir otra con el número siguiente. Sustituye a los campos `fuente_canonica` y `fuente` que
+  se habían previsto en `version_recurso`: una fuente de solo inserción no se puede cambiar bajo un artefacto ya generado.
 - `recurso_leccion`: `leccion · RELATION` · `version_recurso · RELATION` · `orden · INTEGER`;
   `uniqueConstraints: [[leccion, version_recurso]]`. Objeto y no `MANY_TO_MANY` porque el orden importa.
 
@@ -310,12 +314,18 @@ COMPLETADA, REQUIERE_CORRECCION, FALLIDA, CANCELADA)` · `error · LONG_TEXT` ·
 Invariantes: sin secretos en ningún campo [servicio]; repetir con la misma clave no crea otra ejecución [`unique`]; una
 ejecución nunca publica [diseño]. Diseño completo en [docs/ai](../ai/README.md).
 
-**`artefacto_generado`** (GeneratedArtifact) — F4 (HTML/PDF) · F5 (vídeo). `appendOnly`.
-`version_recurso · RELATION` · `formato · ENUM(HTML, PDF, MP4, VTT, PNG, SVG)` · `archivo · FILE · trae sha256` ·
-`generador · TEXT` · `version_generador · TEXT` · `parametros · LONG_TEXT` · `ejecucion · RELATION → ejecucion_agente` ·
-`validado · BOOLEAN`.
-Invariante: un artefacto publicado nunca se sobrescribe; regenerar crea otro [`appendOnly`]. Mientras un artefacto
-apunte a una `version_recurso`, esa versión no se puede borrar (regla de Wasichai para destinos de objetos `appendOnly`).
+**`artefacto_generado`** (GeneratedArtifact) — F4 (HTML/PDF, implementado) · F5 (vídeo). `appendOnly` y `apiOnly`.
+`version_recurso · RELATION` · `fuente_recurso · RELATION` · `formato · ENUM formato_artefacto(HTML, PDF)` · `archivo ·
+FILE · máx. 25 MB` · `sha256 · TEXT` (de lo generado) · `hash_fuente · TEXT` (de los bytes de la fuente que se generaron) ·
+`generador · TEXT` · `version_generador · TEXT` · `trabajo_id · UUID` (el de `lms.trabajo`);
+`uniqueConstraints: [[trabajo_id, formato]]`. Lo escribe solo el trabajo de generación ([ADR-0018 §7](../adr/0018-fase-4-estudio-revision-e-importador.md)):
+de una `fuente_recurso` saca un HTML y un PDF y crea una `version_recurso` nueva en `BORRADOR`, en nombre de quien lo
+pidió, con el artefacto del tipo de su recurso como `archivo`. F5 añadirá `MP4`, `VTT`, `PNG`, `SVG`, `parametros` y
+`ejecucion → ejecucion_agente`.
+Invariantes: cada artefacto identifica su fuente exacta (relación y hash) y su generador [modelo, RF-CON-03]; un
+artefacto nunca se sobrescribe y regenerar crea otra versión [`appendOnly`, servicio]; repetir el trabajo no duplica
+[`unique`]. Mientras un artefacto apunte a una `version_recurso`, esa versión no se puede borrar (regla de Wasichai para
+destinos de objetos `appendOnly`).
 
 ### 4.6 Reputación y auditoría
 
