@@ -501,6 +501,7 @@ Con sesión. Los permisos son las acciones declaradas sobre `version_curso`; lo 
 | GET    | `/api/lms/studio/versions/{id}`               | `StudioVersionDetail`                                        |
 | POST   | `/api/lms/studio/courses/{courseId}/versions` | `{ "fromVersionId": null }` → `201` `StudioVersionDetail`    |
 | POST   | `/api/lms/studio/versions/{id}/submit`        | envía a revisión → `StudioVersion`                           |
+| GET    | `/api/lms/studio/versions/{id}/diff`          | contra la versión anterior → `VersionDiff`                   |
 
 El contenido (unidades, lecciones, evaluaciones) se edita con la API de registros de Wasichai, que la guarda deja solo al autor y
 en borrador.
@@ -540,8 +541,14 @@ en borrador.
   `lms.decision_revision`. Comentarios y decisiones quedan con su versión: una versión nueva a partir de ella empieza sin ellos.
 - `publish`: solo una versión `APROBADA` (`409`); pone `publicada_en` el servidor.
 - `VersionDiff`: `{ "baseVersion": 1, "units": [{ "order", "change": "ADDED" | "REMOVED" | "CHANGED" | "SAME", "title",
-"previousTitle", "lessons": [{ "order", "change", "title", "previousTitle", "fields": ["resumen"] }] }] }`. Sin versión anterior,
-  `baseVersion` es `null` y todo es `ADDED`.
+"previousTitle", "fields": ["titulo"], "lessons": [{ "order", "change", "title", "previousTitle", "fields": ["resumen"] }] }] }`.
+  La versión anterior es la del mismo curso con el `number` más alto por debajo del de esta (`baseVersion`); sin ella,
+  `baseVersion` es `null` y todo es `ADDED`. Una unidad es la misma si tiene el mismo `order`; una lección, si tiene el mismo
+  `order` dentro de esa unidad (las identidades de los registros cambian con cada copia). `fields` nombra los campos propios
+  que difieren (los del modelo, en español, ordenados; sin `orden` ni el padre), y `recursos` cuando cambian los recursos
+  enlazados o su orden; vacío en `ADDED` y `REMOVED`. Una unidad es `CHANGED` si cambia un campo suyo o alguna lección.
+  `title` es `null` en lo quitado y `previousTitle` en lo añadido. Las evaluaciones no se comparan. Se calcula al pedirlo y no
+  se guarda. Lo ve el autor en su estudio y quien la revisa en su bandeja, con las mismas reglas que el detalle (`404`/`403`).
 
 ### Importación
 
