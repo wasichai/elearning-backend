@@ -83,6 +83,24 @@ class OpenApiContractApiTest : WasichaiIntegrationTest() {
             spec["paths"]["/api/lms/public/catalog/courses"]["get"]["parameters"]
                 .values()
                 .map { it["name"].asString() }
-        assertEquals(setOf("q", "category", "level", "modality", "startsFrom", "sort", "page", "size"), params.toSet())
+        assertEquals(
+            setOf(
+                "q",
+                "category",
+                "level",
+                "modality",
+                "startsFrom",
+                "minWeeks",
+                "maxWeeks",
+                "enrollmentOpen",
+                "minTheoryHours",
+                "minPracticeHours",
+                "minAutonomousHours",
+                "sort",
+                "page",
+                "size",
+            ),
+            params.toSet(),
+        )
     }
 }

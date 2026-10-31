@@ -15,18 +15,31 @@ como el modelo (`INICIAL`, `ASINCRONA`, …).
 
 Parámetros (todos opcionales):
 
-| nombre       | tipo                                                   | regla                                                                          |
-| ------------ | ------------------------------------------------------ | ------------------------------------------------------------------------------ |
-| `q`          | texto ≤ 100                                            | búsqueda sin distinguir mayúsculas en título y resumen                         |
-| `category`   | slug                                                   | slug de la categoría                                                           |
-| `level`      | `INICIAL` \| `INTERMEDIO` \| `AVANZADO`                |                                                                                |
-| `modality`   | `ASINCRONA` \| `SINCRONA` \| `HIBRIDA` \| `PRESENCIAL` |                                                                                |
-| `startsFrom` | `YYYY-MM-DD`                                           | solo cursos con una edición abierta o programada que empieza ese día o después |
-| `sort`       | `upcoming` (defecto) \| `title` \| `duration`          | `upcoming`: próxima edición primero, sin edición al final                      |
-| `page`       | entero ≥ 0 (defecto 0)                                 |                                                                                |
-| `size`       | 1–50 (defecto 12)                                      | fuera de rango → **400** con `errors[{field:"size"}]`                          |
+| nombre               | tipo                                                   | regla                                                                          |
+| -------------------- | ------------------------------------------------------ | ------------------------------------------------------------------------------ |
+| `q`                  | texto ≤ 100                                            | búsqueda sin distinguir mayúsculas en título y resumen                         |
+| `category`           | slug                                                   | slug de la categoría                                                           |
+| `level`              | `INICIAL` \| `INTERMEDIO` \| `AVANZADO`                |                                                                                |
+| `modality`           | `ASINCRONA` \| `SINCRONA` \| `HIBRIDA` \| `PRESENCIAL` |                                                                                |
+| `startsFrom`         | `YYYY-MM-DD`                                           | solo cursos con una edición abierta o programada que empieza ese día o después |
+| `minWeeks`           | entero 1–26                                            | duración (`weeks`) mayor o igual                                               |
+| `maxWeeks`           | entero 1–26, ≥ `minWeeks`                              | duración (`weeks`) menor o igual; un curso semestral dura de 12 a 26 semanas   |
+| `enrollmentOpen`     | `true` \| `false`                                      | `true`: con alguna edición con `enrollmentOpen` hoy; `false`: sin ninguna      |
+| `minTheoryHours`     | número 0–10000, ≤ 2 decimales                          | `workload.theoryHours` (horas totales de teoría) mayor o igual                 |
+| `minPracticeHours`   | número 0–10000, ≤ 2 decimales                          | `workload.practiceHours` (práctica o laboratorio) mayor o igual                |
+| `minAutonomousHours` | número 0–10000, ≤ 2 decimales                          | `workload.autonomousHours` (trabajo autónomo) mayor o igual                    |
+| `sort`               | `upcoming` (defecto) \| `title` \| `duration`          | `upcoming`: próxima edición primero, sin edición al final                      |
+| `page`               | entero ≥ 0 (defecto 0)                                 |                                                                                |
+| `size`               | 1–50 (defecto 12)                                      | fuera de rango → **400** con `errors[{field:"size"}]`                          |
 
-Un valor inválido (enum desconocido, fecha mal formada, `size` fuera de rango, `q` > 100) → **400** con `errors`.
+Los filtros se combinan (intersección). Un valor inválido (enum desconocido, fecha mal formada, `size` fuera de rango,
+`q` > 100, semanas fuera de 1–26 o `minWeeks` > `maxWeeks`, `enrollmentOpen` distinto de `true`/`false`, horas negativas,
+con más de dos decimales o en notación científica) → **400** con `errors`; cada error nombra su parámetro.
+
+Filtros de RF-CAT-08: `enrollmentOpen` usa la misma regla que el campo `enrollmentOpen` de la ficha (ver más abajo), en la
+zona horaria de cada edición; no mira el cupo, que no es público. Las horas son las totales de la ficha
+(`horas_*_semana × semanas`); las horas supervisadas no tienen filtro. No hay filtro de conocimientos previos:
+`prerequisiteKnowledge` es texto libre y un `null` significa «no declarado», no «ninguno».
 
 Respuesta 200:
 
@@ -38,7 +51,8 @@ Respuesta 200:
 }
 ```
 
-`facets.categories` cuenta los cursos publicados por categoría **sin** aplicar el filtro `category` (para pintar filtros).
+`facets.categories` cuenta los cursos publicados por categoría con todos los filtros **salvo** `category` (para pintar
+filtros).
 
 `CourseSummary`:
 
@@ -255,6 +269,8 @@ legible. Lo mismo vale para sus sesiones y su finalización.
   `/api/objects/version_recurso/records/<id>/files/archivo`: la descarga de `wasichai-files`, con la misma sesión y el
   mismo alcance que el registro. Un
   `HTML` se muestra en un `iframe` con `sandbox` sin `allow-scripts`; `PDF` se descarga; `VIDEO` se reproduce.
+- Subir a una versión de recurso un archivo cuyo tipo detectado no admite el `tipo` del recurso es `400` en `archivo`
+  (lista en [seguridad §4.4](../security/README.md#44-archivos-f2-en-adelante), RNF-SEG-07).
 
 ### POST /api/lms/classroom/enrollments/{id}/lessons/{lessonId}/events
 
@@ -372,7 +388,9 @@ estudiante como para el docente. `deadline` es `null` sin tiempo límite. En `re
 En `assessment.best`, `percent` y `passed` son `null` mientras `pending`.
 
 `Submission`: `{ "id", "file": null | { "name", "contentType", "size", "url" }, "uploadUrl" }`. El archivo se sube con
-`POST uploadUrl` (multipart, parte `file`, máx. 25 MB) y la misma sesión; queda fijo al enviar el intento.
+`POST uploadUrl` (multipart, parte `file`, máx. 25 MB) y la misma sesión; queda fijo al enviar el intento. Solo
+admite PDF, zip, texto (`text/plain`, `text/csv`), imágenes (PNG, JPEG, GIF, WebP) y ofimática (OOXML, ODF) según el
+tipo que detecta `wasichai-files`; lo demás es `400` en `archivo` (RNF-SEG-07).
 
 ### Sesiones
 
