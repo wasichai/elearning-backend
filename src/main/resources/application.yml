@@ -62,6 +62,8 @@ lms:
     allowed-sources: ${LMS_IMPORTER_ALLOWED_SOURCES:}
     timeout: ${LMS_IMPORTER_TIMEOUT:10s}
     max-bytes: ${LMS_IMPORTER_MAX_BYTES:2MB}
+    # archivos que una importación puede leer, entre fragmentos e imágenes; más hace fallar la importación
+    max-files: ${LMS_IMPORTER_MAX_FILES:300}
     # opcional, para repositorios privados o más cuota; solo por entorno
     github-token: ${LMS_IMPORTER_GITHUB_TOKEN:}
   # generación de artefactos HTML y PDF desde una fuente AsciiDoc (ADR-0018 §7): Asciidoctor en modo seguro, en la cola.

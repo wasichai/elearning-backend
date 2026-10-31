@@ -17,10 +17,12 @@ data class Job(
 
 enum class JobState { QUEUED, RUNNING, DONE, FAILED }
 
-// lo que se puede contar de un trabajo: su estado, su último error y su resultado (JSON)
+// lo que se puede contar de un trabajo: su estado, su último error y su resultado (JSON). payload es el JSON con el que
+// se encoló: quien lo expone decide con él a quién se lo cuenta (el importador, solo a quien lo pidió)
 data class JobStatus(
     val id: UUID,
     val type: String,
+    val payload: String,
     val state: JobState,
     val attempts: Int,
     val maxAttempts: Int,
