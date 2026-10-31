@@ -29,7 +29,12 @@ object SafeLink {
         val uri = runCatching { URI(link) }.getOrNull() ?: return false
         if (!"https".equals(uri.scheme, ignoreCase = true) || uri.userInfo != null) return false
         // el punto final no cambia el destino: «localhost.» es localhost
-        val host = uri.host?.lowercase()?.removeSurrounding("[", "]")?.trimEnd('.')?.takeIf { it.isNotEmpty() } ?: return false
+        val host =
+            uri.host
+                ?.lowercase()
+                ?.removeSurrounding("[", "]")
+                ?.trimEnd('.')
+                ?.takeIf { it.isNotEmpty() } ?: return false
         if (host.contains(':')) return false
         if (host == "localhost" || host.endsWith(".localhost") || host.endsWith(".local") || host.endsWith(".internal")) return false
         val labels = host.split('.')
