@@ -4,6 +4,7 @@ import org.springframework.http.HttpStatus
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.ResponseStatus
@@ -38,6 +39,17 @@ class SessionController(
         @PathVariable id: UUID,
         @RequestBody body: RescheduleRequest,
     ): SessionView = sessions.reschedule(id, body)
+
+    @GetMapping("/teaching/sessions/{id}/attendance")
+    suspend fun attendance(
+        @PathVariable id: UUID,
+    ): List<AttendanceRow> = sessions.attendance(id)
+
+    @PutMapping("/teaching/sessions/{id}/attendance")
+    suspend fun takeAttendance(
+        @PathVariable id: UUID,
+        @RequestBody body: AttendanceRequest,
+    ): List<AttendanceRow> = sessions.takeAttendance(id, body)
 
     @PostMapping("/teaching/sessions/{id}/cancel")
     suspend fun cancel(

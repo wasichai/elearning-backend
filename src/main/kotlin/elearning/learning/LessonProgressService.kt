@@ -1,5 +1,6 @@
 package elearning.learning
 
+import elearning.common.listAll
 import elearning.common.ref
 import kotlinx.coroutines.reactor.awaitSingleOrNull
 import org.springframework.r2dbc.core.DatabaseClient
@@ -54,6 +55,12 @@ class LessonProgressService(
             facts.hasEvaluation(user.organizationId, lessonId)
         ) {
             throw ConflictException("Esta lección se completa aprobando su evaluación")
+        }
+        // con sesión enlazada la completa asistir: ni marcarla ni un vídeo
+        if (type != LearningEventType.STARTED &&
+            records.listAll("sesion", mapOf("leccion_id" to lessonId.toString())).any { it.attributes[STATE]?.toString() != "CANCELADA" }
+        ) {
+            throw ConflictException("Esta lección se completa asistiendo a su sesión")
         }
         val evidence = evidence(type, lesson.attributes[TYPE]?.toString())
 

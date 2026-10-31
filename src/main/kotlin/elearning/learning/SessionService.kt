@@ -51,8 +51,73 @@ class SessionService(
         val enrollment = records.get(ENROLLMENT, enrollmentId)
         if (enrollment.attributes[STUDENT]?.toString() != currentUser.require().userId.toString()) throw NotFoundException(NOT_FOUND)
         val offering = records.get(OFFERING, UUID.fromString(enrollment.attributes.ref(OFFERING_FIELD)!!))
-        return sessionsOf(offering).map { view(it, zone(offering), null) }
+        val attended =
+            records.listAll(ATTENDANCE, mapOf(ENROLLMENT to enrollment.id)).associate {
+                it.attributes.ref(SESSION) to
+                    it.attributes[STATE]?.toString()
+            }
+        return sessionsOf(offering).map { view(it, zone(offering), attended[it.id]) }
     }
+
+    suspend fun attendance(id: UUID): List<AttendanceRow> {
+        val (session, offering) = assigned(id)
+        val taken = records.listAll(ATTENDANCE, mapOf(SESSION to session.id)).associate { it.attributes.ref(ENROLLMENT) to it.attributes[STATE]?.toString() }
+        return studentsOf(offering).map { AttendanceRow(it.id, it.attributes["estudiante_correo"]?.toString(), taken[it.id]) }
+    }
+
+    // repetir lo mismo no cambia nada; cambiar lo ya registrado exige motivo. todo o nada
+    suspend fun takeAttendance(
+        id: UUID,
+        request: AttendanceRequest,
+    ): List<AttendanceRow> {
+        val (session, offering) = assigned(id)
+        val entries = request.records ?: invalid("records", "required")
+        val students = studentsOf(offering).associateBy { it.id }
+        val taken = records.listAll(ATTENDANCE, mapOf(SESSION to session.id)).associateBy { it.attributes.ref(ENROLLMENT) }
+        val reason = request.reason?.trim()?.takeIf { it.isNotEmpty() }
+        for (entry in entries) {
+            if (entry.enrollmentId !in students) invalid("records", "${entry.enrollmentId} is not a student of this offering")
+            if (entry.status !in ATTENDANCE_STATES) invalid("records", "status must be one of $ATTENDANCE_STATES")
+            val current = taken[entry.enrollmentId]?.attributes?.get(STATE)?.toString()
+            if (current != null && current != entry.status && reason == null) throw ConflictException("Cambiar una asistencia ya registrada exige un motivo")
+        }
+        val me = currentUser.require().userId.toString()
+        transactions.executeAndAwait {
+            for (entry in entries) {
+                val existing = taken[entry.enrollmentId]
+                when {
+                    existing == null -> {
+                        val student = students.getValue(entry.enrollmentId!!)
+                        records.create(
+                            ATTENDANCE,
+                            RecordRequest(
+                                mapOf(
+                                    SESSION to session.id,
+                                    ENROLLMENT to student.id,
+                                    STUDENT to student.attributes[STUDENT].toString(),
+                                    STATE to entry.status,
+                                    "registrado_por" to me,
+                                ),
+                            ),
+                            reason,
+                        )
+                    }
+                    existing.attributes[STATE]?.toString() != entry.status ->
+                        records.patch(
+                            ATTENDANCE,
+                            UUID.fromString(existing.id),
+                            RecordRequest(mapOf(STATE to entry.status, "registrado_por" to me)),
+                            reason,
+                            null,
+                        )
+                }
+            }
+        }
+        return attendance(id)
+    }
+
+    private suspend fun studentsOf(offering: RecordResponse) =
+        records.listAll(ENROLLMENT, mapOf(OFFERING_FIELD to offering.id)).filter { it.attributes[STATE]?.toString() != WITHDRAWN }
 
     suspend fun create(
         code: String,
@@ -263,6 +328,8 @@ class SessionService(
 
     companion object {
         const val SESSION = "sesion"
+        const val ATTENDANCE = "asistencia"
+        val ATTENDANCE_STATES = setOf("PRESENTE", "TARDE", "AUSENTE", "JUSTIFICADO")
         const val ENROLLMENT = "matricula"
         const val OFFERING = "edicion_curso"
         const val OFFERING_FIELD = "edicion"

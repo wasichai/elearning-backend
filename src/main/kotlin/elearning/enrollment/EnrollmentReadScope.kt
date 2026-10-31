@@ -94,6 +94,6 @@ class EnrollmentReadScope(
         const val STUDENT = "estudiante_id"
         const val SEE_ALL = "VER_TODAS"
         const val NOTHING = "false"
-        val OWNED = setOf(ENROLLMENT, PROGRESS, "entrega")
+        val OWNED = setOf(ENROLLMENT, PROGRESS, "entrega", "asistencia")
     }
 }
