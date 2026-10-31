@@ -61,16 +61,18 @@ class ArchitectureTest {
             mapOf(
                 "common" to emptySet(),
                 "workload" to emptySet(),
+                // la cola persistente: no sabe de ninguna capacidad; quien encola y quien maneja la usa a ella
+                "jobs" to setOf("common"),
                 "course" to setOf("common", "workload"),
                 "catalog" to setOf("common", "course", "workload"),
                 "enrollment" to setOf("common", "course"),
                 "learning" to setOf("common", "enrollment", "course", "workload"),
                 "assessment" to setOf("common", "learning", "enrollment"),
                 "authoring" to setOf("common", "course"),
+                "importer" to setOf("common"),
                 "ai" to setOf("common", "authoring"),
                 "media" to setOf("common", "authoring"),
                 "reputation" to setOf("common", "enrollment"),
-                "importer" to setOf("common"),
             )
 
         // un ciclo como lista de nodos, o null si no hay

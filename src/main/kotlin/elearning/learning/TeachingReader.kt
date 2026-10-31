@@ -29,18 +29,24 @@ class TeachingReader(
             .map { offering(records.get(OFFERING, UUID.fromString(it))) }
             .sortedWith(compareBy({ it.startDate }, { it.code }))
 
+    // por lotes, no por estudiante (M4 de #183): las sentencias crecen con el temario y las sesiones, no con el roster
     suspend fun students(code: String): List<RosterRow> {
         val offering = assignedOffering(code)
         val sessions = records.listAll(SESSION, mapOf(ENROLLMENT_OFFERING to offering.id)).filter { it.attributes[STATE]?.toString() != CANCELLED }
-        return enrollmentsOf(offering.id).map { enrollment ->
+        val enrollments = enrollmentsOf(offering.id)
+        val attendance = sessions.flatMap { records.listAll(ATTENDANCE, mapOf(SESSION to it.id)) }
+        val taken = attendance.groupBy { it.attributes.ref(ENROLLMENT).orEmpty() }
+        val progress = classroom.progress(offering.id, enrollments, sessions, attendance)
+        val assessments = facts.offeringAssessments(currentUser.require().organizationId, UUID.fromString(offering.id))
+        return enrollments.map { enrollment ->
             RosterRow(
                 enrollmentId = enrollment.id,
                 email = enrollment.attributes[STUDENT_EMAIL]?.toString(),
                 status = enrollment.attributes[STATE].toString(),
-                progress = classroom.view(enrollment).progress,
-                attendance = attendanceOf(enrollment.id, sessions),
+                progress = progress.getValue(enrollment.id),
+                attendance = attendanceOf(taken[enrollment.id].orEmpty(), sessions),
                 assessments =
-                    facts.assessments(currentUser.require().organizationId, UUID.fromString(enrollment.id)).map {
+                    assessments[enrollment.id].orEmpty().map {
                         RosterAssessment(it.lessonId, it.title, it.bestPercent, it.passed, it.pending)
                     },
             )
@@ -48,11 +54,11 @@ class TeachingReader(
     }
 
     // sobre las sesiones no canceladas ya empezadas o con su asistencia registrada: una futura sin registrar aún no cuenta
-    private suspend fun attendanceOf(
-        enrollment: String,
+    private fun attendanceOf(
+        marks: List<RecordResponse>,
         sessions: List<RecordResponse>,
     ): AttendanceSummary {
-        val taken = records.listAll(ATTENDANCE, mapOf(ENROLLMENT to enrollment)).associate { it.attributes.ref(SESSION) to it.attributes[STATE]?.toString() }
+        val taken = marks.associate { it.attributes.ref(SESSION) to it.attributes[STATE]?.toString() }
         val now = Instant.now(clock)
         val counted = sessions.filter { it.id in taken || instantOf(it.attributes["inicio"])?.isBefore(now) == true }
         return AttendanceSummary(counted.count { taken[it.id] in ClassroomReader.PRESENT }, counted.size)

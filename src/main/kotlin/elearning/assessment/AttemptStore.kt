@@ -29,6 +29,21 @@ data class Attempt(
     val result: GradeResult?,
 )
 
+// un intento para las listas: sin instantánea, respuestas ni resultado, que son lo que pesa. GRADED es el resultado sin
+// preguntas pendientes, SUBMITTED con alguna y OPEN sin resultado (saveResult)
+data class AttemptLine(
+    val id: UUID,
+    val enrollmentId: UUID,
+    val lessonId: UUID,
+    val studentId: UUID,
+    val status: String,
+    val startedAt: Instant,
+    val submittedAt: Instant?,
+    val percent: Int?,
+    val passed: Boolean?,
+    val pendingQuestions: Int,
+)
+
 // lms.intento, siempre acotado a la organización
 @Repository
 class AttemptStore(
@@ -160,17 +175,36 @@ class AttemptStore(
         withPassed.fetch().rowsUpdated().awaitSingle()
     }
 
-    suspend fun ofOffering(
+    // la cola de una edición en un estado, sin instantánea ni respuestas (M4 de #183): la lista no las devuelve
+    suspend fun linesOfOffering(
         organization: UUID,
         offering: UUID,
         status: String,
-    ): List<Attempt> =
+    ): List<AttemptLine> =
         db
-            .sql("SELECT $COLUMNS FROM lms.intento WHERE organizacion_id = :org AND edicion_id = :offering AND estado = :status ORDER BY enviado_en, id")
-            .bind("org", organization)
+            .sql(
+                "SELECT $LINE_COLUMNS FROM lms.intento " +
+                    "WHERE organizacion_id = :org AND edicion_id = :offering AND estado = :status ORDER BY enviado_en, id",
+            ).bind("org", organization)
             .bind("offering", offering)
             .bind("status", status)
-            .map { row, _ -> attempt(row) }
+            .map { row, _ -> line(row) }
+            .all()
+            .collectList()
+            .awaitSingle()
+
+    // todos los intentos de una edición en una lectura, para el roster: antes se leían por matrícula (M4 de #183)
+    suspend fun linesOfOffering(
+        organization: UUID,
+        offering: UUID,
+    ): List<AttemptLine> =
+        db
+            .sql(
+                "SELECT $LINE_COLUMNS FROM lms.intento " +
+                    "WHERE organizacion_id = :org AND edicion_id = :offering ORDER BY matricula_id, numero",
+            ).bind("org", organization)
+            .bind("offering", offering)
+            .map { row, _ -> line(row) }
             .all()
             .collectList()
             .awaitSingle()
@@ -263,7 +297,26 @@ class AttemptStore(
             result = row.get("resultado_json", String::class.java)?.let { mapper.readValue(it, GradeResult::class.java) },
         )
 
+    private fun line(row: Row): AttemptLine =
+        AttemptLine(
+            id = row.get("id", UUID::class.java)!!,
+            enrollmentId = row.get("matricula_id", UUID::class.java)!!,
+            lessonId = row.get("leccion_id", UUID::class.java)!!,
+            studentId = row.get("estudiante_id", UUID::class.java)!!,
+            status = row.get("estado", String::class.java)!!,
+            startedAt = row.get("iniciado_en", OffsetDateTime::class.java)!!.toInstant(),
+            submittedAt = row.get("enviado_en", OffsetDateTime::class.java)?.toInstant(),
+            percent = row.get("porcentaje", Int::class.javaObjectType),
+            passed = row.get("aprobado", Boolean::class.javaObjectType),
+            pendingQuestions = row.get("pendientes", Number::class.java)?.toInt() ?: 0,
+        )
+
     companion object {
+        // porcentaje y aprobado son los del resultado (saveResult); las preguntas sin nota se cuentan en la base
+        const val LINE_COLUMNS =
+            "id, matricula_id, leccion_id, estudiante_id, estado, iniciado_en, enviado_en, porcentaje, aprobado, " +
+                "(SELECT count(*) FROM jsonb_array_elements(COALESCE(resultado -> 'questions', CAST('[]' AS jsonb))) q " +
+                "WHERE q ->> 'points' IS NULL) AS pendientes"
         const val COLUMNS =
             "id, organizacion_id, edicion_id, matricula_id, leccion_id, estudiante_id, numero, estado, CAST(instantanea AS text) AS instantanea_json, " +
                 "CAST(respuestas AS text) AS respuestas_json, iniciado_en, vence_en, enviado_en, CAST(resultado AS text) AS resultado_json"

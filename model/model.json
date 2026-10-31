@@ -1054,6 +1054,40 @@
         }
       ],
       "uniqueConstraints": [["sesion", "matricula"]]
+    },
+    {
+      "name": "comentario_revision",
+      "label": "Comentario de revisión",
+      "pluralLabel": "Comentarios de revisión",
+      "apiOnly": true,
+      "description": "Comentario del revisor sobre una sección de una versión del curso (ReviewComment, ADR-0018). Lo escribe solo la bandeja del revisor y sigue ligado a su versión.",
+      "fields": [
+        {
+          "name": "seccion",
+          "label": "Sección (texto libre, p. ej. unidad:1/leccion:2)",
+          "type": "TEXT",
+          "required": true
+        },
+        {
+          "name": "texto",
+          "label": "Texto",
+          "type": "LONG_TEXT",
+          "required": true
+        },
+        {
+          "name": "autor_id",
+          "label": "Autor (usuario de Wasichai)",
+          "type": "UUID",
+          "required": true
+        },
+        {
+          "name": "resuelto",
+          "label": "Resuelto",
+          "type": "BOOLEAN",
+          "required": true,
+          "defaultValue": "false"
+        }
+      ]
     }
   ],
   "relationships": [
@@ -1274,6 +1308,16 @@
       "source": "asistencia",
       "target": "matricula",
       "fieldName": "matricula",
+      "required": true
+    },
+    {
+      "name": "comentario_revision_version_curso",
+      "label": "Versión del curso",
+      "inverseLabel": "Comentarios de revisión",
+      "type": "MANY_TO_ONE",
+      "source": "comentario_revision",
+      "target": "version_curso",
+      "fieldName": "version_curso",
       "required": true
     }
   ]

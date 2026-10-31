@@ -19,10 +19,14 @@ dependencies {
     implementation(platform(libs.wasichai.bom))
     implementation(libs.wasichai.starter)
     implementation(libs.wasichai.starter.files)
+    // wasichai.files.store=s3 (RF-CON-02): ningún código propio lo usa, solo el almacén de Wasichai en ejecución
+    runtimeOnly(libs.aws.sdk.s3)
     implementation(libs.wasichai.starter.notifications)
     implementation(libs.spring.boot.starter.mail)
     implementation(libs.springdoc.webflux.api)
     testImplementation(libs.wasichai.test)
+    // S3ResourceFilesApiTest crea el bucket y lee el objeto directamente en MinIO
+    testImplementation(libs.aws.sdk.s3)
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
@@ -34,7 +38,8 @@ tasks.withType<Test>().configureEach {
 // unitarias y de arquitectura: sin base de datos
 tasks.test { useJUnitPlatform { excludeTags("integration") } }
 
-// integración: PostgreSQL 18 en Testcontainers (nunca el 5432 de la máquina) y el modelo aplicado con model/apply.py
+// integración: PostgreSQL 18 (y MinIO para el almacén S3) en Testcontainers, nunca el 5432 de la máquina, y el modelo
+// aplicado con model/apply.py
 val integrationTest by tasks.registering(Test::class) {
     description = "Pruebas de integración contra PostgreSQL 18 en Testcontainers."
     group = "verification"

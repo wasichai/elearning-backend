@@ -71,6 +71,7 @@ modelo, sus guardas, sus alcances de lectura y sus comandos en `/api/lms/**`. La
 | ------------------------------- | --------------------------------------------------------------------------------------------------------- | ------------------------------------------------- | ------------------ |
 | `common`                        | Permisos (`CurrentUser`), marca de escritura propia, errores `ProblemDetail`, cadena de seguridad pública | Ninguno propio                                    | F1                 |
 | `workload`                      | Dominio puro: horas de contacto/autónomas/totales, `CreditPolicy` → `CreditProposal`                      | API Kotlin, sin HTTP                              | F1                 |
+| `jobs`                          | Cola persistente `lms.trabajo`: encolar, reclamar con `SKIP LOCKED`, reintentos con tope (§6)             | `JobQueue`, puerto `JobHandler`; sin HTTP         | F4                 |
 | `course`                        | Curso, versión, unidad, lección, edición, docentes, sesiones                                              | `/api/lms/courses/**`, `/api/lms/offerings/**`    | F1 · F3 (sesiones) |
 | `catalog`                       | Lectura pública de lo publicado; búsqueda, filtros, orden                                                 | `GET /api/lms/public/catalog/**`                  | F1                 |
 | `enrollment`                    | Matrícula, capacidad, ventana de inscripción                                                              | `/api/lms/enrollments/**`                         | F2                 |
@@ -91,6 +92,7 @@ la API genérica de Wasichai (`/api/objects/{o}/records`) salvo los marcados `ap
 | ------------ | ------------------------------------ | ---------------------------------------------------- | ----------------------------------------- | ------------------------------- |
 | `common`     | —                                    | Acciones declaradas por objeto; nunca nombres de rol | —                                         | —                               |
 | `workload`   | —                                    | —                                                    | —                                         | —                               |
+| `jobs`       | `lms.trabajo`                        | — (lo comprueba quien encola)                        | Ejecuta los trabajos de los demás         | —                               |
 | `course`     | Objetos                              | `PUBLICAR`, `APROBAR`; docente por `docente_edicion` | Aviso de cambio de calendario (F3)        | `catalog`, `teaching`, `studio` |
 | `catalog`    | — (lee los de `course`)              | Anónimo, solo `GET`, solo lo publicado               | —                                         | `catalog`                       |
 | `enrollment` | Objetos                              | Estudiante: sus matrículas                           | Notificación de matrícula                 | `classroom`, `teaching`         |
@@ -112,6 +114,7 @@ amenazas, en [security](../security/README.md).
 flowchart BT
     common
     workload
+    jobs
     course --> common
     course --> workload
     catalog --> course
@@ -123,6 +126,7 @@ flowchart BT
     assessment --> learning
     assessment --> enrollment
     authoring --> course
+    importer
     ai --> authoring
     media --> authoring
     reputation --> enrollment
@@ -242,18 +246,20 @@ Nada largo ni bloqueante corre en un hilo de WebFlux. Hay dos mecanismos, según
   que escribe y sus acciones corren después, desde una cola persistente. Sus tipos de acción son cerrados (`UPDATE_FIELD`,
   `CREATE_RECORD`, `WEBHOOK`, `GENERATE_DOCUMENT`, `NOTIFY`; verificado en `Automation.kt`), así que sirve para avisar o
   emitir un documento, no para renderizar un vídeo ni llamar a un modelo.
-- **Trabajos propios** (renderizado HTML/PDF/Remotion, importación, ejecuciones de IA, vencimiento de intentos) →
-  **el registro es la cola**, como `DeckGenerationJob` de sgspe: el comando crea un registro en estado `EN_COLA` con una
-  clave de idempotencia única y responde `202`; un trabajo `@Scheduled` toma `ClusterLock.tryLock("lms.<trabajo>")` para
-  que corra en una sola réplica, recorre las organizaciones con `RecordService.forEachOrganization` (que entra en
-  `asPlatform`), reclama los pendientes o los que llevan en `EN_PROCESO` más de un umbral, y ejecuta el trabajo pesado en
-  un dispatcher acotado (`Dispatchers.IO.limitedParallelism(n)`, `n` configurable) o en un proceso/contenedor aparte.
+- **Trabajos propios** (renderizado HTML/PDF, importación, ejecuciones de IA) → **la cola `lms.trabajo`** de la capacidad
+  `jobs` ([ADR-0018 §4](../adr/0018-fase-4-estudio-revision-e-importador.md)). El comando encola con
+  `JobQueue.enqueue(organización, tipo, datos, clave)` y responde `202` con el id; cada tipo tiene un bean `JobHandler`.
+  `JobRunner` es un `@Scheduled` en cada réplica: reclama con `FOR UPDATE SKIP LOCKED` solo los tipos que sabe ejecutar
+  (sin `ClusterLock`: las réplicas se reparten los trabajos), los corre en un dispatcher acotado
+  (`Dispatchers.IO.limitedParallelism(lms.jobs.parallelism)`) con tiempo límite, y guarda estado, error y resultado.
+  Un trabajo en curso cuyo reclamo caducó (`lms.jobs.lease`) se da por perdido y se vuelve a reclamar; terminar exige
+  seguir siendo dueño del reclamo. Un manejador que escribe registros entra con `RecordService.asPlatform(org, "job:<tipo>")`.
 
-Reglas comunes: la clave de idempotencia es `unique` en el objeto, así que repetir un comando no duplica coste ni
-publicación (una violación de único llega como `DuplicateKeyException` / `409`); los reintentos se cuentan en el
-registro y tienen tope; cancelar es una transición a `CANCELADA` que el trabajo respeta entre pasos; un trabajo nunca
-publica, solo deja un resultado para revisión humana. El diseño de las ejecuciones de IA está en
-[docs/ai](../ai/README.md).
+Reglas comunes: la clave de idempotencia es única por organización y tipo, así que repetir un comando devuelve el mismo
+trabajo y no duplica coste ni publicación; los reintentos se cuentan en el trabajo y tienen tope (`lms.jobs.max-attempts`,
+espera `lms.jobs.backoff` × intento) y, agotados, el trabajo queda `FAILED` con su último error; la cancelación entra con
+el primer consumidor que la necesite; un trabajo nunca publica, solo deja un resultado para revisión humana. El diseño de
+las ejecuciones de IA está en [docs/ai](../ai/README.md).
 
 ## 7. Nombre del producto
 
