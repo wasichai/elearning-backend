@@ -140,3 +140,10 @@ Posterior (F6); nada de esto existe aún.
   revocación de tokens tarda hasta `revocation-cache` en llegar a los demás nodos.
 - PostgreSQL gestionado o `StatefulSet` con volumen persistente y copias según la sección anterior.
 - Almacenamiento de objetos S3 compatible (F2/F5).
+
+## Correo
+
+Los avisos de sesiones siempre llegan a las alertas de Wasichai; el correo es opcional (`wasichai.notifications.email.*` y
+`spring.mail.*`, sin secretos en el repositorio). En el perfil `dev` salen al buzón de pruebas de `compose.yaml`: bandeja en
+<http://127.0.0.1:8026>, SMTP en `127.0.0.1:1026`. Si el buzón no está en marcha, Wasichai reintenta con espera: la operación
+que originó el aviso no falla.

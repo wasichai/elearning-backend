@@ -2,6 +2,15 @@
 wasichai:
   seed:
     dev: true
+  # los avisos también salen por correo, al buzón de pruebas de compose.yaml
+  notifications:
+    email:
+      enabled: true
+      from: avisos@wasichai-learning.test
   # la UI de desarrollo (yarn dev en 5180, o cualquier puerto local)
   web:
     cors-allowed-origin-patterns: http://localhost:*
+spring:
+  mail:
+    host: 127.0.0.1
+    port: 1026

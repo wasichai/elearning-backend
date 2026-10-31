@@ -13,6 +13,9 @@ wasichai-bom = { module = "wasichai:wasichai-bom", version.ref = "wasichai" }
 wasichai-starter = { module = "wasichai:wasichai-spring-boot-starter" }
 # archivos de los recursos (ADR-0012): FileStore local en desarrollo, S3 por configuración
 wasichai-starter-files = { module = "wasichai:wasichai-spring-boot-starter-files" }
+# avisos de sesiones y calendario (RF-SES-03, RF-AUL-09), con correo opcional
+wasichai-starter-notifications = { module = "wasichai:wasichai-spring-boot-starter-notifications" }
+spring-boot-starter-mail = { module = "org.springframework.boot:spring-boot-starter-mail" }
 wasichai-test = { module = "wasichai:wasichai-test" }
 springdoc-webflux-api = { module = "org.springdoc:springdoc-openapi-starter-webflux-api", version.ref = "springdoc" }
 

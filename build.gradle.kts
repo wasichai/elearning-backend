@@ -19,6 +19,8 @@ dependencies {
     implementation(platform(libs.wasichai.bom))
     implementation(libs.wasichai.starter)
     implementation(libs.wasichai.starter.files)
+    implementation(libs.wasichai.starter.notifications)
+    implementation(libs.spring.boot.starter.mail)
     implementation(libs.springdoc.webflux.api)
     testImplementation(libs.wasichai.test)
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
