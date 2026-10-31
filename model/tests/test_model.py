@@ -73,6 +73,16 @@ class RealModelTest(unittest.TestCase):
             self.assertFalse(holds("ESTUDIANTE", obj, "READ"), obj)
             self.assertTrue(holds("CREADOR", obj, "CREATE"), obj)
 
+    def test_course_versions_have_every_modality_and_a_kind_of_duration(self):
+        # RF-ACA-05: presencial, virtual síncrona, asíncrona o híbrida; por semanas o semestral (el rango, en CourseDurationGuard)
+        self.assertEqual({"PRESENCIAL", "SINCRONA", "ASINCRONA", "HIBRIDA"}, set(MODEL["enums"]["modalidad"]))
+        version = next(o for o in MODEL["objects"] if o["name"] == "version_curso")
+        duration = next(f for f in version["fields"] if f["name"] == "duracion")
+        # no es requerido: Wasichai añade un campo requerido con NOT NULL y sin DEFAULT, y eso falla (500) en una tabla que ya
+        # tiene versiones. Vacío cuenta como SEMANAS (CourseDurationGuard), y el rango lo sigue exigiendo la guarda
+        self.assertEqual(("tipo_duracion", "SEMANAS", False), (duration["enum"], duration["defaultValue"], duration.get("required", False)))
+        self.assertEqual(["SEMANAS", "SEMESTRAL"], MODEL["enums"]["tipo_duracion"])
+
     def test_no_teacher_sees_every_student_before_assignment_scope(self):
         # revisión de la Fase 2: sin alcance por asignación (F3), VER_TODAS abriría matrículas y progreso de todos
         for obj in ("matricula", "progreso_leccion"):
