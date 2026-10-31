@@ -1,0 +1,87 @@
+%PDF-1.4
+%âãÏÓ
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R 4 0 R 5 0 R] /Count 3 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 842 595] /Resources << /Font << /F1 9 0 R >> >> /Contents 6 0 R >>
+endobj
+4 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 842 595] /Resources << /Font << /F1 9 0 R >> >> /Contents 7 0 R >>
+endobj
+5 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 842 595] /Resources << /Font << /F1 9 0 R >> >> /Contents 8 0 R >>
+endobj
+6 0 obj
+<< /Length 566 >>
+stream
+BT
+/F1 26 Tf 1 0 0 1 56 520 Tm (Consultar el padrón con filtros) Tj
+/F1 16 Tf 1 0 0 1 56 470 Tm (Recorrido por los filtros del padrón de anuncios) Tj
+/F1 16 Tf 1 0 0 1 56 440 Tm (y por lo que muestra cada columna.) Tj
+/F1 16 Tf 1 0 0 1 56 410 Tm () Tj
+/F1 16 Tf 1 0 0 1 56 380 Tm (1. Los filtros) Tj
+/F1 16 Tf 1 0 0 1 56 350 Tm (2. Las columnas) Tj
+/F1 16 Tf 1 0 0 1 56 320 Tm (3. Los casos sin vigencia) Tj
+/F1 10 Tf 1 0 0 1 56 40 Tm (Presentación ilustrativa de la demostración de wasichai-learning. Sin datos reales.) Tj
+/F1 10 Tf 1 0 0 1 760 40 Tm (1 / 3) Tj
+ET
+endstream
+endobj
+7 0 obj
+<< /Length 613 >>
+stream
+BT
+/F1 26 Tf 1 0 0 1 56 520 Tm (1. Los filtros) Tj
+/F1 16 Tf 1 0 0 1 56 470 Tm (- Fecha de consulta: el padrón se calcula a esa fecha, hoy o una pasada.) Tj
+/F1 16 Tf 1 0 0 1 56 440 Tm (- Titular, clase y estado: se combinan; cada uno reduce la lista.) Tj
+/F1 16 Tf 1 0 0 1 56 410 Tm (- Los filtros quedan en la dirección de la página: se pueden compartir.) Tj
+/F1 16 Tf 1 0 0 1 56 380 Tm (- Sin filtros, el padrón muestra los anuncios activos a hoy.) Tj
+/F1 10 Tf 1 0 0 1 56 40 Tm (Presentación ilustrativa de la demostración de wasichai-learning. Sin datos reales.) Tj
+/F1 10 Tf 1 0 0 1 760 40 Tm (2 / 3) Tj
+ET
+endstream
+endobj
+8 0 obj
+<< /Length 796 >>
+stream
+BT
+/F1 26 Tf 1 0 0 1 56 520 Tm (2. Las columnas y 3. Los casos sin vigencia) Tj
+/F1 16 Tf 1 0 0 1 56 470 Tm (- Código, titular, clase, vigencia y estado deducido a la fecha elegida.) Tj
+/F1 16 Tf 1 0 0 1 56 440 Tm (- El estado no se escribe: sale del último movimiento hasta esa fecha.) Tj
+/F1 16 Tf 1 0 0 1 56 410 Tm (- Un anuncio con la vigencia vencida y sin renovación aparece como vencido.) Tj
+/F1 16 Tf 1 0 0 1 56 380 Tm (- Un cese o un retiro lo sacan del padrón desde su fecha, no antes.) Tj
+/F1 16 Tf 1 0 0 1 56 350 Tm () Tj
+/F1 16 Tf 1 0 0 1 56 320 Tm (Compruebe: el padrón a una fecha pasada debe coincidir con su lectura.) Tj
+/F1 10 Tf 1 0 0 1 56 40 Tm (Presentación ilustrativa de la demostración de wasichai-learning. Sin datos reales.) Tj
+/F1 10 Tf 1 0 0 1 760 40 Tm (3 / 3) Tj
+ET
+endstream
+endobj
+9 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>
+endobj
+10 0 obj
+<< /Title (Consultar el padron con filtros) /Producer (wasichai-learning demo) >>
+endobj
+xref
+0 11
+0000000000 65535 f 
+0000000015 00000 n 
+0000000064 00000 n 
+0000000133 00000 n 
+0000000259 00000 n 
+0000000385 00000 n 
+0000000511 00000 n 
+0000001127 00000 n 
+0000001790 00000 n 
+0000002636 00000 n 
+0000002733 00000 n 
+trailer
+<< /Size 11 /Root 1 0 R /Info 10 0 R >>
+startxref
+2831
+%%EOF

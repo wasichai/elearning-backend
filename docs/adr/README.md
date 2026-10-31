@@ -32,3 +32,4 @@ secciones Contexto, Decisión, Alternativas consideradas y Consecuencias. El for
 | [0014](0014-docente-sin-ver-todas-y-recurso-congelado.md)           | Sin «ver todas» del docente sobre matrículas y progreso; recurso congelado            | aceptada                     | 2026-10-28 |
 | [0015](0015-licencia-lgpl-provisional.md)                           | Licencia provisional LGPL-3.0-or-later                                                | aceptada                     | 2026-10-28 |
 | [0016](0016-fase-3-evaluaciones-docente-sesiones-certificados.md)   | Fase 3: evaluaciones con instantánea, docente por asignación, sesiones y certificados | aceptada                     | 2026-10-28 |
+| [0017](0017-copia-del-contenido-de-evaluaciones.md)                 | Los intentos leen una copia del contenido de las evaluaciones                         | aceptada                     | 2026-10-31 |

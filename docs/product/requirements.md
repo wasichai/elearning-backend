@@ -65,7 +65,7 @@ el cuándo, en [`roadmap.md`](roadmap.md).
   (`RecordWriteGuard`); los cambios exigen una versión nueva.
 - **RF-ACA-04** · F2 · implementado ([#42](https://github.com/wasichai/elearning-backend/pull/42), [#64](https://github.com/wasichai/elearning-backend/pull/64)) — Un creador autorizado crea cursos y versiones en borrador; sin el permiso, no.
   _Aceptación:_ prueba con un usuario CREADOR (éxito) y uno ESTUDIANTE (`403`).
-- **RF-ACA-05** · F3 · planificado — Duración de 1 a 8 semanas o semestral, y modalidad presencial, virtual síncrona,
+- **RF-ACA-05** · F3 · planificado (PR abierto: [#144](https://github.com/wasichai/elearning-backend/pull/144)) — Duración de 1 a 8 semanas o semestral, y modalidad presencial, virtual síncrona,
   asíncrona o híbrida.
   _Aceptación:_ validación del modelo con casos límite (0 semanas rechazado; 1, 8 y semestral aceptados).
   _Pendiente de F2 (#103):_ el modelo no tiene modalidad presencial ni duración semestral, y no valida de 1 a 8 semanas.
