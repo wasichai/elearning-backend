@@ -1,6 +1,6 @@
 package elearning.assessment
 
-import elearning.common.ref
+import elearning.common.listAll
 import elearning.learning.AssessmentFacts
 import elearning.learning.LessonAssessment
 import elearning.learning.LessonAssessmentFact
@@ -38,15 +38,20 @@ class GradingService(
         if (wanted !in LISTABLE) throw ValidationException("Invalid status", "status", "must be one of $LISTABLE")
         val offering = teaching.assignedOffering(code)
         val user = currentUser.require()
-        return attempts.ofOffering(user.organizationId, UUID.fromString(offering.id), wanted).filter { it.studentId != user.userId }.map { a ->
+        val lines = attempts.linesOfOffering(user.organizationId, UUID.fromString(offering.id), wanted).filter { it.studentId != user.userId }
+        // correos y títulos por lotes, no por intento (M4 de #183): las matrículas de la edición, también las retiradas, y cada
+        // lección una vez
+        val emails = records.listAll(ENROLLMENT, mapOf(OFFERING to offering.id)).associate { it.id to it.attributes[EMAIL]?.toString() }
+        val titles = lines.map { it.lessonId }.distinct().associateWith { records.get(LESSON, it).attributes[TITLE].toString() }
+        return lines.map { a ->
             PendingAttempt(
                 attemptId = a.id.toString(),
                 enrollmentId = a.enrollmentId.toString(),
-                email = email(a),
+                email = emails[a.enrollmentId.toString()],
                 lessonId = a.lessonId.toString(),
-                lessonTitle = records.get(LESSON, a.lessonId).attributes[TITLE].toString(),
+                lessonTitle = titles.getValue(a.lessonId),
                 submittedAt = a.submittedAt,
-                pendingQuestions = a.result?.questions?.count { it.points == null } ?: 0,
+                pendingQuestions = a.pendingQuestions,
             )
         }
     }
@@ -109,6 +114,7 @@ class GradingService(
 
     companion object {
         const val ENROLLMENT = "matricula"
+        const val OFFERING = "edicion"
         const val LESSON = "leccion"
         const val TITLE = "titulo"
         const val EMAIL = "estudiante_correo"
@@ -132,26 +138,20 @@ class AttemptFacts(
     ): Map<String, LessonAssessment> {
         val evaluations = content.summaries(organization, lessons)
         if (evaluations.isEmpty()) return emptyMap()
-        val byLesson = attempts.ofEnrollment(organization, enrollment).groupBy { it.lessonId.toString() }
-        return evaluations.mapValues { (lesson, evaluation) ->
-            val tries = byLesson[lesson].orEmpty()
-            val graded = tries.filter { it.result?.pending == false }
-            val best = graded.maxByOrNull { it.result?.percent ?: 0 }?.result
-            LessonAssessment(
-                id = evaluation.id,
-                title = evaluation.title,
-                maxAttempts = evaluation.maxAttempts,
-                timeLimitMinutes = evaluation.timeLimitMinutes,
-                passingPercent = evaluation.passingPercent,
-                attemptsUsed = tries.size,
-                openAttemptId = tries.firstOrNull { it.status == AttemptService.OPEN }?.id?.toString(),
-                bestPercent = best?.percent,
-                passed = best?.passed,
-                pending = tries.any { it.status == AttemptService.SUBMITTED },
-                firstStartedAt = tries.minOfOrNull { it.startedAt },
-                passedAt = graded.filter { it.result?.passed == true }.mapNotNull { it.submittedAt }.minOrNull(),
-            )
-        }
+        return summarize(evaluations, attempts.ofEnrollment(organization, enrollment).map(::line))
+    }
+
+    override suspend fun offeringLessonAssessments(
+        organization: UUID,
+        offering: UUID,
+        lessons: List<UUID>,
+    ): Map<String, Map<String, LessonAssessment>> {
+        val evaluations = content.summaries(organization, lessons)
+        if (evaluations.isEmpty()) return emptyMap()
+        return attempts
+            .linesOfOffering(organization, offering)
+            .groupBy { it.enrollmentId.toString() }
+            .mapValues { (_, tries) -> summarize(evaluations, tries) }
     }
 
     override suspend fun hasEvaluation(
@@ -164,23 +164,66 @@ class AttemptFacts(
         offering: UUID,
     ): Int = attempts.countPending(organization, offering)
 
-    override suspend fun assessments(
+    // el título es el de la evaluación, el mismo que copia la instantánea: lo publicado no cambia
+    override suspend fun offeringAssessments(
         organization: UUID,
-        enrollment: UUID,
-    ): List<LessonAssessmentFact> =
-        attempts
-            .ofEnrollment(organization, enrollment)
-            .filter { it.status != AttemptService.OPEN }
-            .groupBy { it.lessonId }
-            .map { (lesson, tries) ->
-                val graded = tries.mapNotNull { it.result }.filter { !it.pending }
-                val best = graded.maxByOrNull { it.percent ?: 0 }
+        offering: UUID,
+    ): Map<String, List<LessonAssessmentFact>> {
+        val tries = attempts.linesOfOffering(organization, offering).filter { it.status != AttemptService.OPEN }
+        if (tries.isEmpty()) return emptyMap()
+        val titles = content.summaries(organization, tries.map { it.lessonId }.distinct()).mapValues { it.value.title }
+        return tries.groupBy { it.enrollmentId.toString() }.mapValues { (_, mine) ->
+            mine.groupBy { it.lessonId }.map { (lesson, byLesson) ->
+                val best = byLesson.filter { it.status == AttemptService.GRADED }.maxByOrNull { it.percent ?: 0 }
                 LessonAssessmentFact(
                     lessonId = lesson.toString(),
-                    title = tries.first().snapshot.title,
+                    title = titles[lesson.toString()].orEmpty(),
                     bestPercent = best?.percent,
                     passed = best?.passed,
-                    pending = tries.any { it.status == AttemptService.SUBMITTED },
+                    pending = byLesson.any { it.status == AttemptService.SUBMITTED },
                 )
             }
+        }
+    }
+
+    // GRADED es un resultado sin preguntas pendientes (AttemptStore.saveResult)
+    private fun summarize(
+        evaluations: Map<String, EvaluationSummary>,
+        tries: List<AttemptLine>,
+    ): Map<String, LessonAssessment> {
+        val byLesson = tries.groupBy { it.lessonId.toString() }
+        return evaluations.mapValues { (lesson, evaluation) ->
+            val mine = byLesson[lesson].orEmpty()
+            val graded = mine.filter { it.status == AttemptService.GRADED }
+            val best = graded.maxByOrNull { it.percent ?: 0 }
+            LessonAssessment(
+                id = evaluation.id,
+                title = evaluation.title,
+                maxAttempts = evaluation.maxAttempts,
+                timeLimitMinutes = evaluation.timeLimitMinutes,
+                passingPercent = evaluation.passingPercent,
+                attemptsUsed = mine.size,
+                openAttemptId = mine.firstOrNull { it.status == AttemptService.OPEN }?.id?.toString(),
+                bestPercent = best?.percent,
+                passed = best?.passed,
+                pending = mine.any { it.status == AttemptService.SUBMITTED },
+                firstStartedAt = mine.minOfOrNull { it.startedAt },
+                passedAt = graded.filter { it.passed == true }.mapNotNull { it.submittedAt }.minOrNull(),
+            )
+        }
+    }
+
+    private fun line(a: Attempt) =
+        AttemptLine(
+            id = a.id,
+            enrollmentId = a.enrollmentId,
+            lessonId = a.lessonId,
+            studentId = a.studentId,
+            status = a.status,
+            startedAt = a.startedAt,
+            submittedAt = a.submittedAt,
+            percent = a.result?.percent,
+            passed = a.result?.passed,
+            pendingQuestions = a.result?.questions?.count { it.points == null } ?: 0,
+        )
 }

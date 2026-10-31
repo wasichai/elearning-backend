@@ -34,10 +34,11 @@ interface AssessmentFacts {
         offering: UUID,
     ): Int
 
-    suspend fun assessments(
+    // por matrícula de la edición, sus evaluaciones con algún intento enviado: una lectura para todo el roster (M4 de #183)
+    suspend fun offeringAssessments(
         organization: UUID,
-        enrollment: UUID,
-    ): List<LessonAssessmentFact>
+        offering: UUID,
+    ): Map<String, List<LessonAssessmentFact>>
 
     // por id de lección, solo las que tienen evaluación
     suspend fun lessonAssessments(
@@ -45,6 +46,13 @@ interface AssessmentFacts {
         enrollment: UUID,
         lessons: List<UUID>,
     ): Map<String, LessonAssessment>
+
+    // lo mismo para todas las matrículas de la edición, por id de matrícula, con una lectura de intentos (M4 de #183)
+    suspend fun offeringLessonAssessments(
+        organization: UUID,
+        offering: UUID,
+        lessons: List<UUID>,
+    ): Map<String, Map<String, LessonAssessment>>
 
     suspend fun hasEvaluation(
         organization: UUID,

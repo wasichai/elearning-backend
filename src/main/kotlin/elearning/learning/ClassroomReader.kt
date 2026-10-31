@@ -117,24 +117,70 @@ class ClassroomReader(
         val attendedSession: Map<String, RecordResponse?>,
     )
 
-    // la versión de la matrícula con sus unidades y lecciones en orden, y el progreso guardado por lección
-    private suspend fun content(enrollment: RecordResponse): Content {
-        val version = records.get(VERSION, UUID.fromString(enrollment.attributes.ref(VERSION)!!))
+    // el progreso de varias matrículas de una edición, leído por lotes (M4 de #183): antes el roster armaba el aula de cada
+    // estudiante. el temario se lee una vez por versión, el progreso guardado por lección, los intentos de toda la edición en
+    // una lectura y la asistencia la trae quien llama. sessions: las no canceladas de la edición; attendance: la registrada
+    suspend fun progress(
+        offering: String,
+        enrollments: List<RecordResponse>,
+        sessions: List<RecordResponse>,
+        attendance: List<RecordResponse>,
+    ): Map<String, ProgressSummary> {
+        val organization = currentUser.require().organizationId
+        val linked = linked(sessions)
+        val present =
+            attendance
+                .filter { it.attributes[STATE]?.toString() in PRESENT }
+                .groupBy({ it.attributes.ref(ENROLLMENT).orEmpty() }) { it.attributes.ref(SESSION).orEmpty() }
+        val result = mutableMapOf<String, ProgressSummary>()
+        for ((version, group) in enrollments.groupBy { it.attributes.ref(VERSION)!! }) {
+            val syllabus = syllabus(version)
+            val lessons = syllabus.units.flatMap { it.lessons }
+            val progress = lessons.flatMap { all(PROGRESS, mapOf(LESSON to it.id)) }.groupBy { it.attributes.ref(ENROLLMENT).orEmpty() }
+            val assessments = facts.offeringLessonAssessments(organization, UUID.fromString(offering), lessons.map { UUID.fromString(it.id) })
+            for (enrollment in group) {
+                val content =
+                    Content(
+                        syllabus.version,
+                        syllabus.units,
+                        progress[enrollment.id].orEmpty().associateBy { it.attributes.ref(LESSON).orEmpty() },
+                        assessments[enrollment.id].orEmpty(),
+                        attended(linked, present[enrollment.id].orEmpty().toSet()),
+                    )
+                result[enrollment.id] = summary(lessons, content)
+            }
+        }
+        return result
+    }
+
+    private class Syllabus(
+        val version: RecordResponse,
+        val units: List<Unit>,
+    )
+
+    // la versión con sus unidades y lecciones en orden
+    private suspend fun syllabus(version: String): Syllabus {
+        val record = records.get(VERSION, UUID.fromString(version))
         val units =
-            all(UNIT, mapOf(VERSION to version.id))
+            all(UNIT, mapOf(VERSION to record.id))
                 .sortedWith(compareBy({ it.int(ORDER) }, { it.id }))
                 .map { unit -> Unit(unit, all(LESSON, mapOf(UNIT to unit.id)).sortedWith(compareBy({ it.int(ORDER) }, { it.id }))) }
+        return Syllabus(record, units)
+    }
+
+    // la versión de la matrícula con sus unidades y lecciones en orden, y el progreso guardado por lección
+    private suspend fun content(enrollment: RecordResponse): Content {
+        val syllabus = syllabus(enrollment.attributes.ref(VERSION)!!)
         val progress = all(PROGRESS, mapOf(ENROLLMENT to enrollment.id)).associateBy { it.attributes.ref(LESSON).orEmpty() }
-        val lessons = units.flatMap { it.lessons }.map { UUID.fromString(it.id) }
+        val lessons = syllabus.units.flatMap { it.lessons }.map { UUID.fromString(it.id) }
         val assessments = facts.lessonAssessments(currentUser.require().organizationId, UUID.fromString(enrollment.id), lessons)
-        return Content(version, units, progress, assessments, attendedSessions(enrollment))
+        return Content(syllabus.version, syllabus.units, progress, assessments, attendedSessions(enrollment))
     }
 
     // las lecciones enlazadas a sesiones de la edición (ADR-0016 §4), sin contar las canceladas
     private suspend fun attendedSessions(enrollment: RecordResponse): Map<String, RecordResponse?> {
         val offering = enrollment.attributes.ref(OFFERING_FIELD)!!
-        val linked =
-            all(SESSION, mapOf(OFFERING_FIELD to offering)).filter { it.attributes["leccion_id"] != null && it.attributes[STATE]?.toString() != CANCELLED }
+        val linked = linked(all(SESSION, mapOf(OFFERING_FIELD to offering)))
         if (linked.isEmpty()) return emptyMap()
         val present =
             all(ATTENDANCE, mapOf(ENROLLMENT to enrollment.id))
@@ -142,8 +188,20 @@ class ClassroomReader(
                     it.attributes[STATE]?.toString() in PRESENT
                 }.mapNotNull { it.attributes.ref(SESSION) }
                 .toSet()
-        return linked.groupBy { it.attributes["leccion_id"].toString() }.mapValues { (_, sessions) -> sessions.firstOrNull { it.id in present } }
+        return attended(linked, present)
     }
+
+    // por lección, sus sesiones no canceladas
+    private fun linked(sessions: List<RecordResponse>): Map<String, List<RecordResponse>> =
+        sessions
+            .filter { it.attributes["leccion_id"] != null && it.attributes[STATE]?.toString() != CANCELLED }
+            .groupBy { it.attributes["leccion_id"].toString() }
+
+    // por lección con sesiones, la sesión a la que se asistió o null
+    private fun attended(
+        linked: Map<String, List<RecordResponse>>,
+        present: Set<String>,
+    ): Map<String, RecordResponse?> = linked.mapValues { (_, sessions) -> sessions.firstOrNull { it.id in present } }
 
     // los recursos de esas lecciones, en su orden; cada versión de recurso y su recurso se leen una vez
     private suspend fun resources(lessons: Set<String>): Map<String, List<ResourceView>> {
