@@ -29,6 +29,11 @@ class EnrollmentReadScope(
     override suspend fun criterion(
         caller: AuthenticatedUser,
         definition: ObjectDefinition,
+    ): RecordCriterion? = ScopeMemo.of("enrollment", caller, definition.obj.name) { compute(caller, definition) }
+
+    private suspend fun compute(
+        caller: AuthenticatedUser,
+        definition: ObjectDefinition,
     ): RecordCriterion? {
         val name = definition.obj.name
         if (name == SESSION) return sessions(caller, definition)
@@ -61,8 +66,8 @@ class EnrollmentReadScope(
         return RecordCriterion { _, bind -> "$column = ANY(${bind(offerings)})" }
     }
 
-    // las ediciones asignadas a la persona: docente_edicion no tiene alcance propio, así que no hay recursión. quien no
-    // puede leer asignaciones (un estudiante) no tiene ninguna
+    // las ediciones asignadas a la persona. el alcance de docente_edicion (AssignmentReadScope) no lee nada, así que no hay
+    // recursión. quien no puede leer asignaciones (un estudiante) no tiene ninguna
     private suspend fun taughtOfferings(caller: AuthenticatedUser): List<String> =
         try {
             all(ASSIGNMENT, mapOf(TEACHER to caller.userId.toString())).mapNotNull { it.attributes.ref(OFFERING_FIELD) }.distinct()
