@@ -4,6 +4,8 @@ Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este
 
 ## 2026-10-31 — Hallazgos de la revisión de la Fase 4 ([#216](https://github.com/wasichai/elearning-backend/issues/216))
 
+- **L5, comentarios**: `comentario_revision` tiene alcance de lectura (`ReviewCommentReadScope`); un CREADOR ya no lee por la
+  API de registros los comentarios de versiones ajenas. `ScopeMemo` pasa a `elearning.common`.
 - **M1**: la revisión de un curso se decide solo en la bandeja, que deja la decisión y su motivo en `lms.decision_revision`;
   por la API de registros es `403` y una versión de curso no nace aprobada. La de un recurso exige `X-Change-Reason` salvo
   al aprobar ([ADR-0021](adr/0021-la-revision-de-un-curso-se-decide-en-la-bandeja.md)).

@@ -1,5 +1,6 @@
 package elearning.enrollment
 
+import elearning.common.ScopeMemo
 import elearning.common.listAll
 import elearning.common.ref
 import org.springframework.beans.factory.ObjectProvider
