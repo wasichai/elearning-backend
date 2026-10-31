@@ -40,6 +40,7 @@ Lista prevista; `.env.example` es la referencia ejecutable y nunca lleva valores
 | `WASICHAI_FILES_*`                                                            | Almacén de archivos (`store`, `s3.*`, `max-bytes`); ver [almacén de archivos](#almacén-de-archivos)                                            | `STORE=s3` en despliegue       | F4   |
 | `LMS_FILES_PATH`                                                              | Directorio del almacén local (`var/archivos`)                                                                                                  | No                             | F2   |
 | `LMS_MINIO_USER`, `LMS_MINIO_PASSWORD`, `LMS_MINIO_BUCKET`                    | **Solo local**: credenciales y bucket del MinIO de `compose.yaml`, que también lee el perfil `minio`                                           | No                             | F4   |
+| `LMS_MEDIA_ASCIIDOCTOR_HTML`, `…_PDF`, `…_TIMEOUT`, `…_MAX_BYTES`             | Ejecutables de Asciidoctor (`asciidoctor`, `asciidoctor-pdf`), tiempo límite por generación (2 min) y tope de salida (25 MB)                   | No                             | F4   |
 | `LMS_IMPORTER_ALLOWED_SOURCES`                                                | Repositorios que el importador puede leer, separados por comas: `owner/repo` u `owner/repo@sha`. Vacío: ninguno                                | Para importar                  | F4   |
 | `LMS_IMPORTER_TIMEOUT`, `LMS_IMPORTER_MAX_BYTES`, `LMS_IMPORTER_GITHUB_TOKEN` | Tiempo límite (10 s), tamaño máximo por archivo (2 MB) y token opcional de la API de GitHub                                                    | No                             | F4   |
 | `ANTHROPIC_API_KEY`, `WASICHAI_AGENT_ENABLED`                                 | IA; sin clave, [doble determinista](../ai/README.md#7-doble-determinista-sin-credenciales)                                                     | No                             | F5   |
@@ -204,6 +205,10 @@ Posterior (F6); nada de esto existe aún.
 - PostgreSQL gestionado o `StatefulSet` con volumen persistente y copias según la sección anterior.
 - Almacenamiento de objetos S3 compatible: `WASICHAI_FILES_STORE=s3` y el bucket creado antes del despliegue
   ([almacén de archivos](#almacén-de-archivos)).
+- **Asciidoctor en la imagen** para la generación de HTML y PDF (ADR-0018 §7): `asciidoctor` y `asciidoctor-pdf` en el
+  `PATH`, sin extensiones. Sin ellos la aplicación arranca y el trabajo de generación falla con un error claro
+  (`… is not available on this server …`). Comprobación manual, que CI no hace: `asciidoctor --version`,
+  `asciidoctor-pdf --version` y generar una fuente de prueba desde el estudio.
 
 ## Correo
 

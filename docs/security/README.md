@@ -221,6 +221,28 @@ Detalle en [`docs/ai/README.md`](../ai/README.md#6-protección-contra-prompt-inj
 - **E** Ejecución de código vía extensiones → Asciidoctor en contenedor aislado, sin extensiones arbitrarias, sin red y
   sin privilegios; el importador nunca publica.
 
+### 4.7 Generación de artefactos HTML y PDF (F4)
+
+Una `fuente_recurso` (AsciiDoc, `text/plain` de hasta 1 MB) produce artefactos por `DocumentRenderer`
+([ADR-0018 §7](../adr/0018-fase-4-estudio-revision-e-importador.md)); su adaptador, `elearning.media.asciidoctor`, es
+el único sitio del código que lanza un proceso (`ArchitectureTest`, regla `EXTERNAL_PROCESS`).
+
+- **S** Generar en nombre de otro → `POST /api/lms/studio/sources/{id}/render` exige `CREATE` sobre `version_recurso`
+  y leer la fuente como quien lo pide; la versión nueva lleva su `autor_id`, tomado del token, nunca de la petición.
+- **T** Cambiar la fuente o el artefacto después de generar → `fuente_recurso` es `appendOnly`; `artefacto_generado`,
+  `appendOnly` y `apiOnly` (solo lo escribe el trabajo). El trabajo comprueba el hash de la fuente contra el que guardó
+  `wasichai-files` y el de cada artefacto contra lo que se almacenó.
+- **R** Artefacto sin procedencia → cada uno guarda su fuente, `hash_fuente`, `sha256`, generador, versión del generador
+  y trabajo (RF-CON-03); la versión que crea sigue el flujo editorial.
+- **I** Lectura de archivos del servidor o de la red desde el documento (`include::`, imágenes, `docinfo`) → modo
+  `secure`, carpeta temporal propia como base, sin `allow-uri-read` (solo se activa por línea de órdenes). El proceso no
+  hereda el entorno del servidor (credenciales): solo `PATH`, `LANG`, `LC_ALL`, `GEM_HOME` y `GEM_PATH`.
+- **D** Documento que no termina o que produce un archivo enorme → tiempo límite por generación (2 min) que mata el
+  proceso, tope de 25 MB de salida y la cola con intentos acotados; nunca en el hilo de WebFlux.
+- **E** Ejecución de código vía extensiones → sin `-r` ni extensiones; la imagen de despliegue trae Asciidoctor (F6) y la
+  aplicación no tiene acceso a Docker. Sin el binario, el trabajo falla con un error claro. El HTML generado se descarga
+  como adjunto con `nosniff`, como cualquier HTML (§4.4).
+
 ## 5. Controles transversales
 
 1. **Validación de entradas**: DTO propios validados en el borde; filtros y orden por lista blanca; errores

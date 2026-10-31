@@ -139,6 +139,27 @@ class RealModelTest(unittest.TestCase):
         for role in ("ESTUDIANTE", "DOCENTE"):
             self.assertFalse(holds(role, "comentario_revision", "READ"), role)
 
+    def test_generated_artifacts_identify_their_exact_source(self):
+        # RF-CON-03, ADR-0018 §7: la fuente y el artefacto no se sobrescriben; el artefacto guarda su versión de recurso, su
+        # fuente, el hash de ambos y el generador con su versión. Solo lo escribe el trabajo de generación (apiOnly)
+        source = next(o for o in MODEL["objects"] if o["name"] == "fuente_recurso")
+        artifact = next(o for o in MODEL["objects"] if o["name"] == "artefacto_generado")
+        self.assertTrue(source.get("appendOnly"))
+        self.assertTrue(artifact.get("appendOnly") and artifact.get("apiOnly"))
+        source_file = next(f for f in source["fields"] if f["name"] == "archivo")
+        self.assertEqual(["text/plain"], source_file["contentTypes"], "la fuente es texto: nunca un binario")
+        fields = {f["name"] for f in artifact["fields"]}
+        self.assertLessEqual({"formato", "archivo", "sha256", "hash_fuente", "generador", "version_generador", "trabajo_id"}, fields)
+        links = {r["fieldName"]: (r["target"], r.get("required", False)) for r in MODEL["relationships"] if r["source"] == "artefacto_generado"}
+        self.assertEqual({"version_recurso": ("version_recurso", True), "fuente_recurso": ("fuente_recurso", True)}, links)
+        self.assertEqual(["HTML", "PDF"], MODEL["enums"]["formato_artefacto"])
+        self.assertTrue(holds("CREADOR", "fuente_recurso", "CREATE"))
+        for role in ROLES["roles"]:
+            for action in ("CREATE", "UPDATE", "DELETE"):
+                self.assertFalse(holds(role["name"], "artefacto_generado", action), f"{role['name']} {action}")
+        for role in ("ESTUDIANTE", "DOCENTE"):
+            self.assertFalse(holds(role, "fuente_recurso", "READ") or holds(role, "artefacto_generado", "READ"), role)
+
     def test_versions_start_as_draft_and_illustrative(self):
         version = next(o for o in MODEL["objects"] if o["name"] == "version_curso")
         fields = {f["name"]: f for f in version["fields"]}
