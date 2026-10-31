@@ -65,10 +65,9 @@ el cuándo, en [`roadmap.md`](roadmap.md).
   (`RecordWriteGuard`); los cambios exigen una versión nueva.
 - **RF-ACA-04** · F2 · implementado ([#42](https://github.com/wasichai/elearning-backend/pull/42), [#64](https://github.com/wasichai/elearning-backend/pull/64)) — Un creador autorizado crea cursos y versiones en borrador; sin el permiso, no.
   _Aceptación:_ prueba con un usuario CREADOR (éxito) y uno ESTUDIANTE (`403`).
-- **RF-ACA-05** · F3 · planificado (PR abierto: [#144](https://github.com/wasichai/elearning-backend/pull/144)) — Duración de 1 a 8 semanas o semestral, y modalidad presencial, virtual síncrona,
+- **RF-ACA-05** · F3 · implementado ([#144](https://github.com/wasichai/elearning-backend/pull/144)) — Duración de 1 a 8 semanas o semestral, y modalidad presencial, virtual síncrona,
   asíncrona o híbrida.
   _Aceptación:_ validación del modelo con casos límite (0 semanas rechazado; 1, 8 y semestral aceptados).
-  _Pendiente de F2 (#103):_ el modelo no tiene modalidad presencial ni duración semestral, y no valida de 1 a 8 semanas.
 - **RF-ACA-06** · F2 · implementado ([#94](https://github.com/wasichai/elearning-backend/pull/94), [#97](https://github.com/wasichai/elearning-backend/pull/97)) — Matrícula (`Enrollment`) de un estudiante en una edición identificable, única
   e idempotente.
   _Aceptación:_ repetir la orden con la misma `Idempotency-Key` no crea un duplicado; matricularse dos veces en la
@@ -118,16 +117,15 @@ el cuándo, en [`roadmap.md`](roadmap.md).
 - **RF-AUL-02** · F3 · implementado ([front#47](https://github.com/wasichai/elearning-frontend/pull/47)) — Curso por unidades con navegación lateral persistente, lectura amplia y siguiente
   actividad evidente.
   _Aceptación:_ prueba E2E que recorre una unidad completa usando solo la acción «siguiente».
-- **RF-AUL-03** · F3 · planificado (PR abiertos: [#146](https://github.com/wasichai/elearning-backend/pull/146), [front#55](https://github.com/wasichai/elearning-frontend/pull/55)) — Lecciones de lectura HTML, PDF, vídeo y presentación, con material descargable.
+- **RF-AUL-03** · F3 · implementado ([#146](https://github.com/wasichai/elearning-backend/pull/146), [front#33](https://github.com/wasichai/elearning-frontend/pull/33), [front#55](https://github.com/wasichai/elearning-frontend/pull/55)) — Lecciones de lectura HTML, PDF, vídeo y presentación, con material descargable.
   _Aceptación:_ prueba E2E que abre una lección de cada tipo de la semilla de demostración.
-  _Pendiente de F2 (#103):_ HTML, PDF y vídeo verificados contra el backend real (front#33); falta una presentación en la demo.
 - **RF-AUL-04** · F3 · implementado ([#100](https://github.com/wasichai/elearning-backend/pull/100), [front#44](https://github.com/wasichai/elearning-frontend/pull/44)) — Estados de progreso definidos: iniciada, completada, aprobada. Una lectura se
   completa por acción explícita; un vídeo, por eventos reales del reproductor con umbral parametrizable. El tiempo
   con la página abierta no cuenta.
   _Aceptación:_ pruebas unitarias de cada transición; abrir una lectura sin marcarla no la completa.
-- **RF-AUL-05** · F3 · planificado (PR abierto: [front#53](https://github.com/wasichai/elearning-frontend/pull/53)) — Progreso persistido en servidor, ligado a la matrícula y a la versión del curso.
+- **RF-AUL-05** · F3 · implementado ([front#53](https://github.com/wasichai/elearning-frontend/pull/53)) — Progreso persistido en servidor, ligado a la matrícula y a la versión del curso.
   _Aceptación:_ prueba E2E: tras cerrar sesión y entrar desde otro navegador, «continuar» lleva a la última lección.
-  _Pendiente de F2 (#103):_ persistencia verificada al recargar (front#33); falta el e2e en otro navegador con «continuar».
+  _Nota:_ «continuar» lleva a la siguiente lección pendiente (`nextLesson` del servidor), que es lo que prueba el e2e.
 - **RF-AUL-06** · F2 · implementado ([#99](https://github.com/wasichai/elearning-backend/pull/99), [#100](https://github.com/wasichai/elearning-backend/pull/100)) — Eventos de aprendizaje registrados de forma idempotente para progreso e informes.
   _Aceptación:_ reenviar un evento con el mismo identificador no altera el progreso.
 - **RF-AUL-07** · F2 · implementado ([#101](https://github.com/wasichai/elearning-backend/pull/101), [front#30](https://github.com/wasichai/elearning-frontend/pull/30)) — Progreso general y por unidad visible al estudiante.
@@ -206,7 +204,9 @@ el cuándo, en [`roadmap.md`](roadmap.md).
 - **RF-ROL-04** · F3 · planificado — Alcance por recurso: el docente gestiona solo sus ediciones asignadas; el
   revisor, solo las versiones asignadas; el estudiante, solo sus matrículas.
   _Aceptación:_ pruebas de autorización negativa cambiando identificadores (RNF-SEG-03).
-  _Pendiente de F2 (#103):_ hecho para el estudiante (sus matrículas, su progreso, su contenido); el docente aún ve todas las ediciones (llega con su espacio, F3).
+  _Pendiente de F2 (#103):_ hecho para el estudiante (sus matrículas, su progreso, su contenido) y para el docente, que solo ve
+  sus ediciones, sus matriculados y sus asignaciones ([#137](https://github.com/wasichai/elearning-backend/pull/137), [#142](https://github.com/wasichai/elearning-backend/pull/142), [#196](https://github.com/wasichai/elearning-backend/pull/196)); falta el
+  revisor por asignación, que llega con el flujo editorial (F4).
 - **RF-ROL-05** · F3 · implementado ([#135](https://github.com/wasichai/elearning-backend/pull/135)) — Nadie se asigna privilegios a sí mismo; la gestión de roles queda auditada.
   _Aceptación:_ prueba de autoasignación rechazada. Si Wasichai ya lo impide (a verificar), la prueba documenta ese
   comportamiento; si no, se añade una regla propia.
@@ -327,9 +327,8 @@ el cuándo, en [`roadmap.md`](roadmap.md).
 - **RF-ADM-01** · F1 · implementado ([#48](https://github.com/wasichai/elearning-backend/pull/48), [#13 web](https://github.com/wasichai/elearning-frontend/pull/13)) — El nombre del producto es configurable (`lms.product-name`, `VITE_APP_NAME`) y
   no aparece en el dominio.
   _Aceptación:_ prueba de arquitectura sin el literal del nombre en el código de dominio.
-- **RF-ADM-02** · F3 · planificado (PR abierto: [#149](https://github.com/wasichai/elearning-backend/pull/149)) — Usuarios, roles y categorías se administran con las pantallas de Wasichai.
+- **RF-ADM-02** · F3 · implementado ([#149](https://github.com/wasichai/elearning-backend/pull/149)) — Usuarios, roles y categorías se administran con las pantallas de Wasichai.
   _Aceptación:_ recorrido manual documentado; no existen pantallas LMS paralelas para ello.
-  _Pendiente de F2 (#103):_ falta el recorrido documentado.
 - **RF-ADM-03** · F3 · planificado — Auditoría de contenidos, calificaciones, roles y publicaciones con la auditoría
   de Wasichai.
   _Aceptación:_ cada operación sensible deja un registro consultable por ADMIN.
@@ -417,7 +416,9 @@ el cuándo, en [`roadmap.md`](roadmap.md).
 - **RNF-UX-06** · F3 · planificado — Experiencias separadas por audiencia (catálogo, aula, docente, estudio,
   revisor, administración), no una pantalla universal.
   _Aceptación:_ un módulo de frontend por experiencia con su navegación filtrada por permisos.
-  _Pendiente de F2 (#103):_ catálogo y aula son módulos propios; falta filtrar la navegación por permisos y los módulos de docente, estudio y revisor.
+  _Pendiente de F2 (#103):_ catálogo, aula y docente son módulos propios, y el menú «Docencia» se muestra por permiso
+  ([front#50](https://github.com/wasichai/elearning-frontend/pull/50)); faltan los módulos de estudio y revisor, y el menú de administración aún se muestra a una cuenta
+  sin permisos (la API responde `403`; ver [#149](https://github.com/wasichai/elearning-backend/pull/149)).
 - **RNF-UX-07** · F2 · implementado ([front#16](https://github.com/wasichai/elearning-frontend/pull/16), [front#28](https://github.com/wasichai/elearning-frontend/pull/28)) — Fechas mostradas en la zona de la edición, indicándola.
   _Aceptación:_ prueba de componente con zona distinta a la del navegador.
 - **RNF-UX-08** · F3 · planificado — Confirmación en acciones destructivas y errores comprensibles a partir de
