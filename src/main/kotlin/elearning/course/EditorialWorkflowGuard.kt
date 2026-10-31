@@ -1,5 +1,6 @@
 package elearning.course
 
+import elearning.common.listAll
 import org.springframework.beans.factory.ObjectProvider
 import org.springframework.core.annotation.Order
 import org.springframework.stereotype.Component
@@ -44,6 +45,13 @@ class EditorialWorkflowGuard(
             LESSON -> curriculum(change, listOfNotNull(change.before.ref(UNIT), change.attributes.ref(UNIT)).mapNotNull { unitVersion(it) })
             RESOURCE_LINK -> resourceLink(change)
             RESOURCE -> resource(change)
+            // las evaluaciones son temario (ADR-0016): se congelan con la versión de su lección
+            EVALUATION -> {
+                curriculum(change, refs(change, LESSON).mapNotNull { lessonVersion(it) })
+                oneEvaluationPerLesson(change)
+            }
+            QUESTION -> curriculum(change, refs(change, EVALUATION).mapNotNull { evaluationVersion(it) })
+            OPTION, RUBRIC -> curriculum(change, refs(change, QUESTION).mapNotNull { questionVersion(it) })
         }
     }
 
@@ -156,6 +164,35 @@ class EditorialWorkflowGuard(
         if (state != PUBLISHED) throw ConflictException("A lesson only uses published resource versions")
     }
 
+    // una lección tiene a lo sumo una evaluación: Wasichai no admite una restricción única de un solo campo de relación
+    private suspend fun oneEvaluationPerLesson(change: RecordWrite) {
+        if (change.kind == RecordChangeKind.DELETED) return
+        val lesson = change.attributes.ref(LESSON) ?: return
+        val others = records.getObject().listAll(EVALUATION, mapOf(LESSON to lesson)).filter { it.id != change.recordId.toString() }
+        if (others.isNotEmpty()) throw ConflictException("This lesson already has an evaluation")
+    }
+
+    private fun refs(
+        change: RecordWrite,
+        field: String,
+    ): List<String> = listOfNotNull(change.before.ref(field), change.attributes.ref(field))
+
+    private suspend fun evaluationVersion(evaluation: String): String? =
+        records
+            .getObject()
+            .get(EVALUATION, UUID.fromString(evaluation))
+            .attributes
+            .ref(LESSON)
+            ?.let { lessonVersion(it) }
+
+    private suspend fun questionVersion(question: String): String? =
+        records
+            .getObject()
+            .get(QUESTION, UUID.fromString(question))
+            .attributes
+            .ref(EVALUATION)
+            ?.let { evaluationVersion(it) }
+
     private suspend fun lessonVersion(lesson: String): String? =
         records
             .getObject()
@@ -176,6 +213,10 @@ class EditorialWorkflowGuard(
         const val UNIT = "unidad"
         const val LESSON = "leccion"
         const val RESOURCE = "recurso"
+        const val EVALUATION = "evaluacion"
+        const val QUESTION = "pregunta"
+        const val OPTION = "opcion"
+        const val RUBRIC = "criterio_rubrica"
         const val RESOURCE_VERSION = "version_recurso"
         const val RESOURCE_LINK = "recurso_leccion"
         const val STATE = "estado"

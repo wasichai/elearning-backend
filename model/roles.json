@@ -106,6 +106,22 @@
         {
           "object": "progreso_leccion",
           "actions": ["READ"]
+        },
+        {
+          "object": "evaluacion",
+          "actions": ["READ"]
+        },
+        {
+          "object": "pregunta",
+          "actions": ["READ"]
+        },
+        {
+          "object": "opcion",
+          "actions": ["READ"]
+        },
+        {
+          "object": "criterio_rubrica",
+          "actions": ["READ"]
         }
       ],
       "fieldPermissions": [
@@ -164,6 +180,22 @@
         {
           "object": "recurso_leccion",
           "actions": ["READ", "CREATE", "UPDATE", "DELETE", "VER_TODAS"]
+        },
+        {
+          "object": "evaluacion",
+          "actions": ["READ", "CREATE", "UPDATE", "DELETE"]
+        },
+        {
+          "object": "pregunta",
+          "actions": ["READ", "CREATE", "UPDATE", "DELETE"]
+        },
+        {
+          "object": "opcion",
+          "actions": ["READ", "CREATE", "UPDATE", "DELETE"]
+        },
+        {
+          "object": "criterio_rubrica",
+          "actions": ["READ", "CREATE", "UPDATE", "DELETE"]
         }
       ],
       "fieldPermissions": [
@@ -222,6 +254,22 @@
         {
           "object": "recurso_leccion",
           "actions": ["READ", "VER_TODAS"]
+        },
+        {
+          "object": "evaluacion",
+          "actions": ["READ"]
+        },
+        {
+          "object": "pregunta",
+          "actions": ["READ"]
+        },
+        {
+          "object": "opcion",
+          "actions": ["READ"]
+        },
+        {
+          "object": "criterio_rubrica",
+          "actions": ["READ"]
         }
       ],
       "fieldPermissions": [
