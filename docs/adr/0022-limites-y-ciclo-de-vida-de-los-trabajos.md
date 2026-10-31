@@ -63,7 +63,9 @@ que la cola `lms.trabajo` y sus dos usuarios, el importador y la generación, cu
 ## Consecuencias
 
 - Pedir dos veces lo mismo mientras espera responde `202` con el mismo trabajo; el cliente no tiene que evitarlo.
-- Quitar el rol a alguien detiene sus trabajos pendientes en cuanto se ejecutan, con un error que lo dice.
+- Quitar el rol a alguien, o deshabilitar su cuenta, detiene sus trabajos pendientes en cuanto se ejecutan, con un error que
+  lo dice. Importar y generar son acciones de personas: un trabajo pedido con una cuenta de servicio (ADR-043 de Wasichai),
+  que no es una persona habilitada, falla al ejecutarse.
 - El HTML generado puede perder lo que el autor metió a mano con `++++` o `pass:[]` fuera de la lista blanca.
 - Un trabajo terminado se consulta durante `lms.jobs.retention`; después es `404`, como uno que no existe.
 - Se implementa en un PR por hallazgo, en este orden: M2, L1, L7, L2, L3 y L5.
