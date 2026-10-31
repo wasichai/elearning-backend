@@ -5,6 +5,7 @@ Wasichai está verificado (`wasichai/wasichai@a9ad74d56338`, ver
 [`docs/research/reference-repositories.md`](../research/reference-repositories.md)); lo propio está **planificado**.
 La instalación paso a paso está en [`docs/development/getting-started.md`](../development/getting-started.md); la
 gestión de secretos, en [`docs/security/README.md`](../security/README.md#8-gestión-de-secretos).
+La administración de usuarios, roles y categorías, en [`administracion.md`](administracion.md).
 
 ## Puertos locales
 
