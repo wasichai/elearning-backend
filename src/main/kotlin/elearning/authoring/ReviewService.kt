@@ -38,6 +38,7 @@ class ReviewService(
     private val metadata: MetadataService,
     private val reader: StudioReader,
     private val decisions: DecisionStore,
+    private val differ: VersionDiffer,
     private val transactions: TransactionalOperator,
 ) {
     // en revisión y a mi cargo, la que más espera primero
@@ -51,6 +52,8 @@ class ReviewService(
     }
 
     suspend fun detail(id: UUID): StudioVersionDetail = reader.detailOf(reviewable(id))
+
+    suspend fun diff(id: UUID): VersionDiff = differ.againstPrevious(reviewable(id))
 
     suspend fun comment(
         id: UUID,
