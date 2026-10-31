@@ -71,7 +71,8 @@ class GradingService(
                 val reason = request.reason?.trim()?.takeIf { it.isNotEmpty() }
                 val current = result.questions.first { it.questionId == question.id }
                 val graded = attempts.grades(attempt.id).any { it.questionId == question.id }
-                if (graded && reason == null) throw ConflictException("Cambiar una nota ya puesta exige un motivo")
+                // también el cero automático de una abierta sin responder: ya es una nota (revisión de la Fase 3, L8)
+                if ((graded || current.points != null) && reason == null) throw ConflictException("Cambiar una nota ya puesta exige un motivo")
                 val now = Instant.now(clock)
                 val comment = request.comment?.trim()?.takeIf { it.isNotEmpty() }
                 attempts.addGrade(user.organizationId, attempt.id, UUID.fromString(question.id), points, comment, reason, user.userId, now)
