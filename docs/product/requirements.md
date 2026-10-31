@@ -115,19 +115,17 @@ el cuándo, en [`roadmap.md`](roadmap.md).
 
 - **RF-AUL-01** · F2 · implementado ([#101](https://github.com/wasichai/elearning-backend/pull/101), [front#28](https://github.com/wasichai/elearning-frontend/pull/28)) — Panel con cursos matriculados y próximos.
   _Aceptación:_ prueba de UI y de integración: un estudiante ve solo sus matrículas.
-- **RF-AUL-02** · F3 · planificado — Curso por unidades con navegación lateral persistente, lectura amplia y siguiente
+- **RF-AUL-02** · F3 · implementado ([front#47](https://github.com/wasichai/elearning-frontend/pull/47)) — Curso por unidades con navegación lateral persistente, lectura amplia y siguiente
   actividad evidente.
   _Aceptación:_ prueba E2E que recorre una unidad completa usando solo la acción «siguiente».
-  _Pendiente de F2 (#103):_ la navegación existe (front#29); falta el e2e que recorre una unidad entera solo con «siguiente».
-- **RF-AUL-03** · F3 · planificado — Lecciones de lectura HTML, PDF, vídeo y presentación, con material descargable.
+- **RF-AUL-03** · F3 · planificado (PR abiertos: [#146](https://github.com/wasichai/elearning-backend/pull/146), [front#55](https://github.com/wasichai/elearning-frontend/pull/55)) — Lecciones de lectura HTML, PDF, vídeo y presentación, con material descargable.
   _Aceptación:_ prueba E2E que abre una lección de cada tipo de la semilla de demostración.
   _Pendiente de F2 (#103):_ HTML, PDF y vídeo verificados contra el backend real (front#33); falta una presentación en la demo.
-- **RF-AUL-04** · F3 · planificado — Estados de progreso definidos: iniciada, completada, aprobada. Una lectura se
+- **RF-AUL-04** · F3 · implementado ([#100](https://github.com/wasichai/elearning-backend/pull/100), [front#44](https://github.com/wasichai/elearning-frontend/pull/44)) — Estados de progreso definidos: iniciada, completada, aprobada. Una lectura se
   completa por acción explícita; un vídeo, por eventos reales del reproductor con umbral parametrizable. El tiempo
   con la página abierta no cuenta.
   _Aceptación:_ pruebas unitarias de cada transición; abrir una lectura sin marcarla no la completa.
-  _Pendiente de F2 (#103):_ estados y evidencias por tipo verificados (#100); falta el umbral parametrizable del vídeo (hoy, fin de reproducción).
-- **RF-AUL-05** · F3 · planificado — Progreso persistido en servidor, ligado a la matrícula y a la versión del curso.
+- **RF-AUL-05** · F3 · planificado (PR abierto: [front#53](https://github.com/wasichai/elearning-frontend/pull/53)) — Progreso persistido en servidor, ligado a la matrícula y a la versión del curso.
   _Aceptación:_ prueba E2E: tras cerrar sesión y entrar desde otro navegador, «continuar» lleva a la última lección.
   _Pendiente de F2 (#103):_ persistencia verificada al recargar (front#33); falta el e2e en otro navegador con «continuar».
 - **RF-AUL-06** · F2 · implementado ([#99](https://github.com/wasichai/elearning-backend/pull/99), [#100](https://github.com/wasichai/elearning-backend/pull/100)) — Eventos de aprendizaje registrados de forma idempotente para progreso e informes.
@@ -329,7 +327,7 @@ el cuándo, en [`roadmap.md`](roadmap.md).
 - **RF-ADM-01** · F1 · implementado ([#48](https://github.com/wasichai/elearning-backend/pull/48), [#13 web](https://github.com/wasichai/elearning-frontend/pull/13)) — El nombre del producto es configurable (`lms.product-name`, `VITE_APP_NAME`) y
   no aparece en el dominio.
   _Aceptación:_ prueba de arquitectura sin el literal del nombre en el código de dominio.
-- **RF-ADM-02** · F3 · planificado — Usuarios, roles y categorías se administran con las pantallas de Wasichai.
+- **RF-ADM-02** · F3 · planificado (PR abierto: [#149](https://github.com/wasichai/elearning-backend/pull/149)) — Usuarios, roles y categorías se administran con las pantallas de Wasichai.
   _Aceptación:_ recorrido manual documentado; no existen pantallas LMS paralelas para ello.
   _Pendiente de F2 (#103):_ falta el recorrido documentado.
 - **RF-ADM-03** · F3 · planificado — Auditoría de contenidos, calificaciones, roles y publicaciones con la auditoría
