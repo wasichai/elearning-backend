@@ -42,3 +42,16 @@ lms:
   catalog:
     # cada cuánto se refresca la proyección pública (ADR-0011): un cambio tarda como mucho esto en verse
     refresh: ${LMS_CATALOG_REFRESH:30s}
+  # cola persistente de trabajos (ADR-0018 §4): lo largo o bloqueante corre aquí, fuera del hilo de WebFlux
+  jobs:
+    # false: esta réplica encola pero no ejecuta
+    scheduling: ${LMS_JOBS_SCHEDULING:true}
+    poll: ${LMS_JOBS_POLL:5s}
+    # trabajos a la vez por réplica
+    parallelism: ${LMS_JOBS_PARALLELISM:2}
+    max-attempts: ${LMS_JOBS_MAX_ATTEMPTS:3}
+    # espera antes del reintento n: backoff × n
+    backoff: ${LMS_JOBS_BACKOFF:30s}
+    timeout: ${LMS_JOBS_TIMEOUT:10m}
+    # un trabajo en curso con un reclamo más viejo que esto se da por perdido y se vuelve a reclamar; mayor que timeout
+    lease: ${LMS_JOBS_LEASE:15m}
