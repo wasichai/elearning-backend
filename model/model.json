@@ -258,6 +258,21 @@
           "name": "publicada_en",
           "label": "Publicada en",
           "type": "DATETIME"
+        },
+        {
+          "name": "regla_lecciones",
+          "label": "Finalización: exige todas las lecciones completables",
+          "type": "BOOLEAN"
+        },
+        {
+          "name": "regla_evaluaciones",
+          "label": "Finalización: exige aprobar todas las evaluaciones",
+          "type": "BOOLEAN"
+        },
+        {
+          "name": "asistencia_minima",
+          "label": "Finalización: asistencia mínima (%)",
+          "type": "INTEGER"
         }
       ],
       "uniqueConstraints": [["curso", "numero"]]
