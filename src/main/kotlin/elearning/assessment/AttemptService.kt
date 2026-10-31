@@ -105,6 +105,7 @@ class AttemptService(
         val outcome =
             locked(id) { attempt ->
                 if (attempt.status != OPEN) throw ConflictException("Este intento ya se envió")
+                records.requireActiveEnrollment(attempt.enrollmentId)
                 action(attempt)
             }
         if (outcome.expired) throw ConflictException("El plazo de este intento venció: se calificó con lo que tenías guardado")
@@ -192,5 +193,13 @@ class AttemptService(
         const val MAX_TEXT = 20_000
         val SINGLE_CHOICE = setOf("SINGLE", "TRUE_FALSE")
         val WRITTEN = setOf("SHORT", "OPEN")
+    }
+}
+
+// guardar, enviar y subir a un intento abierto solo con la matrícula activa: una retirada o finalizada ya no escribe
+// (revisión de la Fase 3, L1). empezar ya lo comprobaba
+internal suspend fun RecordService.requireActiveEnrollment(enrollment: UUID) {
+    if (get(AttemptService.ENROLLMENT, enrollment).attributes[AttemptService.STATE]?.toString() != AttemptService.ACTIVE) {
+        throw ConflictException("La matrícula no está activa")
     }
 }

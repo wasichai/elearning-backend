@@ -1,11 +1,14 @@
 package elearning.learning
 
+import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.springframework.http.HttpStatus
 import tools.jackson.databind.JsonNode
+import wasichai.core.data.RecordRequest
+import java.util.UUID
 
 // las entregas de archivo (ADR-0016 §3, RF-LAB-02): de su estudiante y de su intento abierto, fijas al enviarlo, y solo las
 // bajan él y el docente de la edición
@@ -79,6 +82,23 @@ class SubmissionApiTest : ClassroomApiTestSupport() {
 
         assertFalse(upload(s.student, created["uploadUrl"].asString(), "b.txt", "b".toByteArray()).is2xxSuccessful)
         assertEquals(HttpStatus.CONFLICT, s.create().first)
+    }
+
+    // revisión de la Fase 3 (L1): una matrícula retirada ya no escribe en su intento abierto, por ninguna vía
+    @Test
+    fun `a withdrawn enrollment no longer answers, uploads or submits`() {
+        val s = Scene()
+        val created = s.create().second!!
+        runBlocking {
+            records.asPlatform(ORG) {
+                records.patch("matricula", UUID.fromString(s.enrollment), RecordRequest(mapOf("estado" to "RETIRADA")), null, null)
+            }
+        }
+
+        assertEquals(HttpStatus.CONFLICT, s.answer(null).first)
+        assertFalse(upload(s.student, created["uploadUrl"].asString(), "a.txt", "a".toByteArray()).is2xxSuccessful)
+        assertEquals(HttpStatus.CONFLICT, s.create().first)
+        assertEquals(HttpStatus.CONFLICT, call(s.student, "/api/lms/classroom/attempts/${s.attempt}/submit", emptyMap()).first)
     }
 
     @Test
