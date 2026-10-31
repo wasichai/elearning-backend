@@ -255,6 +255,8 @@ legible. Lo mismo vale para sus sesiones y su finalización.
   `/api/objects/version_recurso/records/<id>/files/archivo`: la descarga de `wasichai-files`, con la misma sesión y el
   mismo alcance que el registro. Un
   `HTML` se muestra en un `iframe` con `sandbox` sin `allow-scripts`; `PDF` se descarga; `VIDEO` se reproduce.
+- Subir a una versión de recurso un archivo cuyo tipo detectado no admite el `tipo` del recurso es `400` en `archivo`
+  (lista en [seguridad §4.4](../security/README.md#44-archivos-f2-en-adelante), RNF-SEG-07).
 
 ### POST /api/lms/classroom/enrollments/{id}/lessons/{lessonId}/events
 
@@ -372,7 +374,9 @@ estudiante como para el docente. `deadline` es `null` sin tiempo límite. En `re
 En `assessment.best`, `percent` y `passed` son `null` mientras `pending`.
 
 `Submission`: `{ "id", "file": null | { "name", "contentType", "size", "url" }, "uploadUrl" }`. El archivo se sube con
-`POST uploadUrl` (multipart, parte `file`, máx. 25 MB) y la misma sesión; queda fijo al enviar el intento.
+`POST uploadUrl` (multipart, parte `file`, máx. 25 MB) y la misma sesión; queda fijo al enviar el intento. Solo
+admite PDF, zip, texto (`text/plain`, `text/csv`), imágenes (PNG, JPEG, GIF, WebP) y ofimática (OOXML, ODF) según el
+tipo que detecta `wasichai-files`; lo demás es `400` en `archivo` (RNF-SEG-07).
 
 ### Sesiones
 

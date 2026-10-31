@@ -69,6 +69,7 @@ class ResourcesApiTest : LmsApiTest() {
         version: String,
         name: String,
         bytes: ByteArray,
+        type: MediaType = MediaType.TEXT_HTML,
     ): HttpStatus {
         val parts = MultipartBodyBuilder()
         parts
@@ -77,7 +78,7 @@ class ResourcesApiTest : LmsApiTest() {
                 object : ByteArrayResource(bytes) {
                     override fun getFilename() = name
                 },
-            ).contentType(MediaType.TEXT_HTML)
+            ).contentType(type)
         return HttpStatus.valueOf(
             client
                 .post()
@@ -128,6 +129,53 @@ class ResourcesApiTest : LmsApiTest() {
         val draft = create(creator, "recurso", mapOf("titulo" to "En borrador", "tipo" to "HTML", "idioma" to "es"))
         create(creator, "version_recurso", mapOf("recurso" to draft, "numero" to 1, "autor_id" to me(creator)))
         assertEquals(HttpStatus.OK, patch(creator, "recurso", draft, mapOf("tipo" to "PDF")))
+    }
+
+    // RNF-SEG-07 (ADR-0018 §8): el archivo es de un tipo que admite el tipo del recurso, sobre lo que wasichai-files detecta
+    // por los bytes; ni la extensión ni el tipo declarado lo cuelan
+    @Test
+    fun `a resource version takes only the file types its resource type admits`() {
+        fun draftVersion(type: String): String {
+            val resource = create(creator, "recurso", mapOf("titulo" to "Tipos $type", "tipo" to type, "idioma" to "es"))
+            return create(creator, "version_recurso", mapOf("recurso" to resource, "numero" to 1, "autor_id" to me(creator)))
+        }
+
+        val html = "<h1>Hola</h1>".toByteArray()
+
+        val pdf = draftVersion("PDF")
+        assertEquals(HttpStatus.BAD_REQUEST, upload(creator, pdf, "falso.pdf", html, MediaType.APPLICATION_PDF))
+        assertEquals(HttpStatus.BAD_REQUEST, upload(creator, pdf, "imagen.pdf", PNG, MediaType.APPLICATION_PDF))
+        assertEquals(HttpStatus.OK, upload(creator, pdf, "guia.pdf", PDF, MediaType.APPLICATION_PDF))
+        assertEquals("application/pdf", get("/api/objects/version_recurso/records/$pdf", creator)["attributes"]["archivo"]["contentType"].asString())
+
+        val image = draftVersion("IMAGEN")
+        assertEquals(HttpStatus.BAD_REQUEST, upload(creator, image, "pagina.png", html, MediaType.IMAGE_PNG))
+        assertEquals(HttpStatus.BAD_REQUEST, upload(creator, image, "guia.pdf", PDF, MediaType.APPLICATION_PDF))
+        assertEquals(HttpStatus.OK, upload(creator, image, "captura.png", PNG, MediaType.IMAGE_PNG))
+
+        val video = draftVersion("VIDEO")
+        assertEquals(HttpStatus.BAD_REQUEST, upload(creator, video, "captura.png", PNG, MediaType.IMAGE_PNG))
+        assertEquals(HttpStatus.OK, upload(creator, video, "clase.webm", byteArrayOf(0x1A, 0x45, 0xDF.toByte(), 0xA3.toByte(), 1, 2, 3)))
+
+        assertEquals(HttpStatus.BAD_REQUEST, upload(creator, draftVersion("HTML"), "guia.pdf", PDF, MediaType.APPLICATION_PDF))
+        // un SVG llega como octet-stream (puede llevar script): un diagrama no lo admite, y lo rechazado no queda
+        val diagram = draftVersion("DIAGRAMA")
+        val svg = "<svg><script>alert(1)</script></svg>".toByteArray()
+        assertEquals(HttpStatus.BAD_REQUEST, upload(creator, diagram, "dibujo.svg", svg, MediaType("image", "svg+xml")))
+        val file = get("/api/objects/version_recurso/records/$diagram", creator)["attributes"].path("archivo")
+        assertTrue(file.isNull || file.isMissingNode, file.toString())
+    }
+
+    // cambiar el tipo de un recurso en borrador no deja un archivo que su nuevo tipo no admite
+    @Test
+    fun `a resource type does not change to one its files do not fit`() {
+        val resource = create(creator, "recurso", mapOf("titulo" to "Cambia de tipo", "tipo" to "HTML", "idioma" to "es"))
+        val version = create(creator, "version_recurso", mapOf("recurso" to resource, "numero" to 1, "autor_id" to me(creator)))
+        assertEquals(HttpStatus.OK, upload(creator, version, "lectura.html", "<h1>Lectura</h1>".toByteArray()))
+
+        assertEquals(HttpStatus.BAD_REQUEST, patch(creator, "recurso", resource, mapOf("tipo" to "PDF")))
+        assertEquals("HTML", get("/api/objects/recurso/records/$resource", creator)["attributes"]["tipo"].asString())
+        assertEquals(HttpStatus.OK, patch(creator, "recurso", resource, mapOf("tipo" to "VIDEO")))
     }
 
     // RF-CON-01: un recurso es material reutilizable con su descripción; una misma versión publicada sirve a lecciones de
@@ -281,5 +329,7 @@ class ResourcesApiTest : LmsApiTest() {
 
     companion object {
         val ORG: UUID = UUID.fromString("00000000-0000-0000-0000-000000000001")
+        private val PDF = "%PDF-1.4\n%prueba\n".toByteArray()
+        private val PNG = byteArrayOf(0x89.toByte(), 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0, 0, 0, 0x0D)
     }
 }
