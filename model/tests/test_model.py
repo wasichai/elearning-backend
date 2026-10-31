@@ -111,7 +111,7 @@ class RealModelTest(unittest.TestCase):
     def test_students_only_read_except_enrolling_and_their_progress(self):
         # matricula y progreso_leccion son apiOnly: esas escrituras solo pasan por los comandos del aula
         student = next(r for r in ROLES["roles"] if r["name"] == "ESTUDIANTE")
-        writes = {"matricula": {"READ", "CREATE"}, "progreso_leccion": {"READ", "CREATE", "UPDATE"}, "entrega": {"READ", "CREATE", "UPDATE"}}
+        writes = {"matricula": {"READ", "CREATE", "UPDATE"}, "progreso_leccion": {"READ", "CREATE", "UPDATE"}, "entrega": {"READ", "CREATE", "UPDATE"}}
         for grant in student["permissions"]:
             expected = writes.get(grant["object"], {"READ"})
             self.assertEqual(expected, set(grant["actions"]), grant["object"])
@@ -120,7 +120,9 @@ class RealModelTest(unittest.TestCase):
         matricula = next(o for o in MODEL["objects"] if o["name"] == "matricula")
         self.assertTrue(matricula["apiOnly"])
         self.assertFalse(holds("ESTUDIANTE", "matricula", "VER_TODAS"))
-        for role in ("ESTUDIANTE", "DOCENTE", "CREADOR", "REVISOR"):
+        # ESTUDIANTE tiene UPDATE solo para que su comando de certificado la finalice: apiOnly cierra la API genérica
+        self.assertFalse(holds("ESTUDIANTE", "matricula", "DELETE"))
+        for role in ("DOCENTE", "CREADOR", "REVISOR"):
             self.assertFalse(holds(role, "matricula", "UPDATE") or holds(role, "matricula", "DELETE"), role)
 
     def test_versions_start_as_draft_and_illustrative(self):

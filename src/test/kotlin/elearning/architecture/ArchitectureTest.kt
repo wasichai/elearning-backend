@@ -64,7 +64,7 @@ class ArchitectureTest {
                 "course" to setOf("common", "workload"),
                 "catalog" to setOf("common", "course", "workload"),
                 "enrollment" to setOf("common", "course"),
-                "learning" to setOf("common", "enrollment", "course"),
+                "learning" to setOf("common", "enrollment", "course", "workload"),
                 "assessment" to setOf("common", "learning", "enrollment"),
                 "authoring" to setOf("common", "course"),
                 "ai" to setOf("common", "authoring"),

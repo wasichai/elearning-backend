@@ -42,6 +42,7 @@ data class EnrollmentView(
     val offering: OfferingRef,
     val progress: ProgressSummary,
     val nextLesson: NextLesson?,
+    val certificateCode: String?,
 )
 
 data class ClassroomView(
