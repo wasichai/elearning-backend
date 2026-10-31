@@ -125,6 +125,15 @@ class TeacherGradingApiTest : ClassroomApiTestSupport() {
     }
 
     @Test
+    fun `points have at most two decimals`() {
+        val s = Scene()
+        s.answerOpenAndSubmit()
+
+        assertEquals(HttpStatus.BAD_REQUEST, s.grade(s.teacher, 1.995).first)
+        assertEquals(HttpStatus.OK, s.grade(s.teacher, 1.5).first)
+    }
+
+    @Test
     fun `only the teacher of the offering reaches its attempts`() {
         val s = Scene()
         s.answerOpenAndSubmit()
@@ -161,6 +170,35 @@ class TeacherGradingApiTest : ClassroomApiTestSupport() {
         ok(put(both, "/api/lms/classroom/attempts/$attempt/answers", mapOf("answers" to listOf(mapOf("questionId" to open, "text" to "Yo")))))
         ok(call(both, "/api/lms/classroom/attempts/$attempt/submit", emptyMap()))
 
-        assertEquals(HttpStatus.FORBIDDEN, call(both, "/api/lms/teaching/attempts/$attempt/grades", mapOf("questionId" to open, "points" to 3)).first)
+        assertEquals(HttpStatus.NOT_FOUND, call(both, "/api/lms/teaching/attempts/$attempt/grades", mapOf("questionId" to open, "points" to 3)).first)
+        // tampoco ve por aquí las soluciones de su propio intento, ni se lo encuentra en la cola
+        assertEquals(HttpStatus.NOT_FOUND, call(both, "/api/lms/teaching/attempts/$attempt").first)
+        assertEquals(0, ok(call(both, "/api/lms/teaching/offerings/${course.offering}/attempts")).size())
+        // ni se marca asistencia a sí mismo
+        val tomorrow =
+            java.time.LocalDate
+                .now(java.time.ZoneId.of("America/Lima"))
+                .plusDays(1)
+                .toString()
+        val session =
+            call(
+                both,
+                "/api/lms/teaching/offerings/${course.offering}/sessions",
+                mapOf(
+                    "title" to "S",
+                    "type" to "TEORIA",
+                    "modality" to "VIRTUAL",
+                    "durationMinutes" to 60,
+                    "recurrence" to mapOf("pattern" to "ONCE", "startDate" to tomorrow, "endDate" to tomorrow, "localTime" to "08:00"),
+                ),
+            ).second!![0]["id"].asString()
+        assertEquals(
+            HttpStatus.FORBIDDEN,
+            put(
+                both,
+                "/api/lms/teaching/sessions/$session/attendance",
+                mapOf("records" to listOf(mapOf("enrollmentId" to enrollment, "status" to "PRESENTE"))),
+            ).first,
+        )
     }
 }

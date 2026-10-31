@@ -122,6 +122,51 @@ class AttendanceApiTest : ClassroomApiTestSupport() {
     }
 
     @Test
+    fun `a cancelled session takes no attendance and a duplicated student is refused`() {
+        val s = Scene()
+        val twice = listOf(mapOf("enrollmentId" to s.enrollment, "status" to "PRESENTE"), mapOf("enrollmentId" to s.enrollment, "status" to "AUSENTE"))
+        assertEquals(HttpStatus.BAD_REQUEST, put(s.teacher, "/api/lms/teaching/sessions/${s.session}/attendance", mapOf("records" to twice)).first)
+
+        ok(call(s.teacher, "/api/lms/teaching/sessions/${s.session}/cancel", mapOf("reason" to "Sin aula")))
+
+        assertEquals(HttpStatus.CONFLICT, s.mark(s.teacher, "PRESENTE").first)
+    }
+
+    @Test
+    fun `a session of another offering of the same version does not change how a lesson completes`() {
+        val s = Scene(lesson = { it.reading })
+        assertEquals(HttpStatus.CONFLICT, event(s.student, s.enrollment, s.course.reading, "MARKED_COMPLETE").first)
+        val version = get("/api/objects/edicion_curso/records?codigo=${s.course.offering}", admin)["content"][0]["attributes"]["version_curso"].asString()
+        val other = uniqueName("OTRA-").uppercase()
+        call(
+            admin,
+            "/api/objects/edicion_curso/records",
+            mapOf(
+                "attributes" to
+                    mapOf(
+                        "codigo" to other,
+                        "version_curso" to version,
+                        "estado" to "INSCRIPCION_ABIERTA",
+                        "fecha_inicio" to today.toString(),
+                        "fecha_fin" to today.plusDays(30).toString(),
+                        "zona_horaria" to "America/Lima",
+                        "inscripcion_desde" to today.minusDays(1).toString(),
+                        "inscripcion_hasta" to today.plusDays(5).toString(),
+                    ),
+            ),
+        )
+        // la misma persona en las dos ediciones: la sesión de la otra se le ve, y no debe cambiar esta
+        val enrollment = ok2(call(s.student, "/api/lms/enrollments", mapOf("offering" to other)))["id"].asString()
+
+        assertEquals(HttpStatus.OK, event(s.student, enrollment, s.course.reading, "MARKED_COMPLETE").first)
+    }
+
+    private fun ok2(result: Pair<HttpStatus, JsonNode?>): JsonNode {
+        assertTrue(result.first.is2xxSuccessful, result.second.toString())
+        return result.second!!
+    }
+
+    @Test
     fun `only the teacher of the offering takes attendance, and only of its students`() {
         val s = Scene()
         val outsider = newTeacher().also { assign(it, course()) }

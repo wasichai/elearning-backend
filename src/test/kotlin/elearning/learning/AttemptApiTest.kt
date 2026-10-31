@@ -27,6 +27,12 @@ class AttemptApiTest : ClassroomApiTestSupport() {
     private fun started(
         token: String,
         enrollment: String,
+        course: Course,
+    ) = started(token, enrollment, course.assessment)
+
+    private fun started(
+        token: String,
+        enrollment: String,
         lesson: String,
     ): JsonNode {
         val (status, body) = start(token, enrollment, lesson)
@@ -130,10 +136,10 @@ class AttemptApiTest : ClassroomApiTestSupport() {
         assertEquals(10.0, done["result"]["maxScore"].asDouble())
         assertTrue(done["result"]["pending"].asBoolean())
         assertTrue(done["result"]["percent"].isNull)
-        // la evaluación muestra las soluciones al enviar
         val single = done["result"]["questions"].values().single { it["questionId"].asString() == course.questions.getValue("SINGLE") }
         assertTrue(single["correct"].asBoolean())
-        assertEquals(1, single["solution"]["optionIds"].size())
+        // le queda otro intento y aún no aprobó: las soluciones de este le servirían para aprobar el siguiente
+        assertTrue(single["solution"].isNull, single.toString())
         // enviado, ya no cambia
         assertEquals(HttpStatus.CONFLICT, save(student, id, rightAnswers(attempt, course)).first)
         assertEquals(HttpStatus.CONFLICT, submit(student, id).first)
@@ -155,6 +161,27 @@ class AttemptApiTest : ClassroomApiTestSupport() {
     }
 
     @Test
+    fun `the solutions show once the student passed or ran out of attempts`() {
+        val course = course(withEvaluation = true)
+        val failing = newStudent()
+        val failingEnrollment = enroll(failing, course)["id"].asString()
+        val first = started(failing, failingEnrollment, course)
+        val singleId = course.questions.getValue("SINGLE")
+
+        fun solutionOf(attempt: JsonNode) = attempt["result"]["questions"].values().single { it["questionId"].asString() == singleId }["solution"]
+
+        assertTrue(solutionOf(ok(submit(failing, first["id"].asString()))).isNull, "falló y le queda un intento")
+        val second = started(failing, failingEnrollment, course)
+        assertFalse(solutionOf(ok(submit(failing, second["id"].asString()))).isNull, "agotó sus intentos")
+        assertFalse(solutionOf(ok(call(failing, "/api/lms/classroom/attempts/${first["id"].asString()}"))).isNull, "también en el anterior")
+
+        val passing = newStudent()
+        val attempt = started(passing, enroll(passing, course)["id"].asString(), course)
+        save(passing, attempt["id"].asString(), rightAnswers(attempt, course))
+        assertFalse(solutionOf(ok(submit(passing, attempt["id"].asString()))).isNull, "aprobó")
+    }
+
+    @Test
     fun `attempts run out`() {
         val course = course(withEvaluation = true)
         val student = newStudent()
@@ -167,6 +194,41 @@ class AttemptApiTest : ClassroomApiTestSupport() {
         }
 
         assertEquals(HttpStatus.CONFLICT, start(student, enrollment, course.assessment).first)
+    }
+
+    @Test
+    fun `starting after the last attempt expired closes it and explains there are none left`() {
+        val course = course(withEvaluation = true)
+        val student = newStudent()
+        val enrollment = enroll(student, course)["id"].asString()
+        ok(submit(student, started(student, enrollment, course)["id"].asString()))
+        val last = started(student, enrollment, course)["id"].asString()
+        runBlocking {
+            db
+                .sql(
+                    "UPDATE lms.intento SET vence_en = now() - interval '1 minute' WHERE id = :id",
+                ).bind("id", UUID.fromString(last))
+                .fetch()
+                .rowsUpdated()
+                .awaitSingle()
+        }
+
+        assertEquals(HttpStatus.CONFLICT, start(student, enrollment, course.assessment).first)
+
+        val status =
+            runBlocking {
+                db
+                    .sql("SELECT estado FROM lms.intento WHERE id = :id")
+                    .bind("id", UUID.fromString(last))
+                    .map {
+                        row,
+                        _,
+                        ->
+                        row.get("estado", String::class.java)!!
+                    }.one()
+                    .awaitSingle()
+            }
+        assertEquals("GRADED", status, "el cierre no se pierde con el 409")
     }
 
     @Test

@@ -360,8 +360,9 @@ intento ya enviado, lección sin evaluación o matrícula no activa. `400`: resp
 }
 ```
 
-`percent` y `passed` son `null` mientras `pending`. `solution` (`{ "optionIds": [...], "acceptedAnswers": [...] }`) solo
-si la evaluación muestra las soluciones al enviar (`showSolutions: "ON_SUBMIT"`); con `NEVER`, siempre `null`.
+`percent` y `passed` son `null` mientras `pending`. `solution` (`{ "optionIds": [...], "acceptedAnswers": [...] }`) solo si la
+evaluación muestra las soluciones al enviar (`mostrar_soluciones: AL_ENVIAR`) **y la persona ya aprobó o agotó sus intentos**:
+antes servirían para aprobar el siguiente. Con `NUNCA`, siempre `null`.
 
 En `answers[]`, `submission` es `null` o `{ "id", "file": null | { "name", "contentType", "size", "url" } }`, tanto para el
 estudiante como para el docente. `deadline` es `null` sin tiempo límite. En `result`, una pregunta pendiente trae `points` y
@@ -451,7 +452,8 @@ registro de otra edición → `404`. Nadie lo usa por su rol: lo decide la asign
 "pendingQuestions": 1 }`.
 - La cola admite `?status=GRADED` para encontrar un intento ya corregido (por defecto `SUBMITTED`). El `Attempt` del docente
   añade `enrollmentId`, `email` e `history` (`[{ questionId, points, comment, reason, authorId, at }]`).
-- Solo se califican a mano las preguntas `OPEN` y `FILE` (`400` en otra). Nadie califica su propio intento (`403`).
+- Solo se califican a mano las preguntas `OPEN` y `FILE` (`400` en otra), con dos decimales como máximo. El intento propio no
+  existe para quien lo hizo (`404`), aunque sea docente de esa edición, y tampoco se marca su propia asistencia (`403`).
 - Calificar: `points` entre 0 y los de la pregunta (`400` si no); `reason` obligatorio al **cambiar** una nota ya puesta
   (`409` sin él). Cada calificación queda en un historial que no se borra; al no quedar pendientes, el intento pasa a
   `GRADED` con su `percent` y `passed`.

@@ -71,6 +71,8 @@ class RealModelTest(unittest.TestCase):
         # llevan las soluciones: el estudiante responde sobre la instantánea de su intento (ADR-0016)
         for obj in ("evaluacion", "pregunta", "opcion", "criterio_rubrica"):
             self.assertFalse(holds("ESTUDIANTE", obj, "READ"), obj)
+            # el docente corrige con la instantánea del intento; las claves de todos los cursos no le hacen falta
+            self.assertFalse(holds("DOCENTE", obj, "READ"), obj)
             self.assertTrue(holds("CREADOR", obj, "CREATE"), obj)
 
     def test_course_versions_have_every_modality_and_a_kind_of_duration(self):

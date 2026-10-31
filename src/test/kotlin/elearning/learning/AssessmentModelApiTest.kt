@@ -93,6 +93,16 @@ class AssessmentModelApiTest : ClassroomApiTestSupport() {
     }
 
     @Test
+    fun `teachers do not read the answer keys either, the snapshot is enough to grade`() {
+        val course = course(withEvaluation = true)
+        val teacher = newTeacher().also { assign(it, course) }
+
+        for (obj in listOf("evaluacion", "pregunta", "opcion", "criterio_rubrica")) {
+            assertEquals(HttpStatus.FORBIDDEN, call(teacher, "/api/objects/$obj/records").first, obj)
+        }
+    }
+
+    @Test
     fun `students never read evaluations, questions, options or rubrics, not even enrolled`() {
         val course = course(withEvaluation = true)
         val student = newStudent()

@@ -52,6 +52,10 @@ class AttemptService(
         if (unit == null || unit.attributes.ref(VERSION) != enrollment.attributes.ref(VERSION)) throw NotFoundException(NOT_FOUND)
         val offering = UUID.fromString(enrollment.attributes.ref(OFFERING)!!)
 
+        // un intento vencido se cierra aparte: el 409 de «sin intentos» no debe deshacer su cierre
+        transactions.executeAndAwait {
+            attempts.open(enrollmentId, lessonId)?.let { if (expired(it, Instant.now(clock))) close(it, Instant.now(clock)) }
+        }
         return transactions.executeAndAwait {
             db
                 .sql("SELECT pg_advisory_xact_lock(hashtextextended(:key, 0))")
@@ -69,6 +73,13 @@ class AttemptService(
             val deadline = snapshot.timeLimitMinutes?.let { now.plus(it.toLong(), ChronoUnit.MINUTES) }
             Started(attempts.insert(user.organizationId, offering, enrollmentId, lessonId, user.userId, used + 1, snapshot, now, deadline), created = true)
         }
+    }
+
+    // con AL_ENVIAR, las soluciones se ven al aprobar o al agotar los intentos: antes servirían para aprobar el siguiente
+    suspend fun solutionsOpen(attempt: Attempt): Boolean {
+        if (attempt.snapshot.showSolutions != SHOW_ON_SUBMIT || attempt.status == OPEN) return false
+        val tries = attempts.ofEnrollment(attempt.organizationId, attempt.enrollmentId).filter { it.lessonId == attempt.lessonId }
+        return tries.size >= attempt.snapshot.maxAttempts || tries.any { it.result?.passed == true }
     }
 
     suspend fun read(id: UUID): Attempt = locked(id) { it }.attempt
@@ -173,6 +184,7 @@ class AttemptService(
         const val STATE = "estado"
         const val ACTIVE = "ACTIVA"
         const val OPEN = "OPEN"
+        const val SHOW_ON_SUBMIT = "AL_ENVIAR"
         const val SUBMITTED = "SUBMITTED"
         const val GRADED = "GRADED"
         const val FILE = "FILE"

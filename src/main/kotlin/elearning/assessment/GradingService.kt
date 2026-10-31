@@ -9,7 +9,6 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.reactive.TransactionalOperator
 import org.springframework.transaction.reactive.executeAndAwait
 import wasichai.core.common.ConflictException
-import wasichai.core.common.ForbiddenException
 import wasichai.core.common.NotFoundException
 import wasichai.core.common.ValidationException
 import wasichai.core.data.RecordService
@@ -38,7 +37,8 @@ class GradingService(
         val wanted = status ?: AttemptService.SUBMITTED
         if (wanted !in LISTABLE) throw ValidationException("Invalid status", "status", "must be one of $LISTABLE")
         val offering = teaching.assignedOffering(code)
-        return attempts.ofOffering(currentUser.require().organizationId, UUID.fromString(offering.id), wanted).map { a ->
+        val user = currentUser.require()
+        return attempts.ofOffering(user.organizationId, UUID.fromString(offering.id), wanted).filter { it.studentId != user.userId }.map { a ->
             PendingAttempt(
                 attemptId = a.id.toString(),
                 enrollmentId = a.enrollmentId.toString(),
@@ -61,13 +61,13 @@ class GradingService(
         val updated =
             transactions.executeAndAwait {
                 val attempt = reachable(attempts.lock(user.organizationId, id))
-                if (attempt.studentId == user.userId) throw ForbiddenException("Nobody grades their own attempt")
                 val result = attempt.result ?: throw ConflictException("Este intento aún no se envió")
                 val question =
                     attempt.snapshot.questions.firstOrNull { it.id == request.questionId && it.type in MANUAL }
                         ?: invalid("questionId", "must be an open or file question of this attempt")
                 val points = request.points ?: invalid("points", "required")
                 if (points.signum() < 0 || points > question.points) invalid("points", "must be between 0 and ${question.points}")
+                if (points.stripTrailingZeros().scale() > MAX_DECIMALS) invalid("points", "at most $MAX_DECIMALS decimals")
                 val reason = request.reason?.trim()?.takeIf { it.isNotEmpty() }
                 val current = result.questions.first { it.questionId == question.id }
                 val graded = attempts.grades(attempt.id).any { it.questionId == question.id }
@@ -86,9 +86,13 @@ class GradingService(
         return view(updated)
     }
 
-    // un intento solo existe para el docente de su edición, y uno abierto solo se corrige cuando se envía
+    // un intento solo existe para el docente de su edición, y nunca el suyo: lee sus soluciones por el aula, cuando toque
     private suspend fun reachable(attempt: Attempt?): Attempt {
-        if (attempt == null || attempt.offeringId.toString() !in teaching.assigned()) throw NotFoundException(NOT_FOUND)
+        if (attempt == null || attempt.offeringId.toString() !in teaching.assigned() ||
+            attempt.studentId == currentUser.require().userId
+        ) {
+            throw NotFoundException(NOT_FOUND)
+        }
         return attempt
     }
 
@@ -108,6 +112,7 @@ class GradingService(
         const val TITLE = "titulo"
         const val EMAIL = "estudiante_correo"
         const val NOT_FOUND = "No encontrado"
+        const val MAX_DECIMALS = 2
         val MANUAL = setOf("OPEN", "FILE")
         val LISTABLE = setOf(AttemptService.SUBMITTED, AttemptService.GRADED)
     }

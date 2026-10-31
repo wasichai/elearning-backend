@@ -72,11 +72,19 @@ class SessionService(
     ): List<AttendanceRow> {
         val (session, offering) = assigned(id)
         val entries = request.records ?: invalid("records", "required")
+        if (session.attributes[STATE] == CANCELLED) throw ConflictException("Esta sesión está cancelada")
+        if (entries.map { it.enrollmentId }.toSet().size != entries.size) invalid("records", "a student appears twice")
         val students = studentsOf(offering).associateBy { it.id }
         val taken = records.listAll(ATTENDANCE, mapOf(SESSION to session.id)).associateBy { it.attributes.ref(ENROLLMENT) }
         val reason = request.reason?.trim()?.takeIf { it.isNotEmpty() }
         for (entry in entries) {
-            if (entry.enrollmentId !in students) invalid("records", "${entry.enrollmentId} is not a student of this offering")
+            val student = students[entry.enrollmentId] ?: invalid("records", "${entry.enrollmentId} is not a student of this offering")
+            // quien enseña y cursa la misma edición no se acredita a sí mismo
+            if (student.attributes[STUDENT]?.toString() ==
+                currentUser.require().userId.toString()
+            ) {
+                throw ForbiddenException("Nobody takes their own attendance")
+            }
             if (entry.status !in ATTENDANCE_STATES) invalid("records", "status must be one of $ATTENDANCE_STATES")
             val current = taken[entry.enrollmentId]?.attributes?.get(STATE)?.toString()
             if (current != null && current != entry.status && reason == null) throw ConflictException("Cambiar una asistencia ya registrada exige un motivo")

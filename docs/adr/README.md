@@ -14,22 +14,23 @@ secciones Contexto, Decisión, Alternativas consideradas y Consecuencias. El for
   [`docs/research/reference-repositories.md`](../research/reference-repositories.md); lo no verificado se marca
   «a verificar en implementación».
 
-| ADR                                                                 | Decisión                                                                              | Estado                       | Fecha      |
-| ------------------------------------------------------------------- | ------------------------------------------------------------------------------------- | ---------------------------- | ---------- |
-| [0001](0001-proceso-de-ingenieria-sin-superpowers.md)               | El proceso de ingeniería no depende de Superpowers                                    | aceptada                     | 2026-10-27 |
-| [0002](0002-wasichai-desde-github-packages.md)                      | Wasichai se consume como librerías desde GitHub Packages                              | aceptada                     | 2026-10-27 |
-| [0003](0003-monolito-modular-y-modulos-ui-por-experiencia.md)       | Monolito modular: backend por capacidad, frontend por experiencia                     | aceptada                     | 2026-10-27 |
-| [0004](0004-modelo-hibrido-custom-objects-y-tablas-fijas.md)        | Modelo híbrido: Custom Objects y tablas fijas solo si hace falta                      | aceptada                     | 2026-10-27 |
-| [0005](0005-lms-en-el-registro-de-wasichai-ui.md)                   | Todo el LMS se registra como módulos de `<WasichaiApp>`                               | aceptada                     | 2026-10-27 |
-| [0006](0006-catalogo-publico-con-cadena-de-seguridad-acotada.md)    | Catálogo público con cadena de seguridad acotada                                      | aceptada (lectura: ver 0011) | 2026-10-27 |
-| [0007](0007-carga-academica-y-creditos-como-politica-versionada.md) | Carga y créditos como política versionada que propone                                 | aceptada                     | 2026-10-27 |
-| [0008](0008-openapi-con-springdoc.md)                               | La API propia se documenta con OpenAPI vía springdoc 3.x                              | aceptada                     | 2026-10-27 |
-| [0009](0009-licencia-diferida.md)                                   | La licencia del proyecto se difiere                                                   | reemplazada por 0015         | 2026-10-27 |
-| [0010](0010-importacion-asciidoc-por-etapas.md)                     | La importación AsciiDoc avanza por etapas y nunca publica sola                        | aceptada                     | 2026-10-27 |
-| [0011](0011-catalogo-publico-leido-de-una-proyeccion.md)            | El catálogo público se lee de una proyección                                          | aceptada                     | 2026-10-27 |
-| [0012](0012-aula-del-estudiante.md)                                 | El aula lee por matrícula, aísla el contenido y exige evidencia                       | aceptada                     | 2026-10-28 |
-| [0013](0013-estructura-publicada-visible-recursos-por-matricula.md) | El estudiante ve lo publicado; los recursos, solo matriculado                         | aceptada                     | 2026-10-28 |
-| [0014](0014-docente-sin-ver-todas-y-recurso-congelado.md)           | Sin «ver todas» del docente sobre matrículas y progreso; recurso congelado            | aceptada                     | 2026-10-28 |
-| [0015](0015-licencia-lgpl-provisional.md)                           | Licencia provisional LGPL-3.0-or-later                                                | aceptada                     | 2026-10-28 |
-| [0016](0016-fase-3-evaluaciones-docente-sesiones-certificados.md)   | Fase 3: evaluaciones con instantánea, docente por asignación, sesiones y certificados | aceptada                     | 2026-10-28 |
-| [0017](0017-copia-del-contenido-de-evaluaciones.md)                 | Los intentos leen una copia del contenido de las evaluaciones                         | aceptada                     | 2026-10-31 |
+| ADR                                                                 | Decisión                                                                                       | Estado                       | Fecha      |
+| ------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- | ---------------------------- | ---------- |
+| [0001](0001-proceso-de-ingenieria-sin-superpowers.md)               | El proceso de ingeniería no depende de Superpowers                                             | aceptada                     | 2026-10-27 |
+| [0002](0002-wasichai-desde-github-packages.md)                      | Wasichai se consume como librerías desde GitHub Packages                                       | aceptada                     | 2026-10-27 |
+| [0003](0003-monolito-modular-y-modulos-ui-por-experiencia.md)       | Monolito modular: backend por capacidad, frontend por experiencia                              | aceptada                     | 2026-10-27 |
+| [0004](0004-modelo-hibrido-custom-objects-y-tablas-fijas.md)        | Modelo híbrido: Custom Objects y tablas fijas solo si hace falta                               | aceptada                     | 2026-10-27 |
+| [0005](0005-lms-en-el-registro-de-wasichai-ui.md)                   | Todo el LMS se registra como módulos de `<WasichaiApp>`                                        | aceptada                     | 2026-10-27 |
+| [0006](0006-catalogo-publico-con-cadena-de-seguridad-acotada.md)    | Catálogo público con cadena de seguridad acotada                                               | aceptada (lectura: ver 0011) | 2026-10-27 |
+| [0007](0007-carga-academica-y-creditos-como-politica-versionada.md) | Carga y créditos como política versionada que propone                                          | aceptada                     | 2026-10-27 |
+| [0008](0008-openapi-con-springdoc.md)                               | La API propia se documenta con OpenAPI vía springdoc 3.x                                       | aceptada                     | 2026-10-27 |
+| [0009](0009-licencia-diferida.md)                                   | La licencia del proyecto se difiere                                                            | reemplazada por 0015         | 2026-10-27 |
+| [0010](0010-importacion-asciidoc-por-etapas.md)                     | La importación AsciiDoc avanza por etapas y nunca publica sola                                 | aceptada                     | 2026-10-27 |
+| [0011](0011-catalogo-publico-leido-de-una-proyeccion.md)            | El catálogo público se lee de una proyección                                                   | aceptada                     | 2026-10-27 |
+| [0012](0012-aula-del-estudiante.md)                                 | El aula lee por matrícula, aísla el contenido y exige evidencia                                | aceptada                     | 2026-10-28 |
+| [0013](0013-estructura-publicada-visible-recursos-por-matricula.md) | El estudiante ve lo publicado; los recursos, solo matriculado                                  | aceptada                     | 2026-10-28 |
+| [0014](0014-docente-sin-ver-todas-y-recurso-congelado.md)           | Sin «ver todas» del docente sobre matrículas y progreso; recurso congelado                     | aceptada                     | 2026-10-28 |
+| [0015](0015-licencia-lgpl-provisional.md)                           | Licencia provisional LGPL-3.0-or-later                                                         | aceptada                     | 2026-10-28 |
+| [0016](0016-fase-3-evaluaciones-docente-sesiones-certificados.md)   | Fase 3: evaluaciones con instantánea, docente por asignación, sesiones y certificados          | aceptada                     | 2026-10-28 |
+| [0017](0017-copia-del-contenido-de-evaluaciones.md)                 | Los intentos leen una copia del contenido de las evaluaciones                                  | aceptada                     | 2026-10-31 |
+| [0019](0019-docente-sin-claves-y-soluciones-al-terminar.md)         | El docente no lee las claves, nadie se acredita a sí mismo y las soluciones llegan al terminar | aceptada                     | 2026-10-31 |
