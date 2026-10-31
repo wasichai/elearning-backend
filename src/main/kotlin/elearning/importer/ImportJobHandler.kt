@@ -8,6 +8,7 @@ import elearning.importer.ImportService.Companion.UNIT
 import elearning.importer.ImportService.Companion.VERSION
 import elearning.jobs.Job
 import elearning.jobs.JobHandler
+import elearning.jobs.JobQueue
 import org.springframework.stereotype.Component
 import org.springframework.transaction.reactive.TransactionalOperator
 import org.springframework.transaction.reactive.executeAndAwait
@@ -23,51 +24,56 @@ import java.util.UUID
 // repo@sha:ruta#ancla y sin el cuerpo del manual. nunca publica: la versión nace BORRADOR y la sigue quien la pidió.
 //
 // corre como la plataforma de su organización (no hay petición ni token en la cola), con el autor puesto en autor_id y
-// `import:<trabajo>` en la auditoría; los permisos de quien la pidió se comprobaron al encolar. todo el borrador va en una
-// transacción: un reintento nunca encuentra medio borrador
+// `import:<trabajo>` en la auditoría; los permisos de quien la pidió se comprobaron al encolar. todo el borrador y el cierre
+// del trabajo van en una transacción (ADR-0022): un reintento nunca encuentra medio borrador, y tras el commit no hay
+// reintento que haga otro
 @Component
 class ImportJobHandler(
     private val fetcher: SourceFetcher,
     private val records: RecordService,
     private val transactions: TransactionalOperator,
     private val properties: ImporterProperties,
+    private val queue: JobQueue,
 ) : JobHandler {
     override val type = ImportService.JOB_TYPE
 
     override suspend fun handle(job: Job): String? {
         val payload = MAPPER.readValue<ImportPayload>(job.payload)
-        val outcome =
-            try {
-                import(job, payload)
-            } catch (e: ImportFailure) {
-                ImportOutcome(failure = e.message)
-            } catch (e: SourceFetchException) {
-                // pasajero: que la cola lo reintente. lo demás no cambia por reintentar
-                if (e.reason == SourceFetchException.Reason.UNAVAILABLE) throw e
-                ImportOutcome(failure = e.message)
-            }
-        return MAPPER.writeValueAsString(outcome)
+        return try {
+            import(job, payload)
+        } catch (e: ImportFailure) {
+            MAPPER.writeValueAsString(ImportOutcome(failure = e.message))
+        } catch (e: SourceFetchException) {
+            // pasajero: que la cola lo reintente. lo demás no cambia por reintentar
+            if (e.reason == SourceFetchException.Reason.UNAVAILABLE) throw e
+            MAPPER.writeValueAsString(ImportOutcome(failure = e.message))
+        }
     }
 
     private suspend fun import(
         job: Job,
         payload: ImportPayload,
-    ): ImportOutcome {
+    ): String {
         val root = SourceRef.parse(payload.source)
         val collected = SourceCollector(fetcher, properties.maxFiles).collect(root)
         if (collected.analysis.files.isEmpty()) throw ImportFailure("$root could not be read")
         val units = DraftProposal.of(root, collected.analysis)
-        val versionId =
-            records.asPlatform(job.organizationId, "import:${job.id}") {
-                val course =
-                    try {
-                        records.get(COURSE, UUID.fromString(payload.courseId))
-                    } catch (_: NotFoundException) {
-                        throw ImportFailure("the course ${payload.courseId} no longer exists")
-                    }
-                transactions.executeAndAwait { draft(course, payload.requester, root, units) }
+        val report = report(root, collected, units)
+        return records.asPlatform(job.organizationId, "import:${job.id}") {
+            val course =
+                try {
+                    records.get(COURSE, UUID.fromString(payload.courseId))
+                } catch (_: NotFoundException) {
+                    throw ImportFailure("the course ${payload.courseId} no longer exists")
+                }
+            transactions.executeAndAwait {
+                val versionId = draft(course, payload.requester, root, units)
+                val result = MAPPER.writeValueAsString(ImportOutcome(versionId = versionId, report = report))
+                // quien ya no es dueño del reclamo deshace su borrador: lo hace, o lo hizo, la réplica que lo retomó
+                check(queue.complete(job, result)) { "the import job ${job.id} lost its claim: its draft is rolled back" }
+                result
             }
-        return ImportOutcome(versionId = versionId, report = report(root, collected, units))
+        }
     }
 
     private suspend fun draft(
