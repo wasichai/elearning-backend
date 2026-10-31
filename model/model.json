@@ -14,7 +14,11 @@
     "estado_progreso": ["INICIADA", "COMPLETADA", "APROBADA"],
     "evidencia_progreso": ["FINALIZACION_EXPLICITA", "FIN_DE_VIDEO"],
     "tipo_pregunta": ["UNICA", "MULTIPLE", "VERDADERO_FALSO", "CORTA", "ABIERTA", "ARCHIVO"],
-    "mostrar_soluciones": ["NUNCA", "AL_ENVIAR"]
+    "mostrar_soluciones": ["NUNCA", "AL_ENVIAR"],
+    "tipo_sesion": ["TEORIA", "LABORATORIO", "CONSULTA", "RECUPERACION"],
+    "modalidad_sesion": ["PRESENCIAL", "VIRTUAL"],
+    "estado_sesion": ["PROGRAMADA", "REPROGRAMADA", "CANCELADA"],
+    "estado_asistencia": ["PRESENTE", "TARDE", "AUSENTE", "JUSTIFICADO"]
   },
   "objects": [
     {
@@ -919,6 +923,81 @@
         }
       ],
       "uniqueConstraints": [["intento_id", "pregunta_id"]]
+    },
+    {
+      "name": "sesion",
+      "label": "Sesión",
+      "pluralLabel": "Sesiones",
+      "apiOnly": true,
+      "description": "Sesión de una edición (TeachingSession, ADR-0016). Solo la escriben los comandos del docente asignado; su historial guarda los motivos.",
+      "fields": [
+        {
+          "name": "titulo",
+          "label": "Título",
+          "type": "TEXT",
+          "required": true
+        },
+        {
+          "name": "tipo",
+          "label": "Tipo",
+          "type": "ENUM",
+          "enum": "tipo_sesion",
+          "required": true
+        },
+        {
+          "name": "modalidad",
+          "label": "Modalidad",
+          "type": "ENUM",
+          "enum": "modalidad_sesion",
+          "required": true
+        },
+        {
+          "name": "inicio",
+          "label": "Inicio",
+          "type": "DATETIME",
+          "required": true,
+          "indexed": true
+        },
+        {
+          "name": "fin",
+          "label": "Fin",
+          "type": "DATETIME",
+          "required": true
+        },
+        {
+          "name": "estado",
+          "label": "Estado",
+          "type": "ENUM",
+          "enum": "estado_sesion",
+          "required": true,
+          "defaultValue": "PROGRAMADA"
+        },
+        {
+          "name": "enlace",
+          "label": "Enlace de la reunión (https)",
+          "type": "TEXT"
+        },
+        {
+          "name": "ubicacion",
+          "label": "Ubicación",
+          "type": "TEXT"
+        },
+        {
+          "name": "leccion_id",
+          "label": "Lección que completa al asistir",
+          "type": "UUID"
+        },
+        {
+          "name": "docente_id",
+          "label": "Docente (usuario de Wasichai)",
+          "type": "UUID"
+        },
+        {
+          "name": "sesion_original_id",
+          "label": "Sesión que recupera",
+          "type": "UUID"
+        }
+      ]
     }
   ],
   "relationships": [
@@ -1109,6 +1188,16 @@
       "source": "entrega",
       "target": "matricula",
       "fieldName": "matricula",
+      "required": true
+    },
+    {
+      "name": "sesion_edicion",
+      "label": "Edición",
+      "inverseLabel": "Sesiones",
+      "type": "MANY_TO_ONE",
+      "source": "sesion",
+      "target": "edicion_curso",
+      "fieldName": "edicion",
       "required": true
     }
   ]
