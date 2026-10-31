@@ -998,6 +998,35 @@
           "type": "UUID"
         }
       ]
+    },
+    {
+      "name": "asistencia",
+      "label": "Asistencia",
+      "pluralLabel": "Asistencias",
+      "apiOnly": true,
+      "description": "Asistencia de un estudiante a una sesión (AttendanceRecord, ADR-0016). La registra el docente de la edición; separada del progreso de materiales.",
+      "fields": [
+        {
+          "name": "estudiante_id",
+          "label": "Estudiante (usuario de Wasichai)",
+          "type": "UUID",
+          "required": true,
+          "indexed": true
+        },
+        {
+          "name": "estado",
+          "label": "Estado",
+          "type": "ENUM",
+          "enum": "estado_asistencia",
+          "required": true
+        },
+        {
+          "name": "registrado_por",
+          "label": "Registrado por (usuario de Wasichai)",
+          "type": "UUID"
+        }
+      ],
+      "uniqueConstraints": [["sesion", "matricula"]]
     }
   ],
   "relationships": [
@@ -1198,6 +1227,26 @@
       "source": "sesion",
       "target": "edicion_curso",
       "fieldName": "edicion",
+      "required": true
+    },
+    {
+      "name": "asistencia_sesion",
+      "label": "Sesión",
+      "inverseLabel": "Asistencias",
+      "type": "MANY_TO_ONE",
+      "source": "asistencia",
+      "target": "sesion",
+      "fieldName": "sesion",
+      "required": true
+    },
+    {
+      "name": "asistencia_matricula",
+      "label": "Matrícula",
+      "inverseLabel": "Asistencias",
+      "type": "MANY_TO_ONE",
+      "source": "asistencia",
+      "target": "matricula",
+      "fieldName": "matricula",
       "required": true
     }
   ]

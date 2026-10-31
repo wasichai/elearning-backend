@@ -56,6 +56,10 @@
         {
           "object": "sesion",
           "actions": ["READ"]
+        },
+        {
+          "object": "asistencia",
+          "actions": ["READ"]
         }
       ]
     },
@@ -137,6 +141,10 @@
         },
         {
           "object": "sesion",
+          "actions": ["READ", "CREATE", "UPDATE"]
+        },
+        {
+          "object": "asistencia",
           "actions": ["READ", "CREATE", "UPDATE"]
         }
       ],
