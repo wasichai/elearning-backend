@@ -7,6 +7,8 @@ ktlint = "14.2.0"
 ktlintTool = "1.7.1"
 # OpenAPI del LMS (ADR-0008): la línea 3.x es la de Spring Boot 4
 springdoc = "3.2.0"
+# almacén S3 compatible de wasichai-files (RF-CON-02): la misma versión con la que Wasichai 1.6.0 lo compila y prueba
+awsSdk = "2.57.1"
 
 [libraries]
 wasichai-bom = { module = "wasichai:wasichai-bom", version.ref = "wasichai" }
@@ -14,6 +16,8 @@ wasichai-starter = { module = "wasichai:wasichai-spring-boot-starter" }
 # archivos de los recursos (ADR-0012): FileStore local en desarrollo, S3 por configuración
 wasichai-starter-files = { module = "wasichai:wasichai-spring-boot-starter-files" }
 # avisos de sesiones y calendario (RF-SES-03, RF-AUL-09), con correo opcional
+# el almacén S3 de wasichai-files solo se activa con el SDK en el classpath: el starter no lo trae (ADR-0018 §8)
+aws-sdk-s3 = { module = "software.amazon.awssdk:s3", version.ref = "awsSdk" }
 wasichai-starter-notifications = { module = "wasichai:wasichai-spring-boot-starter-notifications" }
 spring-boot-starter-mail = { module = "org.springframework.boot:spring-boot-starter-mail" }
 wasichai-test = { module = "wasichai:wasichai-test" }
