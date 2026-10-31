@@ -108,6 +108,19 @@ class TeacherGradingApiTest : ClassroomApiTestSupport() {
         assertEquals(userId(s.teacher), history[1]["authorId"].asString())
     }
 
+    // revisión de la Fase 3 (L8): una abierta sin responder vale 0 sola, y corregir ese cero no pedía motivo en el
+    // servidor aunque la interfaz sí. el cero automático también es una nota ya puesta
+    @Test
+    fun `changing the automatic zero of an unanswered question needs a reason too`() {
+        val s = Scene()
+        ok(call(s.student, "/api/lms/classroom/attempts/${s.attempt}/submit", emptyMap()))
+
+        assertEquals(HttpStatus.CONFLICT, s.grade(s.teacher, 1).first)
+        val changed = ok(s.grade(s.teacher, 1, reason = "La respuesta llegó por correo"))
+        assertEquals("La respuesta llegó por correo", ok(call(s.teacher, "/api/lms/teaching/attempts/${s.attempt}"))["history"][0]["reason"].asString())
+        assertEquals(10, changed["result"]["percent"].asInt())
+    }
+
     @Test
     fun `a grade must fit its question and the attempt must be submitted`() {
         val s = Scene()

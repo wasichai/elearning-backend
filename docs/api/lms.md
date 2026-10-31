@@ -456,8 +456,8 @@ registro de otra edición → `404`. Nadie lo usa por su rol: lo decide la asign
   añade `enrollmentId`, `email` e `history` (`[{ questionId, points, comment, reason, authorId, at }]`).
 - Solo se califican a mano las preguntas `OPEN` y `FILE` (`400` en otra), con dos decimales como máximo. El intento propio no
   existe para quien lo hizo (`404`), aunque sea docente de esa edición, y tampoco se marca su propia asistencia (`403`).
-- Calificar: `points` entre 0 y los de la pregunta (`400` si no); `reason` obligatorio al **cambiar** una nota ya puesta
-  (`409` sin él). Cada calificación queda en un historial que no se borra; al no quedar pendientes, el intento pasa a
+- Calificar: `points` entre 0 y los de la pregunta (`400` si no); `reason` obligatorio al **cambiar** una nota ya puesta,
+  también el `0` automático de una pregunta sin responder (`409` sin él). Cada calificación queda en un historial que no se borra; al no quedar pendientes, el intento pasa a
   `GRADED` con su `percent` y `passed`.
 - Crear sesiones: `{ "title", "type", "modality", "durationMinutes", "link": null, "location": null, "lessonId": null,
 "recurrence": { "pattern": "ONCE" | "DAILY" | "ALTERNATE_DAYS" | "WEEKDAYS", "days": ["MONDAY", "WEDNESDAY"],
