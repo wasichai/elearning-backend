@@ -1,5 +1,6 @@
 package elearning.assessment
 
+import com.fasterxml.jackson.annotation.JsonUnwrapped
 import java.math.BigDecimal
 import java.time.Instant
 
@@ -128,4 +129,39 @@ data class AttemptView(
 
 data class SaveAnswersRequest(
     val answers: List<AttemptAnswer>? = null,
+)
+
+// una calificación del historial (lms.calificacion, solo inserción)
+data class GradeEntry(
+    val questionId: String,
+    val points: BigDecimal,
+    val comment: String?,
+    val reason: String?,
+    val authorId: String,
+    val at: Instant,
+)
+
+// el intento tal como lo ve su docente: con soluciones siempre, su correo y el historial de calificaciones
+data class TeacherAttemptView(
+    @get:JsonUnwrapped val attempt: AttemptView,
+    val enrollmentId: String,
+    val email: String?,
+    val history: List<GradeEntry>,
+)
+
+data class PendingAttempt(
+    val attemptId: String,
+    val enrollmentId: String,
+    val email: String?,
+    val lessonId: String,
+    val lessonTitle: String,
+    val submittedAt: Instant?,
+    val pendingQuestions: Int,
+)
+
+data class GradeRequest(
+    val questionId: String? = null,
+    val points: BigDecimal? = null,
+    val comment: String? = null,
+    val reason: String? = null,
 )

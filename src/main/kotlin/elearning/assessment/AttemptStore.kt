@@ -6,8 +6,10 @@ import kotlinx.coroutines.reactor.awaitSingleOrNull
 import org.springframework.r2dbc.core.DatabaseClient
 import org.springframework.stereotype.Repository
 import tools.jackson.core.type.TypeReference
+import java.math.BigDecimal
 import java.time.Instant
 import java.time.OffsetDateTime
+import java.time.ZoneOffset
 import java.util.UUID
 
 data class Attempt(
@@ -60,14 +62,14 @@ class AttemptStore(
                 .bind("student", student)
                 .bind("number", number)
                 .bind("snapshot", mapper.writeValueAsString(snapshot))
-                .bind("startedAt", startedAt.atOffset(java.time.ZoneOffset.UTC))
+                .bind("startedAt", startedAt.atOffset(ZoneOffset.UTC))
         return (
             if (deadline ==
                 null
             ) {
                 spec.bindNull("deadline", OffsetDateTime::class.java)
             } else {
-                spec.bind("deadline", deadline.atOffset(java.time.ZoneOffset.UTC))
+                spec.bind("deadline", deadline.atOffset(ZoneOffset.UTC))
             }
         ).map { row, _ -> attempt(row) }
             .one()
@@ -81,6 +83,18 @@ class AttemptStore(
     ): Attempt? =
         db
             .sql("SELECT $COLUMNS FROM lms.intento WHERE organizacion_id = :org AND id = :id FOR UPDATE")
+            .bind("org", organization)
+            .bind("id", id)
+            .map { row, _ -> attempt(row) }
+            .one()
+            .awaitSingleOrNull()
+
+    suspend fun find(
+        organization: UUID,
+        id: UUID,
+    ): Attempt? =
+        db
+            .sql("SELECT $COLUMNS FROM lms.intento WHERE organizacion_id = :org AND id = :id")
             .bind("org", organization)
             .bind("id", id)
             .map { row, _ -> attempt(row) }
@@ -139,12 +153,97 @@ class AttemptStore(
                     """.trimIndent(),
                 ).bind("status", if (result.pending) "SUBMITTED" else "GRADED")
                 .bind("result", mapper.writeValueAsString(result))
-                .bind("submittedAt", submittedAt.atOffset(java.time.ZoneOffset.UTC))
+                .bind("submittedAt", submittedAt.atOffset(ZoneOffset.UTC))
                 .bind("id", id)
         val withPercent = result.percent?.let { spec.bind("percent", it) } ?: spec.bindNull("percent", Integer::class.java)
         val withPassed = result.passed?.let { withPercent.bind("passed", it) } ?: withPercent.bindNull("passed", java.lang.Boolean::class.java)
         withPassed.fetch().rowsUpdated().awaitSingle()
     }
+
+    suspend fun ofOffering(
+        organization: UUID,
+        offering: UUID,
+        status: String,
+    ): List<Attempt> =
+        db
+            .sql("SELECT $COLUMNS FROM lms.intento WHERE organizacion_id = :org AND edicion_id = :offering AND estado = :status ORDER BY enviado_en, id")
+            .bind("org", organization)
+            .bind("offering", offering)
+            .bind("status", status)
+            .map { row, _ -> attempt(row) }
+            .all()
+            .collectList()
+            .awaitSingle()
+
+    suspend fun countPending(
+        organization: UUID,
+        offering: UUID,
+    ): Int =
+        db
+            .sql("SELECT count(*) AS n FROM lms.intento WHERE organizacion_id = :org AND edicion_id = :offering AND estado = 'SUBMITTED'")
+            .bind("org", organization)
+            .bind("offering", offering)
+            .map { row, _ -> row.get("n", Number::class.java)!!.toInt() }
+            .one()
+            .awaitSingle()
+
+    suspend fun ofEnrollment(
+        organization: UUID,
+        enrollment: UUID,
+    ): List<Attempt> =
+        db
+            .sql("SELECT $COLUMNS FROM lms.intento WHERE organizacion_id = :org AND matricula_id = :enrollment ORDER BY numero")
+            .bind("org", organization)
+            .bind("enrollment", enrollment)
+            .map { row, _ -> attempt(row) }
+            .all()
+            .collectList()
+            .awaitSingle()
+
+    suspend fun addGrade(
+        organization: UUID,
+        attempt: UUID,
+        question: UUID,
+        points: BigDecimal,
+        comment: String?,
+        reason: String?,
+        author: UUID,
+        at: Instant,
+    ) {
+        val spec =
+            db
+                .sql(
+                    """
+                    INSERT INTO lms.calificacion (organizacion_id, intento_id, pregunta_id, puntos, comentario, motivo, autor_id, creado_en)
+                    VALUES (:org, :attempt, :question, :points, :comment, :reason, :author, :at)
+                    """.trimIndent(),
+                ).bind("org", organization)
+                .bind("attempt", attempt)
+                .bind("question", question)
+                .bind("points", points)
+                .bind("author", author)
+                .bind("at", at.atOffset(ZoneOffset.UTC))
+        val withComment = comment?.let { spec.bind("comment", it) } ?: spec.bindNull("comment", String::class.java)
+        val withReason = reason?.let { withComment.bind("reason", it) } ?: withComment.bindNull("reason", String::class.java)
+        withReason.fetch().rowsUpdated().awaitSingle()
+    }
+
+    suspend fun grades(attempt: UUID): List<GradeEntry> =
+        db
+            .sql("SELECT pregunta_id, puntos, comentario, motivo, autor_id, creado_en FROM lms.calificacion WHERE intento_id = :attempt ORDER BY creado_en, id")
+            .bind("attempt", attempt)
+            .map { row, _ ->
+                GradeEntry(
+                    questionId = row.get("pregunta_id", UUID::class.java).toString(),
+                    points = row.get("puntos", BigDecimal::class.java)!!,
+                    comment = row.get("comentario", String::class.java),
+                    reason = row.get("motivo", String::class.java),
+                    authorId = row.get("autor_id", UUID::class.java).toString(),
+                    at = row.get("creado_en", OffsetDateTime::class.java)!!.toInstant(),
+                )
+            }.all()
+            .collectList()
+            .awaitSingle()
 
     private fun attempt(row: Row): Attempt =
         Attempt(

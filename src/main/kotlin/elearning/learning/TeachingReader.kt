@@ -18,6 +18,7 @@ class TeachingReader(
     private val currentUser: CurrentUser,
     private val records: RecordService,
     private val classroom: ClassroomReader,
+    private val facts: AssessmentFacts,
 ) {
     suspend fun offerings(): List<TeachingOffering> =
         assigned()
@@ -33,7 +34,10 @@ class TeachingReader(
                 status = enrollment.attributes[STATE].toString(),
                 progress = classroom.view(enrollment).progress,
                 attendance = AttendanceSummary(0, 0),
-                assessments = emptyList(),
+                assessments =
+                    facts.assessments(currentUser.require().organizationId, UUID.fromString(enrollment.id)).map {
+                        RosterAssessment(it.lessonId, it.title, it.bestPercent, it.passed, it.pending)
+                    },
             )
         }
     }
@@ -70,7 +74,7 @@ class TeachingReader(
             timeZone = a["zona_horaria"].toString(),
             course = CourseRef(course.attributes["slug"].toString(), course.attributes["codigo"].toString(), course.attributes["titulo"].toString()),
             enrolled = enrollmentsOf(record.id).size,
-            pendingAttempts = 0,
+            pendingAttempts = facts.pendingAttempts(currentUser.require().organizationId, UUID.fromString(record.id)),
         )
     }
 
