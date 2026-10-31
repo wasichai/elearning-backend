@@ -150,7 +150,8 @@ class AuthoringCostApiTest : ClassroomApiTestSupport() {
         const val PER_UNIT = 0.5
         const val PER_VERSION = 0.5
 
-        // una unidad de dos lecciones con su recurso son cinco registros que se escriben y se guardan
-        const val PER_COPIED_UNIT = 0.5
+        // una unidad de dos lecciones con su recurso son cinco registros, cada uno con su escritura, su auditoría y su guarda:
+        // ≈23 sentencias por unidad leyendo por niveles y escribiendo en lote; leyendo registro a registro eran ≈40
+        const val PER_COPIED_UNIT = 25.0
     }
 }
