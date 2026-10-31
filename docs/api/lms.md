@@ -259,7 +259,8 @@ El aula de una matrícula propia; ajena o inexistente → `404`, también para u
 
 Cuerpo `{ "type": "STARTED" | "VIDEO_ENDED" | "MARKED_COMPLETE", "clientEventId": "<uuid>" }` → `200` con el
 `progress` de la lección. Idempotente por `clientEventId`: repetir el mismo evento devuelve el progreso actual sin cambiar
-nada (el cliente genera uno por intento y lo reutiliza al reintentar la misma acción).
+nada (el cliente genera uno por intento y lo reutiliza al reintentar la misma acción). El mismo `clientEventId` con
+otra matrícula, lección o tipo es `409` y no registra nada.
 
 - `STARTED` vale en cualquier lección, también `NOT_YET`; en una ya iniciada o completada no cambia nada.
 - `MARKED_COMPLETE` (lectura, presentación, laboratorio) o `VIDEO_ENDED` (vídeo) completan, aunque no se haya enviado
