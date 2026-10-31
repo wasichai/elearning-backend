@@ -41,16 +41,19 @@ class EnrollmentService(
         val user = currentUser.require()
         val offering = one(OFFERING, mapOf(CODE to offeringCode)) ?: throw NotFoundException(NOT_FOUND)
         own(user, offering.id)?.let { return Enrolled(it, created = false) }
-        val version = offering.attributes.ref(VERSION) ?: throw NotFoundException(NOT_FOUND)
-        if (records.get(VERSION, UUID.fromString(version)).attributes[STATE]?.toString() != PUBLISHED) {
-            throw ConflictException("La versión de esta edición ya no está publicada")
-        }
-        open(offering)
-        val capacity = (offering.attributes[CAPACITY] as? Number)?.toInt()
         return transactions.executeAndAwait {
             val taken = lockOccupancy(user.organizationId, offering.id)
             // otra petición del mismo estudiante pudo crearla mientras esperaba el cerrojo
             own(user, offering.id)?.let { return@executeAndAwait Enrolled(it, created = false) }
+            // estado, ventana, versión y cupo se leen ya con el cerrojo: un cierre o una reducción de cupo que llegaron
+            // mientras se esperaba cuentan (revisión de la Fase 2, L10)
+            val current = records.get(OFFERING, UUID.fromString(offering.id))
+            val version = current.attributes.ref(VERSION) ?: throw NotFoundException(NOT_FOUND)
+            if (records.get(VERSION, UUID.fromString(version)).attributes[STATE]?.toString() != PUBLISHED) {
+                throw ConflictException("La versión de esta edición ya no está publicada")
+            }
+            open(current)
+            val capacity = (current.attributes[CAPACITY] as? Number)?.toInt()
             if (capacity != null && taken >= capacity) throw ConflictException("La edición no tiene cupo")
             val created =
                 records.create(
