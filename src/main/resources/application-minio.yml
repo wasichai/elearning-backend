@@ -1,0 +1,12 @@
+# Solo desarrollo local: los archivos en el MinIO de compose.yaml en lugar del directorio (RF-CON-02). Se suma a dev:
+# --spring.profiles.active=dev,minio. Credenciales de desarrollo, las mismas que compose.yaml; nunca en otro entorno.
+wasichai:
+  files:
+    store: s3
+    s3:
+      endpoint: http://127.0.0.1:9010
+      bucket: ${LMS_MINIO_BUCKET:elearning-archivos}
+      access-key: ${LMS_MINIO_USER:elearning}
+      secret-key: ${LMS_MINIO_PASSWORD:elearning-dev}
+      # MinIO quiere URL con el bucket en la ruta, no en el nombre del host
+      path-style-access: true
