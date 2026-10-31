@@ -36,4 +36,5 @@ secciones Contexto, Decisión, Alternativas consideradas y Consecuencias. El for
 | [0018](0018-fase-4-estudio-revision-e-importador.md)                | Fase 4: estudio, revisión con decisiones, importador y generación en cola propia               | aceptada (cola: ver 0022)    | 2026-10-31 |
 | [0019](0019-docente-sin-claves-y-soluciones-al-terminar.md)         | El docente no lee las claves, nadie se acredita a sí mismo y las soluciones llegan al terminar | aceptada                     | 2026-10-31 |
 | [0020](0020-decisiones-de-las-revisiones-de-las-fases-2-y-3.md)     | Lo que las revisiones de las Fases 2 y 3 dejaron como está, y cuánto se guardan los eventos    | aceptada                     | 2026-10-31 |
+| [0021](0021-la-revision-de-un-curso-se-decide-en-la-bandeja.md)     | La revisión de un curso se decide solo en la bandeja; la de un recurso, con motivo             | aceptada                     | 2026-10-31 |
 | [0022](0022-limites-y-ciclo-de-vida-de-los-trabajos.md)             | Límites y ciclo de vida de los trabajos de la cola                                             | aceptada                     | 2026-10-31 |

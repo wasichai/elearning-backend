@@ -289,6 +289,12 @@ def validate_demo(data: dict, model: dict, roles: dict | None = None, base: Path
         for deferred in flow.get("deferred", []):
             if deferred not in fields:
                 problems.append(f"workflow de '{obj_name}': campo diferido desconocido '{deferred}'")
+        # un paso que se da por un comando del LMS y no por la API de registros (la decisión de la bandeja, ADR-0021)
+        for step, command in (flow.get("commands") or {}).items():
+            if step not in path or not isinstance(command, dict) or not isinstance(command.get("body", {}), dict):
+                problems.append(f"workflow de '{obj_name}': el comando de {step!r} no es un paso del camino con su cuerpo")
+            elif not str(command.get("path", "")).startswith("/api/lms/") or "{id}" not in command["path"]:
+                problems.append(f"workflow de '{obj_name}': el comando de {step!r} es una ruta /api/lms/ con {{id}}")
         for record in data.get("records", []):
             target = record.get("attributes", {}).get(flow["field"])
             if record.get("object") == obj_name and target is not None and target not in path:
@@ -758,9 +764,16 @@ def _walk(client: Client, record: dict, record_id: str, flow: dict, final: dict,
     if current not in path or path.index(current) >= path.index(target):
         return
     steps = path[path.index(current) + 1 : path.index(target) + 1]
+    commands = flow.get("commands") or {}
     for step in steps:
-        body = {field: step} | ({k: v for k, v in final.items() if k != field} if step == target else {})
-        client.call("PATCH", f"/api/objects/{record['object']}/records/{record_id}", {"attributes": body})
+        later = {k: v for k, v in final.items() if k != field} if step == target else {}
+        if step in commands:
+            # como lo haría la persona: decidir la revisión de un curso es un comando (ADR-0021)
+            client.call("POST", commands[step]["path"].replace("{id}", record_id), commands[step].get("body") or {})
+            if later:
+                client.call("PATCH", f"/api/objects/{record['object']}/records/{record_id}", {"attributes": later})
+        else:
+            client.call("PATCH", f"/api/objects/{record['object']}/records/{record_id}", {"attributes": {field: step} | later})
     report.add(f"{record['object']} {record['ref']}: {' → '.join([current, *steps])}")
 
 

@@ -4,11 +4,12 @@ Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este
 
 ## 2026-10-31 — Hallazgos de la revisión de la Fase 4 ([#216](https://github.com/wasichai/elearning-backend/issues/216))
 
-Decisiones de la cola en [ADR-0022](adr/0022-limites-y-ciclo-de-vida-de-los-trabajos.md).
-
-- **Trabajos con clave y tope (M2)**: importar y generar lo mismo mientras el trabajo anterior espera devuelve ese trabajo, sin
-  otro borrador ni otra versión; cada persona tiene a lo sumo `lms.jobs.max-active-per-requester` (5) trabajos pendientes o en
-  curso, y uno más es `429` con `Retry-After`.
+- **M1**: la revisión de un curso se decide solo en la bandeja, que deja la decisión y su motivo en `lms.decision_revision`;
+  por la API de registros es `403` y una versión de curso no nace aprobada. La de un recurso exige `X-Change-Reason` salvo
+  al aprobar ([ADR-0021](adr/0021-la-revision-de-un-curso-se-decide-en-la-bandeja.md)).
+- **M2**: importar y generar lo mismo mientras el trabajo anterior espera devuelve ese trabajo, sin otro borrador ni otra
+  versión; cada persona tiene a lo sumo `lms.jobs.max-active-per-requester` (5) trabajos pendientes o en curso, y uno más es
+  `429` con `Retry-After` ([ADR-0022](adr/0022-limites-y-ciclo-de-vida-de-los-trabajos.md)).
 
 ## 2026-10-31 — Fase 4: estudio editorial, revisión e importador ([#179](https://github.com/wasichai/elearning-backend/issues/179))
 
