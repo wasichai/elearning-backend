@@ -27,6 +27,11 @@ class ContentReadScope(
     override suspend fun criterion(
         caller: AuthenticatedUser,
         definition: ObjectDefinition,
+    ): RecordCriterion? = ScopeMemo.of("content", caller, definition.obj.name) { compute(caller, definition) }
+
+    private suspend fun compute(
+        caller: AuthenticatedUser,
+        definition: ObjectDefinition,
     ): RecordCriterion? {
         val name = definition.obj.name
         if (name !in SCOPED || currentUser.hasPermission(caller, SEE_ALL, definition.obj.id)) return null
