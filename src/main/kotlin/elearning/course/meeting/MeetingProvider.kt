@@ -22,22 +22,40 @@ class TeacherLinkMeetingProvider : MeetingProvider {
 // un enlace externo que la interfaz puede ofrecer: https y sin apuntar a la propia red. no se resuelve DNS ni se visita:
 // el servidor nunca lo abre, solo lo muestra
 object SafeLink {
-    private val PRIVATE =
-        listOf(
-            Regex("^127\\."),
-            Regex("^10\\."),
-            Regex("^192\\.168\\."),
-            Regex("^172\\.(1[6-9]|2\\d|3[01])\\."),
-            Regex("^169\\.254\\."),
-            Regex("^0\\."),
-        )
+    // como el navegador (WHATWG): si la última etiqueta es un número, decimal o 0x…, el host entero es una IPv4
+    private val NUMERIC = Regex("^(0x[0-9a-f]*|\\d+)$")
 
     fun isAllowed(link: String): Boolean {
         val uri = runCatching { URI(link) }.getOrNull() ?: return false
-        val host = uri.host?.lowercase()?.removeSurrounding("[", "]") ?: return false
         if (!"https".equals(uri.scheme, ignoreCase = true) || uri.userInfo != null) return false
-        if (host == "localhost" || host.endsWith(".localhost") || host.endsWith(".local") || host.endsWith(".internal")) return false
+        // el punto final no cambia el destino: «localhost.» es localhost
+        val host =
+            uri.host
+                ?.lowercase()
+                ?.removeSurrounding("[", "]")
+                ?.trimEnd('.')
+                ?.takeIf { it.isNotEmpty() } ?: return false
         if (host.contains(':')) return false
-        return PRIVATE.none { it.containsMatchIn(host) }
+        if (host == "localhost" || host.endsWith(".localhost") || host.endsWith(".local") || host.endsWith(".internal")) return false
+        val labels = host.split('.')
+        return if (NUMERIC.matches(labels.last())) publicIpv4(labels) else true
+    }
+
+    // solo la forma canónica a.b.c.d: 2130706433, 0x7f.1 o 0177.0.0.1 son la misma IP privada disfrazada (revisión de la
+    // Fase 3). fuera: privadas, bucle local, enlace local, CGNAT (100.64/10), «esta red» y multidifusión o reservadas
+    private fun publicIpv4(labels: List<String>): Boolean {
+        if (labels.size != 4) return false
+        val parts = labels.map { label -> label.toIntOrNull()?.takeIf { it in 0..255 && label == it.toString() } ?: return false }
+        val (a, b) = parts
+        return !(
+            a == 0 ||
+                a == 10 ||
+                a == 127 ||
+                a >= 224 ||
+                (a == 100 && b in 64..127) ||
+                (a == 169 && b == 254) ||
+                (a == 172 && b in 16..31) ||
+                (a == 192 && b == 168)
+        )
     }
 }
