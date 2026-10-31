@@ -4,7 +4,10 @@ import kotlinx.coroutines.reactive.awaitFirstOrNull
 import kotlinx.coroutines.reactor.awaitSingle
 import org.springframework.r2dbc.core.DatabaseClient
 import org.springframework.stereotype.Repository
+import java.math.BigDecimal
+import java.time.Clock
 import java.time.LocalDate
+import java.time.OffsetDateTime
 
 data class CatalogQuery(
     val organization: String,
@@ -13,9 +16,20 @@ data class CatalogQuery(
     val level: String? = null,
     val modality: String? = null,
     val startsFrom: LocalDate? = null,
+    val minWeeks: Int? = null,
+    val maxWeeks: Int? = null,
+    val enrollmentOpen: Boolean? = null,
+    val minHours: HoursFilter = HoursFilter(),
     val sort: CatalogSort = CatalogSort.UPCOMING,
     val page: Int = 0,
     val size: Int = 12,
+)
+
+// mínimo de horas totales por tipo, como las publica la ficha (workload.theoryHours, practiceHours, autonomousHours)
+data class HoursFilter(
+    val theory: BigDecimal? = null,
+    val practice: BigDecimal? = null,
+    val autonomous: BigDecimal? = null,
 )
 
 enum class CatalogSort(
@@ -43,6 +57,7 @@ data class StoredCourse(
 @Repository
 class CatalogRepository(
     private val db: DatabaseClient,
+    private val clock: Clock,
 ) {
     suspend fun stored(organization: String): List<StoredCourse> =
         db
@@ -216,9 +231,46 @@ class CatalogRepository(
             clauses += "EXISTS (SELECT 1 FROM unnest(inicios) s WHERE s >= :startsFrom)"
             bindings["startsFrom"] = it
         }
+        query.minWeeks?.let {
+            clauses += "semanas >= :minWeeks"
+            bindings["minWeeks"] = it
+        }
+        query.maxWeeks?.let {
+            clauses += "semanas <= :maxWeeks"
+            bindings["maxWeeks"] = it
+        }
+        // lo mismo que enrollmentOpen de la ficha (OfferingCalendar), en la zona horaria de cada edición y con el reloj
+        // de la aplicación: el texto de la consulta no depende del valor
+        query.enrollmentOpen?.let {
+            clauses += if (it) "EXISTS ($OPEN_OFFERING)" else "NOT EXISTS ($OPEN_OFFERING)"
+            bindings["now"] = OffsetDateTime.now(clock)
+        }
+        query.minHours.theory?.let {
+            clauses += "(ficha->'workload'->>'theoryHours')::numeric >= :minTheoryHours"
+            bindings["minTheoryHours"] = it
+        }
+        query.minHours.practice?.let {
+            clauses += "(ficha->'workload'->>'practiceHours')::numeric >= :minPracticeHours"
+            bindings["minPracticeHours"] = it
+        }
+        query.minHours.autonomous?.let {
+            clauses += "(ficha->'workload'->>'autonomousHours')::numeric >= :minAutonomousHours"
+            bindings["minAutonomousHours"] = it
+        }
         return clauses.joinToString(" AND ") to bindings
     }
 }
+
+// una edición de la ficha con la inscripción abierta hoy: INSCRIPCION_ABIERTA, sin terminar y dentro de la ventana
+private val OPEN_OFFERING =
+    """
+    SELECT 1 FROM jsonb_array_elements(ficha->'offerings') o
+    CROSS JOIN LATERAL (SELECT (CAST(:now AS timestamptz) AT TIME ZONE (o->>'timeZone'))::date AS hoy) t
+    WHERE o->>'status' = '${OfferingCalendar.OPEN}'
+      AND (o->>'endDate')::date >= t.hoy
+      AND (o->>'enrollmentFrom' IS NULL OR (o->>'enrollmentFrom')::date <= t.hoy)
+      AND (o->>'enrollmentUntil' IS NULL OR (o->>'enrollmentUntil')::date >= t.hoy)
+    """.trimIndent()
 
 private fun DatabaseClient.GenericExecuteSpec.bindNullable(
     name: String,
