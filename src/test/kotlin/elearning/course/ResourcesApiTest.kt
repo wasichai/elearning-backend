@@ -115,6 +115,34 @@ class ResourcesApiTest : LmsApiTest() {
         assertTrue(upload(admin, version, "otra.html", "<p>otra</p>".toByteArray()) in setOf(HttpStatus.CONFLICT, HttpStatus.FORBIDDEN))
     }
 
+    // revisión de la Fase 4 (M1 de #216, ADR-0021): un recurso no tiene bandeja; su decisión va por la API de registros y,
+    // salvo aprobar, con motivo, que queda en el audit_log de Wasichai
+    @Test
+    fun `a reviewer sends a resource version back or rejects it only with a reason`() {
+        val resource = create(creator, "recurso", mapOf("titulo" to "Con motivo", "tipo" to "HTML", "idioma" to "es"))
+        val version = create(creator, "version_recurso", mapOf("recurso" to resource, "numero" to 1, "autor_id" to me(creator)))
+        assertEquals(HttpStatus.OK, patch(creator, "version_recurso", version, mapOf("estado" to "EN_REVISION")))
+
+        assertEquals(HttpStatus.BAD_REQUEST, patch(reviewer, "version_recurso", version, mapOf("estado" to "BORRADOR")))
+        assertEquals(HttpStatus.BAD_REQUEST, patch(reviewer, "version_recurso", version, mapOf("estado" to "RETIRADA")))
+        assertEquals("EN_REVISION", get("/api/objects/version_recurso/records/$version", admin)["attributes"]["estado"].asString())
+
+        val sentBack =
+            client
+                .patch()
+                .uri("/api/objects/version_recurso/records/$version")
+                .header("Authorization", reviewer)
+                .header("X-Change-Reason", "Falta el texto alternativo")
+                .bodyValue(mapOf("attributes" to mapOf("estado" to "BORRADOR")))
+                .exchange()
+                .returnResult(String::class.java)
+                .status
+        assertEquals(HttpStatus.OK.value(), sentBack.value())
+        // el autor la retira a borrador sin motivo: no es una decisión
+        assertEquals(HttpStatus.OK, patch(creator, "version_recurso", version, mapOf("estado" to "EN_REVISION")))
+        assertEquals(HttpStatus.OK, patch(creator, "version_recurso", version, mapOf("estado" to "BORRADOR")))
+    }
+
     // revisión de la Fase 2: el título y el tipo (que decide cómo se muestra el archivo) de un recurso que ya ven los
     // estudiantes no cambian; mientras todas sus versiones son borrador, sí
     @Test
