@@ -454,6 +454,8 @@ registro de otra edición → `404`. Nadie lo usa por su rol: lo decide la asign
 "pendingQuestions": 1 }`.
 - La cola admite `?status=GRADED` para encontrar un intento ya corregido (por defecto `SUBMITTED`). El `Attempt` del docente
   añade `enrollmentId`, `email` e `history` (`[{ questionId, points, comment, reason, authorId, at }]`).
+- El roster y la cola devuelven la edición entera, sin paginar. Se leen por lotes (M4 de #183): las sentencias SQL crecen con
+  el temario y las sesiones, no con el número de estudiantes, y la cola no carga la instantánea ni las respuestas.
 - Solo se califican a mano las preguntas `OPEN` y `FILE` (`400` en otra), con dos decimales como máximo. El intento propio no
   existe para quien lo hizo (`404`), aunque sea docente de esa edición, y tampoco se marca su propia asistencia (`403`).
 - Calificar: `points` entre 0 y los de la pregunta (`400` si no); `reason` obligatorio al **cambiar** una nota ya puesta,
