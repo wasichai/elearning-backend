@@ -1519,12 +1519,314 @@
         "leccion": "srtm-v1-u2-l3",
         "version_recurso": "version-recurso-presentacion-padron"
       }
+    },
+    {
+      "ref": "curso-corto",
+      "object": "curso",
+      "key": ["codigo"],
+      "attributes": {
+        "codigo": "CORTO-101",
+        "slug": "mensajes-de-error-claros",
+        "titulo": "Curso corto: mensajes de error claros",
+        "resumen": "Un curso breve para recorrer el aula completa: una lectura, una evaluación corregida por el docente y una sesión con asistencia, hasta el certificado.",
+        "idioma": "es",
+        "nivel": "INICIAL"
+      },
+      "refs": {
+        "categoria": "cat-ia-aplicada"
+      }
+    },
+    {
+      "ref": "version-corto-1",
+      "object": "version_curso",
+      "key": ["curso", "numero"],
+      "attributes": {
+        "numero": 1,
+        "estado": "PUBLICADA",
+        "modalidad": "HIBRIDA",
+        "semanas": 1,
+        "horas_teoria_semana": 1,
+        "horas_practica_semana": 1,
+        "horas_supervisadas_semana": 0,
+        "horas_autonomas_semana": 1,
+        "sistema_credito": "NINGUNO",
+        "objetivos": "Reconocer qué hace útil un mensaje de error.\nReescribir un mensaje para que diga qué pasó y qué hacer.",
+        "resultados_aprendizaje": "Distingue un mensaje que informa de uno que solo culpa.\nRedacta un mensaje con causa y siguiente paso.",
+        "requisitos": "Ninguno. Curso ilustrativo de la demostración.",
+        "sistema_evaluacion": "Evaluación con una parte automática y una respuesta abierta que corrige el docente. Nota mínima: 60 sobre 100.\nAsistencia a la sesión.",
+        "certificacion": "Certificado verificable al completar las lecciones, aprobar la evaluación y asistir a la sesión. No otorga créditos académicos.",
+        "fuentes": "Contenido propio de la demostración de wasichai-learning.",
+        "contenido_ilustrativo": true,
+        "publicada_en": "2026-10-28T14:00:00Z",
+        "regla_lecciones": true,
+        "regla_evaluaciones": true,
+        "asistencia_minima": 100
+      },
+      "refs": {
+        "curso": "curso-corto"
+      },
+      "users": {
+        "autor_id": "creador@demo.wasichai-learning.test"
+      }
+    },
+    {
+      "ref": "corto-v1-u1",
+      "object": "unidad",
+      "key": ["version_curso", "orden"],
+      "attributes": {
+        "orden": 1,
+        "titulo": "Un mensaje que ayuda",
+        "descripcion": "De la lectura a la práctica guiada por el docente."
+      },
+      "refs": {
+        "version_curso": "version-corto-1"
+      }
+    },
+    {
+      "ref": "corto-v1-u1-l1",
+      "object": "leccion",
+      "key": ["unidad", "orden"],
+      "attributes": {
+        "orden": 1,
+        "titulo": "Entrar, salir y qué decir cuando falla",
+        "tipo": "LECTURA",
+        "duracion_minutos": 15,
+        "resumen": "Una lectura breve sobre el acceso a un portal, para mirar sus mensajes con ojo crítico."
+      },
+      "refs": {
+        "unidad": "corto-v1-u1"
+      }
+    },
+    {
+      "ref": "corto-v1-u1-l2",
+      "object": "leccion",
+      "key": ["unidad", "orden"],
+      "attributes": {
+        "orden": 2,
+        "titulo": "Evaluación: reescribir un mensaje",
+        "tipo": "EVALUACION",
+        "duracion_minutos": 15,
+        "resumen": "Dos preguntas que se corrigen solas y una respuesta abierta que corrige el docente."
+      },
+      "refs": {
+        "unidad": "corto-v1-u1"
+      }
+    },
+    {
+      "ref": "corto-v1-u1-l3",
+      "object": "leccion",
+      "key": ["unidad", "orden"],
+      "attributes": {
+        "orden": 3,
+        "titulo": "Sesión de revisión en grupo",
+        "tipo": "SESION",
+        "duracion_minutos": 60,
+        "resumen": "Se completa al asistir: el docente registra la asistencia."
+      },
+      "refs": {
+        "unidad": "corto-v1-u1"
+      }
+    },
+    {
+      "ref": "eval-corto",
+      "object": "evaluacion",
+      "key": ["codigo"],
+      "attributes": {
+        "codigo": "DEMO-EVAL-CORTO",
+        "titulo": "Evaluación: reescribir un mensaje",
+        "intentos_max": 2,
+        "nota_minima": 60,
+        "mostrar_soluciones": "AL_ENVIAR"
+      },
+      "refs": {
+        "leccion": "corto-v1-u1-l2"
+      }
+    },
+    {
+      "ref": "corto-q1",
+      "object": "pregunta",
+      "key": ["evaluacion", "orden"],
+      "attributes": {
+        "orden": 1,
+        "tipo": "UNICA",
+        "enunciado": "¿Qué le falta al mensaje «Error 500»?",
+        "puntos": 2
+      },
+      "refs": {
+        "evaluacion": "eval-corto"
+      }
+    },
+    {
+      "ref": "corto-q1-a",
+      "object": "opcion",
+      "key": ["pregunta", "orden"],
+      "attributes": {
+        "orden": 1,
+        "texto": "Qué pasó y qué puede hacer la persona",
+        "correcta": true
+      },
+      "refs": {
+        "pregunta": "corto-q1"
+      }
+    },
+    {
+      "ref": "corto-q1-b",
+      "object": "opcion",
+      "key": ["pregunta", "orden"],
+      "attributes": {
+        "orden": 2,
+        "texto": "Más mayúsculas",
+        "correcta": false
+      },
+      "refs": {
+        "pregunta": "corto-q1"
+      }
+    },
+    {
+      "ref": "corto-q2",
+      "object": "pregunta",
+      "key": ["evaluacion", "orden"],
+      "attributes": {
+        "orden": 2,
+        "tipo": "VERDADERO_FALSO",
+        "enunciado": "Un buen mensaje culpa a quien lo lee.",
+        "puntos": 2
+      },
+      "refs": {
+        "evaluacion": "eval-corto"
+      }
+    },
+    {
+      "ref": "corto-q2-a",
+      "object": "opcion",
+      "key": ["pregunta", "orden"],
+      "attributes": {
+        "orden": 1,
+        "texto": "Verdadero",
+        "correcta": false
+      },
+      "refs": {
+        "pregunta": "corto-q2"
+      }
+    },
+    {
+      "ref": "corto-q2-b",
+      "object": "opcion",
+      "key": ["pregunta", "orden"],
+      "attributes": {
+        "orden": 2,
+        "texto": "Falso",
+        "correcta": true
+      },
+      "refs": {
+        "pregunta": "corto-q2"
+      }
+    },
+    {
+      "ref": "corto-q3",
+      "object": "pregunta",
+      "key": ["evaluacion", "orden"],
+      "attributes": {
+        "orden": 3,
+        "tipo": "ABIERTA",
+        "enunciado": "Reescribe «Operación inválida» para que ayude a quien lo lee.",
+        "puntos": 6
+      },
+      "refs": {
+        "evaluacion": "eval-corto"
+      }
+    },
+    {
+      "ref": "corto-q3-r1",
+      "object": "criterio_rubrica",
+      "key": ["pregunta", "orden"],
+      "attributes": {
+        "orden": 1,
+        "descripcion": "Dice qué pasó",
+        "puntos": 3
+      },
+      "refs": {
+        "pregunta": "corto-q3"
+      }
+    },
+    {
+      "ref": "corto-q3-r2",
+      "object": "criterio_rubrica",
+      "key": ["pregunta", "orden"],
+      "attributes": {
+        "orden": 2,
+        "descripcion": "Dice qué hacer a continuación",
+        "puntos": 3
+      },
+      "refs": {
+        "pregunta": "corto-q3"
+      }
+    },
+    {
+      "ref": "recurso-leccion-corto",
+      "object": "recurso_leccion",
+      "key": ["leccion", "version_recurso"],
+      "attributes": {
+        "orden": 1
+      },
+      "refs": {
+        "leccion": "corto-v1-u1-l1",
+        "version_recurso": "version-recurso-lectura-acceso"
+      }
+    },
+    {
+      "ref": "edicion-corto-a",
+      "object": "edicion_curso",
+      "key": ["codigo"],
+      "attributes": {
+        "codigo": "CORTO-101-A",
+        "estado": "INSCRIPCION_ABIERTA",
+        "fecha_inicio": "hoy+14",
+        "fecha_fin": "hoy+21",
+        "zona_horaria": "America/Lima",
+        "inscripcion_desde": "hoy-1",
+        "inscripcion_hasta": "hoy+14",
+        "capacidad": 500,
+        "calendario": "Una semana. Sesión de revisión al empezar, a las 09:00 (hora de Lima)."
+      },
+      "refs": {
+        "version_curso": "version-corto-1"
+      }
+    },
+    {
+      "ref": "edicion-corto-a-diego",
+      "object": "docente_edicion",
+      "key": ["edicion_curso", "perfil_docente"],
+      "attributes": {
+        "rol_docente": "TITULAR"
+      },
+      "refs": {
+        "edicion_curso": "edicion-corto-a",
+        "perfil_docente": "perfil-diego"
+      },
+      "users": {
+        "usuario_id": "docente@demo.wasichai-learning.test"
+      }
     }
   ],
   "enrollments": [
     {
       "user": "estudiante@demo.wasichai-learning.test",
       "offering": "edicion-srtm-a"
+    }
+  ],
+  "sessions": [
+    {
+      "teacher": "docente@demo.wasichai-learning.test",
+      "offering": "edicion-corto-a",
+      "lesson": "corto-v1-u1-l3",
+      "title": "Sesión de revisión en grupo",
+      "type": "TEORIA",
+      "modality": "VIRTUAL",
+      "durationMinutes": 60,
+      "link": "https://reunion.wasichai-learning.test/revision",
+      "date": "hoy+14",
+      "localTime": "09:00"
     }
   ]
 }

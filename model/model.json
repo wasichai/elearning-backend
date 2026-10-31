@@ -756,6 +756,12 @@
       "description": "Evaluación de una lección (ADR-0016). Es temario: se congela con su versión. El estudiante no la lee: responde sobre la instantánea de su intento. Una por lección (lo exige la guarda editorial).",
       "fields": [
         {
+          "name": "codigo",
+          "label": "Código (identificador estable, para importar y para la demo)",
+          "type": "TEXT",
+          "unique": true
+        },
+        {
           "name": "titulo",
           "label": "Título",
           "type": "TEXT",

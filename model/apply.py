@@ -270,7 +270,7 @@ def validate_demo(data: dict, model: dict, roles: dict | None = None, base: Path
     known_roles = {"ADMIN"} | {r["name"] for r in (roles or {}).get("roles", [])}
 
     for key in data:
-        if key not in ("users", "records", "workflows", "enrollments") and not key.startswith("_"):
+        if key not in ("users", "records", "workflows", "enrollments", "sessions") and not key.startswith("_"):
             problems.append(f"clave desconocida '{key}' en los datos de demostración")
 
     # workflows: el camino de estados que un registro recorre hasta su estado final, como lo haría una persona
@@ -397,6 +397,17 @@ def validate_demo(data: dict, model: dict, roles: dict | None = None, base: Path
         open_today = all(isinstance(d, str) and RELATIVE_DATE.match(d) for d in window) and _days(window[0]) <= 0 <= _days(window[1])
         if a.get("estado") != "INSCRIPCION_ABIERTA" or not open_today:
             problems.append(f"{where}: la edición {enrollment['offering']!r} debe tener la inscripción abierta hoy (fechas relativas)")
+    # sesiones: por el comando, como el docente asignado a esa edición
+    assigned = {(r.get("refs", {}).get("edicion_curso"), r.get("users", {}).get("usuario_id")) for r in data.get("records", []) if r.get("object") == "docente_edicion"}
+    for i, session in enumerate(data.get("sessions", [])):
+        where = f"sesión #{i + 1}"
+        if (session.get("offering"), session.get("teacher")) not in assigned:
+            problems.append(f"{where}: {session.get('teacher')!r} no está asignado a {session.get('offering')!r}")
+        lesson = records_by_ref.get(session.get("lesson"))
+        if session.get("lesson") is not None and (lesson is None or lesson.get("object") != "leccion"):
+            problems.append(f"{where}: {session.get('lesson')!r} no es una leccion del archivo")
+        if not (isinstance(session.get("date"), str) and RELATIVE_DATE.match(session["date"])):
+            problems.append(f"{where}: la fecha debe ser relativa (hoy±N)")
     if problems:
         raise ModelError(problems)
 
@@ -735,6 +746,7 @@ def apply_demo(client: Client, data: dict, password: str, report: Report, base: 
     for record, record_id, final in pending:
         _walk(client, record, record_id, workflows[record["object"]], final, report)
     _enroll(client, data, ids, user_ids, password, report)
+    _sessions(client, data, ids, password, today, report)
 
 
 def _walk(client: Client, record: dict, record_id: str, flow: dict, final: dict, report: Report) -> None:
@@ -762,6 +774,23 @@ def _enroll(client: Client, data: dict, ids: dict, user_ids: dict, password: str
         student.login(email, password)
         student.call("POST", "/api/lms/enrollments", {"offering": codes[offering]})
         report.add(f"matrícula de {email} en {codes[offering]}")
+
+
+def _sessions(client: Client, data: dict, ids: dict, password: str, today: datetime.date, report: Report) -> None:
+    """Sesiones de la demo por el comando del docente asignado, iniciando sesión como él. Si ya existe, no se toca."""
+    codes = {r["ref"]: r["attributes"]["codigo"] for r in data.get("records", []) if r["object"] == "edicion_curso"}
+    for session in data.get("sessions", []):
+        offering = session["offering"]
+        if _find_record(client, "sesion", {"edicion": ids[offering], "titulo": session["title"]}):
+            continue
+        date = resolve_dates({"date": session["date"]}, today)["date"]
+        teacher = Client(client.base)
+        teacher.login(session["teacher"], password)
+        body = {k: session[k] for k in ("title", "type", "modality", "durationMinutes", "link") if k in session}
+        body["lessonId"] = ids[session["lesson"]] if session.get("lesson") else None
+        body["recurrence"] = {"pattern": "ONCE", "days": [], "startDate": date, "endDate": date, "localTime": session["localTime"]}
+        teacher.call("POST", f"/api/lms/teaching/offerings/{codes[offering]}/sessions", body)
+        report.add(f"sesión {session['title']} en {codes[offering]}")
 
 
 def load(path: Path) -> dict:
