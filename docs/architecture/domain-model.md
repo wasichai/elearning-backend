@@ -157,7 +157,8 @@ de salida. F2 (subida de archivos) · F4 (flujo editorial).
 - `version_recurso`: `recurso · RELATION → recurso` · `numero · INTEGER` · `estado · ENUM` (mismo ciclo que
   `version_curso`) · `fuente_canonica · ENUM(ASCIIDOC, LATEX, HTML, NINGUNA)` · `fuente · FILE` · `origen · TEXT ·
 repo@sha:ruta#ancla` · `referencias · LONG_TEXT` · `autor_id · UUID` · `revisada_en · DATETIME`;
-  `uniqueConstraints: [[recurso, numero]]`.
+  `uniqueConstraints: [[recurso, numero]]`. Su archivo es de un tipo que admite el `tipo` de su recurso, sobre lo que
+  detecta `wasichai-files` (`FileTypeGuard`, RNF-SEG-07; lista en [seguridad §4.4](../security/README.md#44-archivos-f2-en-adelante)).
 - `recurso_leccion`: `leccion · RELATION` · `version_recurso · RELATION` · `orden · INTEGER`;
   `uniqueConstraints: [[leccion, version_recurso]]`. Objeto y no `MANY_TO_MANY` porque el orden importa.
 
