@@ -4,6 +4,8 @@ import elearning.common.listAll
 import elearning.common.ref
 import elearning.jobs.Job
 import elearning.jobs.JobHandler
+import elearning.jobs.Requesters
+import elearning.jobs.RequiredPermission
 import kotlinx.coroutines.reactor.awaitSingle
 import org.springframework.core.io.buffer.DataBuffer
 import org.springframework.core.io.buffer.DataBufferLimitException
@@ -14,6 +16,7 @@ import org.springframework.transaction.reactive.TransactionalOperator
 import org.springframework.transaction.reactive.executeAndAwait
 import reactor.core.publisher.Flux
 import tools.jackson.databind.json.JsonMapper
+import wasichai.core.common.Actions
 import wasichai.core.data.RecordRequest
 import wasichai.core.data.RecordService
 import wasichai.files.FileDescriptor
@@ -26,8 +29,8 @@ import java.util.UUID
 
 // el trabajo de generación (ADR-0018 §7, RF-CON-03/07): de una fuente_recurso, los artefactos HTML y PDF y una
 // version_recurso nueva en BORRADOR con el artefacto del tipo de su recurso como archivo. Corre en la cola, nunca en el hilo
-// de WebFlux, como la plataforma (asPlatform): por eso los permisos se comprueban al encolar (RenderService) y la versión
-// lleva como autor a quien lo pidió. Publicar no sobrescribe: cada generación es una versión nueva, que sigue el flujo
+// de WebFlux, como la plataforma (asPlatform): por eso los permisos se comprueban al encolar (RenderService) y otra vez al
+// ejecutar (ADR-0022), y la versión lleva como autor a quien lo pidió. Publicar no sobrescribe: cada generación es una versión nueva, que sigue el flujo
 // editorial como cualquier otra.
 //
 // - la fuente se lee de wasichai-files y su hash se comprueba contra el que guardó al subirla
@@ -41,6 +44,7 @@ class RenderJobHandler(
     private val files: FileService,
     private val renderer: DocumentRenderer,
     private val transactions: TransactionalOperator,
+    private val requesters: Requesters,
 ) : JobHandler {
     override val type: String = TYPE
 
@@ -48,7 +52,13 @@ class RenderJobHandler(
         val payload = MAPPER.readTree(job.payload)
         val source = UUID.fromString(payload.required(SOURCE_ID).asString())
         val requester = UUID.fromString(payload.required(REQUESTER_ID).asString()).toString()
-        return records.asPlatform(job.organizationId, AUDIT_SOURCE) { existing(job.id) ?: generate(job, source, requester) }
+        return records.asPlatform(job.organizationId, AUDIT_SOURCE) {
+            existing(job.id) ?: run {
+                // quien la pidió puede todavía lo que se le exigió al encolar (ADR-0022)
+                requesters.requireStillAllowed(job.organizationId, UUID.fromString(requester), REQUIRED)
+                generate(job, source, requester)
+            }
+        }
     }
 
     private suspend fun generate(
@@ -176,6 +186,14 @@ class RenderJobHandler(
         private const val GENERATOR = "generador"
         private const val GENERATOR_VERSION = "version_generador"
         private const val JOB = "trabajo_id"
+
+        // lo que RenderService exige al encolar: crear la versión y leer la fuente y su recurso
+        private val REQUIRED =
+            listOf(
+                RequiredPermission(Actions.CREATE, VERSION),
+                RequiredPermission(Actions.READ, SOURCE),
+                RequiredPermission(Actions.READ, RESOURCE),
+            )
 
         internal val MAPPER: JsonMapper = JsonMapper.builder().findAndAddModules().build()
 

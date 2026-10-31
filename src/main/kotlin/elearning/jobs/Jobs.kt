@@ -34,13 +34,20 @@ data class JobStatus(
 
 // el puerto de la cola: un bean por tipo de trabajo. handle corre fuera del hilo de WebFlux, en un dispatcher acotado, y
 // puede bloquear; lo que devuelve (JSON o null) queda como resultado. una excepción cuenta como intento fallido y se
-// reintenta hasta maxAttempts. un manejador que bloquea (un proceso externo) pone su propio tiempo límite: el de la
-// cola solo corta lo que suspende
+// reintenta hasta maxAttempts, salvo PermanentJobFailure, que termina el trabajo. un manejador que bloquea (un proceso
+// externo) pone su propio tiempo límite: el de la cola solo corta lo que suspende
 interface JobHandler {
     val type: String
 
     suspend fun handle(job: Job): String?
 }
+
+// un fallo que reintentar no arregla (ADR-0022): la cola deja el trabajo FAILED en este intento, con este mensaje como
+// error. el mensaje lo lee quien pidió el trabajo
+class PermanentJobFailure(
+    message: String,
+    cause: Throwable? = null,
+) : RuntimeException(message, cause)
 
 // lms.jobs.*
 @ConfigurationProperties("lms.jobs")

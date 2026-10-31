@@ -150,6 +150,20 @@ class JobQueueTest : WasichaiIntegrationTest() {
         assertNull(failed.result)
     }
 
+    // ADR-0022: lo que reintentar no arregla termina en su intento
+    @Test
+    fun `a permanent failure is not retried`() {
+        val id = runBlocking { queue.enqueue(org, DOOMED, maxAttempts = 3) }
+
+        drain()
+
+        val failed = status(id)
+        assertEquals(JobState.FAILED, failed.state)
+        assertEquals(1, failed.attempts)
+        assertEquals("no way", failed.error)
+        assertNotNull(failed.finishedAt)
+    }
+
     @Test
     fun `a job that exceeds the time limit fails`() {
         val id = runBlocking { queue.enqueue(org, SLOW, maxAttempts = 1) }
@@ -292,6 +306,9 @@ class JobQueueTest : WasichaiIntegrationTest() {
         fun flakyHandler(): JobHandler = handler(FLAKY) { error("boom ${it.attempt}") }
 
         @Bean
+        fun doomedHandler(): JobHandler = handler(DOOMED) { throw PermanentJobFailure("no way") }
+
+        @Bean
         fun slowHandler(): JobHandler =
             handler(SLOW) {
                 delay(60_000)
@@ -336,6 +353,7 @@ class JobQueueTest : WasichaiIntegrationTest() {
         const val ECHO = "test.echo"
         const val FLAKY = "test.flaky"
         const val SLOW = "test.slow"
+        const val DOOMED = "test.doomed"
         const val COUNT = "test.count"
         const val BLOCKING = "test.blocking"
 

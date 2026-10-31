@@ -205,24 +205,27 @@ class JobQueue(
             .awaitSingle() > 0
     }
 
-    // vuelve a la cola con espera creciente o, agotados los intentos, queda FAILED. false: el reclamo ya no era suyo
+    // vuelve a la cola con espera creciente o, agotados los intentos o si es permanent (reintentar no lo arregla, ADR-0022),
+    // queda FAILED. false: el reclamo ya no era suyo
     suspend fun fail(
         job: Job,
         error: String,
+        permanent: Boolean = false,
     ): Boolean {
         val now = now()
         return db
             .sql(
                 """
                 UPDATE lms.trabajo SET
-                    estado = CASE WHEN intentos >= max_intentos THEN 'FAILED' ELSE 'QUEUED' END,
+                    estado = CASE WHEN :permanent OR intentos >= max_intentos THEN 'FAILED' ELSE 'QUEUED' END,
                     error = :error,
                     disponible_en = :retryAt,
                     reclamado_en = NULL,
-                    terminado_en = CASE WHEN intentos >= max_intentos THEN CAST(:now AS timestamptz) END
+                    terminado_en = CASE WHEN :permanent OR intentos >= max_intentos THEN CAST(:now AS timestamptz) END
                 WHERE id = :id AND estado = 'RUNNING' AND intentos = :attempt
                 """.trimIndent(),
-            ).bind("error", error.take(MAX_ERROR))
+            ).bind("permanent", permanent)
+            .bind("error", error.take(MAX_ERROR))
             .bind("retryAt", now.plus(properties.backoff.multipliedBy(job.attempt.toLong())))
             .bind("now", now)
             .bind("id", job.id)

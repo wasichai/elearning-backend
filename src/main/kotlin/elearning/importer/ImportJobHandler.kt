@@ -9,10 +9,13 @@ import elearning.importer.ImportService.Companion.VERSION
 import elearning.jobs.Job
 import elearning.jobs.JobHandler
 import elearning.jobs.JobQueue
+import elearning.jobs.Requesters
+import elearning.jobs.RequiredPermission
 import org.springframework.stereotype.Component
 import org.springframework.transaction.reactive.TransactionalOperator
 import org.springframework.transaction.reactive.executeAndAwait
 import tools.jackson.module.kotlin.readValue
+import wasichai.core.common.Actions
 import wasichai.core.common.NotFoundException
 import wasichai.core.data.RecordRequest
 import wasichai.core.data.RecordResponse
@@ -24,9 +27,9 @@ import java.util.UUID
 // repo@sha:ruta#ancla y sin el cuerpo del manual. nunca publica: la versión nace BORRADOR y la sigue quien la pidió.
 //
 // corre como la plataforma de su organización (no hay petición ni token en la cola), con el autor puesto en autor_id y
-// `import:<trabajo>` en la auditoría; los permisos de quien la pidió se comprobaron al encolar. todo el borrador y el cierre
-// del trabajo van en una transacción (ADR-0022): un reintento nunca encuentra medio borrador, y tras el commit no hay
-// reintento que haga otro
+// `import:<trabajo>` en la auditoría; los permisos de quien la pidió se comprueban al encolar y otra vez al ejecutar.
+// todo el borrador y el cierre del trabajo van en una transacción (ADR-0022): un reintento nunca encuentra medio borrador,
+// y tras el commit no hay reintento que haga otro
 @Component
 class ImportJobHandler(
     private val fetcher: SourceFetcher,
@@ -34,11 +37,14 @@ class ImportJobHandler(
     private val transactions: TransactionalOperator,
     private val properties: ImporterProperties,
     private val queue: JobQueue,
+    private val requesters: Requesters,
 ) : JobHandler {
     override val type = ImportService.JOB_TYPE
 
     override suspend fun handle(job: Job): String? {
         val payload = MAPPER.readValue<ImportPayload>(job.payload)
+        // antes de gastar lecturas de GitHub: quien la pidió puede todavía lo que se le exigió al encolar (ADR-0022)
+        requesters.requireStillAllowed(job.organizationId, UUID.fromString(payload.requester), REQUIRED)
         return try {
             import(job, payload)
         } catch (e: ImportFailure) {
@@ -141,6 +147,13 @@ class ImportJobHandler(
         const val TOO_LARGE = "FILE_TOO_LARGE"
         const val MAX_DETAIL = 500
         const val MAX_PROBLEMS = 500
+        val REQUIRED =
+            listOf(
+                RequiredPermission(Actions.CREATE, VERSION),
+                RequiredPermission(Actions.CREATE, UNIT),
+                RequiredPermission(Actions.CREATE, LESSON),
+                RequiredPermission(Actions.READ, COURSE),
+            )
         val INHERITED = setOf("modalidad", "duracion", "semanas")
         val DEFAULTS = mapOf("modalidad" to "ASINCRONA", "duracion" to "SEMANAS", "semanas" to 1, "sistema_credito" to "NINGUNO")
     }
