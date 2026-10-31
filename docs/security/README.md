@@ -102,7 +102,9 @@ guarda, un CREADOR podía publicar escribiendo `estado` con un `PATCH`.
   asignación; hasta entonces `UPDATE` sería sobre cualquiera) y ESTUDIANTE solo lee categorías y cursos (lo publicado lo
   ve en el catálogo público; borradores y `usuario_id` quedan fuera de su alcance).
 - **Sin autoasignación de alcance** (F3 docente, F4 revisor). Un guard sobre las asignaciones (`docente_edicion`,
-  revisor asignado) impide que quien crea la asignación sea el asignado.
+  revisor asignado) impide que quien crea la asignación sea el asignado. `version_curso.revisor_id` lo pone solo quien
+  tiene `PUBLICAR`, nunca al autor ni a sí mismo; con revisor asignado, solo esa persona decide la revisión, por la bandeja o
+  por la API de registros (`EditorialWorkflowGuard`). Cada decisión queda en `lms.decision_revision`, de solo inserción.
 - **Notas solo por el docente asignado** (F3). Un guard sobre calificaciones e intentos solo admite a un DOCENTE con
   asignación vigente a la edición del intento; cada cambio de nota exige motivo, también el del cero
   automático de una pregunta sin responder (lo comprueba `GradingService`), y queda en `lms.calificacion`, de solo inserción.

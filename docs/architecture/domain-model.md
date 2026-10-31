@@ -85,6 +85,7 @@ administración y API genérica sin código. **Tabla fija** en el esquema `lms` 
 | Respuestas de un intento                                                  | `lms.respuesta_intento` (`jsonb` por ítem)             | 1 y 3; el estudiante ve las suyas por comando |
 | Eventos de aprendizaje (vídeo, lectura, navegación)                       | `lms.evento_aprendizaje` (solo `INSERT`)               | 2                                             |
 | Proyección del catálogo público (solo con la opción B)                    | `lms.catalogo_publicado`                               | [overview §5.1][ov51]                         |
+| Decisiones de revisión de una versión                                     | `lms.decision_revision` (solo `INSERT`)                | historial que nadie edita (ADR-0018)          |
 
 Toda tabla `lms` lleva `organization_id NOT NULL` y cada consulta filtra por él: Wasichai no tiene RLS, así que el
 aislamiento es responsabilidad del repositorio y de sus pruebas. El primer incremento no crea ninguna (salvo que se elija
@@ -288,11 +289,15 @@ Invariantes: exactamente una de las dos versiones [guarda]; `revisor_id` ≠ aut
 revisión independiente [guarda]; las decisiones quedan en `audit_log` con motivo (`X-Change-Reason`). Usar
 `wasichai-workflow` para sus estados se evalúa en F4.
 
-**`comentario_revision`** (ReviewComment) — F4.
-`revision · RELATION → revision_contenido` · `autor_id · UUID` · `ancla · TEXT · sección o fragmento` · `texto ·
-LONG_TEXT` · `severidad · ENUM(OBSERVACION, RECOMENDACION, BLOQUEANTE)` · `estado · ENUM(ABIERTO, ATENDIDO, DESCARTADO)`.
-Invariantes: `texto` no cambia tras crearse; solo `estado` avanza [guarda]; una versión con comentarios `BLOQUEANTE`
-abiertos no se aprueba [guarda].
+**`comentario_revision`** (ReviewComment) — F4. `apiOnly`.
+`version_curso · RELATION` · `seccion · TEXT · texto libre (unidad:1/leccion:2)` · `texto · LONG_TEXT` · `autor_id · UUID` ·
+`resuelto · BOOLEAN`. Lo escribe solo la bandeja del revisor ([ADR-0018](../adr/0018-fase-4-estudio-revision-e-importador.md)):
+solo en una versión `EN_REVISION` y solo quien la revisa; el creador lo lee en su estudio. Sigue ligado a su versión.
+
+**`lms.decision_revision`** (ReviewDecision) — F4, tabla fija de solo inserción (un disparador impide cambiarla o borrarla).
+`version_curso_id` · `decision · APROBAR | PEDIR_CAMBIOS | RECHAZAR` · `motivo · obligatorio salvo al aprobar` · `autor_id` ·
+`decidida_en`. Se escribe en la misma transacción que la transición de la versión. La revisión asignada es
+`version_curso.revisor_id` (ADR-0018 §2); `revision_contenido` queda sin implementar mientras no haga falta más.
 
 **`ejecucion_agente`** (AgentRun) — F5. `apiOnly`.
 `usuario_id · UUID` · `version_curso · RELATION` · `unidad · RELATION` · `objetivo · TEXT` · `entradas · LONG_TEXT` ·

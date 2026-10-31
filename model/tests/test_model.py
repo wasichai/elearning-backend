@@ -127,6 +127,18 @@ class RealModelTest(unittest.TestCase):
         for role in ("DOCENTE", "CREADOR", "REVISOR"):
             self.assertFalse(holds(role, "matricula", "UPDATE") or holds(role, "matricula", "DELETE"), role)
 
+    def test_review_comments_are_written_only_by_the_review_inbox(self):
+        # ADR-0018 §2: el comentario lo escribe la bandeja del revisor, ligado a su versión; el creador solo lo lee
+        comment = next(o for o in MODEL["objects"] if o["name"] == "comentario_revision")
+        self.assertTrue(comment.get("apiOnly"))
+        link = next(r for r in MODEL["relationships"] if r["source"] == "comentario_revision")
+        self.assertEqual(("version_curso", True), (link["target"], link.get("required", False)))
+        self.assertTrue(holds("REVISOR", "comentario_revision", "CREATE"))
+        self.assertTrue(holds("CREADOR", "comentario_revision", "READ"))
+        self.assertFalse(holds("CREADOR", "comentario_revision", "CREATE") or holds("CREADOR", "comentario_revision", "UPDATE"))
+        for role in ("ESTUDIANTE", "DOCENTE"):
+            self.assertFalse(holds(role, "comentario_revision", "READ"), role)
+
     def test_versions_start_as_draft_and_illustrative(self):
         version = next(o for o in MODEL["objects"] if o["name"] == "version_curso")
         fields = {f["name"]: f for f in version["fields"]}
