@@ -2,6 +2,17 @@
 
 Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este archivo registra lo que se entregó.
 
+## 2026-10-31 — Pendientes de la Fase 2 ([#103](https://github.com/wasichai/elearning-backend/issues/103))
+
+- **Roles**: una cuenta ESTUDIANTE + CREADOR tiene la unión exacta de permisos (RF-ROL-03, #111). Nadie se da privilegios
+  a sí mismo: lo impide `MANAGE_ORGANIZATION`, solo de ADMIN, sin regla propia (RF-ROL-05, #135).
+- **Arquitectura**: `ArchitectureTest` falla ante un SDK o un host concreto de IA, almacenamiento o videoconferencia fuera
+  de su adaptador (RNF-ARQ-08, #138).
+- **Recursos**: `recurso.descripcion` y una misma versión publicada usada en lecciones de dos cursos (RF-CON-01, #140).
+- **Aula**: el umbral del vídeo `VITE_VIDEO_COMPLETION`, sobre lo reproducido y con `VIDEO_ENDED` una sola vez (RF-AUL-04,
+  front#44); e2e que recorre el curso solo con «Siguiente» (RF-AUL-02, front#47); el catálogo admite la modalidad presencial
+  (front#49).
+
 ## 2026-10-28 — Fase 2: el aula del estudiante
 
 Criterio de la Fase 2 cumplido ([roadmap](product/roadmap.md)): un estudiante inicia sesión, se matricula desde la ficha,
