@@ -120,22 +120,6 @@
           "actions": ["READ"]
         },
         {
-          "object": "evaluacion",
-          "actions": ["READ"]
-        },
-        {
-          "object": "pregunta",
-          "actions": ["READ"]
-        },
-        {
-          "object": "opcion",
-          "actions": ["READ"]
-        },
-        {
-          "object": "criterio_rubrica",
-          "actions": ["READ"]
-        },
-        {
           "object": "entrega",
           "actions": ["READ"]
         },

@@ -58,7 +58,10 @@ class LessonProgressService(
         }
         // con sesión enlazada la completa asistir: ni marcarla ni un vídeo
         if (type != LearningEventType.STARTED &&
-            records.listAll("sesion", mapOf("leccion_id" to lessonId.toString())).any { it.attributes[STATE]?.toString() != "CANCELADA" }
+            records.listAll("sesion", mapOf("leccion_id" to lessonId.toString(), "edicion" to enrollment.attributes.ref("edicion").orEmpty())).any {
+                it.attributes[STATE]?.toString() !=
+                    "CANCELADA"
+            }
         ) {
             throw ConflictException("Esta lección se completa asistiendo a su sesión")
         }

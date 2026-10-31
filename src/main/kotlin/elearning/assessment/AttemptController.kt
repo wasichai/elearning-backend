@@ -53,15 +53,16 @@ class AttemptController(
         @PathVariable questionId: UUID,
     ): SubmissionView = submissions.create(id, questionId)
 
-    private suspend fun view(attempt: Attempt) = AttemptViews.student(attempt, submissions.of(attempt))
+    private suspend fun view(attempt: Attempt) = AttemptViews.student(attempt, submissions.of(attempt), attempts.solutionsOpen(attempt))
 }
 
 object AttemptViews {
-    // sin soluciones con el intento abierto; enviadas, según la política de la evaluación
+    // sin soluciones con el intento abierto; enviadas, según lo que diga AttemptService.solutionsOpen
     fun student(
         attempt: Attempt,
         submissions: Map<String, SubmissionRef>,
-    ): AttemptView = view(attempt, attempt.snapshot.showSolutions == "AL_ENVIAR", submissions)
+        solutions: Boolean,
+    ): AttemptView = view(attempt, solutions, submissions)
 
     // el docente ve las soluciones siempre: corrige con ellas
     fun teacher(
