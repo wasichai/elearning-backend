@@ -46,4 +46,111 @@ class DemoClassroomApiTest : LmsApiTest() {
             assertTrue(bytes.contentEquals(Files.readAllBytes(local)), "${file["name"]}: el archivo baja tal como se subió")
         }
     }
+
+    @Test
+    fun `the short course goes from enrolling to its certificate with its assigned teacher`() {
+        val student = bearerOfNewStudent()
+        val teacher = demoUser("docente")
+        val enrolled =
+            client
+                .post()
+                .uri(
+                    "/api/lms/enrollments",
+                ).header("Authorization", student)
+                .bodyValue(mapOf("offering" to "CORTO-101-A"))
+                .exchange()
+                .expectBody(String::class.java)
+                .returnResult()
+        assertEquals(201, enrolled.status.value(), enrolled.responseBody)
+        val enrollment = json.readTree(enrolled.responseBody)["id"].asString()
+        val classroom = get("/api/lms/classroom/enrollments/$enrollment", student)
+        val lessons = classroom["units"].values().flatMap { it["lessons"].values() }
+        assertEquals(listOf("EXPLICIT", "ASSESSMENT", "ATTENDANCE"), lessons.map { it["completion"].asString() })
+        assertEquals(1, lessons[0]["resources"].size())
+        assertEquals(
+            listOf(
+                "LESSONS",
+                "ASSESSMENTS",
+                "ATTENDANCE",
+            ),
+            get("/api/lms/classroom/enrollments/$enrollment/completion", student)["rules"].values().map {
+                it["rule"].asString()
+            },
+        )
+
+        fun post(
+            token: String,
+            path: String,
+            body: Map<String, Any?>,
+        ) = client.post().uri(path).header("Authorization", token).bodyValue(body).exchange().expectBody(String::class.java).returnResult().let { r ->
+            assertTrue(r.status.is2xxSuccessful, "$path: ${r.responseBody}")
+            json.readTree(r.responseBody)
+        }
+        post(
+            student,
+            "/api/lms/classroom/enrollments/$enrollment/lessons/${lessons[0]["id"].asString()}/events",
+            mapOf(
+                "type" to "MARKED_COMPLETE",
+                "clientEventId" to
+                    java.util.UUID
+                        .randomUUID()
+                        .toString(),
+            ),
+        )
+        val attempt = post(student, "/api/lms/classroom/enrollments/$enrollment/lessons/${lessons[1]["id"].asString()}/attempts", emptyMap())
+        val id = attempt["id"].asString()
+        val questions = attempt["questions"].values().toList()
+
+        fun option(
+            index: Int,
+            text: String,
+        ) = questions[index]["options"].values().single { it["text"].asString().startsWith(text) }["id"].asString()
+        val answers =
+            listOf(
+                mapOf("questionId" to questions[0]["id"].asString(), "optionIds" to listOf(option(0, "Qué pasó"))),
+                mapOf("questionId" to questions[1]["id"].asString(), "optionIds" to listOf(option(1, "Falso"))),
+                mapOf("questionId" to questions[2]["id"].asString(), "text" to "No pudimos guardar: falta la fecha. Complétala e inténtalo de nuevo."),
+            )
+        client
+            .put()
+            .uri(
+                "/api/lms/classroom/attempts/$id/answers",
+            ).header("Authorization", student)
+            .bodyValue(mapOf("answers" to answers))
+            .exchange()
+            .expectStatus()
+            .isOk
+        assertTrue(post(student, "/api/lms/classroom/attempts/$id/submit", emptyMap())["result"]["pending"].asBoolean())
+
+        // el docente demo está asignado: corrige y pasa asistencia
+        post(teacher, "/api/lms/teaching/attempts/$id/grades", mapOf("questionId" to questions[2]["id"].asString(), "points" to 6, "comment" to "Claro y útil"))
+        val session = get("/api/lms/teaching/offerings/CORTO-101-A/sessions", teacher).values().single()["id"].asString()
+        client
+            .put()
+            .uri("/api/lms/teaching/sessions/$session/attendance")
+            .header("Authorization", teacher)
+            .bodyValue(
+                mapOf("records" to listOf(mapOf("enrollmentId" to enrollment, "status" to "PRESENTE"))),
+            ).exchange()
+            .expectStatus()
+            .isOk
+
+        assertTrue(get("/api/lms/classroom/enrollments/$enrollment/completion", student)["met"].asBoolean())
+        val certificate = post(student, "/api/lms/classroom/enrollments/$enrollment/certificate", mapOf("holderName" to "Estudiante de prueba"))
+        assertEquals(3, certificate["totalHours"].asInt())
+        assertEquals("CORTO-101", get("/api/lms/public/certificates/${certificate["code"].asString()}", student)["course"]["code"].asString())
+    }
+
+    private fun bearerOfNewStudent(): String {
+        val email = "${uniqueName("est")}@demo.wasichai-learning.test"
+        client
+            .post()
+            .uri("/api/users")
+            .header("Authorization", bearer())
+            .bodyValue(mapOf("email" to email, "displayName" to "Estudiante", "password" to DEMO_PASSWORD, "roles" to listOf("ESTUDIANTE")))
+            .exchange()
+            .expectStatus()
+            .isCreated
+        return bearer(email, DEMO_PASSWORD)
+    }
 }

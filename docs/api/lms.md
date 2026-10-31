@@ -466,3 +466,59 @@ registro de otra edición → `404`. Nadie lo usa por su rol: lo decide la asign
   configurado, por correo. Ambas guardan el motivo en el historial de la sesión.
 - `AttendanceRow`: `{ "enrollmentId", "email", "status": null | "PRESENTE" | "TARDE" | "AUSENTE" | "JUSTIFICADO" }`.
   Cambiar una asistencia ya registrada exige `reason` (`409` sin él). La asistencia no toca el progreso de materiales.
+
+## Estudio y revisión (F4, ADR-0018)
+
+Con sesión. Los permisos son las acciones declaradas sobre `version_curso`; lo ajeno responde `404`.
+
+### Estudio del creador
+
+| Método | Ruta                                          | Resultado                                                    |
+| ------ | --------------------------------------------- | ------------------------------------------------------------ |
+| GET    | `/api/lms/studio/versions`                    | mis versiones → `StudioVersion[]`, las más recientes primero |
+| GET    | `/api/lms/studio/versions/{id}`               | `StudioVersionDetail`                                        |
+| POST   | `/api/lms/studio/courses/{courseId}/versions` | `{ "fromVersionId": null }` → `201` `StudioVersionDetail`    |
+| POST   | `/api/lms/studio/versions/{id}/submit`        | envía a revisión → `StudioVersion`                           |
+
+El contenido (unidades, lecciones, evaluaciones) se edita con la API de registros de Wasichai, que la guarda deja solo al autor y
+en borrador.
+
+`StudioVersion`: `{ "id", "number", "status", "course": { "id", "code", "title" }, "authorId", "reviewerId": null,
+"updatedAt", "openComments": 2 }`. `status`: `BORRADOR` · `EN_REVISION` · `APROBADA` · `PUBLICADA` · `RETIRADA`.
+
+`StudioVersionDetail` = `StudioVersion` más `units`: `[{ "id", "order", "title", "lessons": [{ "id", "order", "title", "type",
+"sourceRef": null, "hasAssessment": false, "resources": 1 }] }]`, `comments: ReviewComment[]`, `decisions: ReviewDecision[]`.
+
+### Bandeja del revisor
+
+| Método | Ruta                                     | Resultado                                       |
+| ------ | ---------------------------------------- | ----------------------------------------------- |
+| GET    | `/api/lms/review/versions`               | en revisión y a mi cargo → `StudioVersion[]`    |
+| GET    | `/api/lms/review/versions/{id}`          | `StudioVersionDetail`                           |
+| GET    | `/api/lms/review/versions/{id}/diff`     | contra la versión anterior → `VersionDiff`      |
+| POST   | `/api/lms/review/versions/{id}/comments` | `{ "section", "text" }` → `201` `ReviewComment` |
+| POST   | `/api/lms/review/comments/{id}/resolve`  | → `ReviewComment`                               |
+| POST   | `/api/lms/review/versions/{id}/decision` | `{ "decision", "reason" }` → `StudioVersion`    |
+| POST   | `/api/lms/review/versions/{id}/publish`  | exige `PUBLICAR` → `StudioVersion`              |
+
+- `decision`: `APROBAR` · `PEDIR_CAMBIOS` (vuelve a `BORRADOR`) · `RECHAZAR` (pasa a `RETIRADA`). `reason` obligatorio salvo al
+  aprobar (`400`). Nadie decide sobre su propia versión (`403`); con `reviewerId` puesto, solo esa persona. Otra transición → `409`.
+- `ReviewComment`: `{ "id", "section", "text", "authorId", "createdAt", "resolved": false }`. `section` es texto libre que
+  identifica la parte (`unidad:1/leccion:2`).
+- `ReviewDecision`: `{ "decision", "reason", "authorId", "at" }`; historial que no se borra.
+- `VersionDiff`: `{ "baseVersion": 1, "units": [{ "order", "change": "ADDED" | "REMOVED" | "CHANGED" | "SAME", "title",
+"previousTitle", "lessons": [{ "order", "change", "title", "previousTitle", "fields": ["resumen"] }] }] }`. Sin versión anterior,
+  `baseVersion` es `null` y todo es `ADDED`.
+
+### Importación
+
+| Método | Ruta                             | Resultado                                                         |
+| ------ | -------------------------------- | ----------------------------------------------------------------- |
+| GET    | `/api/lms/studio/import/sources` | orígenes permitidos → `[{ "id", "repository", "sha", "master" }]` |
+| POST   | `/api/lms/studio/import`         | `{ "sourceId", "courseId" }` → `202` `ImportJob`                  |
+| GET    | `/api/lms/studio/import/{id}`    | `ImportJob`                                                       |
+
+`ImportJob`: `{ "id", "status": "PENDIENTE" | "EN_CURSO" | "HECHO" | "FALLIDO", "error": null, "versionId": null, "report": null |
+{ "includes": 12, "sections": 40, "images": 9, "problems": [{ "kind": "INCLUDE_ROTO" | "IMAGEN_FALTANTE" | "ANCLA_ROTA", "origin":
+"repo@sha:ruta#ancla", "detail" }] } }`. Un origen fuera de la lista → `404`. El resultado es siempre un `BORRADOR` con
+`sourceRef` en cada lección y sin el texto del manual.

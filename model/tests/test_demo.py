@@ -42,7 +42,7 @@ VERIFIED_ANCHORS = {
         "usr-compromisos", "consultar-compromisos", "registrar-un-compromiso", "la-ficha-del-compromiso", "aprobar",
         "registrar-una-entrega-y-el-cumplimiento", "reprogramar-bloquear-e-informar-retrasos", "candidatos-a-compromiso", "acuerdos-y-convenios"},
 }
-EXPECTED_COURSES = {"SRTM-ANU-101": "srtm", "SGSPE-101": "sgspe", "IA-AGT-201": None, "SRTM-ATC-001": None}
+EXPECTED_COURSES = {"SRTM-ANU-101": "srtm", "SGSPE-101": "sgspe", "IA-AGT-201": None, "SRTM-ATC-001": None, "CORTO-101": None}
 DRAFT_ONLY = "SRTM-ATC-001"
 
 
@@ -107,7 +107,8 @@ class DemoDataTest(unittest.TestCase):
             for field in ("objetivos", "resultados_aprendizaje", "requisitos", "sistema_evaluacion", "certificacion", "fuentes", "publicada_en"):
                 self.assertTrue(version["attributes"].get(field), f"{version['ref']}.{field}")
             units = children("unidad", "version_curso", version["ref"])
-            self.assertTrue(2 <= len(units) <= 4, version["ref"])
+            # el curso corto recorre el aula entera con una sola unidad
+            self.assertTrue((1 if version["ref"] == "version-corto-1" else 2) <= len(units) <= 4, version["ref"])
             for unit in units:
                 self.assertTrue(2 <= len(children("leccion", "unidad", unit["ref"])) <= 4, unit["ref"])
 
@@ -153,9 +154,9 @@ class DemoDataTest(unittest.TestCase):
             self.assertTrue(children("docente_edicion", "edicion_curso", edition["ref"]), f"{edition['ref']} sin docente")
             course = version["refs"]["curso"]
             per_course[course] = per_course.get(course, 0) + 1
-        self.assertEqual(3, len(per_course))
+        self.assertEqual(4, len(per_course))
         self.assertTrue(all(1 <= n <= 2 for n in per_course.values()))
-        self.assertEqual(["edicion-srtm-a"], open_today)
+        self.assertEqual(["edicion-srtm-a", "edicion-corto-a"], open_today)
 
     def test_the_classroom_has_a_reading_a_pdf_a_video_and_a_presentation_with_their_own_synthetic_files(self):
         refs = by_ref()
@@ -305,6 +306,8 @@ class FakeWasichai:
                 return 401, {"detail": "bad credentials"}
             self.tokens[f"u-{user['id']}"] = user
             return 200, {"token": f"u-{user['id']}"}
+        if method == "POST" and (m := re.fullmatch(r"/api/lms/teaching/offerings/([\w-]+)/sessions", path)):
+            return self.create_session((auth or "").removeprefix("Bearer "), m[1], body)
         if (method, path) == ("POST", "/api/lms/enrollments"):
             return self.enroll((auth or "").removeprefix("Bearer "), body)
         if m := re.fullmatch(r"/api/objects/(\w+)/records/([\w-]+)/files/(\w+)", path):
@@ -387,6 +390,19 @@ class FakeWasichai:
             self.roles[m[1]]["permissions"] = [{**p, "allowed": True} for p in body["permissions"]]
             return 200, {}
         return 404, {"detail": f"no route {method} {raw_path}"}
+
+    def create_session(self, token, code, body):
+        # como el comando: la persona debe tener esa edición asignada
+        teacher = self.tokens.get(token)
+        offering = next((r for r in self.records.get("edicion_curso", []) if r["attributes"]["codigo"] == code), None)
+        assigned = offering and any(
+            a["attributes"]["edicion_curso"] == offering["id"] and teacher and a["attributes"].get("usuario_id") == teacher["id"] for a in self.records.get("docente_edicion", [])
+        )
+        if not assigned:
+            return 404, {"detail": "not your offering"}
+        session = {"id": str(uuid.uuid4()), "attributes": {"edicion": offering["id"], "titulo": body["title"], "leccion_id": body["lessonId"]}}
+        self.records.setdefault("sesion", []).append(session)
+        return 201, [session]
 
     def enroll(self, token, body):
         # el comando de matrícula: como la persona, con la versión de la edición publicada
@@ -550,6 +566,14 @@ class ApplyDemoTest(unittest.TestCase):
         self.assertEqual(student["id"], enrollment["attributes"]["estudiante_id"])
         self.assertIn("POST /api/lms/enrollments", self.fake.writes)
         self.assertNotIn("POST /api/objects/matricula/records", self.fake.writes)
+
+    def test_the_short_course_session_is_created_by_its_assigned_teacher(self):
+        code, _, err = self.run_main()
+        self.assertEqual(0, code, err)
+        (session,) = self.fake.records["sesion"]
+        lesson = next(r for r in self.fake.records["leccion"] if r["attributes"]["titulo"] == "Sesión de revisión en grupo")
+        self.assertEqual(lesson["id"], session["attributes"]["leccion_id"])
+        self.assertNotIn("POST /api/objects/sesion/records", self.fake.writes)
 
     def test_existing_records_are_found_beyond_the_first_page_even_if_the_server_ignores_the_filter(self):
         self.assertEqual(0, self.run_main()[0])
