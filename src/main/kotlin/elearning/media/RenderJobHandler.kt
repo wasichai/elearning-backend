@@ -35,6 +35,7 @@ import java.util.UUID
 // editorial como cualquier otra.
 //
 // - la fuente se lee de wasichai-files y su hash se comprueba contra el que guardó al subirla
+// - el HTML se sanea con lista blanca antes de guardarse (GeneratedHtml)
 // - cada artefacto guarda su fuente, el hash de lo generado y de la fuente, el generador y su versión, y el trabajo
 // - versión y artefactos se crean en una transacción; los archivos se suben antes, y lo que quede sin adjuntar lo borra
 //   la limpieza de wasichai-files
@@ -83,7 +84,8 @@ class RenderJobHandler(
         val sourceHash = sha256(bytes)
         if (!sourceHash.equals(stored, ignoreCase = true)) throw RenderException("The source $sourceId does not match the hash stored with it")
 
-        val rendered = ArtifactFormat.entries.map { renderer.render(bytes, it) }
+        // el HTML, saneado antes de guardarse: su hash es el de lo que se guarda (ADR-0022)
+        val rendered = ArtifactFormat.entries.map { GeneratedHtml.sanitize(renderer.render(bytes, it)) }
         val baseName = "${resource.attributes[CODE]?.toString()?.takeIf { it.isNotBlank() } ?: "recurso"}-fuente-${source.attributes[NUMBER]}"
         val versionFile = stage(VERSION, "$baseName.${primary.extension}", rendered.first { it.format == primary })
         val artifactFiles = rendered.map { it to stage(ARTIFACT, "$baseName.${it.format.extension}", it) }
