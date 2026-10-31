@@ -37,10 +37,11 @@ class StudioController(
         @PathVariable id: UUID,
     ): StudioVersion = reader.submit(id)
 
+    // responde con el mismo detalle que GET /versions/{id}
     @PostMapping("/courses/{courseId}/versions")
     @ResponseStatus(HttpStatus.CREATED)
     suspend fun newVersion(
         @PathVariable courseId: UUID,
         @RequestBody body: NewVersionRequest,
-    ): NewVersionResult = versions.copy(courseId, body)
+    ): StudioVersionDetail = reader.detail(versions.copy(courseId, body))
 }

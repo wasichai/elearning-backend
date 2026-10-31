@@ -65,6 +65,22 @@ class NewVersionApiTest : ClassroomApiTestSupport() {
     }
 
     @Test
+    fun `it answers with the studio detail of the new draft, the same the studio reads`() {
+        val fixture = course(withEvaluation = true)
+
+        val (status, created) = copy(creator, courseId(fixture.offering))
+
+        assertEquals(HttpStatus.CREATED, status, created.toString())
+        val id = created!!["id"].asString()
+        assertEquals(fixture.offering, created["course"]["code"].asString())
+        assertEquals(userId(creator), created["authorId"].asString())
+        assertEquals(listOf("LECTURA", "VIDEO", "EVALUACION"), created["units"].single()["lessons"].values().map { it["type"].asString() })
+        assertEquals(0, created["comments"].size())
+        assertEquals(0, created["decisions"].size())
+        assertEquals(ok(call(creator, "/api/lms/studio/versions/$id")), created)
+    }
+
+    @Test
     fun `publishing and editing the copy leave the original and its students alone`() {
         val fixture = course()
         val id = courseId(fixture.offering)
