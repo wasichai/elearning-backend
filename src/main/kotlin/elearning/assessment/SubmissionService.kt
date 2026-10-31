@@ -3,6 +3,7 @@ package elearning.assessment
 import elearning.common.listAll
 import elearning.common.ref
 import elearning.learning.FileView
+import org.springframework.beans.factory.ObjectProvider
 import org.springframework.stereotype.Component
 import org.springframework.stereotype.Service
 import wasichai.core.common.ConflictException
@@ -44,6 +45,7 @@ class SubmissionService(
         if (attempt.snapshot.questions.none { it.id == questionId.toString() && it.type == AttemptService.FILE }) {
             throw ValidationException("Invalid submission", "questionId", "must be a file question of this attempt")
         }
+        records.requireActiveEnrollment(attempt.enrollmentId)
         val existing = records.listAll(OBJECT, mapOf(ATTEMPT to attemptId.toString(), QUESTION to questionId.toString())).singleOrNull()
         val record =
             existing ?: records.create(
@@ -97,6 +99,8 @@ class SubmissionService(
 class SubmissionGuard(
     private val attempts: AttemptStore,
     private val clock: Clock,
+    // RecordService recibe la lista de guardas: se pide perezosamente para no formar un ciclo
+    private val records: ObjectProvider<RecordService>,
 ) : RecordWriteGuard {
     override suspend fun beforeWrite(change: RecordWrite) {
         if (change.objectName != SubmissionService.OBJECT || change.userId == null) return
@@ -117,6 +121,7 @@ class SubmissionGuard(
         if (attempt.status != AttemptService.OPEN || attempt.deadline?.let { Instant.now(clock).isAfter(it) } == true) {
             throw ConflictException("Este intento ya no admite entregas")
         }
+        records.getObject().requireActiveEnrollment(attempt.enrollmentId)
     }
 
     companion object {
