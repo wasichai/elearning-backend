@@ -31,6 +31,7 @@ class EnrollmentReadScope(
         definition: ObjectDefinition,
     ): RecordCriterion? {
         val name = definition.obj.name
+        if (name == SESSION) return sessions(caller, definition)
         if (name !in OWNED) return null
         if (currentUser.hasPermission(caller, SEE_ALL, definition.obj.id)) return null
         // sin la columna no se sabe de quién es: no se lee ninguna (falla cerrada)
@@ -47,6 +48,17 @@ class EnrollmentReadScope(
         if (column == null) return RecordCriterion { _, bind -> "$student = ${bind(me)}" }
         val values = ids.map(UUID::fromString).toTypedArray()
         return RecordCriterion { _, bind -> "($student = ${bind(me)} OR $column = ANY(${bind(values)}))" }
+    }
+
+    // las sesiones de las ediciones que cursa o que tiene asignadas
+    private suspend fun sessions(
+        caller: AuthenticatedUser,
+        definition: ObjectDefinition,
+    ): RecordCriterion {
+        val column = column(definition, OFFERING) ?: return RecordCriterion { _, _ -> NOTHING }
+        val studied = all(ENROLLMENT, mapOf(STUDENT to caller.userId.toString())).mapNotNull { it.attributes.ref(OFFERING) }
+        val offerings = (studied + taughtOfferings(caller)).distinct().map(UUID::fromString).toTypedArray()
+        return RecordCriterion { _, bind -> "$column = ANY(${bind(offerings)})" }
     }
 
     // las ediciones asignadas a la persona: docente_edicion no tiene alcance propio, así que no hay recursión. quien no
@@ -74,6 +86,7 @@ class EnrollmentReadScope(
     companion object {
         const val ENROLLMENT = "matricula"
         const val PROGRESS = "progreso_leccion"
+        const val SESSION = "sesion"
         const val ASSIGNMENT = "docente_edicion"
         const val TEACHER = "usuario_id"
         const val OFFERING = "edicion"

@@ -52,6 +52,10 @@
         {
           "object": "entrega",
           "actions": ["READ", "CREATE", "UPDATE"]
+        },
+        {
+          "object": "sesion",
+          "actions": ["READ"]
         }
       ]
     },
@@ -130,6 +134,10 @@
         {
           "object": "entrega",
           "actions": ["READ"]
+        },
+        {
+          "object": "sesion",
+          "actions": ["READ", "CREATE", "UPDATE"]
         }
       ],
       "fieldPermissions": [
