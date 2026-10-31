@@ -25,6 +25,8 @@ import java.util.UUID
 //
 // - solo transiciones legales, cada una con su acción; saltarse la revisión no es una transición
 // - nadie aprueba una versión de la que es autor (autor_id), tampoco el administrador
+// - con revisor asignado (revisor_id), solo esa persona decide la revisión: aprobar, pedir cambios o rechazar (ADR-0018 §2).
+//   el revisor lo asigna quien publica, nunca el autor de la versión
 // - el contenido solo cambia en BORRADOR y solo lo cambia su autor, también su temario; en revisión, aprobada,
 //   publicada o retirada no se mueve (ni su temario)
 // - créditos aprobados y fecha de publicación solo los pone quien tiene la acción correspondiente
@@ -76,6 +78,7 @@ class EditorialWorkflowGuard(
                 }
                 if (attributes[APPROVED_CREDITS] != null) require(APPROVE)
                 if (attributes[PUBLISHED_AT] != null) require(PUBLISH)
+                attributes.text(REVIEWER)?.let { reviewer(it, attributes.text(AUTHOR), state, user, holds(PUBLISH)) }
             }
             RecordChangeKind.DELETED -> {
                 if (change.before.text(STATE) ?: DRAFT != DRAFT) throw ConflictException("Only a draft version can be deleted")
@@ -94,10 +97,12 @@ class EditorialWorkflowGuard(
                     if (to == APPROVED && before.text(AUTHOR).let { it == null || it == user.userId.toString() }) {
                         throw ForbiddenException("A version is approved by someone other than its author")
                     }
+                    if (from == IN_REVIEW) decides(before, to, user, holds(APPROVE))
                 }
                 if (APPROVED_CREDITS in changed) require(APPROVE)
                 if (PUBLISHED_AT in changed && to != PUBLISHED) throw ConflictException("$PUBLISHED_AT is set only when publishing")
-                val content = changed - setOf(APPROVED_CREDITS, PUBLISHED_AT)
+                if (REVIEWER in changed) reviewer(attributes.text(REVIEWER), before.text(AUTHOR), from, user, holds(PUBLISH))
+                val content = changed - setOf(APPROVED_CREDITS, PUBLISHED_AT, REVIEWER)
                 if (content.isNotEmpty() && from != DRAFT) {
                     throw ConflictException("A version that is $from does not change: create a new version (${content.sorted().joinToString()})")
                 }
@@ -107,6 +112,40 @@ class EditorialWorkflowGuard(
                     throw ForbiddenException("Only the author edits a draft version")
                 }
             }
+        }
+    }
+
+    // salir de revisión es decidirla, salvo que el autor la retire a borrador. decide quien aprueba y no es el autor; con
+    // revisor asignado, nadie más que ese revisor (tampoco el administrador: primero se reasigna)
+    private fun decides(
+        before: Map<String, Any?>,
+        to: String,
+        user: AuthenticatedUser,
+        approver: Boolean,
+    ) {
+        val me = user.userId.toString()
+        val author = before.text(AUTHOR)
+        if (to == DRAFT && author == me) return
+        if (author == null || author == me) throw ForbiddenException("A review is decided by someone other than the author")
+        if (!approver) throw ForbiddenException("Missing permission $APPROVE")
+        val assigned = before.text(REVIEWER)
+        if (assigned != null && assigned != me) throw ForbiddenException("Only the assigned reviewer decides this review")
+    }
+
+    // asignar o quitar el revisor: lo hace quien publica, mientras la versión no está decidida, nunca al autor ni a sí
+    // mismo (sin autoasignación de alcance, docs/security)
+    private fun reviewer(
+        reviewer: String?,
+        author: String?,
+        state: String,
+        user: AuthenticatedUser,
+        publisher: Boolean,
+    ) {
+        if (!publisher) throw ForbiddenException("Missing permission $PUBLISH")
+        if (reviewer != null && reviewer == user.userId.toString()) throw ForbiddenException("Nobody assigns themselves as reviewer")
+        if (state != DRAFT && state != IN_REVIEW) throw ConflictException("The reviewer of a version that is $state does not change")
+        if (reviewer != null && reviewer == author) {
+            throw ValidationException("The author does not review their own version", REVIEWER, "must not be the author")
         }
     }
 
@@ -235,6 +274,7 @@ class EditorialWorkflowGuard(
         const val RESOURCE_LINK = "recurso_leccion"
         const val STATE = "estado"
         const val AUTHOR = "autor_id"
+        const val REVIEWER = "revisor_id"
         const val APPROVED_CREDITS = "creditos_aprobados"
         const val PUBLISHED_AT = "publicada_en"
         const val LINK = "rel:"
@@ -257,6 +297,8 @@ class EditorialWorkflowGuard(
                 // el autor la retira de revisión o el revisor pide cambios
                 (IN_REVIEW to DRAFT) to setOf(SUBMIT, APPROVE),
                 (IN_REVIEW to APPROVED) to setOf(APPROVE),
+                // el revisor la rechaza (ADR-0018 §2): queda retirada, con su decisión y su motivo en lms.decision_revision
+                (IN_REVIEW to RETIRED) to setOf(APPROVE),
                 (APPROVED to PUBLISHED) to setOf(PUBLISH),
                 (PUBLISHED to RETIRED) to setOf(RETIRE),
             )

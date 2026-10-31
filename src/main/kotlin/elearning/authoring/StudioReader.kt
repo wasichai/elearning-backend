@@ -59,16 +59,33 @@ data class StudioVersionDetail(
     val updatedAt: Instant?,
     val openComments: Int,
     val units: List<StudioUnit>,
-    val comments: List<Any>,
-    val decisions: List<Any>,
+    val comments: List<ReviewComment>,
+    val decisions: List<ReviewDecision>,
+)
+
+data class ReviewComment(
+    val id: String,
+    val section: String,
+    val text: String,
+    val authorId: String?,
+    val createdAt: Instant?,
+    val resolved: Boolean,
+)
+
+data class ReviewDecision(
+    val decision: String,
+    val reason: String?,
+    val authorId: String,
+    val at: Instant,
 )
 
 // las versiones de quien las escribió. el resto no existe aquí, aunque pueda leerlas por otra vía: la bandeja del revisor
-// tiene su propia ruta
+// tiene su propia ruta (ReviewService) y comparte con esta el resumen y el detalle
 @Service
 class StudioReader(
     private val currentUser: CurrentUser,
     private val records: RecordService,
+    private val decisions: DecisionStore,
 ) {
     suspend fun mine(): List<StudioVersion> {
         val me = currentUser.require().userId.toString()
@@ -81,9 +98,12 @@ class StudioReader(
         return versions.sortedByDescending { it.updatedAt }.map { summary(it) }
     }
 
-    suspend fun detail(id: UUID): StudioVersionDetail {
-        val version = own(id)
-        val s = summary(version)
+    suspend fun detail(id: UUID): StudioVersionDetail = detailOf(own(id))
+
+    // el detalle de una versión que quien llama ya puede ver aquí: su temario, sus comentarios y sus decisiones
+    suspend fun detailOf(version: RecordResponse): StudioVersionDetail {
+        val notes = comments(version.id)
+        val s = summary(version, notes)
         val units =
             records.listAll(UNIT, mapOf(VERSION to version.id)).sortedBy { int(it, ORDER) }.map { unit ->
                 StudioUnit(
@@ -104,7 +124,8 @@ class StudioReader(
                         },
                 )
             }
-        return StudioVersionDetail(s.id, s.number, s.status, s.course, s.authorId, s.reviewerId, s.updatedAt, s.openComments, units, emptyList(), emptyList())
+        val decided = decisions.ofVersion(currentUser.require().organizationId, UUID.fromString(version.id))
+        return StudioVersionDetail(s.id, s.number, s.status, s.course, s.authorId, s.reviewerId, s.updatedAt, s.openComments, units, notes, decided)
     }
 
     suspend fun submit(id: UUID): StudioVersion {
@@ -125,7 +146,11 @@ class StudioReader(
         return version
     }
 
-    private suspend fun summary(version: RecordResponse): StudioVersion {
+    suspend fun summary(
+        version: RecordResponse,
+        known: List<ReviewComment>? = null,
+    ): StudioVersion {
+        val open = (known ?: comments(version.id)).count { !it.resolved }
         val course = records.get(COURSE, UUID.fromString(version.attributes.ref(COURSE)!!))
         return StudioVersion(
             id = version.id,
@@ -135,9 +160,27 @@ class StudioReader(
             authorId = version.attributes[AUTHOR]?.toString(),
             reviewerId = version.attributes["revisor_id"]?.toString(),
             updatedAt = version.updatedAt,
-            openComments = 0,
+            openComments = open,
         )
     }
+
+    // los comentarios de una versión, en el orden en que se hicieron. quien no los puede leer no ve ninguno
+    suspend fun comments(version: String): List<ReviewComment> =
+        try {
+            records.listAll(COMMENT, mapOf(VERSION to version)).map { comment(it) }.sortedBy { it.createdAt }
+        } catch (_: ForbiddenException) {
+            emptyList()
+        }
+
+    fun comment(record: RecordResponse) =
+        ReviewComment(
+            id = record.id,
+            section = record.attributes["seccion"].toString(),
+            text = record.attributes["texto"].toString(),
+            authorId = record.attributes[AUTHOR]?.toString(),
+            createdAt = record.createdAt,
+            resolved = record.attributes["resuelto"]?.toString() == "true",
+        )
 
     private fun int(
         record: RecordResponse,
@@ -151,6 +194,7 @@ class StudioReader(
         const val LESSON = "leccion"
         const val LINK = "recurso_leccion"
         const val EVALUATION = "evaluacion"
+        const val COMMENT = "comentario_revision"
         const val AUTHOR = "autor_id"
         const val STATE = "estado"
         const val ORDER = "orden"
