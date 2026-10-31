@@ -16,14 +16,9 @@ data class NewVersionRequest(
     val fromVersionId: String? = null,
 )
 
-data class NewVersionResult(
-    val id: String,
-    val number: Int,
-    val status: String,
-)
-
 // copia una versión a un borrador de quien la pide (ADR-0018 §1): su temario, sus evaluaciones y sus enlaces a recursos, con
-// identidades nuevas. todo como la persona, así que sus permisos y la guarda editorial aplican. el original no se toca
+// identidades nuevas. todo como la persona, así que sus permisos y la guarda editorial aplican. el original no se toca.
+// devuelve la identidad del borrador; su detalle lo lee el estudio (StudioReader), ya confirmada la copia
 @Service
 class NewVersionService(
     private val currentUser: CurrentUser,
@@ -33,7 +28,7 @@ class NewVersionService(
     suspend fun copy(
         courseId: UUID,
         request: NewVersionRequest,
-    ): NewVersionResult {
+    ): UUID {
         val me = currentUser.require().userId.toString()
         val course = records.get(COURSE, courseId)
         val versions = records.listAll(VERSION, mapOf(COURSE to course.id))
@@ -69,7 +64,7 @@ class NewVersionService(
                     }
                 }
             }
-            NewVersionResult(created.id, next, "BORRADOR")
+            UUID.fromString(created.id)
         }
     }
 
