@@ -2,6 +2,7 @@ package elearning.assessment
 
 import elearning.common.ref
 import elearning.learning.AssessmentFacts
+import elearning.learning.LessonAssessment
 import elearning.learning.LessonAssessmentFact
 import elearning.learning.TeachingReader
 import org.springframework.stereotype.Service
@@ -116,7 +117,42 @@ class GradingService(
 @org.springframework.stereotype.Component
 class AttemptFacts(
     private val attempts: AttemptStore,
+    private val content: AssessmentContent,
 ) : AssessmentFacts {
+    override suspend fun lessonAssessments(
+        organization: UUID,
+        enrollment: UUID,
+        lessons: List<UUID>,
+    ): Map<String, LessonAssessment> {
+        val evaluations = content.summaries(organization, lessons)
+        if (evaluations.isEmpty()) return emptyMap()
+        val byLesson = attempts.ofEnrollment(organization, enrollment).groupBy { it.lessonId.toString() }
+        return evaluations.mapValues { (lesson, evaluation) ->
+            val tries = byLesson[lesson].orEmpty()
+            val graded = tries.filter { it.result?.pending == false }
+            val best = graded.maxByOrNull { it.result?.percent ?: 0 }?.result
+            LessonAssessment(
+                id = evaluation.id,
+                title = evaluation.title,
+                maxAttempts = evaluation.maxAttempts,
+                timeLimitMinutes = evaluation.timeLimitMinutes,
+                passingPercent = evaluation.passingPercent,
+                attemptsUsed = tries.size,
+                openAttemptId = tries.firstOrNull { it.status == AttemptService.OPEN }?.id?.toString(),
+                bestPercent = best?.percent,
+                passed = best?.passed,
+                pending = tries.any { it.status == AttemptService.SUBMITTED },
+                firstStartedAt = tries.minOfOrNull { it.startedAt },
+                passedAt = graded.filter { it.result?.passed == true }.mapNotNull { it.submittedAt }.minOrNull(),
+            )
+        }
+    }
+
+    override suspend fun hasEvaluation(
+        organization: UUID,
+        lesson: UUID,
+    ): Boolean = content.summaries(organization, listOf(lesson)).isNotEmpty()
+
     override suspend fun pendingAttempts(
         organization: UUID,
         offering: UUID,

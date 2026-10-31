@@ -68,6 +68,24 @@ data class LessonView(
     val completion: String,
     val progress: LessonProgress,
     val resources: List<ResourceView>,
+    val assessment: AssessmentSummary?,
+)
+
+data class AssessmentBest(
+    val percent: Int?,
+    val passed: Boolean?,
+    val pending: Boolean,
+)
+
+data class AssessmentSummary(
+    val id: String,
+    val title: String,
+    val maxAttempts: Int,
+    val timeLimitMinutes: Int?,
+    val passingPercent: Int,
+    val attemptsUsed: Int,
+    val openAttemptId: String?,
+    val best: AssessmentBest?,
 )
 
 data class ResourceView(

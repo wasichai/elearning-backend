@@ -17,6 +17,7 @@ import java.util.UUID
 class ClassroomReader(
     private val currentUser: CurrentUser,
     private val records: RecordService,
+    private val facts: AssessmentFacts,
 ) {
     // mis matrículas activas, la de inicio más próximo primero
     suspend fun mine(): List<EnrollmentView> {
@@ -43,7 +44,7 @@ class ClassroomReader(
                     order = unit.record.int(ORDER),
                     title = unit.record.text(TITLE),
                     description = unit.record.textOrNull("descripcion"),
-                    progress = summary(unit.lessons, content.progress),
+                    progress = summary(unit.lessons, content),
                     lessons =
                         unit.lessons.map { lesson ->
                             LessonView(
@@ -53,9 +54,10 @@ class ClassroomReader(
                                 type = lesson.text(TYPE),
                                 durationMinutes = lesson.textOrNull("duracion_minutos")?.toIntOrNull(),
                                 summary = lesson.textOrNull("resumen"),
-                                completion = completion(lesson.text(TYPE)),
-                                progress = LessonProgressService.progress(content.progress[lesson.id]),
+                                completion = completion(lesson, content),
+                                progress = progress(lesson, content),
                                 resources = resources[lesson.id].orEmpty(),
+                                assessment = content.assessments[lesson.id]?.let(::assessment),
                             )
                         },
                 )
@@ -73,7 +75,7 @@ class ClassroomReader(
         val course = records.get(COURSE, UUID.fromString(content.version.attributes.ref(COURSE)!!))
         val offering = records.get(OFFERING, UUID.fromString(a.ref(OFFERING_FIELD)!!))
         val lessons = content.units.flatMap { it.lessons }
-        val next = lessons.firstOrNull { countable(it) && !done(content.progress[it.id]) }
+        val next = lessons.firstOrNull { countable(it, content) && !done(it, content) }
         val unitOrder = content.units.flatMap { u -> u.lessons.map { it.id to u.record.int(ORDER) } }.toMap()
         return EnrollmentView(
             id = enrollment.id,
@@ -89,7 +91,7 @@ class ClassroomReader(
                     endDate = LocalDate.parse(offering.text("fecha_fin").take(10)),
                     timeZone = offering.text("zona_horaria"),
                 ),
-            progress = summary(lessons, content.progress),
+            progress = summary(lessons, content),
             nextLesson = next?.let { NextLesson(it.id, it.text(TITLE), unitOrder.getValue(it.id), it.int(ORDER)) },
         )
     }
@@ -103,6 +105,7 @@ class ClassroomReader(
         val version: RecordResponse,
         val units: List<Unit>,
         val progress: Map<String, RecordResponse>,
+        val assessments: Map<String, LessonAssessment>,
     )
 
     // la versión de la matrícula con sus unidades y lecciones en orden, y el progreso guardado por lección
@@ -113,7 +116,9 @@ class ClassroomReader(
                 .sortedWith(compareBy({ it.int(ORDER) }, { it.id }))
                 .map { unit -> Unit(unit, all(LESSON, mapOf(UNIT to unit.id)).sortedWith(compareBy({ it.int(ORDER) }, { it.id }))) }
         val progress = all(PROGRESS, mapOf(ENROLLMENT to enrollment.id)).associateBy { it.attributes.ref(LESSON).orEmpty() }
-        return Content(version, units, progress)
+        val lessons = units.flatMap { it.lessons }.map { UUID.fromString(it.id) }
+        val assessments = facts.lessonAssessments(currentUser.require().organizationId, UUID.fromString(enrollment.id), lessons)
+        return Content(version, units, progress, assessments)
     }
 
     // los recursos de esas lecciones, en su orden; cada versión de recurso y su recurso se leen una vez
@@ -150,23 +155,67 @@ class ClassroomReader(
 
     private fun summary(
         lessons: List<RecordResponse>,
-        progress: Map<String, RecordResponse>,
+        content: Content,
     ): ProgressSummary {
-        val countable = lessons.filter { countable(it) }
-        val completed = countable.count { done(progress[it.id]) }
+        val countable = lessons.filter { countable(it, content) }
+        val completed = countable.count { done(it, content) }
         return ProgressSummary(completed, countable.size, if (countable.isEmpty()) 0 else completed * 100 / countable.size)
     }
 
-    private fun countable(lesson: RecordResponse) = lesson.text(TYPE) !in NOT_YET
+    private fun countable(
+        lesson: RecordResponse,
+        content: Content,
+    ) = completion(lesson, content) != "NOT_YET"
 
-    private fun done(progress: RecordResponse?) = progress?.attributes?.get(STATE)?.toString() in LessonProgressService.DONE
+    // con evaluación, la completa aprobarla (ADR-0016 §4); sin ella, lo guardado
+    private fun done(
+        lesson: RecordResponse,
+        content: Content,
+    ): Boolean {
+        content.assessments[lesson.id]?.let { return it.passedAt != null }
+        return content.progress[lesson.id]
+            ?.attributes
+            ?.get(STATE)
+            ?.toString() in LessonProgressService.DONE
+    }
 
-    private fun completion(type: String) =
-        when (type) {
-            in NOT_YET -> "NOT_YET"
-            LessonProgressService.VIDEO_LESSON -> "VIDEO_END"
-            else -> "EXPLICIT"
+    private fun completion(
+        lesson: RecordResponse,
+        content: Content,
+    ) = when {
+        lesson.id in content.assessments -> "ASSESSMENT"
+        lesson.text(TYPE) in NOT_YET -> "NOT_YET"
+        lesson.text(TYPE) == LessonProgressService.VIDEO_LESSON -> "VIDEO_END"
+        else -> "EXPLICIT"
+    }
+
+    // el aprobado se calcula de los intentos, no se guarda
+    private fun progress(
+        lesson: RecordResponse,
+        content: Content,
+    ): LessonProgress {
+        val stored = LessonProgressService.progress(content.progress[lesson.id])
+        val assessment = content.assessments[lesson.id] ?: return stored
+        return when {
+            assessment.passedAt != null ->
+                LessonProgress(LessonProgressService.PASSED, stored.startedAt ?: assessment.firstStartedAt, assessment.passedAt, PASSED_EVIDENCE)
+            stored.status == LessonProgressService.NOT_STARTED && assessment.firstStartedAt != null ->
+                LessonProgress(LessonProgressService.STARTED, assessment.firstStartedAt, null, null)
+            else -> stored
         }
+    }
+
+    private fun assessment(a: LessonAssessment) =
+        AssessmentSummary(
+            id = a.id,
+            title = a.title,
+            maxAttempts = a.maxAttempts,
+            timeLimitMinutes = a.timeLimitMinutes,
+            passingPercent = a.passingPercent,
+            attemptsUsed = a.attemptsUsed,
+            openAttemptId = a.openAttemptId,
+            best = if (a.bestPercent == null && !a.pending) null else AssessmentBest(a.bestPercent, a.passed, a.pending),
+        )
 
     private suspend fun all(
         objectName: String,
@@ -193,7 +242,9 @@ class ClassroomReader(
         const val TITLE = "titulo"
         const val TYPE = "tipo"
 
-        // se completan en F3 (evaluación y sesión): no cuentan para el progreso de F2
+        const val PASSED_EVIDENCE = "EVALUACION_APROBADA"
+
+        // sin su evaluación o su sesión definidas todavía no se pueden completar: no cuentan para el progreso
         val NOT_YET = setOf("EVALUACION", "SESION")
     }
 }
