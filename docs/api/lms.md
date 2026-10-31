@@ -523,11 +523,22 @@ en borrador.
 | POST   | `/api/lms/review/versions/{id}/decision` | `{ "decision", "reason" }` → `StudioVersion`    |
 | POST   | `/api/lms/review/versions/{id}/publish`  | exige `PUBLICAR` → `StudioVersion`              |
 
+- **A mi cargo**: tengo `APROBAR` sobre `version_curso` (si no, `403` en toda la bandeja), no soy el autor (`403`) y la versión
+  no tiene revisor asignado o lo soy yo; una asignada a otra persona no existe para mí (`404`). La bandeja lista las que están
+  `EN_REVISION`, la que más espera primero; el detalle, los comentarios y su resolución valen en cualquier estado.
+- **Revisor asignado**: `revisor_id` de `version_curso`, por la API de registros. Lo pone o lo quita quien tiene `PUBLICAR`
+  (`403` si no), en `BORRADOR` o `EN_REVISION` (`409` después), nunca al autor (`400`) ni a sí mismo (`403`). La guarda
+  exige lo mismo a la API de registros: con revisor asignado, nadie más aprueba, pide cambios ni rechaza (`403`).
 - `decision`: `APROBAR` · `PEDIR_CAMBIOS` (vuelve a `BORRADOR`) · `RECHAZAR` (pasa a `RETIRADA`). `reason` obligatorio salvo al
-  aprobar (`400`). Nadie decide sobre su propia versión (`403`); con `reviewerId` puesto, solo esa persona. Otra transición → `409`.
+  aprobar (`400`), hasta 4000 caracteres. Nadie decide sobre su propia versión (`403`); con `reviewerId` puesto, solo esa persona.
+  Solo se decide una versión `EN_REVISION` (`409`). La transición y la decisión van en la misma transacción.
 - `ReviewComment`: `{ "id", "section", "text", "authorId", "createdAt", "resolved": false }`. `section` es texto libre que
-  identifica la parte (`unidad:1/leccion:2`).
-- `ReviewDecision`: `{ "decision", "reason", "authorId", "at" }`; historial que no se borra.
+  identifica la parte (`unidad:1/leccion:2`), hasta 200 caracteres; `text`, hasta 4000. Ambos obligatorios (`400`). Solo se
+  comenta una versión `EN_REVISION` (`409`); resolver lo ya resuelto no cambia nada. `comentario_revision` es `apiOnly`: la API
+  de registros no lo escribe. `openComments` cuenta los no resueltos.
+- `ReviewDecision`: `{ "decision", "reason", "authorId", "at" }`, la más antigua primero; historial de solo inserción en
+  `lms.decision_revision`. Comentarios y decisiones quedan con su versión: una versión nueva a partir de ella empieza sin ellos.
+- `publish`: solo una versión `APROBADA` (`409`); pone `publicada_en` el servidor.
 - `VersionDiff`: `{ "baseVersion": 1, "units": [{ "order", "change": "ADDED" | "REMOVED" | "CHANGED" | "SAME", "title",
 "previousTitle", "lessons": [{ "order", "change", "title", "previousTitle", "fields": ["resumen"] }] }] }`. Sin versión anterior,
   `baseVersion` es `null` y todo es `ADDED`.
