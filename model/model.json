@@ -273,6 +273,12 @@
           "name": "asistencia_minima",
           "label": "Finalización: asistencia mínima (%)",
           "type": "INTEGER"
+        },
+        {
+          "name": "revisor_id",
+          "label": "Revisor asignado (usuario de Wasichai)",
+          "type": "UUID",
+          "indexed": true
         }
       ],
       "uniqueConstraints": [["curso", "numero"]]
