@@ -67,6 +67,12 @@ class RealModelTest(unittest.TestCase):
         self.assertLessEqual({"codigo", "titulo", "descripcion", "tipo", "idioma", "responsable_editorial_id"}, fields("recurso"))
         self.assertLessEqual({"numero", "autor_id", "estado", "archivo"}, fields("version_recurso"))
 
+    def test_students_never_read_assessment_content(self):
+        # llevan las soluciones: el estudiante responde sobre la instantánea de su intento (ADR-0016)
+        for obj in ("evaluacion", "pregunta", "opcion", "criterio_rubrica"):
+            self.assertFalse(holds("ESTUDIANTE", obj, "READ"), obj)
+            self.assertTrue(holds("CREADOR", obj, "CREATE"), obj)
+
     def test_no_teacher_sees_every_student_before_assignment_scope(self):
         # revisión de la Fase 2: sin alcance por asignación (F3), VER_TODAS abriría matrículas y progreso de todos
         for obj in ("matricula", "progreso_leccion"):

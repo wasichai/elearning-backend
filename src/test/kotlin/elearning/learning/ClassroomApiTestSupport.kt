@@ -35,6 +35,9 @@ abstract class ClassroomApiTestSupport : LmsApiTest() {
         val video: String,
         val assessment: String,
         val resource: String,
+        // con withEvaluation: la evaluación de la lección de evaluación y sus preguntas por tipo
+        val evaluation: String? = null,
+        val questions: Map<String, String> = emptyMap(),
     )
 
     @AfterEach
@@ -47,7 +50,10 @@ abstract class ClassroomApiTestSupport : LmsApiTest() {
         }
 
     // startsIn: días desde hoy hasta el inicio de la edición, para ordenar "mis cursos"
-    protected fun course(startsIn: Long = 0): Course {
+    protected fun course(
+        startsIn: Long = 0,
+        withEvaluation: Boolean = false,
+    ): Course {
         val resource = publishedHtml()
         return runBlocking {
             records.asPlatform(ORG) {
@@ -90,6 +96,7 @@ abstract class ClassroomApiTestSupport : LmsApiTest() {
                 val video = lesson(2, "VIDEO")
                 val assessment = lesson(3, "EVALUACION")
                 records.create("recurso_leccion", RecordRequest(mapOf("leccion" to reading.id, "version_recurso" to resource, "orden" to 1)))
+                val (evaluation, questions) = if (withEvaluation) evaluation(assessment.id) else null to emptyMap()
                 records.patch("version_curso", UUID.fromString(version.id), RecordRequest(mapOf("estado" to "PUBLICADA")), null, null)
                 published += version.id
                 val today = LocalDate.now(ZoneId.of("America/Lima"))
@@ -108,9 +115,63 @@ abstract class ClassroomApiTestSupport : LmsApiTest() {
                         ),
                     ),
                 )
-                Course(code, unit.id, reading.id, video.id, assessment.id, resource)
+                Course(code, unit.id, reading.id, video.id, assessment.id, resource, evaluation, questions)
             }
         }
+    }
+
+    // una evaluación de 10 puntos (aprueba con 60 %, dos intentos, soluciones al enviar): una pregunta de cada tipo que se
+    // corrige sola (7 puntos) y una abierta con rúbrica (3 puntos). la escribe la plataforma mientras el temario es borrador
+    private suspend fun evaluation(lesson: String): Pair<String, Map<String, String>> {
+        val evaluation =
+            records
+                .create(
+                    "evaluacion",
+                    RecordRequest(
+                        mapOf(
+                            "leccion" to lesson,
+                            "titulo" to "Evaluación de la unidad",
+                            "intentos_max" to 2,
+                            "nota_minima" to 60,
+                            "mostrar_soluciones" to "AL_ENVIAR",
+                        ),
+                    ),
+                ).id
+
+        suspend fun question(
+            order: Int,
+            type: String,
+            points: Int,
+            extra: Map<String, Any?> = emptyMap(),
+        ) = records
+            .create(
+                "pregunta",
+                RecordRequest(
+                    mapOf("evaluacion" to evaluation, "orden" to order, "tipo" to type, "enunciado" to "Pregunta $order", "puntos" to points) + extra,
+                ),
+            ).id
+
+        suspend fun option(
+            question: String,
+            order: Int,
+            text: String,
+            correct: Boolean,
+        ) = records.create("opcion", RecordRequest(mapOf("pregunta" to question, "orden" to order, "texto" to text, "correcta" to correct))).id
+        val single = question(1, "UNICA", 2)
+        option(single, 1, "Correcta", true)
+        option(single, 2, "Incorrecta", false)
+        val multiple = question(2, "MULTIPLE", 2)
+        option(multiple, 1, "Sí A", true)
+        option(multiple, 2, "Sí B", true)
+        option(multiple, 3, "No C", false)
+        val trueFalse = question(3, "VERDADERO_FALSO", 2)
+        option(trueFalse, 1, "Verdadero", true)
+        option(trueFalse, 2, "Falso", false)
+        val short = question(4, "CORTA", 1, mapOf("respuestas_aceptadas" to "padrón\npadron"))
+        val open = question(5, "ABIERTA", 3)
+        records.create("criterio_rubrica", RecordRequest(mapOf("pregunta" to open, "orden" to 1, "descripcion" to "Explica el estado", "puntos" to 2)))
+        records.create("criterio_rubrica", RecordRequest(mapOf("pregunta" to open, "orden" to 2, "descripcion" to "Cita la fecha", "puntos" to 1)))
+        return evaluation to mapOf("SINGLE" to single, "MULTIPLE" to multiple, "TRUE_FALSE" to trueFalse, "SHORT" to short, "OPEN" to open)
     }
 
     // una versión de recurso HTML con su archivo, publicada: la sube su autor (el administrador) y la publica la plataforma
