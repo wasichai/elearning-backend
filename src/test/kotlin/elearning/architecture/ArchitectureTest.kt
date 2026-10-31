@@ -42,6 +42,9 @@ class ArchitectureTest {
     fun `no concrete ai, storage, videoconference or source provider outside its adapter`() = assertNoViolations(Rule.CONCRETE_PROVIDER)
 
     @Test
+    fun `no external process outside the renderer adapter`() = assertNoViolations(Rule.EXTERNAL_PROCESS)
+
+    @Test
     fun `every capability sits in the dag and uses only what it may`() = assertNoViolations(Rule.PACKAGE_DAG)
 
     // la tabla también se vigila: una línea nueva no puede colar un ciclo, dar dependencias a workload ni hacer que
@@ -71,7 +74,8 @@ class ArchitectureTest {
                 "authoring" to setOf("common", "course"),
                 "importer" to setOf("common", "jobs"),
                 "ai" to setOf("common", "authoring"),
-                "media" to setOf("common", "authoring"),
+                // la generación encola y maneja sus trabajos en la cola persistente (ADR-0018 §7)
+                "media" to setOf("common", "authoring", "jobs"),
                 "reputation" to setOf("common", "enrollment"),
             )
 

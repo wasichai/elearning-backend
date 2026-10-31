@@ -1,5 +1,5 @@
 {
-  "_comentario": "Roles del LMS. ADMIN es de Wasichai y tiene todo, incluidas las acciones declaradas. Una cuenta puede tener varios roles. Las acciones declaradas no protegen nada por sí solas: el flujo editorial lo hace cumplir EditorialWorkflowGuard (transiciones con su acción, sin autoaprobación, lo publicado inmutable). PUBLICAR y RETIRAR solo los tiene ADMIN hasta el estudio editorial (F4). comentario_revision es apiOnly: lo escribe solo la bandeja del revisor; el creador lo lee en su estudio (ADR-0018). DOCENTE no edita ediciones hasta que su alcance por asignación exista (F3); ESTUDIANTE solo ve categorías y cursos: lo publicado lo lee del catálogo público y su aula llega en F2. perfil_docente.usuario_id (la cuenta que respalda un perfil) solo lo ve ADMIN (#65). matricula es apiOnly: ESTUDIANTE la crea solo por el comando de matrícula, la finaliza solo al emitir su certificado y lee solo las suyas (ADR-0012, ADR-0016). ESTUDIANTE lee versiones, unidades, lecciones y ediciones a través de ContentReadScope: lo publicado y lo de sus matrículas activas, nunca un borrador (ADR-0013); el personal tiene VER_TODAS.",
+  "_comentario": "Roles del LMS. ADMIN es de Wasichai y tiene todo, incluidas las acciones declaradas. Una cuenta puede tener varios roles. Las acciones declaradas no protegen nada por sí solas: el flujo editorial lo hace cumplir EditorialWorkflowGuard (transiciones con su acción, sin autoaprobación, lo publicado inmutable). PUBLICAR y RETIRAR solo los tiene ADMIN hasta el estudio editorial (F4). comentario_revision es apiOnly: lo escribe solo la bandeja del revisor; el creador lo lee en su estudio (ADR-0018). DOCENTE no edita ediciones hasta que su alcance por asignación exista (F3); ESTUDIANTE solo ve categorías y cursos: lo publicado lo lee del catálogo público y su aula llega en F2. perfil_docente.usuario_id (la cuenta que respalda un perfil) solo lo ve ADMIN (#65). matricula es apiOnly: ESTUDIANTE la crea solo por el comando de matrícula, la finaliza solo al emitir su certificado y lee solo las suyas (ADR-0012, ADR-0016). fuente_recurso es de solo inserción (corregir una fuente es subir otra) y artefacto_generado es apiOnly: lo escribe solo el trabajo de generación, como la plataforma, con autor_id de quien la pidió en la versión que crea (ADR-0018 §7). ESTUDIANTE lee versiones, unidades, lecciones y ediciones a través de ContentReadScope: lo publicado y lo de sus matrículas activas, nunca un borrador (ADR-0013); el personal tiene VER_TODAS.",
   "roles": [
     {
       "name": "ESTUDIANTE",
@@ -190,6 +190,14 @@
           "actions": ["READ", "CREATE", "UPDATE", "DELETE", "VER_TODAS"]
         },
         {
+          "object": "fuente_recurso",
+          "actions": ["READ", "CREATE"]
+        },
+        {
+          "object": "artefacto_generado",
+          "actions": ["READ"]
+        },
+        {
           "object": "evaluacion",
           "actions": ["READ", "CREATE", "UPDATE", "DELETE"]
         },
@@ -266,6 +274,14 @@
         {
           "object": "recurso_leccion",
           "actions": ["READ", "VER_TODAS"]
+        },
+        {
+          "object": "fuente_recurso",
+          "actions": ["READ"]
+        },
+        {
+          "object": "artefacto_generado",
+          "actions": ["READ"]
         },
         {
           "object": "evaluacion",
