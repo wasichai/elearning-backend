@@ -30,6 +30,10 @@ class ClassroomApiTest : ClassroomApiTestSupport() {
         val mine = ok(call(student, "/api/lms/classroom/enrollments"))
 
         assertEquals(listOf(soonerEnrollment, laterEnrollment), mine.strings { it["id"] })
+        // revisión de la Fase 2 (L7): la retirada tampoco abre su aula, sus sesiones ni su finalización
+        assertEquals(HttpStatus.NOT_FOUND, call(student, "/api/lms/classroom/enrollments/$withdrawnEnrollment").first)
+        assertEquals(HttpStatus.NOT_FOUND, call(student, "/api/lms/classroom/enrollments/$withdrawnEnrollment/sessions").first)
+        assertEquals(HttpStatus.NOT_FOUND, call(student, "/api/lms/classroom/enrollments/$withdrawnEnrollment/completion").first)
         assertEquals(1, mine[1]["progress"]["completedLessons"].asInt())
         assertEquals(later.video, mine[1]["nextLesson"]["id"].asString())
         assertEquals(sooner.reading, mine[0]["nextLesson"]["id"].asString())

@@ -33,6 +33,9 @@ class ClassroomReader(
     suspend fun classroom(id: UUID): ClassroomView {
         val enrollment = records.get(ENROLLMENT, id)
         if (enrollment.attributes[STUDENT]?.toString() != currentUser.require().userId.toString()) throw NotFoundException("Matrícula no encontrada")
+        // una retirada no está en «Mis cursos» ni abre su aula: antes la devolvía con recursos vacíos (revisión de la Fase 2, L7).
+        // una finalizada sigue legible (ADR-0016)
+        if (enrollment.attributes[STATE]?.toString() == WITHDRAWN) throw NotFoundException("Matrícula no encontrada")
         val content = content(enrollment)
         val lessonIds =
             content.units
