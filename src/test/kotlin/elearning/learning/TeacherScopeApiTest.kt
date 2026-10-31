@@ -30,6 +30,25 @@ class TeacherScopeApiTest : ClassroomApiTestSupport() {
         assertEquals(0, get("/api/objects/progreso_leccion/records?matricula=$inMine", outsider)["totalElements"].asInt())
     }
 
+    // revisión de la Fase 3 («otros bajos»): leer todas las asignaciones ataba cada perfil docente público a la cuenta
+    // de su docente. cada persona lee solo las suyas; quien las administra, todas
+    @Test
+    fun `a teacher reads only their own assignments, and the staff none of the others`() {
+        val mine = course()
+        val other = course()
+        val teacher = newTeacher().also { assign(it, mine) }
+        val colleague = newTeacher().also { assign(it, other) }
+        val colleagueAssignment = get("/api/objects/docente_edicion/records?usuario_id=${userId(colleague)}", admin)["content"][0]["id"].asString()
+
+        val seen = get("/api/objects/docente_edicion/records?size=200", teacher)["content"]
+        assertEquals(listOf(userId(teacher)), seen.strings { it["attributes"]["usuario_id"] }.distinct())
+        assertEquals(HttpStatus.NOT_FOUND, call(teacher, "/api/objects/docente_edicion/records/$colleagueAssignment").first)
+        for (staff in listOf(demoUser("creador"), demoUser("revisor"))) {
+            assertEquals(0, get("/api/objects/docente_edicion/records?usuario_id=${userId(colleague)}", staff)["totalElements"].asInt())
+        }
+        assertEquals(1, get("/api/objects/docente_edicion/records?usuario_id=${userId(colleague)}", admin)["totalElements"].asInt())
+    }
+
     @Test
     fun `an assignment never lets a teacher write a student's progress or enrollment`() {
         val course = course()
