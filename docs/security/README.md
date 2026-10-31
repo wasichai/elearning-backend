@@ -103,8 +103,11 @@ guarda, un CREADOR podía publicar escribiendo `estado` con un `PATCH`.
   ve en el catálogo público; borradores y `usuario_id` quedan fuera de su alcance).
 - **Sin autoasignación de alcance** (F3 docente, F4 revisor). Un guard sobre las asignaciones (`docente_edicion`,
   revisor asignado) impide que quien crea la asignación sea el asignado. `version_curso.revisor_id` lo pone solo quien
-  tiene `PUBLICAR`, nunca al autor ni a sí mismo; con revisor asignado, solo esa persona decide la revisión, por la bandeja o
-  por la API de registros (`EditorialWorkflowGuard`). Cada decisión queda en `lms.decision_revision`, de solo inserción.
+  tiene `PUBLICAR`, nunca al autor ni a sí mismo; con revisor asignado, solo esa persona decide la revisión
+  (`EditorialWorkflowGuard`). La revisión de un curso se decide solo en la bandeja, que deja cada decisión en
+  `lms.decision_revision`, de solo inserción, en la misma transacción; por la API de registros es `403`, y una versión de
+  curso no nace aprobada. La de un recurso, que no tiene bandeja, exige motivo (`X-Change-Reason`) salvo al aprobar
+  (ADR-0021).
 - **Notas solo por el docente asignado** (F3). Un guard sobre calificaciones e intentos solo admite a un DOCENTE con
   asignación vigente a la edición del intento; cada cambio de nota exige motivo, también el del cero
   automático de una pregunta sin responder (lo comprueba `GradingService`), y queda en `lms.calificacion`, de solo inserción.
@@ -150,7 +153,8 @@ la barrera contra filtrar borradores es física, y aun así las pruebas negativa
 - **S** Revisor que actúa en una revisión no asignada → alcance por asignación.
 - **T** Modificar una versión publicada o la decisión de un revisor → guard de inmutabilidad; comentarios y decisiones
   `appendOnly`; ETag e `If-Match`.
-- **R** Aprobaciones sin rastro → transiciones y decisiones en `audit_log`; motivo obligatorio al rechazar.
+- **R** Aprobaciones sin rastro → transiciones en `audit_log`; las decisiones de un curso, solo por la bandeja y en
+  `lms.decision_revision`; motivo obligatorio al pedir cambios o rechazar, también en un recurso (ADR-0021).
 - **I** Borradores visibles a estudiantes → visibilidad por estado más alcance.
 - **I** Comentarios de revisión de versiones ajenas → `ReviewCommentReadScope`: los lee quien publica, el autor de la
   versión, quien la puede revisar (sin revisor asignado, o siéndolo) y quien escribió el comentario; para los demás no

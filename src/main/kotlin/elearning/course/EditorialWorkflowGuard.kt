@@ -1,6 +1,7 @@
 package elearning.course
 
 import elearning.common.listAll
+import kotlinx.coroutines.currentCoroutineContext
 import org.springframework.beans.factory.ObjectProvider
 import org.springframework.core.annotation.Order
 import org.springframework.stereotype.Component
@@ -18,6 +19,14 @@ import wasichai.core.identity.CurrentUser
 import wasichai.core.metadata.MetadataService
 import java.time.Instant
 import java.util.UUID
+import kotlin.coroutines.AbstractCoroutineContextElement
+import kotlin.coroutines.CoroutineContext
+
+// la escritura con la que la bandeja del revisor decide una revisión: el estado de la versión y su fila en
+// lms.decision_revision, en la misma transacción (ADR-0021). la API genérica de registros no la lleva (ADR-040 de Wasichai)
+class ReviewDecisionWrite : AbstractCoroutineContextElement(Key) {
+    companion object Key : CoroutineContext.Key<ReviewDecisionWrite>
+}
 
 // el flujo editorial de version_curso y la inmutabilidad de su temario, para TODA escritura: la API genérica de
 // registros de Wasichai incluida. las acciones declaradas (PUBLICAR, APROBAR…) no protegen nada por sí solas: se
@@ -27,6 +36,8 @@ import java.util.UUID
 // - nadie aprueba una versión de la que es autor (autor_id), tampoco el administrador
 // - con revisor asignado (revisor_id), solo esa persona decide la revisión: aprobar, pedir cambios o rechazar (ADR-0018 §2).
 //   el revisor lo asigna quien publica, nunca el autor de la versión
+// - una revisión de version_curso se decide solo en la bandeja, que deja la decisión y su motivo (ADR-0021); la de una
+//   version_recurso, que no tiene bandeja, por la API de registros con motivo (X-Change-Reason) salvo al aprobar
 // - el contenido solo cambia en BORRADOR y solo lo cambia su autor, también su temario; en revisión, aprobada,
 //   publicada o retirada no se mueve (ni su temario)
 // - créditos aprobados y fecha de publicación solo los pone quien tiene la acción correspondiente
@@ -73,6 +84,11 @@ class EditorialWorkflowGuard(
                 val attributes = change.attributes.orEmpty()
                 val state = attributes.text(STATE) ?: DRAFT
                 if (state != DRAFT) require(ACTION_TO_ENTER.getValue(state))
+                // nacer aprobada es una aprobación sin revisión: la de un curso sale de la bandeja; nadie se aprueba lo suyo
+                if (state == APPROVED && change.objectName == VERSION) throw ForbiddenException(DECIDED_IN_THE_INBOX)
+                if (state == APPROVED && attributes.text(AUTHOR) == user.userId.toString()) {
+                    throw ForbiddenException("A version is approved by someone other than its author")
+                }
                 if (attributes.text(AUTHOR) != user.userId.toString() && !holds(PUBLISH)) {
                     throw ValidationException("A version is written in its author's name", AUTHOR, "must be your own user id")
                 }
@@ -97,7 +113,7 @@ class EditorialWorkflowGuard(
                     if (to == APPROVED && before.text(AUTHOR).let { it == null || it == user.userId.toString() }) {
                         throw ForbiddenException("A version is approved by someone other than its author")
                     }
-                    if (from == IN_REVIEW) decides(before, to, user, holds(APPROVE))
+                    if (from == IN_REVIEW && decides(before, to, user, holds(APPROVE))) decision(change, to)
                 }
                 if (APPROVED_CREDITS in changed) require(APPROVE)
                 if (PUBLISHED_AT in changed && to != PUBLISHED) throw ConflictException("$PUBLISHED_AT is set only when publishing")
@@ -115,21 +131,36 @@ class EditorialWorkflowGuard(
         }
     }
 
-    // salir de revisión es decidirla, salvo que el autor la retire a borrador. decide quien aprueba y no es el autor; con
-    // revisor asignado, nadie más que ese revisor (tampoco el administrador: primero se reasigna)
+    // salir de revisión es decidirla (true), salvo que el autor la retire a borrador. decide quien aprueba y no es el autor;
+    // con revisor asignado, nadie más que ese revisor (tampoco el administrador: primero se reasigna)
     private fun decides(
         before: Map<String, Any?>,
         to: String,
         user: AuthenticatedUser,
         approver: Boolean,
-    ) {
+    ): Boolean {
         val me = user.userId.toString()
         val author = before.text(AUTHOR)
-        if (to == DRAFT && author == me) return
+        if (to == DRAFT && author == me) return false
         if (author == null || author == me) throw ForbiddenException("A review is decided by someone other than the author")
         if (!approver) throw ForbiddenException("Missing permission $APPROVE")
         val assigned = before.text(REVIEWER)
         if (assigned != null && assigned != me) throw ForbiddenException("Only the assigned reviewer decides this review")
+        return true
+    }
+
+    // una decisión deja rastro (ADR-0021): la de un curso, su fila en lms.decision_revision, que solo escribe la bandeja en
+    // la misma transacción; la de un recurso, su motivo en el audit_log de Wasichai, obligatorio salvo al aprobar
+    private suspend fun decision(
+        change: RecordWrite,
+        to: String,
+    ) {
+        if (change.objectName == VERSION && currentCoroutineContext()[ReviewDecisionWrite] == null) {
+            throw ForbiddenException(DECIDED_IN_THE_INBOX)
+        }
+        if (change.objectName == RESOURCE_VERSION && to != APPROVED && change.reason.isNullOrBlank()) {
+            throw ValidationException("A review decision other than approving needs a reason", "reason", "send the X-Change-Reason header")
+        }
     }
 
     // asignar o quitar el revisor: lo hace quien publica, mientras la versión no está decidida, nunca al autor ni a sí
@@ -289,6 +320,8 @@ class EditorialWorkflowGuard(
         const val APPROVE = "APROBAR"
         const val PUBLISH = "PUBLICAR"
         const val RETIRE = "RETIRAR"
+
+        const val DECIDED_IN_THE_INBOX = "A course version review is decided in the review inbox: POST /api/lms/review/versions/{id}/decision"
 
         // (desde, hacia) → acciones que la permiten (basta una)
         val TRANSITIONS: Map<Pair<String, String>, Set<String>> =
