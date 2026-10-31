@@ -61,6 +61,8 @@ class ArchitectureTest {
             mapOf(
                 "common" to emptySet(),
                 "workload" to emptySet(),
+                // la cola persistente: no sabe de ninguna capacidad; quien encola y quien maneja la usa a ella
+                "jobs" to setOf("common"),
                 "course" to setOf("common", "workload"),
                 "catalog" to setOf("common", "course", "workload"),
                 "enrollment" to setOf("common", "course"),
