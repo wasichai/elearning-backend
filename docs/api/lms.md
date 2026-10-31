@@ -555,3 +555,32 @@ en borrador.
 { "includes": 12, "sections": 40, "images": 9, "problems": [{ "kind": "INCLUDE_ROTO" | "IMAGEN_FALTANTE" | "ANCLA_ROTA", "origin":
 "repo@sha:ruta#ancla", "detail" }] } }`. Un origen fuera de la lista → `404`. El resultado es siempre un `BORRADOR` con
 `sourceRef` en cada lección y sin el texto del manual.
+
+### Generación de artefactos
+
+Una fuente AsciiDoc produce un HTML y un PDF en la cola ([ADR-0018 §7](../adr/0018-fase-4-estudio-revision-e-importador.md)),
+y el resultado es una `version_recurso` **nueva en `BORRADOR`**, a nombre de quien la pidió, con el artefacto del tipo de su
+recurso como `archivo`. Sigue el flujo editorial como cualquier otra versión; generar otra vez crea otra versión, nunca
+sobrescribe.
+
+| Método | Ruta                                  | Resultado                                            |
+| ------ | ------------------------------------- | ---------------------------------------------------- |
+| POST   | `/api/lms/studio/sources/{id}/render` | sin cuerpo → `202` `RenderJob` (`status: PENDIENTE`) |
+| GET    | `/api/lms/studio/renders/{id}`        | `RenderJob`                                          |
+
+`RenderJob`: `{ "id", "status": "PENDIENTE" | "EN_CURSO" | "HECHO" | "FALLIDO", "error": null, "versionId": null,
+"versionNumber": null, "artifacts": [{ "id", "format": "HTML" | "PDF", "sha256" }] }`. `error` es el del último intento
+(sin Asciidoctor: `asciidoctor is not available on this server (…): the deployment image must include Asciidoctor
+(ADR-0018 §7)`); un intento fallido vuelve a `PENDIENTE` hasta agotar `lms.jobs.max-attempts`.
+
+- **Permisos**: ambas rutas exigen `CREATE` sobre `version_recurso` (`403`; REVISOR y ESTUDIANTE no lo tienen) y la fuente
+  se lee como quien pide (`404` si no existe o no la ve). Solo se generan recursos `HTML` o `PDF` (`409` para otro tipo).
+  Un trabajo que no es de generación o de otra organización es `404`.
+- **La fuente** se crea con la API de registros: se sube el archivo con `POST /api/objects/fuente_recurso/files/archivo`
+  (parte `file`, **tipo declarado `text/plain`**, UTF-8, hasta 1 MB) y su `id` va en el alta
+  `POST /api/objects/fuente_recurso/records` `{ "attributes": { "recurso", "numero", "archivo" } }`. Es de solo inserción
+  (`409` al cambiarla): corregirla es subir otra con el número siguiente.
+- **Los artefactos** se leen con `GET /api/objects/artefacto_generado/records?version_recurso={versionId}` (CREADOR y
+  REVISOR): `formato`, `archivo`, `sha256`, `hash_fuente`, `generador`, `version_generador`, `trabajo_id` y las relaciones
+  `version_recurso` y `fuente_recurso`. Se descargan con `GET /api/objects/artefacto_generado/records/{id}/files/archivo`,
+  siempre como adjunto. La API de registros no los escribe (`403`).

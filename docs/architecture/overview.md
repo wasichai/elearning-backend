@@ -129,6 +129,7 @@ flowchart BT
     importer
     ai --> authoring
     media --> authoring
+    media --> jobs
     reputation --> enrollment
     importer
 ```
@@ -148,6 +149,7 @@ puerto de `course` implementado por `enrollment` (F2).
 | `DatabaseClient` solo contra el esquema `lms`                                                        | Revisión                                                                         |
 | SDK y hosts de proveedores solo en su adaptador (`ai`, `media`, `course.meeting`, `importer.github`) | `ArchitectureTest`                                                               |
 | El nombre del producto no aparece en paquetes, objetos, campos ni claves                             | `ArchitectureTest` + revisión                                                    |
+| Un proceso externo solo en el adaptador del generador (`media.asciidoctor`)                          | `ArchitectureTest`                                                               |
 
 ## 3. Módulos de experiencia del frontend
 

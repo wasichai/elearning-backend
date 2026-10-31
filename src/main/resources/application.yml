@@ -64,3 +64,12 @@ lms:
     max-bytes: ${LMS_IMPORTER_MAX_BYTES:2MB}
     # opcional, para repositorios privados o más cuota; solo por entorno
     github-token: ${LMS_IMPORTER_GITHUB_TOKEN:}
+  # generación de artefactos HTML y PDF desde una fuente AsciiDoc (ADR-0018 §7): Asciidoctor en modo seguro, en la cola.
+  # la imagen de despliegue trae los ejecutables; sin ellos, el trabajo falla con un error claro
+  media:
+    asciidoctor:
+      html: ${LMS_MEDIA_ASCIIDOCTOR_HTML:asciidoctor}
+      pdf: ${LMS_MEDIA_ASCIIDOCTOR_PDF:asciidoctor-pdf}
+      # cada generación (HTML y PDF por separado); por debajo de lms.jobs.timeout
+      timeout: ${LMS_MEDIA_ASCIIDOCTOR_TIMEOUT:2m}
+      max-bytes: ${LMS_MEDIA_ASCIIDOCTOR_MAX_BYTES:25MB}
