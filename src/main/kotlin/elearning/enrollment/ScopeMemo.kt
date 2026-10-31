@@ -28,7 +28,7 @@ class ScopeMemo {
             objectName: String,
             compute: suspend () -> RecordCriterion?,
         ): RecordCriterion? {
-            val memo = currentCoroutineContext()[ReactorContext]?.context?.getOrDefault<ScopeMemo?>(KEY, null) ?: return compute()
+            val memo = currentCoroutineContext()[ReactorContext]?.context?.getOrEmpty<ScopeMemo>(KEY)?.orElse(null) ?: return compute()
             val key = "$scope:${caller.organizationId}:${caller.userId}:$objectName"
             memo.criteria[key]?.let { return it.orElse(null) }
             val criterion = compute()
