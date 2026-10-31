@@ -5,6 +5,7 @@ import elearning.common.ref
 import elearning.jobs.Job
 import elearning.jobs.JobHandler
 import kotlinx.coroutines.reactor.awaitSingle
+import org.springframework.core.io.buffer.DataBuffer
 import org.springframework.core.io.buffer.DataBufferLimitException
 import org.springframework.core.io.buffer.DataBufferUtils
 import org.springframework.core.io.buffer.DefaultDataBufferFactory
@@ -123,7 +124,7 @@ class RenderJobHandler(
         name: String,
         document: RenderedDocument,
     ): FileDescriptor {
-        val content = Flux.just(DefaultDataBufferFactory.sharedInstance.wrap(document.bytes))
+        val content: Flux<DataBuffer> = Flux.just(DefaultDataBufferFactory.sharedInstance.wrap(document.bytes))
         val staged = files.stage(objectName, FILE, FileUpload(name, document.format.contentType, content))
         if (!staged.sha256.equals(sha256(document.bytes), ignoreCase = true)) throw RenderException("The stored ${document.format} does not match its hash")
         return staged
