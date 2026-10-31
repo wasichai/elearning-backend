@@ -161,7 +161,26 @@ zip y texto solo si coinciden con el tipo declarado), aplica una lista blanca po
 
 - **S** Descargar con el enlace de otro → descarga por la API con permiso y alcance del registro, nunca por URL pública
   del bucket.
-- **T** Archivo con tipo falso o polimorfo → detección por bytes y lista blanca estricta por campo.
+- **T** Archivo con tipo falso o polimorfo → detección por bytes y lista blanca por tipo de recurso y para las
+  entregas (RNF-SEG-07, ADR-0018 §8), comprobada en `FileTypeGuard` y `SubmissionGuard` sobre el tipo que
+  `wasichai-files` detectó (nunca la extensión ni el tipo declarado); `400` en el campo. Cambiar el `tipo` de un recurso
+  a uno que no admite el archivo de alguna de sus versiones también es `400`.
+
+  | Dónde                      | Tipos detectados admitidos                                                                |
+  | -------------------------- | ----------------------------------------------------------------------------------------- |
+  | `HTML`, `VIDEO`            | `application/octet-stream` (Wasichai 1.6.0 no los reconoce: no hay otra forma)            |
+  | `PDF`                      | `application/pdf`                                                                         |
+  | `PRESENTACION`             | PDF, `.pptx`, `.odp`                                                                      |
+  | `LABORATORIO`              | zip, PDF, `text/plain`, `text/csv`                                                        |
+  | `CUESTIONARIO`             | PDF, `text/plain`, `text/csv`                                                             |
+  | `IMAGEN`                   | PNG, JPEG, GIF, WebP                                                                      |
+  | `DIAGRAMA`                 | PNG, JPEG, GIF, WebP, PDF (un SVG puede llevar script: no se admite)                      |
+  | `entrega` (del estudiante) | PDF, zip, `text/plain`, `text/csv`, imágenes, ofimática OOXML y ODF; nunca `octet-stream` |
+
+  Riesgo aceptado: `HTML` y `VIDEO` admiten lo que Wasichai no reconoce; se mitiga con la descarga como adjunto y
+  `nosniff`, el `iframe` sin scripts y el flujo editorial (lo revisa una persona antes de publicarse). Cuando Wasichai
+  detecte HTML y vídeo, sus listas se estrechan.
+
 - **R** Subidas y reemplazos quedan en el historial del registro.
 - **I** Metadatos (autor, GPS) en PDF e imágenes; nombres sensibles → limpieza de metadatos (a verificar, F2);
   `FileDescriptorReadPolicy` si hace falta.

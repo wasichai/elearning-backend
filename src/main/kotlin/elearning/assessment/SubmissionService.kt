@@ -1,5 +1,7 @@
 package elearning.assessment
 
+import elearning.common.DetectedFileTypes
+import elearning.common.FileTypes
 import elearning.common.listAll
 import elearning.common.ref
 import elearning.learning.FileView
@@ -94,11 +96,13 @@ class SubmissionService(
 }
 
 // entrega no es apiOnly porque la subida de wasichai-files es un PATCH de la API genérica: esta guarda exige, por cualquier
-// ruta, que sea de quien escribe, de su intento abierto y de una pregunta de archivo, y que solo cambie el archivo
+// ruta, que sea de quien escribe, de su intento abierto y de una pregunta de archivo, que solo cambie el archivo y que
+// este sea de un tipo admitido (FileTypes.SUBMISSION, RNF-SEG-07)
 @Component
 class SubmissionGuard(
     private val attempts: AttemptStore,
     private val clock: Clock,
+    private val detected: DetectedFileTypes,
     // RecordService recibe la lista de guardas: se pide perezosamente para no formar un ciclo
     private val records: ObjectProvider<RecordService>,
 ) : RecordWriteGuard {
@@ -122,6 +126,7 @@ class SubmissionGuard(
             throw ConflictException("Este intento ya no admite entregas")
         }
         records.getObject().requireActiveEnrollment(attempt.enrollmentId)
+        detected.incoming(change, SubmissionService.FILE)?.let { FileTypes.require(it, FileTypes.SUBMISSION, SubmissionService.FILE, "a submission") }
     }
 
     companion object {
