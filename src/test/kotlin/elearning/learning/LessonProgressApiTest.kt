@@ -89,6 +89,23 @@ class LessonProgressApiTest : ClassroomApiTestSupport() {
     }
 
     @Test
+    fun `a client event id reused for another lesson or type is a conflict and records nothing`() {
+        // revisión de la Fase 2 (L9): antes respondía 200 con el progreso de la otra lección, sin registrar nada
+        val course = course()
+        val student = newStudent()
+        val enrollment = enroll(student, course)["id"].asString()
+        val id = UUID.randomUUID().toString()
+        val (_, started) = event(student, enrollment, course.reading, "STARTED", id)
+
+        assertEquals(HttpStatus.CONFLICT, event(student, enrollment, course.reading, "MARKED_COMPLETE", id).first)
+        assertEquals(HttpStatus.CONFLICT, event(student, enrollment, course.video, "STARTED", id).first)
+        val (again, same) = event(student, enrollment, course.reading, "STARTED", id)
+        assertEquals(HttpStatus.OK, again)
+        assertEquals(started, same)
+        assertEquals(1, get("/api/objects/progreso_leccion/records?matricula=$enrollment", student)["totalElements"].asInt())
+    }
+
+    @Test
     fun `simultaneous events on a lesson leave one progress record and no errors`() {
         val course = course()
         val student = newStudent()

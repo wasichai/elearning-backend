@@ -1,6 +1,7 @@
 package elearning.learning
 
 import kotlinx.coroutines.reactor.awaitSingle
+import kotlinx.coroutines.reactor.awaitSingleOrNull
 import org.springframework.r2dbc.core.DatabaseClient
 import org.springframework.stereotype.Repository
 import java.util.UUID
@@ -38,6 +39,30 @@ class LearningEvents(
             .fetch()
             .rowsUpdated()
             .awaitSingle() > 0
+
+    // el evento que ese estudiante ya envió con ese identificador: matrícula, lección y tipo
+    suspend fun find(
+        organization: UUID,
+        student: UUID,
+        clientEventId: UUID,
+    ): Triple<UUID, UUID, String>? =
+        db
+            .sql(
+                """
+                SELECT matricula_id, leccion_id, tipo FROM lms.evento_aprendizaje
+                WHERE organizacion_id = :org AND estudiante_id = :student AND cliente_evento_id = :client
+                """.trimIndent(),
+            ).bind("org", organization)
+            .bind("student", student)
+            .bind("client", clientEventId)
+            .map { row, _ ->
+                Triple(
+                    row.get("matricula_id", UUID::class.java)!!,
+                    row.get("leccion_id", UUID::class.java)!!,
+                    row.get("tipo", String::class.java)!!,
+                )
+            }.one()
+            .awaitSingleOrNull()
 
     // como toda lectura de lms, dentro de su organización
     suspend fun count(

@@ -76,8 +76,13 @@ class LessonProgressService(
                 .awaitSingleOrNull()
             val current = find(enrollmentId, lessonId)
             val event = LearningEvent(user.organizationId, enrollmentId, lessonId, user.userId, type.name, clientEventId)
-            // repetido: lo que ya hay, sin tocar nada
-            if (!events.record(event)) return@executeAndAwait progress(current)
+            // repetido: lo que ya hay, sin tocar nada. el mismo identificador con otro contenido es un error del cliente
+            if (!events.record(event)) {
+                if (events.find(user.organizationId, user.userId, clientEventId) != Triple(enrollmentId, lessonId, type.name)) {
+                    throw ConflictException("Ese clientEventId ya se usó para otro evento")
+                }
+                return@executeAndAwait progress(current)
+            }
             val now = Instant.now(clock).toString()
             val written =
                 when {
