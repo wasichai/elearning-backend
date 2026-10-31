@@ -18,6 +18,7 @@ enum class Rule(
     PURE_WORKLOAD("elearning.workload es dominio puro: ni Spring, ni Wasichai, ni R2DBC"),
     PACKAGE_DAG("solo las dependencias de docs/architecture/overview.md §2.3"),
     CONCRETE_PROVIDER("ningún proveedor concreto de IA, almacenamiento, videoconferencia ni fuentes fuera de su adaptador (RNF-ARQ-08)"),
+    EXTERNAL_PROCESS("un proceso externo solo en el adaptador del generador, elearning.media.asciidoctor (ADR-0018 §7, RNF-ARQ-08)"),
 }
 
 data class Violation(
@@ -70,6 +71,9 @@ class SourceScanner(
             if (!isProviderAdapter(packageName)) {
                 CONCRETE_PROVIDER.findAll(line).forEach { report(Rule.CONCRETE_PROVIDER, index, "usa ${it.value}") }
             }
+            if (!isProcessAdapter(packageName)) {
+                EXTERNAL_PROCESS.findAll(line).forEach { report(Rule.EXTERNAL_PROCESS, index, "usa ${it.value}") }
+            }
             if (isWorkload(packageName)) {
                 FRAMEWORK_REFERENCE.findAll(line).forEach { report(Rule.PURE_WORKLOAD, index, "$packageName usa ${it.value}") }
             }
@@ -80,6 +84,9 @@ class SourceScanner(
 
     private fun isProviderAdapter(packageName: String) =
         PROVIDER_ADAPTERS.any { packageName == "$rootPackage.$it" || packageName.startsWith("$rootPackage.$it.") }
+
+    private fun isProcessAdapter(packageName: String) =
+        PROCESS_ADAPTERS.any { packageName == "$rootPackage.$it" || packageName.startsWith("$rootPackage.$it.") }
 
     private fun isWorkload(packageName: String) = packageName == "$rootPackage.workload" || packageName.startsWith("$rootPackage.workload.")
 
@@ -139,6 +146,11 @@ class SourceScanner(
                     """api\.github\.com|raw\.githubusercontent\.com)\b""",
             )
         private val PROVIDER_ADAPTERS = setOf("ai", "media", "course.meeting", "importer.github")
+
+        // lanzar un programa: ProcessBuilder o Runtime.exec. la fuente de un documento no es de confianza (CLAUDE.md,
+        // regla 6), así que el único proceso es el generador, en su adaptador, en modo seguro y con tiempo límite
+        private val EXTERNAL_PROCESS = Regex("""\bProcessBuilder\b|\bRuntime\s*\.\s*getRuntime\s*\(\s*\)\s*\.\s*exec\b|\bProcessHandle\b""")
+        private val PROCESS_ADAPTERS = setOf("media.asciidoctor")
         private val FRAMEWORK_REFERENCE = Regex("""\b(org\.springframework|wasichai|io\.r2dbc)\.[\w.*]*""")
     }
 }
