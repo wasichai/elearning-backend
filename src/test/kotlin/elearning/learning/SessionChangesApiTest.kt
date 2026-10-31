@@ -1,5 +1,8 @@
 package elearning.learning
 
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -111,6 +114,25 @@ class SessionChangesApiTest : ClassroomApiTestSupport() {
         assertEquals("CANCELADA", ok(call(s.student, "/api/lms/classroom/enrollments/${s.enrollment}/sessions"))[0]["status"].asString())
         assertEquals(HttpStatus.CONFLICT, s.reschedule(s.teacher).first)
         assertEquals(HttpStatus.CONFLICT, s.cancel(s.teacher).first)
+    }
+
+    // revisión de la Fase 3 (L7): reprogramar y cancelar a la vez pasaban las dos comprobaciones y una cancelada podía
+    // volver a REPROGRAMADA. en cualquier orden, la sesión acaba cancelada y lo que llega después de cancelar es 409
+    @Test
+    fun `rescheduling and cancelling at once always leave the session cancelled`() {
+        repeat(3) {
+            val s = Scene()
+            val statuses =
+                runBlocking(Dispatchers.IO) {
+                    val moved = async { s.reschedule(s.teacher).first }
+                    val cancelled = async { s.cancel(s.teacher).first }
+                    listOf(moved.await(), cancelled.await())
+                }
+
+            assertEquals(HttpStatus.OK, statuses[1], statuses.toString())
+            assertTrue(statuses[0] in setOf(HttpStatus.OK, HttpStatus.CONFLICT), statuses.toString())
+            assertEquals("CANCELADA", ok(call(s.student, "/api/lms/classroom/enrollments/${s.enrollment}/sessions"))[0]["status"].asString())
+        }
     }
 
     @Test

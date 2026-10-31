@@ -4,6 +4,8 @@ import elearning.common.instantOf
 import elearning.common.listAll
 import elearning.common.ref
 import elearning.course.meeting.MeetingProvider
+import kotlinx.coroutines.reactor.awaitSingleOrNull
+import org.springframework.r2dbc.core.DatabaseClient
 import org.springframework.stereotype.Service
 import org.springframework.transaction.reactive.TransactionalOperator
 import org.springframework.transaction.reactive.executeAndAwait
@@ -41,6 +43,7 @@ class SessionService(
     private val meeting: MeetingProvider,
     private val transactions: TransactionalOperator,
     private val notifications: Notifications,
+    private val db: DatabaseClient,
 ) {
     suspend fun forTeacher(code: String): List<SessionView> {
         val offering = teaching.assignedOffering(code)
@@ -77,8 +80,27 @@ class SessionService(
         if (session.attributes[STATE] == CANCELLED) throw ConflictException("Esta sesión está cancelada")
         if (entries.map { it.enrollmentId }.toSet().size != entries.size) invalid("records", "a student appears twice")
         val students = studentsOf(offering).associateBy { it.id }
-        val taken = records.listAll(ATTENDANCE, mapOf(SESSION to session.id)).associateBy { it.attributes.ref(ENROLLMENT) }
         val reason = request.reason?.trim()?.takeIf { it.isNotEmpty() }
+        val me = currentUser.require().userId.toString()
+        transactions.executeAndAwait {
+            // lo ya registrado se lee con la sesión bloqueada: dos pases de lista a la vez no se saltan el motivo
+            // (revisión de la Fase 3, L6), y una cancelación simultánea cuenta
+            lock(session.id)
+            if (records.get(SESSION, UUID.fromString(session.id)).attributes[STATE] == CANCELLED) throw ConflictException("Esta sesión está cancelada")
+            val taken = records.listAll(ATTENDANCE, mapOf(SESSION to session.id)).associateBy { it.attributes.ref(ENROLLMENT) }
+            validate(entries, students, taken, reason)
+            write(entries, students, taken, session, reason, me)
+        }
+        return attendance(id)
+    }
+
+    // quién puede figurar en la lista y con qué estado; cambiar lo ya registrado exige motivo
+    private suspend fun validate(
+        entries: List<AttendanceEntry>,
+        students: Map<String, RecordResponse>,
+        taken: Map<String?, RecordResponse>,
+        reason: String?,
+    ) {
         for (entry in entries) {
             val student = students[entry.enrollmentId] ?: invalid("records", "${entry.enrollmentId} is not a student of this offering")
             // quien enseña y cursa la misma edición no se acredita a sí mismo
@@ -91,39 +113,55 @@ class SessionService(
             val current = taken[entry.enrollmentId]?.attributes?.get(STATE)?.toString()
             if (current != null && current != entry.status && reason == null) throw ConflictException("Cambiar una asistencia ya registrada exige un motivo")
         }
-        val me = currentUser.require().userId.toString()
-        transactions.executeAndAwait {
-            for (entry in entries) {
-                val existing = taken[entry.enrollmentId]
-                when {
-                    existing == null -> {
-                        val student = students.getValue(entry.enrollmentId!!)
-                        records.create(
-                            ATTENDANCE,
-                            RecordRequest(
-                                mapOf(
-                                    SESSION to session.id,
-                                    ENROLLMENT to student.id,
-                                    STUDENT to student.attributes[STUDENT].toString(),
-                                    STATE to entry.status,
-                                    "registrado_por" to me,
-                                ),
+    }
+
+    private suspend fun write(
+        entries: List<AttendanceEntry>,
+        students: Map<String, RecordResponse>,
+        taken: Map<String?, RecordResponse>,
+        session: RecordResponse,
+        reason: String?,
+        me: String,
+    ) {
+        for (entry in entries) {
+            val existing = taken[entry.enrollmentId]
+            when {
+                existing == null -> {
+                    val student = students.getValue(entry.enrollmentId!!)
+                    records.create(
+                        ATTENDANCE,
+                        RecordRequest(
+                            mapOf(
+                                SESSION to session.id,
+                                ENROLLMENT to student.id,
+                                STUDENT to student.attributes[STUDENT].toString(),
+                                STATE to entry.status,
+                                "registrado_por" to me,
                             ),
-                            reason,
-                        )
-                    }
-                    existing.attributes[STATE]?.toString() != entry.status ->
-                        records.patch(
-                            ATTENDANCE,
-                            UUID.fromString(existing.id),
-                            RecordRequest(mapOf(STATE to entry.status, "registrado_por" to me)),
-                            reason,
-                            null,
-                        )
+                        ),
+                        reason,
+                    )
                 }
+                existing.attributes[STATE]?.toString() != entry.status ->
+                    records.patch(
+                        ATTENDANCE,
+                        UUID.fromString(existing.id),
+                        RecordRequest(mapOf(STATE to entry.status, "registrado_por" to me)),
+                        reason,
+                        null,
+                    )
             }
         }
-        return attendance(id)
+    }
+
+    // una sesión a la vez: pasar lista, reprogramar y cancelar leen su estado ya con este cerrojo, hasta el commit
+    private suspend fun lock(session: String) {
+        db
+            .sql("SELECT pg_advisory_xact_lock(hashtextextended(:key, 0))")
+            .bind("key", "$SESSION:$session")
+            .fetch()
+            .first()
+            .awaitSingleOrNull()
     }
 
     private suspend fun studentsOf(offering: RecordResponse) =
@@ -234,6 +272,12 @@ class SessionService(
                 .map { Audience.User(UUID.fromString(it)) }
         val updated =
             transactions.executeAndAwait {
+                // reprogramar y cancelar a la vez pasaban las dos comprobaciones y una cancelada volvía a REPROGRAMADA
+                // (revisión de la Fase 3, L7): el estado se relee con la sesión bloqueada
+                lock(session.id)
+                if (records.get(SESSION, UUID.fromString(session.id)).attributes[STATE] == CANCELLED) {
+                    throw ConflictException("Esta sesión está cancelada")
+                }
                 val written = records.patch(SESSION, UUID.fromString(session.id), RecordRequest(attributes), reason, null)
                 if (audience.isNotEmpty()) {
                     notifications.publish(
