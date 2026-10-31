@@ -38,7 +38,8 @@ class LearningEventsTest : WasichaiIntegrationTest() {
         runBlocking {
             assertTrue(events.record(e))
             assertFalse(events.record(e), "el mismo evento repetido no se vuelve a guardar")
-            assertEquals(1, events.count(e.enrollmentId, e.lessonId))
+            assertEquals(1, events.count(e.organizationId, e.enrollmentId, e.lessonId))
+            assertEquals(0, events.count(UUID.randomUUID(), e.enrollmentId, e.lessonId), "otra organización no los ve")
         }
     }
 
@@ -73,6 +74,6 @@ class LearningEventsTest : WasichaiIntegrationTest() {
                 }
             }
         }
-        runBlocking { assertEquals(1, events.count(e.enrollmentId, e.lessonId)) }
+        runBlocking { assertEquals(1, events.count(e.organizationId, e.enrollmentId, e.lessonId)) }
     }
 }

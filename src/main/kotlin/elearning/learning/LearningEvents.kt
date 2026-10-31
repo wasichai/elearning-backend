@@ -39,12 +39,15 @@ class LearningEvents(
             .rowsUpdated()
             .awaitSingle() > 0
 
+    // como toda lectura de lms, dentro de su organización
     suspend fun count(
+        organization: UUID,
         enrollment: UUID,
         lesson: UUID,
     ): Int =
         db
-            .sql("SELECT count(*) AS n FROM lms.evento_aprendizaje WHERE matricula_id = :e AND leccion_id = :l")
+            .sql("SELECT count(*) AS n FROM lms.evento_aprendizaje WHERE organizacion_id = :org AND matricula_id = :e AND leccion_id = :l")
+            .bind("org", organization)
             .bind("e", enrollment)
             .bind("l", lesson)
             .map { row, _ -> row.get("n", Number::class.java)!!.toInt() }

@@ -342,6 +342,40 @@ class TransportTest(unittest.TestCase):
                 server.shutdown()
                 server.server_close()
 
+    def test_file_name_cannot_break_the_multipart_headers(self):
+        # revisión de la Fase 2 (L11): comillas o saltos de línea en el nombre cerraban filename o añadían cabeceras
+        # a la parte. se escapan como los navegadores (%22, %0D, %0A, RFC 7578 §4.2)
+        received = []
+
+        class Files(BaseHTTPRequestHandler):
+            def do_POST(self):
+                received.append(self.rfile.read(int(self.headers["Content-Length"])))
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(b"{}")
+
+            def log_message(self, *args):
+                pass
+
+        server = ThreadingHTTPServer(("127.0.0.1", 0), Files)
+        threading.Thread(target=server.serve_forever, daemon=True).start()
+        tmp = Path(self.id().replace(".", "_"))
+        tmp.mkdir()
+        try:
+            file = tmp / 'guia"\r\nX-Inyectada: si.pdf'
+            file.write_bytes(b"%PDF")
+            apply.Client(f"http://127.0.0.1:{server.server_port}").upload("/api/files", file)
+            head = received[0].split(b"\r\n\r\n", 1)[0].decode()
+            self.assertIn('filename="guia%22%0D%0AX-Inyectada: si.pdf"', head)
+            self.assertEqual(3, len(head.split("\r\n")), "límite, Content-Disposition y Content-Type: nada más")
+        finally:
+            server.shutdown()
+            server.server_close()
+            for child in tmp.iterdir():
+                child.unlink()
+            tmp.rmdir()
+
     def test_password_on_the_command_line_is_warned_about(self):
         err = io.StringIO()
         with contextlib.redirect_stderr(err):

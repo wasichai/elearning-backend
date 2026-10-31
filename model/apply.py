@@ -477,7 +477,9 @@ class Client:
         """multipart/form-data con una parte "file", como la ruta de archivos de wasichai-files."""
         boundary = f"----wasichai-learning-{os.urandom(12).hex()}"
         content_type = mimetypes.guess_type(file.name)[0] or "application/octet-stream"
-        body = (f'--{boundary}\r\nContent-Disposition: form-data; name="file"; filename="{file.name}"\r\n'
+        # comillas y saltos de línea cerrarían filename o añadirían cabeceras: se escapan como los navegadores (RFC 7578)
+        name = file.name.replace('"', "%22").replace("\r", "%0D").replace("\n", "%0A")
+        body = (f'--{boundary}\r\nContent-Disposition: form-data; name="file"; filename="{name}"\r\n'
                 f"Content-Type: {content_type}\r\n\r\n").encode() + file.read_bytes() + f"\r\n--{boundary}--\r\n".encode()
         request = urllib.request.Request(self.base + path, data=body, method="POST")
         request.add_header("Accept", "application/json")
