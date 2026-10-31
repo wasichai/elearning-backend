@@ -24,6 +24,7 @@ class AttemptService(
     private val records: RecordService,
     private val content: AssessmentContent,
     private val attempts: AttemptStore,
+    private val submissions: SubmissionService,
     private val transactions: TransactionalOperator,
     private val db: DatabaseClient,
     private val clock: Clock,
@@ -78,6 +79,7 @@ class AttemptService(
     ): Attempt =
         whileOpen(id) { attempt ->
             validate(attempt.snapshot, answers)
+            validateSubmissions(attempt, answers)
             attempts.saveAnswers(attempt.id, answers)
             attempt.copy(answers = answers)
         }
@@ -139,6 +141,23 @@ class AttemptService(
             if (answer.text != null && question.type !in WRITTEN) invalid("esta pregunta no admite texto")
             if ((answer.text?.length ?: 0) > MAX_TEXT) invalid("respuesta demasiado larga en ${answer.questionId}")
             if (answer.submissionId != null && question.type != FILE) invalid("esta pregunta no admite archivo")
+        }
+    }
+
+    // una respuesta de archivo apunta a una entrega de este intento y esta pregunta, con su archivo ya subido
+    private suspend fun validateSubmissions(
+        attempt: Attempt,
+        answers: List<AttemptAnswer>,
+    ) {
+        val named = answers.filter { it.submissionId != null }
+        if (named.isEmpty()) return
+        val known = submissions.ofQuestion(attempt)
+        for (answer in named) {
+            if (known[answer.questionId]?.takeIf { it.id == answer.submissionId }?.file ==
+                null
+            ) {
+                invalid("la entrega de ${answer.questionId} no existe o no tiene archivo")
+            }
         }
     }
 

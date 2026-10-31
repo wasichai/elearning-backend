@@ -17,6 +17,7 @@ import java.util.UUID
 @RequestMapping("/api/lms/classroom")
 class AttemptController(
     private val attempts: AttemptService,
+    private val submissions: SubmissionService,
 ) {
     @PostMapping("/enrollments/{enrollmentId}/lessons/{lessonId}/attempts")
     suspend fun start(
@@ -24,13 +25,13 @@ class AttemptController(
         @PathVariable lessonId: UUID,
     ): ResponseEntity<AttemptView> {
         val started = attempts.start(enrollmentId, lessonId)
-        return ResponseEntity.status(if (started.created) HttpStatus.CREATED else HttpStatus.OK).body(AttemptViews.student(started.attempt))
+        return ResponseEntity.status(if (started.created) HttpStatus.CREATED else HttpStatus.OK).body(view(started.attempt))
     }
 
     @GetMapping("/attempts/{id}")
     suspend fun read(
         @PathVariable id: UUID,
-    ): AttemptView = AttemptViews.student(attempts.read(id))
+    ): AttemptView = view(attempts.read(id))
 
     @PutMapping("/attempts/{id}/answers")
     suspend fun answers(
@@ -38,25 +39,40 @@ class AttemptController(
         @RequestBody body: SaveAnswersRequest,
     ): AttemptView {
         val answers = body.answers ?: throw ValidationException("Invalid answers", "answers", "required")
-        return AttemptViews.student(attempts.saveAnswers(id, answers))
+        return view(attempts.saveAnswers(id, answers))
     }
 
     @PostMapping("/attempts/{id}/submit")
     suspend fun submit(
         @PathVariable id: UUID,
-    ): AttemptView = AttemptViews.student(attempts.submit(id))
+    ): AttemptView = view(attempts.submit(id))
+
+    @PostMapping("/attempts/{id}/questions/{questionId}/submission")
+    suspend fun submission(
+        @PathVariable id: UUID,
+        @PathVariable questionId: UUID,
+    ): SubmissionView = submissions.create(id, questionId)
+
+    private suspend fun view(attempt: Attempt) = AttemptViews.student(attempt, submissions.of(attempt))
 }
 
 object AttemptViews {
     // sin soluciones con el intento abierto; enviadas, según la política de la evaluación
-    fun student(attempt: Attempt): AttemptView = view(attempt, attempt.snapshot.showSolutions == "AL_ENVIAR")
+    fun student(
+        attempt: Attempt,
+        submissions: Map<String, SubmissionRef>,
+    ): AttemptView = view(attempt, attempt.snapshot.showSolutions == "AL_ENVIAR", submissions)
 
     // el docente ve las soluciones siempre: corrige con ellas
-    fun teacher(attempt: Attempt): AttemptView = view(attempt, solutions = true)
+    fun teacher(
+        attempt: Attempt,
+        submissions: Map<String, SubmissionRef>,
+    ): AttemptView = view(attempt, solutions = true, submissions = submissions)
 
     private fun view(
         attempt: Attempt,
         solutions: Boolean,
+        submissions: Map<String, SubmissionRef>,
     ): AttemptView {
         val questions = attempt.snapshot.questions.associateBy { it.id }
         return AttemptView(
@@ -78,7 +94,7 @@ object AttemptViews {
                         q.rubric.map { CriterionView(it.description, it.points) },
                     )
                 },
-            answers = attempt.answers.map { AnswerView(it.questionId, it.optionIds, it.text, it.submissionId) },
+            answers = attempt.answers.map { AnswerView(it.questionId, it.optionIds, it.text, it.submissionId, submissions[it.submissionId]) },
             result =
                 attempt.result?.let { r ->
                     ResultView(

@@ -111,7 +111,7 @@ class RealModelTest(unittest.TestCase):
     def test_students_only_read_except_enrolling_and_their_progress(self):
         # matricula y progreso_leccion son apiOnly: esas escrituras solo pasan por los comandos del aula
         student = next(r for r in ROLES["roles"] if r["name"] == "ESTUDIANTE")
-        writes = {"matricula": {"READ", "CREATE"}, "progreso_leccion": {"READ", "CREATE", "UPDATE"}}
+        writes = {"matricula": {"READ", "CREATE"}, "progreso_leccion": {"READ", "CREATE", "UPDATE"}, "entrega": {"READ", "CREATE", "UPDATE"}}
         for grant in student["permissions"]:
             expected = writes.get(grant["object"], {"READ"})
             self.assertEqual(expected, set(grant["actions"]), grant["object"])

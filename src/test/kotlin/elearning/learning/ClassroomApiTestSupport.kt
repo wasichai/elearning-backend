@@ -53,6 +53,7 @@ abstract class ClassroomApiTestSupport : LmsApiTest() {
     protected fun course(
         startsIn: Long = 0,
         withEvaluation: Boolean = false,
+        withFileQuestion: Boolean = false,
     ): Course {
         val resource = publishedHtml()
         return runBlocking {
@@ -96,7 +97,7 @@ abstract class ClassroomApiTestSupport : LmsApiTest() {
                 val video = lesson(2, "VIDEO")
                 val assessment = lesson(3, "EVALUACION")
                 records.create("recurso_leccion", RecordRequest(mapOf("leccion" to reading.id, "version_recurso" to resource, "orden" to 1)))
-                val (evaluation, questions) = if (withEvaluation) evaluation(assessment.id) else null to emptyMap()
+                val (evaluation, questions) = if (withEvaluation) evaluation(assessment.id, withFileQuestion) else null to emptyMap()
                 records.patch("version_curso", UUID.fromString(version.id), RecordRequest(mapOf("estado" to "PUBLICADA")), null, null)
                 published += version.id
                 val today = LocalDate.now(ZoneId.of("America/Lima"))
@@ -122,7 +123,10 @@ abstract class ClassroomApiTestSupport : LmsApiTest() {
 
     // una evaluación de 10 puntos (aprueba con 60 %, dos intentos, soluciones al enviar): una pregunta de cada tipo que se
     // corrige sola (7 puntos) y una abierta con rúbrica (3 puntos). la escribe la plataforma mientras el temario es borrador
-    private suspend fun evaluation(lesson: String): Pair<String, Map<String, String>> {
+    private suspend fun evaluation(
+        lesson: String,
+        withFileQuestion: Boolean,
+    ): Pair<String, Map<String, String>> {
         val evaluation =
             records
                 .create(
@@ -171,7 +175,8 @@ abstract class ClassroomApiTestSupport : LmsApiTest() {
         val open = question(5, "ABIERTA", 3)
         records.create("criterio_rubrica", RecordRequest(mapOf("pregunta" to open, "orden" to 1, "descripcion" to "Explica el estado", "puntos" to 2)))
         records.create("criterio_rubrica", RecordRequest(mapOf("pregunta" to open, "orden" to 2, "descripcion" to "Cita la fecha", "puntos" to 1)))
-        return evaluation to mapOf("SINGLE" to single, "MULTIPLE" to multiple, "TRUE_FALSE" to trueFalse, "SHORT" to short, "OPEN" to open)
+        val file = if (withFileQuestion) mapOf("FILE" to question(6, "ARCHIVO", 5)) else emptyMap()
+        return evaluation to mapOf("SINGLE" to single, "MULTIPLE" to multiple, "TRUE_FALSE" to trueFalse, "SHORT" to short, "OPEN" to open) + file
     }
 
     // una versión de recurso HTML con su archivo, publicada: la sube su autor (el administrador) y la publica la plataforma
@@ -277,6 +282,34 @@ abstract class ClassroomApiTestSupport : LmsApiTest() {
         val spec = client.put().uri(path).bodyValue(body)
         val r = (if (token == null) spec else spec.header("Authorization", token)).exchange().expectBody(String::class.java).returnResult()
         return HttpStatus.valueOf(r.status.value()) to r.responseBody?.let { runCatching { json.readTree(it) }.getOrNull() }
+    }
+
+    protected fun upload(
+        token: String,
+        path: String,
+        name: String,
+        bytes: ByteArray,
+    ): HttpStatus {
+        val parts = MultipartBodyBuilder()
+        parts
+            .part(
+                "file",
+                object : ByteArrayResource(bytes) {
+                    override fun getFilename() = name
+                },
+            ).contentType(MediaType.TEXT_PLAIN)
+        return HttpStatus.valueOf(
+            client
+                .post()
+                .uri(path)
+                .header("Authorization", token)
+                .contentType(MediaType.MULTIPART_FORM_DATA)
+                .body(BodyInserters.fromMultipartData(parts.build()))
+                .exchange()
+                .returnResult(String::class.java)
+                .status
+                .value(),
+        )
     }
 
     protected fun enroll(

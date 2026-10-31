@@ -48,6 +48,10 @@
         {
           "object": "progreso_leccion",
           "actions": ["READ", "CREATE", "UPDATE"]
+        },
+        {
+          "object": "entrega",
+          "actions": ["READ", "CREATE", "UPDATE"]
         }
       ]
     },
@@ -121,6 +125,10 @@
         },
         {
           "object": "criterio_rubrica",
+          "actions": ["READ"]
+        },
+        {
+          "object": "entrega",
           "actions": ["READ"]
         }
       ],

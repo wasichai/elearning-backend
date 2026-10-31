@@ -1,6 +1,7 @@
 package elearning.assessment
 
 import com.fasterxml.jackson.annotation.JsonUnwrapped
+import elearning.learning.FileView
 import java.math.BigDecimal
 import java.time.Instant
 
@@ -108,11 +109,23 @@ data class ResultView(
     val questions: List<QuestionResultView>,
 )
 
+data class SubmissionRef(
+    val id: String,
+    val file: FileView?,
+)
+
 data class AnswerView(
     val questionId: String,
     val optionIds: List<String>,
     val text: String?,
     val submissionId: String?,
+    val submission: SubmissionRef?,
+)
+
+data class SubmissionView(
+    val id: String,
+    val file: FileView?,
+    val uploadUrl: String,
 )
 
 data class AttemptView(

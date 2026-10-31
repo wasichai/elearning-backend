@@ -884,6 +884,41 @@
         }
       ],
       "uniqueConstraints": [["pregunta", "orden"]]
+    },
+    {
+      "name": "entrega",
+      "label": "Entrega",
+      "pluralLabel": "Entregas",
+      "description": "Archivo que entrega un estudiante para una pregunta de su intento abierto (ADR-0016). Fija al enviar el intento; la guarda SubmissionGuard lo hace cumplir.",
+      "fields": [
+        {
+          "name": "estudiante_id",
+          "label": "Estudiante (usuario de Wasichai)",
+          "type": "UUID",
+          "required": true,
+          "indexed": true
+        },
+        {
+          "name": "intento_id",
+          "label": "Intento (lms.intento)",
+          "type": "UUID",
+          "required": true,
+          "indexed": true
+        },
+        {
+          "name": "pregunta_id",
+          "label": "Pregunta de la instantánea",
+          "type": "UUID",
+          "required": true
+        },
+        {
+          "name": "archivo",
+          "label": "Archivo (máx. 25 MB; se descarga, nunca se ejecuta)",
+          "type": "FILE",
+          "maxBytes": 26214400
+        }
+      ],
+      "uniqueConstraints": [["intento_id", "pregunta_id"]]
     }
   ],
   "relationships": [
@@ -1064,6 +1099,16 @@
       "source": "criterio_rubrica",
       "target": "pregunta",
       "fieldName": "pregunta",
+      "required": true
+    },
+    {
+      "name": "entrega_matricula",
+      "label": "Matrícula",
+      "inverseLabel": "Entregas",
+      "type": "MANY_TO_ONE",
+      "source": "entrega",
+      "target": "matricula",
+      "fieldName": "matricula",
       "required": true
     }
   ]
