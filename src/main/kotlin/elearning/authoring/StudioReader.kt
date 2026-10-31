@@ -134,7 +134,8 @@ class StudioReader(
         return summary(records.patch(VERSION, UUID.fromString(version.id), RecordRequest(mapOf(STATE to "EN_REVISION")), null, null))
     }
 
-    private suspend fun own(id: UUID): RecordResponse {
+    // una versión de quien llama; la de otra persona, o la que no puede leer, no existe (404)
+    suspend fun own(id: UUID): RecordResponse {
         val me = currentUser.require().userId.toString()
         val version =
             try {

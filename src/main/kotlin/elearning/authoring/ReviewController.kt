@@ -24,6 +24,12 @@ class ReviewController(
         @PathVariable id: UUID,
     ): StudioVersionDetail = review.detail(id)
 
+    // contra la versión anterior del mismo curso (ADR-0018 §3)
+    @GetMapping("/versions/{id}/diff")
+    suspend fun diff(
+        @PathVariable id: UUID,
+    ): VersionDiff = review.diff(id)
+
     @PostMapping("/versions/{id}/comments")
     @ResponseStatus(HttpStatus.CREATED)
     suspend fun comment(
