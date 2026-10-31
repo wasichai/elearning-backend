@@ -7,8 +7,7 @@ class AllowedSources(
 ) {
     private val origins: List<Origin> = entries.map { it.trim() }.filter { it.isNotEmpty() }.map(::origin)
 
-    fun permits(ref: SourceRef): Boolean =
-        origins.any { it.repository.equals(ref.repository, ignoreCase = true) && (it.sha == null || it.sha == ref.sha) }
+    fun permits(ref: SourceRef): Boolean = origins.any { it.repository.equals(ref.repository, ignoreCase = true) && (it.sha == null || it.sha == ref.sha) }
 
     private data class Origin(
         val repository: String,
