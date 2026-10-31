@@ -26,6 +26,7 @@ class GradingService(
     private val records: RecordService,
     private val teaching: TeachingReader,
     private val attempts: AttemptStore,
+    private val submissions: SubmissionService,
     private val transactions: TransactionalOperator,
     private val clock: Clock,
 ) {
@@ -91,7 +92,7 @@ class GradingService(
     }
 
     private suspend fun view(attempt: Attempt) =
-        TeacherAttemptView(AttemptViews.teacher(attempt), attempt.enrollmentId.toString(), email(attempt), attempts.grades(attempt.id))
+        TeacherAttemptView(AttemptViews.teacher(attempt, submissions.of(attempt)), attempt.enrollmentId.toString(), email(attempt), attempts.grades(attempt.id))
 
     private suspend fun email(attempt: Attempt): String? = records.get(ENROLLMENT, attempt.enrollmentId).attributes[EMAIL]?.toString()
 

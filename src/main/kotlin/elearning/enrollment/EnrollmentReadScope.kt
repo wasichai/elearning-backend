@@ -15,7 +15,7 @@ import wasichai.core.metadata.ObjectDefinition
 import wasichai.core.platform.SqlIdentifier
 import java.util.UUID
 
-// cada persona lee sus matrículas y su progreso; el docente, además, los de las ediciones que tiene asignadas
+// cada persona lee sus matrículas, su progreso y sus entregas; el docente, además, los de las ediciones que tiene asignadas
 // (docente_edicion.usuario_id, ADR-0016). quien tiene la acción declarada VER_TODAS los lee todos, y hoy ningún rol la
 // tiene sobre datos de estudiantes (ADR-0014). Wasichai lo pide para toda lectura de una persona o cuenta de servicio
 // (nunca para ADMIN ni la plataforma) y lo aplica en listas, detalle, relaciones, historial y auditoría: lo ajeno se lee
@@ -81,6 +81,6 @@ class EnrollmentReadScope(
         const val STUDENT = "estudiante_id"
         const val SEE_ALL = "VER_TODAS"
         const val NOTHING = "false"
-        val OWNED = setOf(ENROLLMENT, PROGRESS)
+        val OWNED = setOf(ENROLLMENT, PROGRESS, "entrega")
     }
 }
