@@ -222,7 +222,8 @@ lección) serializa los eventos simultáneos. Lectura por `estudiante_id` (`Enro
 progreso por unidad y total se calcula, no se guarda. Cada evento aceptado va a `lms.evento_aprendizaje`, una vez por
 `clientEventId`, en la misma transacción; el tiempo con la página abierta no cuenta como evidencia.
 
-**`asistencia`** (AttendanceRecord) — F3. `requiresReason`.
+**`asistencia`** (AttendanceRecord) — F3. `apiOnly`: la escribe solo el pase de lista del docente, que exige motivo
+al **cambiar** una asistencia ya registrada (la primera marca no lo lleva, así que no es `requiresReason`).
 `sesion · RELATION → sesion` · `matricula · RELATION → matricula` · `estado · ENUM(PRESENTE, TARDE, AUSENTE,
 JUSTIFICADO)` · `fuente · ENUM(DOCENTE, PROVEEDOR)` · `registrado_por · UUID`;
 `uniqueConstraints: [[sesion, matricula]]`.
@@ -404,7 +405,8 @@ ADR-040 de Wasichai), y su uso en el LMS:
   `artefacto_generado`.
 - **`apiOnly`**: la API genérica responde `403` a las escrituras (ADMIN incluido); `RecordService` en proceso sí escribe.
   Uso: `matricula`, `progreso_leccion`, `intento_evaluacion`, `ejecucion_agente`.
-- **`requiresReason`**: toda escritura sin motivo es `400`. Uso: `asistencia`, `resultado_evaluacion`.
+- **`requiresReason`**: toda escritura sin motivo es `400`. Hoy no lo usa ningún objeto: asistencia y calificaciones
+  exigen motivo solo al cambiar lo ya registrado, y eso lo comprueban sus servicios (revisión de la Fase 3, #183).
 - **`RELATION`**: el destino debe ser de la misma organización y legible para quien escribe; si no, `400`. Evita
   enlazar con registros de otra organización o fuera del alcance.
 - **`uniqueConstraints`**: `UNIQUE` real; repetir es `409`. Uso: una matrícula por persona y edición, un progreso por
