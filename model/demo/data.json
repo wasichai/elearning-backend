@@ -29,10 +29,13 @@
   ],
   "workflows": {
     "version_curso": {
-      "_comentario": "Como en el flujo editorial real (EditorialWorkflowGuard): la versión nace en borrador, se escribe su temario y la recorre el administrador, que no es su autor. publicada_en y creditos_aprobados se ponen al llegar.",
+      "_comentario": "Como en el flujo editorial real (EditorialWorkflowGuard): la versión nace en borrador, se escribe su temario y la recorre el administrador, que no es su autor. La aprueba por la bandeja, como cualquier revisor (ADR-0021). publicada_en y creditos_aprobados se ponen al llegar.",
       "field": "estado",
       "path": ["BORRADOR", "EN_REVISION", "APROBADA", "PUBLICADA"],
-      "deferred": ["publicada_en", "creditos_aprobados"]
+      "deferred": ["publicada_en", "creditos_aprobados"],
+      "commands": {
+        "APROBADA": { "path": "/api/lms/review/versions/{id}/decision", "body": { "decision": "APROBAR" } }
+      }
     },
     "version_recurso": {
       "_comentario": "Un recurso se publica antes de que una lección lo use (EditorialWorkflowGuard): recorre su flujo en cuanto se crea y se sube su archivo, mientras el temario del curso aún es borrador.",

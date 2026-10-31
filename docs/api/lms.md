@@ -533,6 +533,9 @@ en borrador.
 - `decision`: `APROBAR` · `PEDIR_CAMBIOS` (vuelve a `BORRADOR`) · `RECHAZAR` (pasa a `RETIRADA`). `reason` obligatorio salvo al
   aprobar (`400`), hasta 4000 caracteres. Nadie decide sobre su propia versión (`403`); con `reviewerId` puesto, solo esa persona.
   Solo se decide una versión `EN_REVISION` (`409`). La transición y la decisión van en la misma transacción.
+- **Solo aquí se decide** (ADR-0021): sacar una versión de curso de `EN_REVISION` con la API de registros es `403` para quien
+  decide; el autor sí la retira a borrador. Una `version_recurso` no tiene bandeja: su revisor la decide con la API de
+  registros y, salvo al aprobar, con la cabecera `X-Change-Reason` (`400` sin ella), que queda en el `audit_log`.
 - `ReviewComment`: `{ "id", "section", "text", "authorId", "createdAt", "resolved": false }`. `section` es texto libre que
   identifica la parte (`unidad:1/leccion:2`), hasta 200 caracteres; `text`, hasta 4000. Ambos obligatorios (`400`). Solo se
   comenta una versión `EN_REVISION` (`409`); resolver lo ya resuelto no cambia nada. `comentario_revision` es `apiOnly`: la API
