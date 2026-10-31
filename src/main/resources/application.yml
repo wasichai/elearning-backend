@@ -56,3 +56,11 @@ lms:
     timeout: ${LMS_JOBS_TIMEOUT:10m}
     # un trabajo en curso con un reclamo más viejo que esto se da por perdido y se vuelve a reclamar; mayor que timeout
     lease: ${LMS_JOBS_LEASE:15m}
+  # importador AsciiDoc (ADR-0018 §5): solo lee de estos repositorios, separados por comas, como owner/repo (cualquier
+  # commit) u owner/repo@sha (solo ese). vacío: no importa nada. el host de GitHub es fijo, nunca configuración
+  importer:
+    allowed-sources: ${LMS_IMPORTER_ALLOWED_SOURCES:}
+    timeout: ${LMS_IMPORTER_TIMEOUT:10s}
+    max-bytes: ${LMS_IMPORTER_MAX_BYTES:2MB}
+    # opcional, para repositorios privados o más cuota; solo por entorno
+    github-token: ${LMS_IMPORTER_GITHUB_TOKEN:}

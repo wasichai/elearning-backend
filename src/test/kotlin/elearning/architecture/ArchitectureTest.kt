@@ -39,7 +39,7 @@ class ArchitectureTest {
     fun `workload is pure domain`() = assertNoViolations(Rule.PURE_WORKLOAD)
 
     @Test
-    fun `no concrete ai, storage or videoconference provider outside its adapter`() = assertNoViolations(Rule.CONCRETE_PROVIDER)
+    fun `no concrete ai, storage, videoconference or source provider outside its adapter`() = assertNoViolations(Rule.CONCRETE_PROVIDER)
 
     @Test
     fun `every capability sits in the dag and uses only what it may`() = assertNoViolations(Rule.PACKAGE_DAG)
