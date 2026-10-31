@@ -569,7 +569,8 @@ en borrador.
   repositorio (o un commit) fuera de `lms.importer.allowed-sources` → `403`; `sha: null` en los orígenes significa cualquier
   commit. `courseId` tiene que ser un curso que quien importa puede leer (`400` si no es un id, `404` si no existe).
 - El trabajo corre en la cola persistente: se consulta con `GET` hasta que `status` sea `HECHO` o `FALLIDO`. Solo lo ve quien lo
-  pidió; para cualquier otro, también el administrador, es `404`.
+  pidió; para cualquier otro, también el administrador, es `404`. Terminado, se guarda `lms.jobs.retention` (30 días) y después es `404`, como el de la generación
+  ([ADR-0022](../adr/0022-limites-y-ciclo-de-vida-de-los-trabajos.md)).
 - Pedir la misma fuente sobre el mismo curso mientras el trabajo anterior de la misma persona está `PENDIENTE` o `EN_CURSO`
   devuelve ese trabajo (`202`), sin otro borrador; terminado, importar otra vez es otro trabajo. Con
   `lms.jobs.max-active-per-requester` (5) trabajos pendientes o en curso, entre importaciones y generaciones, uno más es `429`

@@ -254,6 +254,30 @@ class JobQueueTest : WasichaiIntegrationTest() {
         assertEquals(json.readTree("""{"n": 1}"""), json.readTree(status(id).result))
     }
 
+    // L5 de #216: un trabajo terminado no se guarda para siempre; lo pendiente y lo reciente, sí
+    @Test
+    fun `finished jobs older than the retention are purged`() {
+        val old = runBlocking { listOf(queue.enqueue(org, ECHO), queue.enqueue(org, FLAKY, maxAttempts = 1)) }
+        val recent = runBlocking { queue.enqueue(org, ECHO) }
+        drain()
+        val waiting = runBlocking { queue.enqueue(org, "test.nobody-runs-this") }
+        runBlocking {
+            db
+                .sql("UPDATE lms.trabajo SET terminado_en = now() - interval '31 days' WHERE id = ANY(:ids)")
+                .bind("ids", old.toTypedArray())
+                .fetch()
+                .rowsUpdated()
+                .awaitSingle()
+        }
+        assertEquals(JobState.FAILED, status(old[1]).state)
+
+        assertTrue(runBlocking { queue.purge() } >= 2)
+
+        assertTrue(old.all { runBlocking { queue.find(org, it) } == null })
+        assertEquals(JobState.DONE, status(recent).state)
+        assertEquals(JobState.QUEUED, status(waiting).state)
+    }
+
     // RNF-ARQ-09: la API responde mientras un trabajo que bloquea está en curso
     @Test
     fun `the api answers while a blocking job is running`() {
