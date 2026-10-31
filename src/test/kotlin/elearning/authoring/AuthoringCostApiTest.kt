@@ -85,10 +85,11 @@ class AuthoringCostApiTest : ClassroomApiTestSupport() {
         big: Int,
         added: Int,
         per: String,
+        pers: String,
         max: Double,
     ): List<DynamicTest> {
         val each = (big - small).toDouble() / added
-        val figures = "sentencias de $what: $small, y $big con $added ${per}s más (≈$each por $per)"
+        val figures = "sentencias de $what: $small, y $big con $added $pers más (≈$each por $per)"
         return listOf(dynamicTest(figures) { assertTrue(each <= max, figures) })
     }
 
@@ -99,7 +100,7 @@ class AuthoringCostApiTest : ClassroomApiTestSupport() {
         val small = s.cost(s.author, "/api/lms/studio/versions/$draft")
         s.units(draft, MORE)
         val big = s.cost(s.author, "/api/lms/studio/versions/$draft")
-        return bounded("el detalle del estudio", small, big, MORE, "unidad", PER_UNIT)
+        return bounded("el detalle del estudio", small, big, MORE, "unidad", "unidades", PER_UNIT)
     }
 
     @TestFactory
@@ -109,7 +110,7 @@ class AuthoringCostApiTest : ClassroomApiTestSupport() {
         val small = s.cost(s.author, "/api/lms/studio/versions/$draft/diff")
         s.units(draft, MORE)
         val big = s.cost(s.author, "/api/lms/studio/versions/$draft/diff")
-        return bounded("las diferencias", small, big, MORE, "unidad", PER_UNIT)
+        return bounded("las diferencias", small, big, MORE, "unidad", "unidades", PER_UNIT)
     }
 
     @TestFactory
@@ -121,7 +122,7 @@ class AuthoringCostApiTest : ClassroomApiTestSupport() {
         val small = s.cost(s.reviewer, "/api/lms/review/versions")
         repeat(MORE) { inReview() }
         val big = s.cost(s.reviewer, "/api/lms/review/versions")
-        return bounded("la bandeja", small, big, MORE, "versión", PER_VERSION)
+        return bounded("la bandeja", small, big, MORE, "versión", "versiones", PER_VERSION)
     }
 
     // la copia escribe cada registro, con su guarda: crece con el temario, pero sin leer cada registro por su padre
@@ -139,7 +140,7 @@ class AuthoringCostApiTest : ClassroomApiTestSupport() {
         val small = cost()
         s.units(source, MORE)
         val big = cost()
-        return bounded("la copia", small, big, MORE, "unidad", PER_COPIED_UNIT)
+        return bounded("la copia", small, big, MORE, "unidad", "unidades", PER_COPIED_UNIT)
     }
 
     companion object {

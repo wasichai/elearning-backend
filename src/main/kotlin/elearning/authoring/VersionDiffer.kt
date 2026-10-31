@@ -1,6 +1,7 @@
 package elearning.authoring
 
 import elearning.common.listAll
+import elearning.common.listAllIn
 import elearning.common.ref
 import org.springframework.stereotype.Service
 import wasichai.core.data.RecordResponse
@@ -25,27 +26,32 @@ class VersionDiffer(
         return VersionDiff(base?.let { number(it) }, units)
     }
 
-    private suspend fun snapshot(version: String): List<UnitSnapshot> =
-        records.listAll(UNIT, mapOf(VERSION to version)).map { unit ->
+    // el temario por niveles: unidades, sus lecciones y sus enlaces, cada nivel en una lectura (L4 de #216)
+    private suspend fun snapshot(version: String): List<UnitSnapshot> {
+        val units = records.listAll(UNIT, mapOf(VERSION to version))
+        val lessons = records.listAllIn(LESSON, UNIT, units.map { it.id })
+        val links = records.listAllIn(LINK, LESSON, lessons.map { it.id }).groupBy { it.attributes.ref(LESSON) }
+        val byUnit = lessons.groupBy { it.attributes.ref(UNIT) }
+        return units.map { unit ->
             UnitSnapshot(
                 order = order(unit),
                 title = unit.attributes[TITLE]?.toString(),
                 values = values(unit, VERSION),
                 lessons =
-                    records.listAll(LESSON, mapOf(UNIT to unit.id)).map { lesson ->
+                    byUnit[unit.id].orEmpty().map { lesson ->
                         LessonSnapshot(
                             order = order(lesson),
                             title = lesson.attributes[TITLE]?.toString(),
-                            values = values(lesson, UNIT) + (RESOURCES to resources(lesson.id)),
+                            values = values(lesson, UNIT) + (RESOURCES to resources(links[lesson.id].orEmpty())),
                         )
                     },
             )
         }
+    }
 
     // los recursos enlazados, en su orden: cambiar uno, quitarlo o reordenarlos cambia la lección
-    private suspend fun resources(lesson: String): String =
-        records
-            .listAll(LINK, mapOf(LESSON to lesson))
+    private fun resources(links: List<RecordResponse>): String =
+        links
             .sortedBy { order(it) }
             .mapNotNull { it.attributes.ref(RESOURCE_VERSION) }
             .joinToString(",")
