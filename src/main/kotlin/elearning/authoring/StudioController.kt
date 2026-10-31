@@ -1,6 +1,7 @@
 package elearning.authoring
 
 import org.springframework.http.HttpStatus
+import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
@@ -14,7 +15,21 @@ import java.util.UUID
 @RequestMapping("/api/lms/studio")
 class StudioController(
     private val versions: NewVersionService,
+    private val reader: StudioReader,
 ) {
+    @GetMapping("/versions")
+    suspend fun mine(): List<StudioVersion> = reader.mine()
+
+    @GetMapping("/versions/{id}")
+    suspend fun detail(
+        @PathVariable id: UUID,
+    ): StudioVersionDetail = reader.detail(id)
+
+    @PostMapping("/versions/{id}/submit")
+    suspend fun submit(
+        @PathVariable id: UUID,
+    ): StudioVersion = reader.submit(id)
+
     @PostMapping("/courses/{courseId}/versions")
     @ResponseStatus(HttpStatus.CREATED)
     suspend fun newVersion(
