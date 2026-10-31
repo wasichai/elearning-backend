@@ -233,6 +233,39 @@ class RenderApiTest : LmsApiTest() {
         drain()
     }
 
+    // un trabajo ajeno no existe, como en la importación: su error y su versión son de quien lo pidió (revisión de la Fase 4)
+    @Test
+    fun `nobody else reads a render job, not another creator nor the administrator`() {
+        val (_, source) = source("HTML")
+        val job = render(source)["id"].asString()
+        val otherCreator = account("CREADOR")
+
+        for (token in listOf(otherCreator, admin)) {
+            val (status, body) = exchange("GET", "/api/lms/studio/renders/$job", token)
+            assertEquals(HttpStatus.NOT_FOUND, status, body.toString())
+        }
+        assertEquals(HttpStatus.OK, exchange("GET", "/api/lms/studio/renders/$job", creator).first)
+
+        val (adminStatus, adminJob) = exchange("POST", "/api/lms/studio/sources/$source/render", admin)
+        assertEquals(HttpStatus.ACCEPTED, adminStatus)
+        assertEquals(HttpStatus.NOT_FOUND, exchange("GET", "/api/lms/studio/renders/${adminJob!!["id"].asString()}", creator).first)
+        assertEquals(HttpStatus.OK, exchange("GET", "/api/lms/studio/renders/${adminJob["id"].asString()}", admin).first)
+        drain()
+    }
+
+    private fun account(vararg roles: String): String {
+        val email = "${uniqueName("render")}@demo.wasichai-learning.test"
+        client
+            .post()
+            .uri("/api/users")
+            .header("Authorization", admin)
+            .bodyValue(mapOf("email" to email, "displayName" to "Persona", "password" to DEMO_PASSWORD, "roles" to roles.toList()))
+            .exchange()
+            .expectStatus()
+            .isCreated
+        return bearer(email, DEMO_PASSWORD)
+    }
+
     @Test
     fun `only html and pdf resources are generated`() {
         val (_, source) = source("VIDEO")

@@ -597,7 +597,8 @@ sobrescribe.
 
 - **Permisos**: ambas rutas exigen `CREATE` sobre `version_recurso` (`403`; REVISOR y ESTUDIANTE no lo tienen) y la fuente
   se lee como quien pide (`404` si no existe o no la ve). Solo se generan recursos `HTML` o `PDF` (`409` para otro tipo).
-  Un trabajo que no es de generación o de otra organización es `404`.
+  Un trabajo que no es de generación, de otra organización o **de otra persona** es `404`: solo lo lee quien lo pidió, también
+  frente al administrador, como el de la importación.
 - **La fuente** se crea con la API de registros: se sube el archivo con `POST /api/objects/fuente_recurso/files/archivo`
   (parte `file`, **tipo declarado `text/plain`**, UTF-8, hasta 1 MB) y su `id` va en el alta
   `POST /api/objects/fuente_recurso/records` `{ "attributes": { "recurso", "numero", "archivo" } }`. Es de solo inserción

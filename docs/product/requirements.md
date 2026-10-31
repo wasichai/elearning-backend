@@ -16,6 +16,7 @@ el cuándo, en [`roadmap.md`](roadmap.md).
 - «A verificar» marca un detalle de Wasichai o de terceros que se confirmará al implementar, leyendo su código.
 - A fecha de 2026-10-28, F1 y F2 están cumplidas. Los 16 requisitos F2 que no cumplían su aceptación se
   repartieron entre F3, F4 y F6 (decisión de la dirección, #103); cada uno conserva su «Pendiente de F2».
+- A fecha de 2026-10-31, la Fase 4 está integrada (#179); lo que aún no cumple su aceptación lleva un «Avance».
 
 ## Requisitos funcionales
 
@@ -46,7 +47,8 @@ el cuándo, en [`roadmap.md`](roadmap.md).
 - **RF-CAT-08** · F6 · planificado — Filtros adicionales: duración, conocimientos previos, estado de matrícula y horas
   por tipo (teoría, práctica/laboratorio, autónomo).
   _Aceptación:_ pruebas de integración por filtro y control de la UI con estado vacío.
-  _Pendiente de F2 (#103):_ faltan los filtros nuevos.
+  _Pendiente de F2 (#103):_ duración, estado de matrícula y horas por tipo hechos ([#201](https://github.com/wasichai/elearning-backend/pull/201), [front#68](https://github.com/wasichai/elearning-frontend/pull/68)); falta
+  «conocimientos previos», que exige un campo estructurado nuevo (hoy `curso.conocimientos_previos` es texto libre).
 - **RF-CAT-09** · F3 · planificado — La ficha describe evaluación y requisitos de certificación, y el estado de
   matrícula de cada edición (abierta, cerrada, completa).
   _Aceptación:_ prueba de integración con ediciones en cada estado.
@@ -201,19 +203,19 @@ el cuándo, en [`roadmap.md`](roadmap.md).
   _Aceptación:_ la prueba de arquitectura falla ante un literal de rol en `src/main`.
 - **RF-ROL-03** · F3 · implementado ([#111](https://github.com/wasichai/elearning-backend/pull/111)) — Un usuario puede tener varios roles a la vez.
   _Aceptación:_ prueba con un usuario ESTUDIANTE + CREADOR que obtiene la unión de permisos.
-- **RF-ROL-04** · F3 · planificado — Alcance por recurso: el docente gestiona solo sus ediciones asignadas; el
+- **RF-ROL-04** · F3 · implementado ([#137](https://github.com/wasichai/elearning-backend/pull/137), [#142](https://github.com/wasichai/elearning-backend/pull/142), [#196](https://github.com/wasichai/elearning-backend/pull/196), [#208](https://github.com/wasichai/elearning-backend/pull/208)) — Alcance por recurso: el docente gestiona solo sus ediciones asignadas; el
   revisor, solo las versiones asignadas; el estudiante, solo sus matrículas.
   _Aceptación:_ pruebas de autorización negativa cambiando identificadores (RNF-SEG-03).
-  _Pendiente de F2 (#103):_ hecho para el estudiante (sus matrículas, su progreso, su contenido) y para el docente, que solo ve
-  sus ediciones, sus matriculados y sus asignaciones ([#137](https://github.com/wasichai/elearning-backend/pull/137), [#142](https://github.com/wasichai/elearning-backend/pull/142), [#196](https://github.com/wasichai/elearning-backend/pull/196)); falta el
-  revisor por asignación, que llega con el flujo editorial (F4).
+  _Nota:_ el estudiante ve sus matrículas, su progreso y su contenido; el docente, sus ediciones, sus matriculados y sus
+  asignaciones; el revisor, las versiones que tiene asignadas o, sin revisor asignado, las que no son suyas (`404` en la
+  bandeja y `403` por la API de registros para quien no es el asignado).
 - **RF-ROL-05** · F3 · implementado ([#135](https://github.com/wasichai/elearning-backend/pull/135)) — Nadie se asigna privilegios a sí mismo; la gestión de roles queda auditada.
   _Aceptación:_ prueba de autoasignación rechazada. Si Wasichai ya lo impide (a verificar), la prueba documenta ese
   comportamiento; si no, se añade una regla propia.
   _Verificado en Wasichai 1.6.0:_ usuarios, sus roles y los permisos de un rol exigen `MANAGE_ORGANIZATION`, que solo
   tiene ADMIN (`apply.py` no deja dar permisos globales a un rol LMS); los cambios quedan en `/api/audit`. Sin regla
   propia: Wasichai no distingue «a sí mismo», pero quien puede asignar roles ya es administrador.
-- **RF-ROL-06** · F4 · planificado — Sin autoaprobación: el autor de una versión no puede aprobarla cuando la
+- **RF-ROL-06** · F4 · implementado ([#208](https://github.com/wasichai/elearning-backend/pull/208)) — Sin autoaprobación: el autor de una versión no puede aprobarla cuando la
   política exige revisión independiente.
   _Aceptación:_ prueba con un usuario CREADOR + REVISOR sobre su propia versión → rechazo.
 
@@ -222,38 +224,48 @@ el cuándo, en [`roadmap.md`](roadmap.md).
 - **RF-CON-01** · F4 · implementado ([#140](https://github.com/wasichai/elearning-backend/pull/140)) — `LearningResource` versionado y reutilizable con identificador estable, título,
   descripción, idioma, ubicación (curso, unidad, lección), autor, responsable editorial y estado de revisión.
   _Aceptación:_ el modelo aplicado contiene esos campos; un recurso se reutiliza en dos lecciones.
-- **RF-CON-02** · F4 · planificado — Los binarios (PDF, vídeo, imágenes) van a almacenamiento de objetos, no a
+- **RF-CON-02** · F4 · implementado ([#98](https://github.com/wasichai/elearning-backend/pull/98), [#205](https://github.com/wasichai/elearning-backend/pull/205)) — Los binarios (PDF, vídeo, imágenes) van a almacenamiento de objetos, no a
   PostgreSQL, con hash registrado.
   _Aceptación:_ prueba de integración con almacenamiento S3 compatible local; el hash se comprueba al descargar.
-  _Pendiente de F2 (#103):_ los archivos van a `wasichai-files` con su sha256, nunca a PostgreSQL (#98); falta la prueba con S3 local y la comprobación del hash al descargar.
-- **RF-CON-03** · F4 · planificado — Fuente canónica (AsciiDoc o LaTeX) separada de los artefactos generados, con
+  _Nota:_ la prueba sube a MinIO por la API y compara el sha256 de lo descargado con el registrado; un objeto alterado en
+  el bucket ya no coincide. El servidor no lo comprueba al servir la descarga (wasichai-files 1.6.0): pendiente en #216 (L6).
+- **RF-CON-03** · F4 · implementado ([#212](https://github.com/wasichai/elearning-backend/pull/212)) — Fuente canónica (AsciiDoc o LaTeX) separada de los artefactos generados, con
   relación fuente↔producto (versión de la fuente, generador, hash).
   _Aceptación:_ cada artefacto publicado identifica su fuente exacta.
-- **RF-CON-04** · F4 · planificado — Publicar crea una versión inmutable; los artefactos publicados nunca se
+- **RF-CON-04** · F4 · implementado ([#182](https://github.com/wasichai/elearning-backend/pull/182), [#212](https://github.com/wasichai/elearning-backend/pull/212)) — Publicar crea una versión inmutable; los artefactos publicados nunca se
   sobrescriben.
   _Aceptación:_ publicar v2 no cambia los artefactos de v1 ni el progreso de quien cursa v1.
 - **RF-CON-05** · F4 · planificado — Flujo editorial borrador → revisión → aprobación → publicación con bandeja del
   revisor: diferencias, comentarios por sección, incidencias y decisiones (aprobar, pedir cambios, rechazar).
   _Aceptación:_ recorridos E2E 8–11 de la especificación (§20).
-- **RF-CON-06** · F4 · planificado — Las correcciones no borran versiones anteriores ni alteran las decisiones del
+  _Avance:_ bandeja, comentarios, decisiones y diferencias en la API ([#188](https://github.com/wasichai/elearning-backend/pull/188), [#208](https://github.com/wasichai/elearning-backend/pull/208), [#211](https://github.com/wasichai/elearning-backend/pull/211)) y en las pantallas
+  ([front#69](https://github.com/wasichai/elearning-frontend/pull/69), [front#70](https://github.com/wasichai/elearning-frontend/pull/70), [front#73](https://github.com/wasichai/elearning-frontend/pull/73)); falta el e2e contra el backend real (elearning-frontend#60).
+- **RF-CON-06** · F4 · implementado ([#208](https://github.com/wasichai/elearning-backend/pull/208)) — Las correcciones no borran versiones anteriores ni alteran las decisiones del
   revisor.
   _Aceptación:_ tras una corrección, comentarios y decisiones previas siguen ligados a su versión.
 - **RF-CON-07** · F4 · planificado — Generación de HTML y PDF desde AsciiDoc como trabajo asíncrono.
   _Aceptación:_ una lección importada produce ambos artefactos validados sin bloquear peticiones HTTP.
+  _Avance:_ una `fuente_recurso` produce HTML y PDF en la cola, con hash y generador ([#209](https://github.com/wasichai/elearning-backend/pull/209), [#212](https://github.com/wasichai/elearning-backend/pull/212)), probado con un
+  generador doble; el adaptador se prueba con guiones en lugar de Asciidoctor. Falta el binario en la imagen de despliegue
+  (F6) y partir de una lección importada: la importación no copia el texto de los manuales (ADR-0015).
 
 ### RF-IMP — Importador AsciiDoc (§9; ADR-0010)
 
-- **RF-IMP-01** · F4 · planificado — Solo importa de orígenes permitidos (lista configurada) o paquetes autorizados.
+- **RF-IMP-01** · F4 · implementado ([#210](https://github.com/wasichai/elearning-backend/pull/210), [#213](https://github.com/wasichai/elearning-backend/pull/213)) — Solo importa de orígenes permitidos (lista configurada) o paquetes autorizados.
   _Aceptación:_ un origen fuera de la lista se rechaza.
 - **RF-IMP-02** · F4 · planificado — Analiza el documento maestro y su grafo `include::` (con `leveloffset`) y extrae
   capítulos, secciones, procedimientos, imágenes, diagramas, tablas y referencias cruzadas.
   _Aceptación:_ pruebas con los manuales de SRTM (profundidad 1) y SGSPE (profundidad 2).
+  _Avance:_ el analizador y la importación se prueban con fragmentos propios, con `leveloffset`, ciclos y defectos sembrados
+  ([#207](https://github.com/wasichai/elearning-backend/pull/207), [#213](https://github.com/wasichai/elearning-backend/pull/213)); falta la comprobación manual documentada con los manuales reales (ADR-0018).
 - **RF-IMP-03** · F4 · planificado — Trazabilidad de cada elemento a `repositorio@sha:ruta#ancla`.
   _Aceptación:_ toda unidad propuesta enlaza su origen exacto.
-- **RF-IMP-04** · F4 · planificado — Informe de importación con includes, imágenes, enlaces y referencias faltantes
+  _Avance:_ cada lección propuesta lleva `referencia_fuente` = `repo@sha:ruta#ancla` ([#213](https://github.com/wasichai/elearning-backend/pull/213)); `unidad` aún no tiene
+  campo de traza: la del capítulo va en su lección.
+- **RF-IMP-04** · F4 · implementado ([#207](https://github.com/wasichai/elearning-backend/pull/207), [#213](https://github.com/wasichai/elearning-backend/pull/213)) — Informe de importación con includes, imágenes, enlaces y referencias faltantes
   o rotos.
   _Aceptación:_ una fuente con defectos sembrados los reporta todos.
-- **RF-IMP-05** · F4 · planificado — Propone unidades y lecciones que el creador modifica; nunca publica.
+- **RF-IMP-05** · F4 · implementado ([#213](https://github.com/wasichai/elearning-backend/pull/213)) — Propone unidades y lecciones que el creador modifica; nunca publica.
   _Aceptación:_ tras importar, todo queda en `BORRADOR`; extracción, diseño pedagógico y aprobación son pasos
   separados.
 
@@ -365,7 +377,7 @@ el cuándo, en [`roadmap.md`](roadmap.md).
 - **RNF-ARQ-08** · F4 · implementado ([#138](https://github.com/wasichai/elearning-backend/pull/138)) — El núcleo no depende de proveedores concretos de IA, almacenamiento o
   videoconferencia.
   _Aceptación:_ prueba de arquitectura sobre los paquetes de dominio.
-- **RNF-ARQ-09** · F4 · planificado — Las tareas bloqueantes o largas (Asciidoctor, PDF, render) corren como
+- **RNF-ARQ-09** · F4 · implementado ([#209](https://github.com/wasichai/elearning-backend/pull/209)) — Las tareas bloqueantes o largas (Asciidoctor, PDF, render) corren como
   trabajos persistentes fuera del bucle de eventos.
   _Aceptación:_ prueba de que la API responde mientras un trabajo largo está en curso.
 
@@ -385,12 +397,16 @@ el cuándo, en [`roadmap.md`](roadmap.md).
   _Aceptación:_ `.env.example` sin valores reales; escaneo de secretos en CI (herramienta a decidir en E9).
 - **RNF-SEG-06** · F1 · implementado ([#55](https://github.com/wasichai/elearning-backend/pull/55), [#63](https://github.com/wasichai/elearning-backend/pull/63)) — Validación de entradas y límites en parámetros de consulta.
   _Aceptación:_ texto de búsqueda o página fuera de rango → `400` con `ProblemDetail`.
-- **RNF-SEG-07** · F4 · planificado — Archivos con límites de tamaño y tipo, nombres saneados y descarga solo para
+- **RNF-SEG-07** · F4 · implementado ([#98](https://github.com/wasichai/elearning-backend/pull/98), [#206](https://github.com/wasichai/elearning-backend/pull/206)) — Archivos con límites de tamaño y tipo, nombres saneados y descarga solo para
   quien tiene acceso.
   _Aceptación:_ pruebas de tipo prohibido, tamaño excedido y descarga ajena.
-  _Pendiente de F2 (#103):_ tamaño y descarga ajena probados (#98); no hay lista de tipos permitidos (Wasichai deja HTML y vídeo como `octet-stream`; ver #98).
+  _Nota:_ la lista de tipos se comprueba sobre el tipo que detecta `wasichai-files`; `HTML` y `VIDEO` admiten
+  `application/octet-stream` porque Wasichai 1.6.0 no los reconoce (riesgo aceptado en `docs/security/README.md` §4.4).
 - **RNF-SEG-08** · F4 · planificado — Control de URLs externas contra SSRF (importador, enlaces de laboratorio).
   _Aceptación:_ URLs a direcciones internas o con redirecciones hacia ellas se rechazan.
+  _Avance:_ el importador no acepta URL: lee de repositorios de una lista, en un commit exacto, de un host fijo y sin seguir
+  redirecciones ([#210](https://github.com/wasichai/elearning-backend/pull/210)); el enlace de una sesión rechaza direcciones privadas ([#193](https://github.com/wasichai/elearning-backend/pull/193)). Faltan los enlaces de
+  laboratorio (RF-LAB-03).
 - **RNF-SEG-09** · F5 · planificado — Claves de proveedores de IA protegidas; nunca en registros ni en `AgentRun`.
   _Aceptación:_ prueba que busca la clave de prueba en registros y persistencia.
 - **RNF-SEG-10** · F6 · planificado — Límites de abuso y spam en endpoints públicos y de valoración.
@@ -413,18 +429,20 @@ el cuándo, en [`roadmap.md`](roadmap.md).
   _Aceptación:_ pruebas por rol y etiqueta en Testing Library y recorrido por teclado en E2E; auditoría completa en F6.
 - **RNF-UX-05** · F1 · implementado ([#17 web](https://github.com/wasichai/elearning-frontend/pull/17)) — Textos con i18next; español inicial y estructura lista para más idiomas.
   _Aceptación:_ sin textos literales en componentes; claves `es` completas.
-- **RNF-UX-06** · F3 · planificado — Experiencias separadas por audiencia (catálogo, aula, docente, estudio,
+- **RNF-UX-06** · F3 · implementado ([front#50](https://github.com/wasichai/elearning-frontend/pull/50), [front#69](https://github.com/wasichai/elearning-frontend/pull/69), [front#70](https://github.com/wasichai/elearning-frontend/pull/70)) (el menú de administración es de `@wasichai/core` y se muestra sin permisos) — Experiencias separadas por audiencia (catálogo, aula, docente, estudio,
   revisor, administración), no una pantalla universal.
   _Aceptación:_ un módulo de frontend por experiencia con su navegación filtrada por permisos.
-  _Pendiente de F2 (#103):_ catálogo, aula y docente son módulos propios, y el menú «Docencia» se muestra por permiso
-  ([front#50](https://github.com/wasichai/elearning-frontend/pull/50)); faltan los módulos de estudio y revisor, y el menú de administración aún se muestra a una cuenta
-  sin permisos (la API responde `403`; ver [#149](https://github.com/wasichai/elearning-backend/pull/149)).
+  _Nota:_ catálogo, aula, docencia, estudio y revisión son módulos propios, y sus menús se muestran por permiso, nunca por
+  nombre de rol. El menú de administración lo pone `coreModule` de `@wasichai/core` 1.5.0 y aún se muestra a una cuenta sin
+  permisos (la API responde `403`; ver [#149](https://github.com/wasichai/elearning-backend/pull/149)): se pide en wasichai-ui.
 - **RNF-UX-07** · F2 · implementado ([front#16](https://github.com/wasichai/elearning-frontend/pull/16), [front#28](https://github.com/wasichai/elearning-frontend/pull/28)) — Fechas mostradas en la zona de la edición, indicándola.
   _Aceptación:_ prueba de componente con zona distinta a la del navegador.
-- **RNF-UX-08** · F3 · planificado — Confirmación en acciones destructivas y errores comprensibles a partir de
+- **RNF-UX-08** · F3 · implementado ([front#66](https://github.com/wasichai/elearning-frontend/pull/66), [front#69](https://github.com/wasichai/elearning-frontend/pull/69), [front#70](https://github.com/wasichai/elearning-frontend/pull/70)) — Confirmación en acciones destructivas y errores comprensibles a partir de
   `ProblemDetail`.
   _Aceptación:_ pruebas de componente del diálogo y del mapeo de errores.
-  _Pendiente de F2 (#103):_ aún no hay acciones destructivas en las experiencias LMS.
+  _Nota:_ confirman empezar y enviar un intento, emitir el certificado, cancelar y reprogramar sesiones, cambiar notas y
+  asistencias, enviar a revisión, copiar una versión y decidir una revisión; los errores 400, 403, 404, 409, de red y del
+  servidor se explican a partir de `ProblemDetail`.
 
 ### RNF-OSS — Proyecto abierto y datos de demostración (§18, §19; ver [`docs/legal/licensing.md`](../legal/licensing.md))
 
