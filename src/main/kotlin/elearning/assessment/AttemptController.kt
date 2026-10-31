@@ -51,6 +51,9 @@ object AttemptViews {
     // sin soluciones con el intento abierto; enviadas, según la política de la evaluación
     fun student(attempt: Attempt): AttemptView = view(attempt, attempt.snapshot.showSolutions == "AL_ENVIAR")
 
+    // el docente ve las soluciones siempre: corrige con ellas
+    fun teacher(attempt: Attempt): AttemptView = view(attempt, solutions = true)
+
     private fun view(
         attempt: Attempt,
         solutions: Boolean,

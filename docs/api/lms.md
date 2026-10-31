@@ -449,6 +449,9 @@ registro de otra edición → `404`. Nadie lo usa por su rol: lo decide la asign
 "total": 4 }, "assessments": [{ "lessonId", "title", "bestPercent": 80, "passed": true, "pending": false }] }`.
 - `PendingAttempt`: `{ "attemptId", "enrollmentId", "email", "lessonId", "lessonTitle", "submittedAt",
 "pendingQuestions": 1 }`.
+- La cola admite `?status=GRADED` para encontrar un intento ya corregido (por defecto `SUBMITTED`). El `Attempt` del docente
+  añade `enrollmentId`, `email` e `history` (`[{ questionId, points, comment, reason, authorId, at }]`).
+- Solo se califican a mano las preguntas `OPEN` y `FILE` (`400` en otra). Nadie califica su propio intento (`403`).
 - Calificar: `points` entre 0 y los de la pregunta (`400` si no); `reason` obligatorio al **cambiar** una nota ya puesta
   (`409` sin él). Cada calificación queda en un historial que no se borra; al no quedar pendientes, el intento pasa a
   `GRADED` con su `percent` y `passed`.
