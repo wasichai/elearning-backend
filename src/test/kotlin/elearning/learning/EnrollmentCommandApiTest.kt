@@ -176,27 +176,7 @@ class EnrollmentCommandApiTest : LmsApiTest() {
         val release = CompletableDeferred<Unit>()
         val statuses =
             runBlocking(Dispatchers.IO) {
-                val holder =
-                    async {
-                        transactions.executeAndAwait {
-                            db
-                                .sql("INSERT INTO lms.ocupacion_edicion (organizacion_id, edicion_id) VALUES (:o, :e) ON CONFLICT DO NOTHING")
-                                .bind("o", org)
-                                .bind("e", offeringId)
-                                .fetch()
-                                .rowsUpdated()
-                                .awaitSingle()
-                            db
-                                .sql("SELECT matriculados FROM lms.ocupacion_edicion WHERE organizacion_id = :o AND edicion_id = :e FOR UPDATE")
-                                .bind("o", org)
-                                .bind("e", offeringId)
-                                .fetch()
-                                .one()
-                                .awaitSingle()
-                            held.complete(Unit)
-                            release.await()
-                        }
-                    }
+                val holder = async { holdOccupancy(org, offeringId, held, release) }
                 held.await()
                 val racing = students.map { s -> async { enroll(s, code).first } }
                 // tiempo de sobra para que las dos lleguen a leer el cupo mientras la fila sigue retenida
@@ -207,6 +187,66 @@ class EnrollmentCommandApiTest : LmsApiTest() {
             }
 
         assertEquals(listOf(HttpStatus.CREATED, HttpStatus.CONFLICT), statuses.sortedBy { it.value() }, statuses.toString())
+    }
+
+    // revisión de la Fase 2 (L10): estado, ventana y cupo se leían antes del cerrojo, así que un cierre que llegaba
+    // mientras el alta esperaba no contaba. la prueba cierra la edición con la fila del cupo retenida
+    @Test
+    fun `an offering closed while an enrollment waits for the lock takes no enrollment`() {
+        val code = offering(capacity = 5)
+        val offeringId = get("/api/objects/edicion_curso/records?codigo=$code", admin)["content"][0]["id"].asString()
+        val org = UUID.fromString("00000000-0000-0000-0000-000000000001")
+        val student = newStudent()
+        val held = CompletableDeferred<Unit>()
+        val release = CompletableDeferred<Unit>()
+        val status =
+            runBlocking(Dispatchers.IO) {
+                val holder = async { holdOccupancy(org, UUID.fromString(offeringId), held, release) }
+                held.await()
+                val waiting = async { enroll(student, code).first }
+                // tiempo de sobra para que el alta llegue al cerrojo antes del cierre
+                Thread.sleep(1500)
+                client
+                    .patch()
+                    .uri("/api/objects/edicion_curso/records/$offeringId")
+                    .header("Authorization", admin)
+                    .bodyValue(mapOf("attributes" to mapOf("estado" to "CANCELADA")))
+                    .exchange()
+                    .expectStatus()
+                    .isOk
+                release.complete(Unit)
+                holder.await()
+                waiting.await()
+            }
+
+        assertEquals(HttpStatus.CONFLICT, status)
+    }
+
+    // retiene la fila del cupo de una edición, como lo haría otra alta en curso, hasta que la prueba la suelte
+    private suspend fun holdOccupancy(
+        org: UUID,
+        offeringId: UUID,
+        held: CompletableDeferred<Unit>,
+        release: CompletableDeferred<Unit>,
+    ) {
+        transactions.executeAndAwait {
+            db
+                .sql("INSERT INTO lms.ocupacion_edicion (organizacion_id, edicion_id) VALUES (:o, :e) ON CONFLICT DO NOTHING")
+                .bind("o", org)
+                .bind("e", offeringId)
+                .fetch()
+                .rowsUpdated()
+                .awaitSingle()
+            db
+                .sql("SELECT matriculados FROM lms.ocupacion_edicion WHERE organizacion_id = :o AND edicion_id = :e FOR UPDATE")
+                .bind("o", org)
+                .bind("e", offeringId)
+                .fetch()
+                .one()
+                .awaitSingle()
+            held.complete(Unit)
+            release.await()
+        }
     }
 
     @Test
