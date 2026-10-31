@@ -53,9 +53,9 @@ class ReviewService(
             .map { reader.summary(it) }
     }
 
-    suspend fun detail(id: UUID): StudioVersionDetail = reader.detailOf(reviewable(id))
+    suspend fun detail(id: UUID): StudioVersionDetail = reader.detailOf(readable(id))
 
-    suspend fun diff(id: UUID): VersionDiff = differ.againstPrevious(reviewable(id))
+    suspend fun diff(id: UUID): VersionDiff = differ.againstPrevious(readable(id))
 
     suspend fun comment(
         id: UUID,
@@ -138,6 +138,16 @@ class ReviewService(
         val user = currentUser.require()
         currentUser.requirePermission(user, APPROVE, versionObject())
         return user
+    }
+
+    // leer en la bandeja: quien revisa la versión y, aunque no sea el revisor asignado, quien publica, que abre aquí lo
+    // aprobado para publicarlo (#223). decidir sigue siendo de quien la revisa; nadie lee aquí lo suyo (403)
+    private suspend fun readable(id: UUID): RecordResponse {
+        val user = currentUser.require()
+        if (!currentUser.hasPermission(user, PUBLISH, versionObject())) return reviewable(id)
+        val version = visible(id)
+        if (version.attributes[AUTHOR]?.toString() == user.userId.toString()) throw ForbiddenException("Nadie revisa su propia versión")
+        return version
     }
 
     // una versión que esta persona revisa: el autor no (403); con revisor asignado, solo esa persona (lo demás, 404)
