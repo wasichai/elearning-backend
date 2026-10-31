@@ -30,6 +30,22 @@ data class CancelRequest(
     val reason: String? = null,
 )
 
+data class AttendanceRow(
+    val enrollmentId: String,
+    val email: String?,
+    val status: String?,
+)
+
+data class AttendanceEntry(
+    val enrollmentId: String? = null,
+    val status: String? = null,
+)
+
+data class AttendanceRequest(
+    val records: List<AttendanceEntry>? = null,
+    val reason: String? = null,
+)
+
 data class RecurrenceRequest(
     val pattern: String? = null,
     val days: List<String>? = null,
