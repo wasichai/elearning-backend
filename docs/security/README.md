@@ -104,8 +104,8 @@ guarda, un CREADOR podía publicar escribiendo `estado` con un `PATCH`.
 - **Sin autoasignación de alcance** (F3 docente, F4 revisor). Un guard sobre las asignaciones (`docente_edicion`,
   revisor asignado) impide que quien crea la asignación sea el asignado.
 - **Notas solo por el docente asignado** (F3). Un guard sobre calificaciones e intentos solo admite a un DOCENTE con
-  asignación vigente a la edición del intento; cada cambio de nota exige motivo (`requiresReason`, ADR-041 de
-  Wasichai) y queda en el historial.
+  asignación vigente a la edición del intento; cada cambio de nota exige motivo, también el del cero
+  automático de una pregunta sin responder (lo comprueba `GradingService`), y queda en `lms.calificacion`, de solo inserción.
 - **Agentes sin poder** (F5). Los agentes IA no tienen permisos de escritura, aprobación ni publicación.
 
 ## 4. Modelo de amenazas (STRIDE por superficie)
