@@ -533,10 +533,14 @@ en borrador.
 - `decision`: `APROBAR` · `PEDIR_CAMBIOS` (vuelve a `BORRADOR`) · `RECHAZAR` (pasa a `RETIRADA`). `reason` obligatorio salvo al
   aprobar (`400`), hasta 4000 caracteres. Nadie decide sobre su propia versión (`403`); con `reviewerId` puesto, solo esa persona.
   Solo se decide una versión `EN_REVISION` (`409`). La transición y la decisión van en la misma transacción.
+- **Solo aquí se decide** (ADR-0021): sacar una versión de curso de `EN_REVISION` con la API de registros es `403` para quien
+  decide; el autor sí la retira a borrador. Una `version_recurso` no tiene bandeja: su revisor la decide con la API de
+  registros y, salvo al aprobar, con la cabecera `X-Change-Reason` (`400` sin ella), que queda en el `audit_log`.
 - `ReviewComment`: `{ "id", "section", "text", "authorId", "createdAt", "resolved": false }`. `section` es texto libre que
   identifica la parte (`unidad:1/leccion:2`), hasta 200 caracteres; `text`, hasta 4000. Ambos obligatorios (`400`). Solo se
   comenta una versión `EN_REVISION` (`409`); resolver lo ya resuelto no cambia nada. `comentario_revision` es `apiOnly`: la API
-  de registros no lo escribe. `openComments` cuenta los no resueltos.
+  de registros no lo escribe, y por ella solo lo lee quien publica, el autor de la versión, quien la puede revisar y quien lo
+  escribió (lo demás, `404`). `openComments` cuenta los no resueltos.
 - `ReviewDecision`: `{ "decision", "reason", "authorId", "at" }`, la más antigua primero; historial de solo inserción en
   `lms.decision_revision`. Comentarios y decisiones quedan con su versión: una versión nueva a partir de ella empieza sin ellos.
 - `publish`: solo una versión `APROBADA` (`409`); pone `publicada_en` el servidor.
@@ -564,6 +568,10 @@ en borrador.
   commit. `courseId` tiene que ser un curso que quien importa puede leer (`400` si no es un id, `404` si no existe).
 - El trabajo corre en la cola persistente: se consulta con `GET` hasta que `status` sea `HECHO` o `FALLIDO`. Solo lo ve quien lo
   pidió; para cualquier otro, también el administrador, es `404`.
+- Pedir la misma fuente sobre el mismo curso mientras el trabajo anterior de la misma persona está `PENDIENTE` o `EN_CURSO`
+  devuelve ese trabajo (`202`), sin otro borrador; terminado, importar otra vez es otro trabajo. Con
+  `lms.jobs.max-active-per-requester` (5) trabajos pendientes o en curso, entre importaciones y generaciones, uno más es `429`
+  con `Retry-After` ([ADR-0022](../adr/0022-limites-y-ciclo-de-vida-de-los-trabajos.md)).
 - `ImportJob`: `{ "id", "status": "PENDIENTE" | "EN_CURSO" | "HECHO" | "FALLIDO", "error": null, "versionId": null, "report": null }`.
   `error` es el motivo de `FALLIDO` (o el último fallo pasajero mientras se reintenta). Con `HECHO`, `versionId` es la versión
   nueva del curso y `report`: `{ "source", "files", "includes", "sections", "images", "units", "lessons", "problemCount",
@@ -595,6 +603,9 @@ sobrescribe.
 (sin Asciidoctor: `asciidoctor is not available on this server (…): the deployment image must include Asciidoctor
 (ADR-0018 §7)`); un intento fallido vuelve a `PENDIENTE` hasta agotar `lms.jobs.max-attempts`.
 
+- **Una a la vez**: pedir la misma fuente mientras el trabajo anterior de la misma persona está `PENDIENTE` o `EN_CURSO`
+  devuelve ese trabajo (`202`); terminado, generar otra vez es otro trabajo y otra versión. El tope de trabajos activos por
+  persona es el de la importación (`429` con `Retry-After`, [ADR-0022](../adr/0022-limites-y-ciclo-de-vida-de-los-trabajos.md)).
 - **Permisos**: ambas rutas exigen `CREATE` sobre `version_recurso` (`403`; REVISOR y ESTUDIANTE no lo tienen) y la fuente
   se lee como quien pide (`404` si no existe o no la ve). Solo se generan recursos `HTML` o `PDF` (`409` para otro tipo).
   Un trabajo que no es de generación, de otra organización o **de otra persona** es `404`: solo lo lee quien lo pidió, también

@@ -56,11 +56,14 @@ data class JobProperties(
     val timeout: Duration = Duration.ofMinutes(10),
     // un trabajo en curso cuyo reclamo es más viejo que esto se da por perdido (la réplica murió) y se vuelve a reclamar
     val lease: Duration = Duration.ofMinutes(15),
+    // trabajos pendientes o en curso que una persona puede tener a la vez (ADR-0022): uno más es 429
+    val maxActivePerRequester: Int = 5,
 ) {
     init {
         require(parallelism > 0) { "lms.jobs.parallelism must be positive" }
         require(maxAttempts > 0) { "lms.jobs.max-attempts must be positive" }
         require(!backoff.isNegative) { "lms.jobs.backoff must not be negative" }
+        require(maxActivePerRequester > 0) { "lms.jobs.max-active-per-requester must be positive" }
         require(lease > timeout) { "lms.jobs.lease must be longer than lms.jobs.timeout, or a running job would be claimed twice" }
     }
 }

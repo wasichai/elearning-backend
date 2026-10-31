@@ -169,6 +169,40 @@ class ReviewApiTest : ClassroomApiTestSupport() {
         assertEquals(HttpStatus.NOT_FOUND, call(reviewer, "/api/lms/review/comments/${UUID.randomUUID()}/resolve", emptyMap()).first)
     }
 
+    // L5 de #216: comentario_revision no tenía alcance de lectura y cualquier CREADOR leía por la API de registros los de
+    // todas las versiones, con sus autores
+    @Test
+    fun `review comments are read by the author, who may review the version and who publishes, not by every creator`() {
+        val author = account("CREADOR")
+        val reviewer = account("REVISOR")
+        val outsider = account("CREADOR")
+        val otherReviewer = account("REVISOR")
+        val id = inReview(author)
+        val note = created(comment(reviewer, id))["id"].asString()
+
+        fun listed(token: String) = ok(call(token, "/api/objects/comentario_revision/records?version_curso=$id"))["content"].strings { it["id"] }
+
+        assertEquals(listOf(note), listed(author))
+        assertEquals(listOf(note), listed(reviewer))
+        assertEquals(listOf(note), listed(admin))
+        // otro revisor la puede revisar mientras no tenga revisor asignado
+        assertEquals(listOf(note), listed(otherReviewer))
+
+        // un creador ajeno no lee ninguno, ni por id, ni contados
+        assertEquals(emptyList<String>(), listed(outsider))
+        assertEquals(HttpStatus.NOT_FOUND, call(outsider, "/api/objects/comentario_revision/records/$note").first)
+        val counted = ok(call(outsider, "/api/objects/comentario_revision/records?version_curso=$id&count=true"))
+        assertEquals(0, counted["totalElements"].asInt())
+
+        // asignada a otra persona, el revisor que no es ella deja de leerlos; el asignado y quien escribió el comentario, no
+        assertEquals(HttpStatus.OK, patch(admin, id, mapOf("revisor_id" to userId(reviewer))))
+        assertEquals(emptyList<String>(), listed(otherReviewer))
+        assertEquals(HttpStatus.NOT_FOUND, call(otherReviewer, "/api/objects/comentario_revision/records/$note").first)
+        assertEquals(listOf(note), listed(reviewer))
+        assertEquals(1, ok(call(author, "/api/lms/studio/versions/$id"))["openComments"].asInt())
+        assertEquals(1, ok(call(reviewer, "/api/lms/review/versions/$id"))["comments"].size())
+    }
+
     @Test
     fun `decisions need a reason unless approving, stay with their version, and only a version in review is decided`() {
         val author = account("CREADOR")

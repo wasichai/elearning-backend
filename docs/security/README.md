@@ -103,8 +103,11 @@ guarda, un CREADOR podía publicar escribiendo `estado` con un `PATCH`.
   ve en el catálogo público; borradores y `usuario_id` quedan fuera de su alcance).
 - **Sin autoasignación de alcance** (F3 docente, F4 revisor). Un guard sobre las asignaciones (`docente_edicion`,
   revisor asignado) impide que quien crea la asignación sea el asignado. `version_curso.revisor_id` lo pone solo quien
-  tiene `PUBLICAR`, nunca al autor ni a sí mismo; con revisor asignado, solo esa persona decide la revisión, por la bandeja o
-  por la API de registros (`EditorialWorkflowGuard`). Cada decisión queda en `lms.decision_revision`, de solo inserción.
+  tiene `PUBLICAR`, nunca al autor ni a sí mismo; con revisor asignado, solo esa persona decide la revisión
+  (`EditorialWorkflowGuard`). La revisión de un curso se decide solo en la bandeja, que deja cada decisión en
+  `lms.decision_revision`, de solo inserción, en la misma transacción; por la API de registros es `403`, y una versión de
+  curso no nace aprobada. La de un recurso, que no tiene bandeja, exige motivo (`X-Change-Reason`) salvo al aprobar
+  (ADR-0021).
 - **Notas solo por el docente asignado** (F3). Un guard sobre calificaciones e intentos solo admite a un DOCENTE con
   asignación vigente a la edición del intento; cada cambio de nota exige motivo, también el del cero
   automático de una pregunta sin responder (lo comprueba `GradingService`), y queda en `lms.calificacion`, de solo inserción.
@@ -150,8 +153,12 @@ la barrera contra filtrar borradores es física, y aun así las pruebas negativa
 - **S** Revisor que actúa en una revisión no asignada → alcance por asignación.
 - **T** Modificar una versión publicada o la decisión de un revisor → guard de inmutabilidad; comentarios y decisiones
   `appendOnly`; ETag e `If-Match`.
-- **R** Aprobaciones sin rastro → transiciones y decisiones en `audit_log`; motivo obligatorio al rechazar.
+- **R** Aprobaciones sin rastro → transiciones en `audit_log`; las decisiones de un curso, solo por la bandeja y en
+  `lms.decision_revision`; motivo obligatorio al pedir cambios o rechazar, también en un recurso (ADR-0021).
 - **I** Borradores visibles a estudiantes → visibilidad por estado más alcance.
+- **I** Comentarios de revisión de versiones ajenas → `ReviewCommentReadScope`: los lee quien publica, el autor de la
+  versión, quien la puede revisar (sin revisor asignado, o siéndolo) y quien escribió el comentario; para los demás no
+  existen (`404`), tampoco por la API de registros (L5 de #216).
 - **D** Versiones o adjuntos masivos → límites de tamaño y número por versión.
 - **E** Autoaprobación o publicación sin revisión → §3.
 
@@ -217,7 +224,8 @@ Detalle en [`docs/ai/README.md`](../ai/README.md#6-protección-contra-prompt-inj
   consulta hosts públicos con tiempo límite (misma regla que los webhooks de `wasichai-automation`: rechaza loopback,
   privadas, link-local y multicast).
 - **D** Zip bomb, grafos de `include::` profundos o cíclicos → límites de tamaño descomprimido, número de archivos y
-  profundidad; detección de ciclos.
+  profundidad; detección de ciclos. Importar en bucle (cada importación lee hasta 300 archivos con el token del servidor) → la
+  misma petición mientras espera es el mismo trabajo y cada persona tiene un tope de trabajos activos (`429`, ADR-0022).
 - **E** Ejecución de código vía extensiones → Asciidoctor en contenedor aislado, sin extensiones arbitrarias, sin red y
   sin privilegios; el importador nunca publica.
 
@@ -239,7 +247,8 @@ el único sitio del código que lanza un proceso (`ArchitectureTest`, regla `EXT
   `secure`, carpeta temporal propia como base, sin `allow-uri-read` (solo se activa por línea de órdenes). El proceso no
   hereda el entorno del servidor (credenciales): solo `PATH`, `LANG`, `LC_ALL`, `GEM_HOME` y `GEM_PATH`.
 - **D** Documento que no termina o que produce un archivo enorme → tiempo límite por generación (2 min) que mata el
-  proceso, tope de 25 MB de salida y la cola con intentos acotados; nunca en el hilo de WebFlux.
+  proceso, tope de 25 MB de salida y la cola con intentos acotados; nunca en el hilo de WebFlux. Pedir en bucle → la misma
+  fuente mientras espera es el mismo trabajo y cada persona tiene un tope de trabajos activos (`429`, ADR-0022).
 - **E** Ejecución de código vía extensiones → sin `-r` ni extensiones; la imagen de despliegue trae Asciidoctor (F6) y la
   aplicación no tiene acceso a Docker. Sin el binario, el trabajo falla con un error claro. El HTML generado se descarga
   como adjunto con `nosniff`, como cualquier HTML (§4.4).

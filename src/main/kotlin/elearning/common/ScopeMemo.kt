@@ -1,4 +1,4 @@
-package elearning.enrollment
+package elearning.common
 
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.reactor.ReactorContext

@@ -282,13 +282,23 @@ class DemoValidationTest(unittest.TestCase):
         finally:
             tmp.unlink(missing_ok=True)
 
+    def test_a_workflow_command_is_a_step_of_the_path_and_an_lms_route(self):
+        def change(data):
+            data["workflows"]["version_curso"]["commands"] = {
+                "PUBLICADISIMA": {"path": "/api/lms/x/{id}"},
+                "APROBADA": {"path": "/api/objects/version_curso/records/{id}"},
+            }
+        found = self.broken(change)
+        self.assertTrue(any("el comando de 'PUBLICADISIMA' no es un paso del camino" in p for p in found), found)
+        self.assertTrue(any("el comando de 'APROBADA' es una ruta /api/lms/" in p for p in found), found)
+
 
 class FakeWasichai:
     """Estado en memoria y un registro de las escrituras recibidas. Rechaza lo que el servidor real rechazaría."""
 
     def __init__(self):
         self.objects, self.actions, self.relationships, self.roles, self.writes = {}, {}, {}, {}, []
-        self.users, self.records, self.transitions = {}, {}, []
+        self.users, self.records, self.transitions, self.decisions = {}, {}, [], []
         self.uploads, self.tokens = [], {}
         # un servidor que no aplicara el filtro por clave natural (#60)
         self.ignore_filters = False
@@ -310,6 +320,15 @@ class FakeWasichai:
             return self.create_session((auth or "").removeprefix("Bearer "), m[1], body)
         if (method, path) == ("POST", "/api/lms/enrollments"):
             return self.enroll((auth or "").removeprefix("Bearer "), body)
+        if method == "POST" and (m := re.fullmatch(r"/api/lms/review/versions/([\w-]+)/decision", path)):
+            # la bandeja: decide una versión de curso en revisión (ADR-0021)
+            version = next((r for r in self.records.get("version_curso", []) if r["id"] == m[1]), None)
+            if version is None or version["attributes"]["estado"] != "EN_REVISION" or body != {"decision": "APROBAR"}:
+                return 409, {"detail": "only a version in review is decided"}
+            version["attributes"]["estado"] = "APROBADA"
+            self.transitions.append((m[1], "APROBADA", {}))
+            self.decisions.append(m[1])
+            return 200, {"id": m[1], "status": "APROBADA"}
         if m := re.fullmatch(r"/api/objects/(\w+)/records/([\w-]+)/files/(\w+)", path):
             # como wasichai-files: un PATCH del campo, que pasa por la guarda (solo un borrador cambia)
             record = next((r for r in self.records.get(m[1], []) if r["id"] == m[2]), None)
@@ -344,6 +363,8 @@ class FakeWasichai:
                 # como EditorialWorkflowGuard: un estado nuevo debe ser el siguiente del camino
                 state = body["attributes"].get("estado")
                 if state is not None and m[1] in ("version_curso", "version_recurso"):
+                    if (m[1], state) == ("version_curso", "APROBADA"):
+                        return 403, {"detail": "a course version review is decided in the review inbox"}
                     path_ = ["BORRADOR", "EN_REVISION", "APROBADA", "PUBLICADA"]
                     if path_.index(state) != path_.index(record["attributes"]["estado"]) + 1:
                         return 409, {"detail": f"transition {record['attributes']['estado']} -> {state} not allowed"}
@@ -536,6 +557,8 @@ class ApplyDemoTest(unittest.TestCase):
             self.assertEqual(["EN_REVISION", "APROBADA", "PUBLICADA"], [s for s, _ in steps])
             # la fecha de publicación llega con la publicación, no antes
             self.assertTrue(all("publicada_en" not in b for s, b in steps[:-1]))
+        # la aprobación es la decisión de la bandeja, no un PATCH del estado (ADR-0021)
+        self.assertEqual(set(walked), set(self.fake.decisions))
         # el temario se creó mientras la versión era borrador: ningún POST de unidad/lección tras la primera transición
         first_patch = next(i for i, w in enumerate(self.fake.writes) if w.startswith("PATCH /api/objects/version_curso"))
         self.assertFalse(any(w.startswith(("POST /api/objects/unidad", "POST /api/objects/leccion")) for w in self.fake.writes[first_patch:]))

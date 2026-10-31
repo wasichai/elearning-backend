@@ -2,6 +2,8 @@ package elearning.authoring
 
 import elearning.common.listAll
 import elearning.common.ref
+import elearning.course.ReviewDecisionWrite
+import kotlinx.coroutines.withContext
 import org.springframework.stereotype.Service
 import org.springframework.transaction.reactive.TransactionalOperator
 import org.springframework.transaction.reactive.executeAndAwait
@@ -88,7 +90,8 @@ class ReviewService(
         return reader.comment(records.patch(COMMENT, id, RecordRequest(mapOf(RESOLVED to true)), null, null))
     }
 
-    // la transición y su decisión en la misma transacción: si una falla, no hay ninguna
+    // la transición y su decisión en la misma transacción: si una falla, no hay ninguna. la guarda solo admite decidir una
+    // versión de curso con esta marca (ADR-0021): la API de registros no deja así una transición sin su decisión
     suspend fun decide(
         id: UUID,
         request: DecisionRequest,
@@ -105,7 +108,10 @@ class ReviewService(
                 decisions.lock(versionId)
                 val state = records.get(VERSION, versionId).attributes[STATE]?.toString()
                 if (state != IN_REVIEW) throw ConflictException("Solo se decide una versión en revisión")
-                val written = records.patch(VERSION, versionId, RecordRequest(mapOf(STATE to TARGETS.getValue(decision))), reason, null)
+                val written =
+                    withContext(ReviewDecisionWrite()) {
+                        records.patch(VERSION, versionId, RecordRequest(mapOf(STATE to TARGETS.getValue(decision))), reason, null)
+                    }
                 decisions.insert(user.organizationId, versionId, decision, reason, user.userId, Instant.now())
                 written
             }
