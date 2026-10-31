@@ -1,5 +1,6 @@
 package elearning.learning
 
+import elearning.common.instantOf
 import elearning.common.listAll
 import elearning.common.ref
 import org.springframework.stereotype.Component
@@ -8,6 +9,8 @@ import wasichai.core.common.NotFoundException
 import wasichai.core.data.RecordResponse
 import wasichai.core.data.RecordService
 import wasichai.core.identity.CurrentUser
+import java.time.Clock
+import java.time.Instant
 import java.time.LocalDate
 import java.util.UUID
 
@@ -19,6 +22,7 @@ class TeachingReader(
     private val records: RecordService,
     private val classroom: ClassroomReader,
     private val facts: AssessmentFacts,
+    private val clock: Clock,
 ) {
     suspend fun offerings(): List<TeachingOffering> =
         assigned()
@@ -27,19 +31,31 @@ class TeachingReader(
 
     suspend fun students(code: String): List<RosterRow> {
         val offering = assignedOffering(code)
+        val sessions = records.listAll(SESSION, mapOf(ENROLLMENT_OFFERING to offering.id)).filter { it.attributes[STATE]?.toString() != CANCELLED }
         return enrollmentsOf(offering.id).map { enrollment ->
             RosterRow(
                 enrollmentId = enrollment.id,
                 email = enrollment.attributes[STUDENT_EMAIL]?.toString(),
                 status = enrollment.attributes[STATE].toString(),
                 progress = classroom.view(enrollment).progress,
-                attendance = AttendanceSummary(0, 0),
+                attendance = attendanceOf(enrollment.id, sessions),
                 assessments =
                     facts.assessments(currentUser.require().organizationId, UUID.fromString(enrollment.id)).map {
                         RosterAssessment(it.lessonId, it.title, it.bestPercent, it.passed, it.pending)
                     },
             )
         }
+    }
+
+    // sobre las sesiones no canceladas ya empezadas o con su asistencia registrada: una futura sin registrar aún no cuenta
+    private suspend fun attendanceOf(
+        enrollment: String,
+        sessions: List<RecordResponse>,
+    ): AttendanceSummary {
+        val taken = records.listAll(ATTENDANCE, mapOf(ENROLLMENT to enrollment)).associate { it.attributes.ref(SESSION) to it.attributes[STATE]?.toString() }
+        val now = Instant.now(clock)
+        val counted = sessions.filter { it.id in taken || instantOf(it.attributes["inicio"])?.isBefore(now) == true }
+        return AttendanceSummary(counted.count { taken[it.id] in ClassroomReader.PRESENT }, counted.size)
     }
 
     // la edición de ese código, solo si está asignada a la persona; si no, 404 como si no existiera
@@ -91,6 +107,9 @@ class TeachingReader(
         const val STATE = "estado"
         const val CODE = "codigo"
         const val WITHDRAWN = "RETIRADA"
+        const val SESSION = "sesion"
+        const val ATTENDANCE = "asistencia"
+        const val CANCELLED = "CANCELADA"
         const val NOT_FOUND = "Edición no encontrada"
     }
 }

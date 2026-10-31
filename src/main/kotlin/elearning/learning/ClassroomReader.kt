@@ -1,5 +1,6 @@
 package elearning.learning
 
+import elearning.common.instantOf
 import elearning.common.listAll
 import elearning.common.ref
 import org.springframework.stereotype.Component
@@ -106,6 +107,8 @@ class ClassroomReader(
         val units: List<Unit>,
         val progress: Map<String, RecordResponse>,
         val assessments: Map<String, LessonAssessment>,
+        // por lección, la sesión a la que se asistió, o null si tiene sesiones y a ninguna; solo las lecciones con sesión
+        val attendedSession: Map<String, RecordResponse?>,
     )
 
     // la versión de la matrícula con sus unidades y lecciones en orden, y el progreso guardado por lección
@@ -118,7 +121,22 @@ class ClassroomReader(
         val progress = all(PROGRESS, mapOf(ENROLLMENT to enrollment.id)).associateBy { it.attributes.ref(LESSON).orEmpty() }
         val lessons = units.flatMap { it.lessons }.map { UUID.fromString(it.id) }
         val assessments = facts.lessonAssessments(currentUser.require().organizationId, UUID.fromString(enrollment.id), lessons)
-        return Content(version, units, progress, assessments)
+        return Content(version, units, progress, assessments, attendedSessions(enrollment))
+    }
+
+    // las lecciones enlazadas a sesiones de la edición (ADR-0016 §4), sin contar las canceladas
+    private suspend fun attendedSessions(enrollment: RecordResponse): Map<String, RecordResponse?> {
+        val offering = enrollment.attributes.ref(OFFERING_FIELD)!!
+        val linked =
+            all(SESSION, mapOf(OFFERING_FIELD to offering)).filter { it.attributes["leccion_id"] != null && it.attributes[STATE]?.toString() != CANCELLED }
+        if (linked.isEmpty()) return emptyMap()
+        val present =
+            all(ATTENDANCE, mapOf(ENROLLMENT to enrollment.id))
+                .filter {
+                    it.attributes[STATE]?.toString() in PRESENT
+                }.mapNotNull { it.attributes.ref(SESSION) }
+                .toSet()
+        return linked.groupBy { it.attributes["leccion_id"].toString() }.mapValues { (_, sessions) -> sessions.firstOrNull { it.id in present } }
     }
 
     // los recursos de esas lecciones, en su orden; cada versión de recurso y su recurso se leen una vez
@@ -173,6 +191,7 @@ class ClassroomReader(
         content: Content,
     ): Boolean {
         content.assessments[lesson.id]?.let { return it.passedAt != null }
+        if (lesson.id in content.attendedSession) return content.attendedSession[lesson.id] != null
         return content.progress[lesson.id]
             ?.attributes
             ?.get(STATE)
@@ -184,6 +203,7 @@ class ClassroomReader(
         content: Content,
     ) = when {
         lesson.id in content.assessments -> "ASSESSMENT"
+        lesson.id in content.attendedSession -> "ATTENDANCE"
         lesson.text(TYPE) in NOT_YET -> "NOT_YET"
         lesson.text(TYPE) == LessonProgressService.VIDEO_LESSON -> "VIDEO_END"
         else -> "EXPLICIT"
@@ -195,6 +215,14 @@ class ClassroomReader(
         content: Content,
     ): LessonProgress {
         val stored = LessonProgressService.progress(content.progress[lesson.id])
+        content.attendedSession[lesson.id]?.let {
+            return LessonProgress(
+                LessonProgressService.COMPLETED,
+                stored.startedAt ?: instantOf(it.attributes["inicio"]),
+                instantOf(it.attributes["fin"]),
+                ATTENDANCE_EVIDENCE,
+            )
+        }
         val assessment = content.assessments[lesson.id] ?: return stored
         return when {
             assessment.passedAt != null ->
@@ -243,6 +271,11 @@ class ClassroomReader(
         const val TYPE = "tipo"
 
         const val PASSED_EVIDENCE = "EVALUACION_APROBADA"
+        const val ATTENDANCE_EVIDENCE = "ASISTENCIA"
+        const val SESSION = "sesion"
+        const val ATTENDANCE = "asistencia"
+        const val CANCELLED = "CANCELADA"
+        val PRESENT = setOf("PRESENTE", "TARDE")
 
         // sin su evaluación o su sesión definidas todavía no se pueden completar: no cuentan para el progreso
         val NOT_YET = setOf("EVALUACION", "SESION")
