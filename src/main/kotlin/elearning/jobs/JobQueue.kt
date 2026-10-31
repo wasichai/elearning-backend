@@ -3,23 +3,29 @@ package elearning.jobs
 import io.r2dbc.spi.Readable
 import kotlinx.coroutines.reactor.awaitSingle
 import kotlinx.coroutines.reactor.awaitSingleOrNull
+import org.springframework.http.HttpStatus
 import org.springframework.r2dbc.core.DatabaseClient
 import org.springframework.stereotype.Repository
+import wasichai.core.common.RetryLaterException
 import java.time.Clock
+import java.time.Duration
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
 import java.util.UUID
 
-// lms.trabajo (V9, ADR-0018 §4). encolar es idempotente por clave; reclamar usa FOR UPDATE SKIP LOCKED, así que varias
-// réplicas nunca toman el mismo trabajo. terminar exige seguir siendo el dueño del reclamo (estado e intento): una réplica
-// que perdió su reclamo no pisa el resultado de la que lo retomó
+// lms.trabajo (V9 y V12, ADR-0018 §4 y ADR-0022). encolar es idempotente por clave mientras el trabajo no termina y tiene
+// tope por persona; reclamar usa FOR UPDATE SKIP LOCKED, así que varias réplicas nunca toman el mismo trabajo. terminar
+// exige seguir siendo el dueño del reclamo (estado e intento): una réplica que perdió su reclamo no pisa el resultado de la
+// que lo retomó
 @Repository
 class JobQueue(
     private val db: DatabaseClient,
     private val properties: JobProperties,
     private val clock: Clock,
 ) {
-    // el id del trabajo; con la misma clave en la misma organización y tipo, el del que ya estaba, sea cual sea su estado.
+    // el id del trabajo. con la misma clave en la misma organización y tipo, mientras el que ya estaba siga pendiente o en
+    // curso, el de ese (ADR-0022): pedir dos veces lo mismo no hace dos trabajos. terminado, la clave queda libre.
+    // requester: quien lo pidió; sin un trabajo que devolver, si ya tiene lms.jobs.max-active-per-requester activos, 429.
     // payload es JSON; maxAttempts null: lms.jobs.max-attempts. el valor por defecto no puede leer properties: la llamada
     // con defecto corre sobre el proxy de @Repository, que no tiene los campos
     suspend fun enqueue(
@@ -28,18 +34,37 @@ class JobQueue(
         payload: String = "{}",
         key: String? = null,
         maxAttempts: Int? = null,
+        requester: UUID? = null,
     ): UUID {
         require(type.isNotBlank()) { "job type must not be blank" }
         val max = maxAttempts ?: properties.maxAttempts
         require(max > 0) { "maxAttempts must be positive" }
+        if (key != null) active(organization, type, key)?.let { return it }
+        if (requester != null) requireRoomFor(organization, requester)
+        // otra petición con la misma clave pudo encolar entre la lectura y la inserción, y su trabajo pudo terminar ya
+        for (round in 1..2) {
+            insert(organization, type, payload, key, max, requester)?.let { return it }
+            active(organization, type, key!!)?.let { return it }
+        }
+        error("job $type with key $key could not be enqueued")
+    }
+
+    private suspend fun insert(
+        organization: UUID,
+        type: String,
+        payload: String,
+        key: String?,
+        max: Int,
+        requester: UUID?,
+    ): UUID? {
         val now = now()
         val spec =
             db
                 .sql(
                     """
-                    INSERT INTO lms.trabajo (organizacion_id, tipo, clave, datos, max_intentos, disponible_en, creado_en)
-                    VALUES (:org, :type, :key, CAST(:payload AS jsonb), :max, :now, :now)
-                    ON CONFLICT (organizacion_id, tipo, clave) DO NOTHING
+                    INSERT INTO lms.trabajo (organizacion_id, tipo, clave, solicitante, datos, max_intentos, disponible_en, creado_en)
+                    VALUES (:org, :type, :key, :requester, CAST(:payload AS jsonb), :max, :now, :now)
+                    ON CONFLICT (organizacion_id, tipo, clave) WHERE estado IN ('QUEUED', 'RUNNING') DO NOTHING
                     RETURNING id
                     """.trimIndent(),
                 ).bind("org", organization)
@@ -47,27 +72,59 @@ class JobQueue(
                 .bind("payload", payload)
                 .bind("max", max)
                 .bind("now", now)
-        val inserted =
-            (if (key == null) spec.bindNull("key", String::class.java) else spec.bind("key", key))
-                .map { row, _ -> row.get("id", UUID::class.java)!! }
-                .one()
-                .awaitSingleOrNull()
-        return inserted ?: existing(organization, type, key!!)
+        val keyed = if (key == null) spec.bindNull("key", String::class.java) else spec.bind("key", key)
+        val bound = if (requester == null) keyed.bindNull("requester", UUID::class.java) else keyed.bind("requester", requester)
+        return bound
+            .map { row, _ -> row.get("id", UUID::class.java)!! }
+            .one()
+            .awaitSingleOrNull()
     }
 
-    private suspend fun existing(
+    // el trabajo pendiente o en curso con esta clave
+    private suspend fun active(
         organization: UUID,
         type: String,
         key: String,
-    ): UUID =
+    ): UUID? =
         db
-            .sql("SELECT id FROM lms.trabajo WHERE organizacion_id = :org AND tipo = :type AND clave = :key")
-            .bind("org", organization)
+            .sql(
+                """
+                SELECT id FROM lms.trabajo
+                WHERE organizacion_id = :org AND tipo = :type AND clave = :key AND estado IN ('QUEUED', 'RUNNING')
+                """.trimIndent(),
+            ).bind("org", organization)
             .bind("type", type)
             .bind("key", key)
             .map { row, _ -> row.get("id", UUID::class.java)!! }
             .one()
-            .awaitSingle()
+            .awaitSingleOrNull()
+
+    // un tope blando: dos peticiones a la vez pueden pasarlo por uno, lo que no cambia la cuota de nadie
+    private suspend fun requireRoomFor(
+        organization: UUID,
+        requester: UUID,
+    ) {
+        val limit = properties.maxActivePerRequester
+        val active =
+            db
+                .sql(
+                    """
+                    SELECT count(*) AS activos FROM lms.trabajo
+                    WHERE organizacion_id = :org AND solicitante = :requester AND estado IN ('QUEUED', 'RUNNING')
+                    """.trimIndent(),
+                ).bind("org", organization)
+                .bind("requester", requester)
+                .map { row, _ -> row.get("activos", Number::class.java)!!.toInt() }
+                .one()
+                .awaitSingle()
+        if (active >= limit) {
+            throw RetryLaterException(
+                "There are already $active jobs of yours waiting or running: try again when one ends",
+                RETRY_AFTER,
+                status = HttpStatus.TOO_MANY_REQUESTS,
+            )
+        }
+    }
 
     // como toda lectura de lms, dentro de su organización
     suspend fun find(
@@ -193,5 +250,8 @@ class JobQueue(
     companion object {
         // un error cabe en una línea de informe; el detalle completo va al log
         const val MAX_ERROR = 2000
+
+        // lo que se pide esperar al pasar el tope: un trabajo corto tarda eso en terminar
+        private val RETRY_AFTER: Duration = Duration.ofMinutes(1)
     }
 }

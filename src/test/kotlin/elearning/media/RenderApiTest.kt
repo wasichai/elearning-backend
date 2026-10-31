@@ -202,6 +202,19 @@ class RenderApiTest : LmsApiTest() {
         assertTrue(a["versionId"].asString() != b["versionId"].asString())
     }
 
+    // M2 de #216: pedir otra vez mientras espera no hace otro trabajo ni otra versión
+    @Test
+    fun `asking again while the render waits returns the same job`() {
+        val (resource, source) = source("HTML")
+
+        val first = render(source)["id"].asString()
+        val again = render(source)["id"].asString()
+        drain()
+
+        assertEquals(first, again)
+        assertEquals(1, get("/api/objects/version_recurso/records?recurso=$resource", creator)["totalElements"].asInt())
+    }
+
     @Test
     fun `without the asciidoctor binary the job fails with a clear error and writes nothing`() {
         val (resource, source) = source("HTML")

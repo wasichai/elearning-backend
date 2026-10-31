@@ -12,13 +12,16 @@ import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.TestConfiguration
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Import
+import org.springframework.http.HttpStatus
 import org.springframework.r2dbc.core.DatabaseClient
 import org.springframework.test.context.TestPropertySource
 import tools.jackson.databind.json.JsonMapper
+import wasichai.core.common.RetryLaterException
 import wasichai.test.WasichaiIntegrationTest
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
@@ -30,7 +33,15 @@ import kotlin.concurrent.thread
 // la cola persistente (ADR-0018 §4, RNF-ARQ-09) con manejadores de prueba. el @Scheduled está apagado: cada prueba da
 // las vueltas con runOnce, y una segunda réplica es otro JobRunner sobre la misma tabla
 @Import(JobQueueTest.Handlers::class)
-@TestPropertySource(properties = ["lms.jobs.scheduling=false", "lms.jobs.backoff=0s", "lms.jobs.parallelism=4", "lms.jobs.timeout=2s"])
+@TestPropertySource(
+    properties = [
+        "lms.jobs.scheduling=false",
+        "lms.jobs.backoff=0s",
+        "lms.jobs.parallelism=4",
+        "lms.jobs.timeout=2s",
+        "lms.jobs.max-active-per-requester=2",
+    ],
+)
 class JobQueueTest : WasichaiIntegrationTest() {
     @Autowired
     private lateinit var queue: JobQueue
@@ -69,7 +80,7 @@ class JobQueueTest : WasichaiIntegrationTest() {
     }
 
     @Test
-    fun `enqueueing with the same key returns the same job and runs it once`() {
+    fun `enqueueing with the same key while the job waits returns the same job and runs it once`() {
         val key = UUID.randomUUID().toString()
         val first = runBlocking { queue.enqueue(org, ECHO, key = key) }
         val again = runBlocking { queue.enqueue(org, ECHO, """{"other": true}""", key = key) }
@@ -82,6 +93,39 @@ class JobQueueTest : WasichaiIntegrationTest() {
         drain()
         assertEquals(1, calls.getValue(first).get())
         assertEquals(json.readTree("""{"echo": {}}"""), json.readTree(status(first).result), "vale el primer encolado")
+    }
+
+    // ADR-0022: la clave dedup lo que está en marcha, no lo que ya terminó
+    @Test
+    fun `once the job is over its key makes a new job`() {
+        val key = UUID.randomUUID().toString()
+        val first = runBlocking { queue.enqueue(org, ECHO, key = key) }
+        drain()
+
+        val second = runBlocking { queue.enqueue(org, ECHO, key = key) }
+
+        assertNotEquals(first, second)
+        assertEquals(JobState.DONE, status(first).state)
+        assertEquals(JobState.QUEUED, status(second).state)
+        drain()
+    }
+
+    // M2 de #216: nadie llena la cola. el tope de la prueba es 2
+    @Test
+    fun `a person cannot have more active jobs than the limit, and may again once they end`() {
+        val person = UUID.randomUUID()
+        val type = "test.capped-${UUID.randomUUID()}"
+        val active = runBlocking { (1..2).map { queue.enqueue(org, type, key = "k$it", requester = person) } }
+
+        val refused = assertThrows<RetryLaterException> { runBlocking { queue.enqueue(org, type, key = "k3", requester = person) } }
+        assertEquals(HttpStatus.TOO_MANY_REQUESTS, refused.status)
+        assertEquals(active[0], runBlocking { queue.enqueue(org, type, key = "k1", requester = person) }, "lo ya pedido no cuenta otra vez")
+        assertNotNull(runBlocking { queue.enqueue(org, type, requester = UUID.randomUUID()) }, "el tope es por persona")
+        assertNotNull(runBlocking { queue.enqueue(UUID.randomUUID(), type, requester = person) }, "y por organización")
+
+        val claimed = runBlocking { queue.claim(listOf(type), 1) }.single()
+        assertTrue(runBlocking { queue.complete(claimed, null) })
+        assertNotNull(runBlocking { queue.enqueue(org, type, key = "k3", requester = person) }, "terminado uno, cabe otro")
     }
 
     @Test

@@ -44,7 +44,8 @@ class RenderService(
             RenderJobHandler.MAPPER.writeValueAsString(
                 mapOf(RenderJobHandler.SOURCE_ID to sourceId.toString(), RenderJobHandler.REQUESTER_ID to user.userId.toString()),
             )
-        val id = queue.enqueue(user.organizationId, RenderJobHandler.TYPE, payload)
+        // la misma persona y la misma fuente mientras el trabajo no termina: el mismo trabajo (ADR-0022)
+        val id = queue.enqueue(user.organizationId, RenderJobHandler.TYPE, payload, key = "${user.userId}:$sourceId", requester = user.userId)
         return find(id)
     }
 
