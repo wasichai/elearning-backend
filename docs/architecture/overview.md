@@ -126,6 +126,7 @@ flowchart BT
     ai --> authoring
     media --> authoring
     reputation --> enrollment
+    importer
 ```
 
 Una flecha `A --> B` significa «A puede usar B». Todo paquete puede usar `common`; se omite para no cargar el diagrama.
@@ -133,16 +134,16 @@ Una flecha `A --> B` significa «A puede usar B». Todo paquete puede usar `comm
 la inferior declara un puerto y la superior lo implementa: por ejemplo, el cupo disponible que muestra el catálogo es un
 puerto de `course` implementado por `enrollment` (F2).
 
-| Regla                                                                                                 | Comprobación                                                                     |
-| ----------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
-| Sin ciclos entre capacidades; solo las flechas del diagrama                                           | `ArchitectureTest` (escaneo de fuentes, como `CoreArchitectureTest` de Wasichai) |
-| Nada bajo el paquete `wasichai`                                                                       | `ArchitectureTest`                                                               |
-| Sin JPA, Hibernate, Spring Data, JDBC bloqueante ni `.block()` en `main`                              | `ArchitectureTest`                                                               |
-| Sin literales de nombre de rol en el código                                                           | `ArchitectureTest`                                                               |
-| Sin APIs internas de Wasichai (`RecordStore`, tablas físicas de Custom Objects)                       | Revisión + `ArchitectureTest` (imports prohibidos)                               |
-| `DatabaseClient` solo contra el esquema `lms`                                                         | Revisión                                                                         |
-| SDK de proveedores (LLM, S3, videoconferencia) solo en su adaptador (`ai`, `media`, `course.meeting`) | `ArchitectureTest`                                                               |
-| El nombre del producto no aparece en paquetes, objetos, campos ni claves                              | `ArchitectureTest` + revisión                                                    |
+| Regla                                                                                                | Comprobación                                                                     |
+| ---------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| Sin ciclos entre capacidades; solo las flechas del diagrama                                          | `ArchitectureTest` (escaneo de fuentes, como `CoreArchitectureTest` de Wasichai) |
+| Nada bajo el paquete `wasichai`                                                                      | `ArchitectureTest`                                                               |
+| Sin JPA, Hibernate, Spring Data, JDBC bloqueante ni `.block()` en `main`                             | `ArchitectureTest`                                                               |
+| Sin literales de nombre de rol en el código                                                          | `ArchitectureTest`                                                               |
+| Sin APIs internas de Wasichai (`RecordStore`, tablas físicas de Custom Objects)                      | Revisión + `ArchitectureTest` (imports prohibidos)                               |
+| `DatabaseClient` solo contra el esquema `lms`                                                        | Revisión                                                                         |
+| SDK y hosts de proveedores solo en su adaptador (`ai`, `media`, `course.meeting`, `importer.github`) | `ArchitectureTest`                                                               |
+| El nombre del producto no aparece en paquetes, objetos, campos ni claves                             | `ArchitectureTest` + revisión                                                    |
 
 ## 3. Módulos de experiencia del frontend
 
