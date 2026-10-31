@@ -19,6 +19,7 @@ class ClassroomController(
     private val enrollments: EnrollmentService,
     private val reader: ClassroomReader,
     private val progress: LessonProgressService,
+    private val completion: CompletionService,
 ) {
     // 201 si se creó, 200 si ya existía: repetir la matrícula devuelve la misma
     @PostMapping("/enrollments")
@@ -41,6 +42,12 @@ class ClassroomController(
     suspend fun classroom(
         @PathVariable enrollmentId: UUID,
     ): ClassroomView = reader.classroom(enrollmentId)
+
+    // las reglas de finalización de una matrícula propia, cada una con sus cifras
+    @GetMapping("/classroom/enrollments/{enrollmentId}/completion")
+    suspend fun completion(
+        @PathVariable enrollmentId: UUID,
+    ): Completion = completion.of(enrollmentId)
 
     // un evento de aprendizaje → el progreso de la lección. idempotente por clientEventId
     @PostMapping("/classroom/enrollments/{enrollmentId}/lessons/{lessonId}/events")
