@@ -3,7 +3,9 @@ package elearning.learning
 import elearning.StatementCount
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
-import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.DynamicTest
+import org.junit.jupiter.api.DynamicTest.dynamicTest
+import org.junit.jupiter.api.TestFactory
 import org.springframework.context.annotation.Import
 
 // el coste del espacio docente (M4 de #183): el roster y la cola de corrección no deben leer por estudiante. antes, cada
@@ -40,8 +42,9 @@ class TeachingCostApiTest : ClassroomApiTestSupport() {
             }
     }
 
-    @Test
-    fun `the roster costs about the same however many students it has`() {
+    // las cifras van en el nombre de la prueba dinámica: el CI solo muestra el nombre de lo que falla, no el mensaje
+    @TestFactory
+    fun `the roster costs about the same however many students it has`(): List<DynamicTest> {
         val s = Scene()
         val path = "/api/lms/teaching/offerings/${s.course.offering}/students"
         s.students(FEW)
@@ -50,14 +53,12 @@ class TeachingCostApiTest : ClassroomApiTestSupport() {
         val big = s.cost(path, FEW + MORE)
 
         val perStudent = (big - small).toDouble() / MORE
-        assertTrue(
-            perStudent <= PER_STUDENT,
-            "sentencias del roster: $small con $FEW estudiantes, $big con ${FEW + MORE} (≈$perStudent por estudiante)",
-        )
+        val figures = "sentencias del roster: $small con $FEW estudiantes, $big con ${FEW + MORE} (≈$perStudent por estudiante)"
+        return listOf(dynamicTest(figures) { assertTrue(perStudent <= PER_STUDENT, figures) })
     }
 
-    @Test
-    fun `the graded queue costs about the same however many attempts it has`() {
+    @TestFactory
+    fun `the graded queue costs about the same however many attempts it has`(): List<DynamicTest> {
         val s = Scene()
         val path = "/api/lms/teaching/offerings/${s.course.offering}/attempts?status=GRADED"
         s.students(FEW)
@@ -66,10 +67,8 @@ class TeachingCostApiTest : ClassroomApiTestSupport() {
         val big = s.cost(path, FEW + MORE)
 
         val perAttempt = (big - small).toDouble() / MORE
-        assertTrue(
-            perAttempt <= PER_STUDENT,
-            "sentencias de la cola: $small con $FEW intentos, $big con ${FEW + MORE} (≈$perAttempt por intento)",
-        )
+        val figures = "sentencias de la cola: $small con $FEW intentos, $big con ${FEW + MORE} (≈$perAttempt por intento)"
+        return listOf(dynamicTest(figures) { assertTrue(perAttempt <= PER_STUDENT, figures) })
     }
 
     companion object {
