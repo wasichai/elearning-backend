@@ -17,7 +17,7 @@ enum class Rule(
     ROLE_NAME_LITERAL("nunca se compara un nombre de rol en código (CLAUDE.md, regla 4)"),
     PURE_WORKLOAD("elearning.workload es dominio puro: ni Spring, ni Wasichai, ni R2DBC"),
     PACKAGE_DAG("solo las dependencias de docs/architecture/overview.md §2.3"),
-    CONCRETE_PROVIDER("ningún proveedor concreto de IA, almacenamiento ni videoconferencia fuera de su adaptador (RNF-ARQ-08)"),
+    CONCRETE_PROVIDER("ningún proveedor concreto de IA, almacenamiento, videoconferencia ni fuentes fuera de su adaptador (RNF-ARQ-08)"),
 }
 
 data class Violation(
@@ -125,7 +125,7 @@ class SourceScanner(
         private val ROLE_NAME_LITERAL = Regex("""(["'])(?:ROLE_)?(ESTUDIANTE|DOCENTE|CREADOR|REVISOR|ADMIN)\1""", RegexOption.IGNORE_CASE)
 
         // SDK concretos (por paquete) y hosts de sus API (en cadenas, para quien llamara con WebClient): IA, almacenamiento
-        // de objetos y videoconferencia. Solo sus adaptadores, previstos en docs/architecture/overview.md §2.3, los usan
+        // de objetos, videoconferencia y fuentes del importador. Solo sus adaptadores, previstos en docs/architecture/overview.md §2.3, los usan
         private val CONCRETE_PROVIDER =
             Regex(
                 """\b(com\.openai|com\.anthropic|com\.aallam\.openai|com\.theokanning\.openai|com\.google\.genai|com\.google\.cloud\.vertexai|""" +
@@ -135,9 +135,10 @@ class SourceScanner(
                     """us\.zoom|com\.zoom|com\.google\.apps\.meet|com\.google\.api\.services\.meet|com\.microsoft\.graph|org\.jitsi|""" +
                     """com\.twilio|io\.agora)\.[\w.*]*|""" +
                     """\b(?:api\.openai\.com|api\.anthropic\.com|generativelanguage\.googleapis\.com|[\w-]+\.amazonaws\.com|""" +
-                    """api\.zoom\.us|meet\.googleapis\.com|graph\.microsoft\.com)\b""",
+                    """api\.zoom\.us|meet\.googleapis\.com|graph\.microsoft\.com|""" +
+                    """api\.github\.com|raw\.githubusercontent\.com)\b""",
             )
-        private val PROVIDER_ADAPTERS = setOf("ai", "media", "course.meeting")
+        private val PROVIDER_ADAPTERS = setOf("ai", "media", "course.meeting", "importer.github")
         private val FRAMEWORK_REFERENCE = Regex("""\b(org\.springframework|wasichai|io\.r2dbc)\.[\w.*]*""")
     }
 }

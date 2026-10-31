@@ -175,12 +175,13 @@ class SourceScannerTest {
                 class Providers(val bucket: com.amazonaws.services.s3.AmazonS3) {
                     val endpoint = "https://api.openai.com/v1/chat/completions"
                     val zoom = "https://api.zoom.us/v2/users/me/meetings"
+                    val github = "https://api.github.com/repos"
                 }
                 """,
             )
 
         assertThat(violations).allMatch { it.rule == Rule.CONCRETE_PROVIDER }
-        assertThat(violations.map { it.line }).containsExactly(3, 4, 5, 6, 7, 8, 9, 10, 12, 13, 14)
+        assertThat(violations.map { it.line }).containsExactly(3, 4, 5, 6, 7, 8, 9, 10, 12, 13, 14, 15)
         assertThat(violations.first().toString()).startsWith("$path:3: usa com.openai.client.OpenAIClient")
     }
 
@@ -188,7 +189,7 @@ class SourceScannerTest {
     @Test
     fun `a provider sdk inside its adapter package, or named in a comment, is not a violation`() {
         val adapters =
-            listOf("elearning.ai", "elearning.media.storage", "elearning.course.meeting").flatMap { pkg ->
+            listOf("elearning.ai", "elearning.media.storage", "elearning.course.meeting", "elearning.importer.github").flatMap { pkg ->
                 scan(
                     "src/main/kotlin/${pkg.replace('.', '/')}/Adapter.kt",
                     "package $pkg\n\nimport com.anthropic.client.AnthropicClient\nimport us.zoom.sdk.ZoomSDK\n\nval host = \"api.anthropic.com\"\n",
