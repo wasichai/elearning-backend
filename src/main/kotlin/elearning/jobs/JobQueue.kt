@@ -20,16 +20,18 @@ class JobQueue(
     private val clock: Clock,
 ) {
     // el id del trabajo; con la misma clave en la misma organización y tipo, el del que ya estaba, sea cual sea su estado.
-    // payload es JSON
+    // payload es JSON; maxAttempts null: lms.jobs.max-attempts. el valor por defecto no puede leer properties: la llamada
+    // con defecto corre sobre el proxy de @Repository, que no tiene los campos
     suspend fun enqueue(
         organization: UUID,
         type: String,
         payload: String = "{}",
         key: String? = null,
-        maxAttempts: Int = properties.maxAttempts,
+        maxAttempts: Int? = null,
     ): UUID {
         require(type.isNotBlank()) { "job type must not be blank" }
-        require(maxAttempts > 0) { "maxAttempts must be positive" }
+        val max = maxAttempts ?: properties.maxAttempts
+        require(max > 0) { "maxAttempts must be positive" }
         val now = now()
         val spec =
             db
@@ -43,7 +45,7 @@ class JobQueue(
                 ).bind("org", organization)
                 .bind("type", type)
                 .bind("payload", payload)
-                .bind("max", maxAttempts)
+                .bind("max", max)
                 .bind("now", now)
         val inserted =
             (if (key == null) spec.bindNull("key", String::class.java) else spec.bind("key", key))
