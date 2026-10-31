@@ -119,6 +119,7 @@ flowchart BT
     enrollment --> course
     learning --> enrollment
     learning --> course
+    learning --> workload
     assessment --> learning
     assessment --> enrollment
     authoring --> course

@@ -403,8 +403,8 @@ enlace solo es `https`.
 "detail": "16 de 16 lecciones" }] }`. `rule`: `LESSONS` (todas las lecciones completables), `ASSESSMENTS` (todas las
   evaluaciones aprobadas), `ATTENDANCE` (asistencia mínima, %). Solo aparecen las que declara la versión.
 - `POST /api/lms/classroom/enrollments/{id}/certificate` `{ "holderName": "Nombre para el certificado" }` → `201`
-  `Certificate` (la matrícula pasa a `FINALIZADA` con resultado `APROBADO`) · `200` el ya emitido · `409` con
-  `rules` pendientes · `400` nombre vacío o de más de 120 caracteres.
+  `Certificate` (la matrícula pasa a `FINALIZADA` con resultado `APROBADO`) · `200` el ya emitido · `409` con las
+  reglas pendientes en `detail` (el detalle por regla, en `GET …/completion`) · `400` nombre vacío o de más de 120 caracteres.
 - `GET /api/lms/public/certificates/{code}` (sin sesión) → `Certificate` o `404`:
 
 ```json

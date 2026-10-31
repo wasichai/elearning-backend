@@ -19,11 +19,13 @@ class ClassroomReader(
     private val currentUser: CurrentUser,
     private val records: RecordService,
     private val facts: AssessmentFacts,
+    private val certificates: CertificateStore,
 ) {
-    // mis matrículas activas, la de inicio más próximo primero
+    // mis matrículas salvo las retiradas (una finalizada sigue legible), la de inicio más próximo primero
     suspend fun mine(): List<EnrollmentView> {
         val me = currentUser.require().userId.toString()
-        return all(ENROLLMENT, mapOf(STUDENT to me, STATE to ACTIVE))
+        return all(ENROLLMENT, mapOf(STUDENT to me))
+            .filter { it.attributes[STATE]?.toString() != WITHDRAWN }
             .map { view(it) }
             .sortedWith(compareBy({ it.offering.startDate }, { it.id }))
     }
@@ -94,6 +96,7 @@ class ClassroomReader(
                 ),
             progress = summary(lessons, content),
             nextLesson = next?.let { NextLesson(it.id, it.text(TITLE), unitOrder.getValue(it.id), it.int(ORDER)) },
+            certificateCode = certificates.codeOf(UUID.fromString(enrollment.id)),
         )
     }
 
@@ -261,7 +264,7 @@ class ClassroomReader(
         const val PROGRESS = "progreso_leccion"
         const val ENROLLMENT = "matricula"
         const val STUDENT = "estudiante_id"
-        const val ACTIVE = "ACTIVA"
+        const val WITHDRAWN = "RETIRADA"
         const val RESOURCE = "recurso"
         const val RESOURCE_VERSION = "version_recurso"
         const val RESOURCE_LINK = "recurso_leccion"

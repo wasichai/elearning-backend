@@ -20,6 +20,7 @@ class ClassroomController(
     private val reader: ClassroomReader,
     private val progress: LessonProgressService,
     private val completion: CompletionService,
+    private val certificates: CertificateService,
 ) {
     // 201 si se creó, 200 si ya existía: repetir la matrícula devuelve la misma
     @PostMapping("/enrollments")
@@ -48,6 +49,22 @@ class ClassroomController(
     suspend fun completion(
         @PathVariable enrollmentId: UUID,
     ): Completion = completion.of(enrollmentId)
+
+    // 201 al emitirlo, 200 si ya estaba: el certificado no se vuelve a emitir
+    @PostMapping("/classroom/enrollments/{enrollmentId}/certificate")
+    suspend fun certificate(
+        @PathVariable enrollmentId: UUID,
+        @RequestBody body: CertificateRequest,
+    ): ResponseEntity<Certificate> {
+        val issued = certificates.issue(enrollmentId, body)
+        return ResponseEntity.status(if (issued.created) HttpStatus.CREATED else HttpStatus.OK).body(issued.certificate)
+    }
+
+    // verificación pública, sin sesión: quien tiene el código ve lo certificado y nada de la cuenta
+    @GetMapping("/public/certificates/{code}")
+    suspend fun verify(
+        @PathVariable code: String,
+    ): Certificate = certificates.verify(code)
 
     // un evento de aprendizaje → el progreso de la lección. idempotente por clientEventId
     @PostMapping("/classroom/enrollments/{enrollmentId}/lessons/{lessonId}/events")

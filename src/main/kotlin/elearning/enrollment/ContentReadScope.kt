@@ -15,7 +15,7 @@ import wasichai.core.platform.SqlIdentifier
 import java.util.UUID
 
 // lo que una persona sin VER_TODAS lee del contenido (ADR-0012, ADR-0013): las versiones PUBLICADAS o de sus matrículas
-// ACTIVAS, y las unidades, lecciones y ediciones de esas versiones. un borrador se lee como inexistente. los recursos
+// no retiradas, y las unidades, lecciones y ediciones de esas versiones. un borrador se lee como inexistente. los recursos
 // (E13.1) quedan solo para las versiones de sus matrículas.
 // las matrículas y las unidades se leen como quien llama, así que sus propios alcances ya aplican. nunca por rol
 @Component
@@ -58,7 +58,11 @@ class ContentReadScope(
             .map { it.id }
 
     private suspend fun enrolledVersions(caller: AuthenticatedUser): List<String> =
-        all(ENROLLMENT, mapOf(STUDENT to caller.userId.toString(), STATE to ACTIVE)).mapNotNull { it.attributes.ref(VERSION) }.distinct()
+        all(ENROLLMENT, mapOf(STUDENT to caller.userId.toString()))
+            .filter {
+                it.attributes[STATE]?.toString() != WITHDRAWN
+            }.mapNotNull { it.attributes.ref(VERSION) }
+            .distinct()
 
     private suspend fun all(
         objectName: String,
@@ -82,7 +86,7 @@ class ContentReadScope(
         const val ENROLLMENT = "matricula"
         const val STUDENT = "estudiante_id"
         const val STATE = "estado"
-        const val ACTIVE = "ACTIVA"
+        const val WITHDRAWN = "RETIRADA"
         const val SEE_ALL = "VER_TODAS"
         const val NOTHING = "false"
         const val ID_COLUMN = "\"id\""
