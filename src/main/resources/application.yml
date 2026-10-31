@@ -42,3 +42,11 @@ lms:
   catalog:
     # cada cuánto se refresca la proyección pública (ADR-0011): un cambio tarda como mucho esto en verse
     refresh: ${LMS_CATALOG_REFRESH:30s}
+  # importador AsciiDoc (ADR-0018 §5): solo lee de estos repositorios, separados por comas, como owner/repo (cualquier
+  # commit) u owner/repo@sha (solo ese). vacío: no importa nada. el host de GitHub es fijo, nunca configuración
+  importer:
+    allowed-sources: ${LMS_IMPORTER_ALLOWED_SOURCES:}
+    timeout: ${LMS_IMPORTER_TIMEOUT:10s}
+    max-bytes: ${LMS_IMPORTER_MAX_BYTES:2MB}
+    # opcional, para repositorios privados o más cuota; solo por entorno
+    github-token: ${LMS_IMPORTER_GITHUB_TOKEN:}
