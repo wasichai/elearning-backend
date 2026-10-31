@@ -74,8 +74,8 @@ Lo que deja la demo para el aula (F2):
 - **Fechas relativas** al día en que se aplica (`"hoy+12"` en `model/demo/data.json`): la edición `SRTM-ANU-101-A`
   tiene la inscripción abierta hoy y empieza en 12 días; las demás, más adelante. No envejecen.
 - **Recursos con archivo** (`model/demo/archivos/`, todos propios o sintéticos): una lectura HTML en la primera lección
-  de SRTM, una guía PDF en «Cómo se deduce el estado» y un vídeo de 4 s (patrón de prueba de FFmpeg) en la lección de
-  vídeo. Se suben al borrador y se publican antes de que la lección los use, como lo haría una persona.
+  de SRTM, una guía PDF en «Cómo se deduce el estado», un vídeo de 4 s (patrón de prueba de FFmpeg) en la lección de
+  vídeo y una presentación de tres diapositivas en PDF en «Consultar el padrón con filtros». Se suben al borrador y se publican antes de que la lección los use, como lo haría una persona.
 - **`estudiante@…` matriculado** en `SRTM-ANU-101-A` por el comando de matrícula, iniciando sesión como él: entra y
   encuentra el curso en «Mis cursos».
 

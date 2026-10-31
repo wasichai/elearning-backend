@@ -1476,6 +1476,49 @@
         "leccion": "srtm-v1-u1-l4",
         "version_recurso": "version-recurso-recorrido-portal"
       }
+    },
+    {
+      "ref": "recurso-presentacion-padron",
+      "object": "recurso",
+      "key": ["codigo"],
+      "attributes": {
+        "codigo": "DEMO-PRESENTACION-PADRON",
+        "titulo": "Consultar el padrón con filtros (presentación)",
+        "descripcion": "Tres diapositivas sobre los filtros del padrón de anuncios, sus columnas y los casos sin vigencia.",
+        "tipo": "PRESENTACION",
+        "idioma": "es"
+      }
+    },
+    {
+      "ref": "version-recurso-presentacion-padron",
+      "object": "version_recurso",
+      "key": ["recurso", "numero"],
+      "attributes": {
+        "numero": 1,
+        "estado": "PUBLICADA",
+        "referencias": "Presentación sintética de la demostración, escrita para este curso a partir de wasichai/srtm-backend@6daacd3:docs/manuales/usuario/anuncios.adoc#proc-padron; no reproduce el manual."
+      },
+      "refs": {
+        "recurso": "recurso-presentacion-padron"
+      },
+      "users": {
+        "autor_id": "creador@demo.wasichai-learning.test"
+      },
+      "files": {
+        "archivo": "archivos/presentacion-padron-con-filtros.pdf"
+      }
+    },
+    {
+      "ref": "recurso-leccion-presentacion-padron",
+      "object": "recurso_leccion",
+      "key": ["leccion", "version_recurso"],
+      "attributes": {
+        "orden": 1
+      },
+      "refs": {
+        "leccion": "srtm-v1-u2-l3",
+        "version_recurso": "version-recurso-presentacion-padron"
+      }
     }
   ],
   "enrollments": [
