@@ -48,13 +48,23 @@ class RenderService(
         return find(id)
     }
 
-    // solo los trabajos de generación de la organización, y solo para quien puede pedirlos
+    // solo los trabajos de generación de la organización, para quien puede pedirlos y solo el suyo: el de otra persona, también
+    // para el administrador, no existe (404), como el de la importación (revisión de la Fase 4)
     suspend fun find(id: UUID): RenderJob {
         val user = currentUser.require()
         requireCreator()
-        val status = queue.find(user.organizationId, id)?.takeIf { it.type == RenderJobHandler.TYPE } ?: throw NotFoundException("Render job $id not found")
+        val status = queue.find(user.organizationId, id)
+        if (status == null || status.type != RenderJobHandler.TYPE || requesterOf(status) != user.userId.toString()) {
+            throw NotFoundException("Render job $id not found")
+        }
         return view(status)
     }
+
+    private fun requesterOf(status: JobStatus): String? =
+        RenderJobHandler.MAPPER
+            .readTree(status.payload)
+            .get(RenderJobHandler.REQUESTER_ID)
+            ?.asString()
 
     private suspend fun requireCreator() {
         val user = currentUser.require()

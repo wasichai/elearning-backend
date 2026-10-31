@@ -228,7 +228,8 @@ Una `fuente_recurso` (AsciiDoc, `text/plain` de hasta 1 MB) produce artefactos p
 el único sitio del código que lanza un proceso (`ArchitectureTest`, regla `EXTERNAL_PROCESS`).
 
 - **S** Generar en nombre de otro → `POST /api/lms/studio/sources/{id}/render` exige `CREATE` sobre `version_recurso`
-  y leer la fuente como quien lo pide; la versión nueva lleva su `autor_id`, tomado del token, nunca de la petición.
+  y leer la fuente como quien lo pide; la versión nueva lleva su `autor_id`, tomado del token, nunca de la petición. El
+  trabajo, su error y su resultado solo los lee quien lo pidió (`404` a cualquier otro, como en la importación).
 - **T** Cambiar la fuente o el artefacto después de generar → `fuente_recurso` es `appendOnly`; `artefacto_generado`,
   `appendOnly` y `apiOnly` (solo lo escribe el trabajo). El trabajo comprueba el hash de la fuente contra el que guardó
   `wasichai-files` y el de cada artefacto contra lo que se almacenó.
