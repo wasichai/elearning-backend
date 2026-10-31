@@ -1,7 +1,8 @@
 {
   "enums": {
     "nivel": ["INICIAL", "INTERMEDIO", "AVANZADO"],
-    "modalidad": ["ASINCRONA", "SINCRONA", "HIBRIDA"],
+    "modalidad": ["ASINCRONA", "SINCRONA", "HIBRIDA", "PRESENCIAL"],
+    "tipo_duracion": ["SEMANAS", "SEMESTRAL"],
     "estado_version": ["BORRADOR", "EN_REVISION", "APROBADA", "PUBLICADA", "RETIRADA"],
     "estado_edicion": ["PROGRAMADA", "INSCRIPCION_ABIERTA", "EN_CURSO", "FINALIZADA", "CANCELADA"],
     "sistema_credito": ["NINGUNO", "ECTS", "SCH"],
@@ -11,7 +12,9 @@
     "resultado_matricula": ["SIN_RESULTADO", "APROBADO", "NO_APROBADO"],
     "tipo_recurso": ["HTML", "PDF", "VIDEO", "PRESENTACION", "LABORATORIO", "CUESTIONARIO", "IMAGEN", "DIAGRAMA"],
     "estado_progreso": ["INICIADA", "COMPLETADA", "APROBADA"],
-    "evidencia_progreso": ["FINALIZACION_EXPLICITA", "FIN_DE_VIDEO"]
+    "evidencia_progreso": ["FINALIZACION_EXPLICITA", "FIN_DE_VIDEO"],
+    "tipo_pregunta": ["UNICA", "MULTIPLE", "VERDADERO_FALSO", "CORTA", "ABIERTA", "ARCHIVO"],
+    "mostrar_soluciones": ["NUNCA", "AL_ENVIAR"]
   },
   "objects": [
     {
@@ -154,6 +157,13 @@
           "type": "ENUM",
           "enum": "modalidad",
           "required": true
+        },
+        {
+          "name": "duracion",
+          "label": "Duración: por semanas (de 1 a 8) o semestral (de 12 a 26 semanas)",
+          "type": "ENUM",
+          "enum": "tipo_duracion",
+          "defaultValue": "SEMANAS"
         },
         {
           "name": "semanas",
@@ -719,6 +729,161 @@
         }
       ],
       "uniqueConstraints": [["matricula", "leccion"]]
+    },
+    {
+      "name": "evaluacion",
+      "label": "Evaluación",
+      "pluralLabel": "Evaluaciones",
+      "description": "Evaluación de una lección (ADR-0016). Es temario: se congela con su versión. El estudiante no la lee: responde sobre la instantánea de su intento. Una por lección (lo exige la guarda editorial).",
+      "fields": [
+        {
+          "name": "titulo",
+          "label": "Título",
+          "type": "TEXT",
+          "required": true
+        },
+        {
+          "name": "instrucciones",
+          "label": "Instrucciones",
+          "type": "LONG_TEXT"
+        },
+        {
+          "name": "intentos_max",
+          "label": "Intentos máximos",
+          "type": "INTEGER",
+          "required": true,
+          "defaultValue": 1
+        },
+        {
+          "name": "tiempo_limite_min",
+          "label": "Tiempo límite (minutos)",
+          "type": "INTEGER"
+        },
+        {
+          "name": "orden_aleatorio",
+          "label": "Barajar opciones en cada intento",
+          "type": "BOOLEAN",
+          "required": true,
+          "defaultValue": false
+        },
+        {
+          "name": "nota_minima",
+          "label": "Nota mínima para aprobar (%)",
+          "type": "INTEGER",
+          "required": true,
+          "defaultValue": 60
+        },
+        {
+          "name": "peso",
+          "label": "Peso en la nota del curso",
+          "type": "DECIMAL",
+          "required": true,
+          "defaultValue": 1
+        },
+        {
+          "name": "mostrar_soluciones",
+          "label": "Cuándo ve las soluciones el estudiante",
+          "type": "ENUM",
+          "enum": "mostrar_soluciones",
+          "required": true,
+          "defaultValue": "NUNCA"
+        }
+      ]
+    },
+    {
+      "name": "pregunta",
+      "label": "Pregunta",
+      "pluralLabel": "Preguntas",
+      "description": "Pregunta de una evaluación. Lleva la solución: solo la leen quienes preparan, revisan o corrigen.",
+      "fields": [
+        {
+          "name": "orden",
+          "label": "Orden",
+          "type": "INTEGER",
+          "required": true
+        },
+        {
+          "name": "tipo",
+          "label": "Tipo",
+          "type": "ENUM",
+          "enum": "tipo_pregunta",
+          "required": true
+        },
+        {
+          "name": "enunciado",
+          "label": "Enunciado",
+          "type": "LONG_TEXT",
+          "required": true
+        },
+        {
+          "name": "puntos",
+          "label": "Puntos",
+          "type": "DECIMAL",
+          "required": true,
+          "defaultValue": 1
+        },
+        {
+          "name": "respuestas_aceptadas",
+          "label": "Respuestas aceptadas (CORTA, una por línea)",
+          "type": "LONG_TEXT"
+        }
+      ],
+      "uniqueConstraints": [["evaluacion", "orden"]]
+    },
+    {
+      "name": "opcion",
+      "label": "Opción",
+      "pluralLabel": "Opciones",
+      "description": "Opción de una pregunta cerrada, con si es correcta.",
+      "fields": [
+        {
+          "name": "orden",
+          "label": "Orden",
+          "type": "INTEGER",
+          "required": true
+        },
+        {
+          "name": "texto",
+          "label": "Texto",
+          "type": "TEXT",
+          "required": true
+        },
+        {
+          "name": "correcta",
+          "label": "Correcta",
+          "type": "BOOLEAN",
+          "required": true,
+          "defaultValue": false
+        }
+      ],
+      "uniqueConstraints": [["pregunta", "orden"]]
+    },
+    {
+      "name": "criterio_rubrica",
+      "label": "Criterio de rúbrica",
+      "pluralLabel": "Criterios de rúbrica",
+      "description": "Criterio con su puntuación para corregir una pregunta abierta o de archivo.",
+      "fields": [
+        {
+          "name": "orden",
+          "label": "Orden",
+          "type": "INTEGER",
+          "required": true
+        },
+        {
+          "name": "descripcion",
+          "label": "Descripción",
+          "type": "TEXT",
+          "required": true
+        },
+        {
+          "name": "puntos",
+          "label": "Puntos",
+          "type": "DECIMAL",
+          "required": true
+        }
+      ],
+      "uniqueConstraints": [["pregunta", "orden"]]
     }
   ],
   "relationships": [
@@ -859,6 +1024,46 @@
       "source": "progreso_leccion",
       "target": "leccion",
       "fieldName": "leccion",
+      "required": true
+    },
+    {
+      "name": "evaluacion_leccion",
+      "label": "Lección",
+      "inverseLabel": "Evaluación",
+      "type": "MANY_TO_ONE",
+      "source": "evaluacion",
+      "target": "leccion",
+      "fieldName": "leccion",
+      "required": true
+    },
+    {
+      "name": "pregunta_evaluacion",
+      "label": "Evaluación",
+      "inverseLabel": "Preguntas",
+      "type": "MANY_TO_ONE",
+      "source": "pregunta",
+      "target": "evaluacion",
+      "fieldName": "evaluacion",
+      "required": true
+    },
+    {
+      "name": "opcion_pregunta",
+      "label": "Pregunta",
+      "inverseLabel": "Opciones",
+      "type": "MANY_TO_ONE",
+      "source": "opcion",
+      "target": "pregunta",
+      "fieldName": "pregunta",
+      "required": true
+    },
+    {
+      "name": "criterio_rubrica_pregunta",
+      "label": "Pregunta",
+      "inverseLabel": "Rúbrica",
+      "type": "MANY_TO_ONE",
+      "source": "criterio_rubrica",
+      "target": "pregunta",
+      "fieldName": "pregunta",
       "required": true
     }
   ]

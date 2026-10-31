@@ -157,7 +157,7 @@ class DemoDataTest(unittest.TestCase):
         self.assertTrue(all(1 <= n <= 2 for n in per_course.values()))
         self.assertEqual(["edicion-srtm-a"], open_today)
 
-    def test_the_classroom_has_a_reading_a_pdf_and_a_video_with_their_own_synthetic_files(self):
+    def test_the_classroom_has_a_reading_a_pdf_a_video_and_a_presentation_with_their_own_synthetic_files(self):
         refs = by_ref()
         kinds = {}
         for link in records("recurso_leccion"):
@@ -170,10 +170,11 @@ class DemoDataTest(unittest.TestCase):
             file = HERE / "demo" / version["files"]["archivo"]
             self.assertTrue(file.is_file() and 0 < file.stat().st_size < 200_000, file)
             kinds[resource["attributes"]["tipo"]] = (lesson["attributes"]["tipo"], file.suffix)
-        self.assertEqual({"HTML": ("LECTURA", ".html"), "PDF": ("LECTURA", ".pdf"), "VIDEO": ("VIDEO", ".webm")}, kinds)
+        self.assertEqual({"HTML": ("LECTURA", ".html"), "PDF": ("LECTURA", ".pdf"), "VIDEO": ("VIDEO", ".webm"), "PRESENTACION": ("PRESENTACION", ".pdf")}, kinds)
         html = (HERE / "demo" / "archivos" / "lectura-entrar-y-salir.html").read_text()
         self.assertNotIn("<script", html.lower(), "la lectura no necesita scripts: el iframe los bloquea igual")
         self.assertTrue((HERE / "demo" / "archivos" / "guia-estados-del-anuncio.pdf").read_bytes().startswith(b"%PDF-"))
+        self.assertTrue((HERE / "demo" / "archivos" / "presentacion-padron-con-filtros.pdf").read_bytes().startswith(b"%PDF-"))
 
     def test_the_demo_student_is_enrolled_in_the_open_offering(self):
         self.assertEqual([{"user": "estudiante@demo.wasichai-learning.test", "offering": "edicion-srtm-a"}], DATA["enrollments"])
@@ -530,7 +531,7 @@ class ApplyDemoTest(unittest.TestCase):
         self.assertEqual(0, code, err)
         # el simulador rechaza (409) un recurso sin publicar en una lección o un temario ya publicado: llegar aquí lo prueba
         self.assertEqual(len(records("recurso_leccion")), len(self.fake.records["recurso_leccion"]))
-        self.assertEqual({"lectura-entrar-y-salir.html", "guia-estados-del-anuncio.pdf", "recorrido-del-portal.webm"}, {name for _, _, name in self.fake.uploads})
+        self.assertEqual({"lectura-entrar-y-salir.html", "guia-estados-del-anuncio.pdf", "recorrido-del-portal.webm", "presentacion-padron-con-filtros.pdf"}, {name for _, _, name in self.fake.uploads})
         self.assertTrue(all(r["attributes"]["estado"] == "PUBLICADA" for r in self.fake.records["version_recurso"]))
         self.assertTrue(all(r["attributes"].get("archivo") for r in self.fake.records["version_recurso"]))
 
