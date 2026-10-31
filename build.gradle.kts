@@ -33,9 +33,6 @@ dependencies {
 tasks.withType<Test>().configureEach {
     useJUnitPlatform()
     testLogging { events("failed") }
-    // la cola no corre sola en las pruebas: los contextos de Spring que la caché mantiene vivos compartirían la base y
-    // se robarían los trabajos con otros adaptadores. cada prueba de trabajos da sus vueltas con JobRunner.runOnce
-    systemProperty("lms.jobs.scheduling", "false")
 }
 
 // unitarias y de arquitectura: sin base de datos
