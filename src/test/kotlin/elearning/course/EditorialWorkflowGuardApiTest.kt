@@ -198,6 +198,36 @@ class EditorialWorkflowGuardApiTest : LmsApiTest() {
     }
 
     @Test
+    fun `another creator does not touch the curriculum of someone else's draft, and editorial direction does`() {
+        // revisión de la Fase 2 (L8): la versión solo la editaba su autor, pero su temario lo tocaba cualquier CREADOR
+        val (_, version) = draft()
+        val unit = create(creator, "unidad", mapOf("version_curso" to version, "orden" to 1, "titulo" to "Unidad"))
+        val lesson = create(creator, "leccion", mapOf("unidad" to unit, "orden" to 1, "titulo" to "Lección", "tipo" to "LECTURA"))
+        val other = newCreator()
+
+        val newUnit = mapOf("attributes" to mapOf("version_curso" to version, "orden" to 2, "titulo" to "Ajena"))
+        assertEquals(HttpStatus.FORBIDDEN, call("POST", "/api/objects/unidad/records", other, newUnit).first)
+        assertEquals(HttpStatus.FORBIDDEN, patch(other, "unidad", unit, mapOf("titulo" to "Reescrita")).first)
+        val newLesson = mapOf("attributes" to mapOf("unidad" to unit, "orden" to 2, "titulo" to "Ajena", "tipo" to "LECTURA"))
+        assertEquals(HttpStatus.FORBIDDEN, call("POST", "/api/objects/leccion/records", other, newLesson).first)
+        assertEquals(HttpStatus.FORBIDDEN, call("DELETE", "/api/objects/leccion/records/$lesson", other).first)
+        assertEquals(HttpStatus.OK, patch(admin, "unidad", unit, mapOf("titulo" to "Corregida por la dirección")).first)
+    }
+
+    private fun newCreator(): String {
+        val email = "${uniqueName("creador")}@demo.wasichai-learning.test"
+        client
+            .post()
+            .uri("/api/users")
+            .header("Authorization", admin)
+            .bodyValue(mapOf("email" to email, "displayName" to "Otro creador", "password" to DEMO_PASSWORD, "roles" to listOf("CREADOR")))
+            .exchange()
+            .expectStatus()
+            .isCreated
+        return bearer(email, DEMO_PASSWORD)
+    }
+
+    @Test
     fun `a teacher does not edit offerings and a student does not read unpublished versions`() {
         val offering = get("/api/objects/edicion_curso/records?size=1", admin)["content"][0]["id"].asString()
 

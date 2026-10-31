@@ -15,6 +15,7 @@ import wasichai.core.data.RecordWrite
 import wasichai.core.data.RecordWriteGuard
 import wasichai.core.identity.AuthenticatedUser
 import wasichai.core.identity.CurrentUser
+import wasichai.core.metadata.MetadataService
 import java.time.Instant
 import java.util.UUID
 
@@ -24,8 +25,8 @@ import java.util.UUID
 //
 // - solo transiciones legales, cada una con su acción; saltarse la revisión no es una transición
 // - nadie aprueba una versión de la que es autor (autor_id), tampoco el administrador
-// - el contenido solo cambia en BORRADOR y solo lo cambia su autor; en revisión, aprobada, publicada o retirada no se
-//   mueve (ni su temario)
+// - el contenido solo cambia en BORRADOR y solo lo cambia su autor, también su temario; en revisión, aprobada,
+//   publicada o retirada no se mueve (ni su temario)
 // - créditos aprobados y fecha de publicación solo los pone quien tiene la acción correspondiente
 // - la plataforma (userId nulo) es código de confianza y no pasa por aquí
 @Component
@@ -34,6 +35,7 @@ class EditorialWorkflowGuard(
     private val currentUser: CurrentUser,
     // RecordService recibe la lista de guardas: se pide perezosamente para no formar un ciclo
     private val records: ObjectProvider<RecordService>,
+    private val metadata: ObjectProvider<MetadataService>,
 ) : RecordWriteGuard {
     override suspend fun beforeWrite(change: RecordWrite) {
         if (change.userId == null) return
@@ -108,21 +110,33 @@ class EditorialWorkflowGuard(
         }
     }
 
-    // unidades y lecciones de una versión que no está en borrador no se crean, cambian, mueven ni borran
+    // unidades y lecciones de una versión que no está en borrador no se crean, cambian, mueven ni borran. el temario de
+    // un borrador lo escribe su autor, como el borrador mismo, o quien publica (revisión de la Fase 2, L8)
     private suspend fun curriculum(
         change: RecordWrite,
         versions: List<String>,
     ) {
+        val user = currentUser.require()
         for (id in versions.distinct()) {
-            val state =
+            val version =
                 records
                     .getObject()
                     .get(VERSION, UUID.fromString(id))
                     .attributes
-                    .text(STATE) ?: DRAFT
+            val state = version.text(STATE) ?: DRAFT
             if (state != DRAFT) throw ConflictException("The curriculum of a version that is $state does not change: create a new version")
+            if (version.text(AUTHOR) != user.userId.toString() && !currentUser.hasPermission(user, PUBLISH, versionObject())) {
+                throw ForbiddenException("Only the author edits the curriculum of a draft version")
+            }
         }
     }
+
+    // PUBLICAR se concede sobre version_curso, no sobre la unidad o la lección que se escribe
+    private suspend fun versionObject(): UUID =
+        metadata
+            .getObject()
+            .definitionOf(VERSION)
+            .obj.id
 
     // un recurso con alguna versión fuera de borrador ya lo ven revisores o estudiantes: su título y su tipo (que decide
     // cómo se muestra el archivo) no cambian ni se borra; para cambiarlo, un recurso nuevo (revisión de la Fase 2)
