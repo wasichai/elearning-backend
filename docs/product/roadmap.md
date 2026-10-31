@@ -10,13 +10,13 @@ ejecutando las pruebas y los recorridos indicados, en local y en CI, y el result
 
 ## Resumen
 
-| Fase | Objetivo                                                                                   | Estado (2026-10-28)                                                          |
+| Fase | Objetivo                                                                                   | Estado                                                                       |
 | ---- | ------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------- |
 | F0   | Investigación y arquitectura                                                               | completada (épicas E0, E1)                                                   |
 | F1   | Esqueleto ejecutable y primer incremento: catálogo público con carga y créditos propuestos | completada (2026-10-28): épicas E2–E10, 42 requisitos implementados          |
 | F2   | LMS básico: aula, matrícula, unidades, lecciones, recursos y progreso                      | criterio cumplido (2026-10-28): épicas E12–E16; pendientes a F3/F4/F6 (#103) |
 | F3   | Evaluaciones y operación docente                                                           | planificada                                                                  |
-| F4   | Estudio editorial e importador AsciiDoc                                                    | planificada                                                                  |
+| F4   | Estudio editorial e importador AsciiDoc                                                    | integrada (2026-10-31): épicas E24–E28; criterio pendiente (#179)            |
 | F5   | IA y multimedia                                                                            | planificada                                                                  |
 | F6   | Calidad, reputación y despliegue                                                           | planificada                                                                  |
 

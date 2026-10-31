@@ -2,6 +2,70 @@
 
 Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este archivo registra lo que se entregó.
 
+## 2026-10-31 — Fase 4: estudio editorial, revisión e importador ([#179](https://github.com/wasichai/elearning-backend/issues/179))
+
+Fase 4 integrada: épicas E24–E28 ([#162](https://github.com/wasichai/elearning-backend/issues/162) …
+[#178](https://github.com/wasichai/elearning-backend/issues/178)); diseño en
+[ADR-0018](adr/0018-fase-4-estudio-revision-e-importador.md). Su criterio ([roadmap](product/roadmap.md)) aún no se da por
+cumplido: faltan los recorridos e2e 8–12 contra el backend real
+([elearning-frontend#60](https://github.com/wasichai/elearning-frontend/issues/60)) y la comprobación manual de la
+importación con un capítulo de SRTM y uno de SGSPE.
+
+- **Estudio** (`/api/lms/studio`): mis versiones y su detalle, solo las propias (`404` lo ajeno); enviar a revisión; versión
+  nueva por copia de la última o de la indicada, con temario, evaluaciones y enlaces a recursos, que no toca la anterior ni
+  a quien la cursa (#182, #188, #215).
+- **Bandeja del revisor** (`/api/lms/review`): revisor asignado en `version_curso.revisor_id`, que pone solo quien publica,
+  nunca al autor ni a sí mismo; comentarios por sección (`comentario_revision`, `apiOnly`); decisiones con motivo salvo
+  aprobar en `lms.decision_revision`, de solo inserción y serializadas por versión; rechazar retira la versión; publicar
+  exige `PUBLICAR` (#208). Diferencias calculadas contra la versión anterior, por orden de unidad y lección (#211).
+- **Cola propia** `lms.trabajo` con `FOR UPDATE SKIP LOCKED`, reintentos con espera, reclamo que caduca y cierre solo por
+  quien sigue siendo su dueño; la API responde mientras un trabajo bloquea (RNF-ARQ-09, #209).
+- **Importador**: analizador puro del grafo `include::` con `leveloffset`, secciones, anclas, imágenes, referencias y
+  defectos (#207); lectura por la API de GitHub de una lista de orígenes, en un commit exacto, de un host fijo y sin
+  redirecciones: ninguna URL viene del usuario (#210); un borrador con una unidad por capítulo y una lección por sección,
+  trazadas a `repo@sha:ruta#ancla`, sin el texto del manual y con su informe; nunca publica (#213).
+- **Generación**: `fuente_recurso` de solo inserción produce HTML y PDF con Asciidoctor en modo seguro, en una carpeta
+  propia, sin el entorno del servidor y con tiempo límite; cada artefacto guarda su fuente, los hashes y el generador, y
+  cada generación es una `version_recurso` nueva en borrador (#212).
+- **Archivos**: tipos admitidos por tipo de recurso y en las entregas, sobre lo que detecta `wasichai-files` (RNF-SEG-07,
+  #206); MinIO en Compose, perfil `minio` y prueba S3 con el hash comprobado al descargar (RF-CON-02, #205).
+- **Revisión de seguridad** del cierre (E29.2, #180): sin IDOR en el estudio, la bandeja ni la importación, sin
+  autoaprobación ni decisiones de un revisor no asignado, y sin SSRF. Se corrigió que cualquier CREADOR leyera el trabajo de
+  generación de otro, con su error y su versión (ahora `404`, como la importación). El resto queda en
+  [#216](https://github.com/wasichai/elearning-backend/issues/216): decisiones por la API de registros sin
+  `lms.decision_revision` (M1), trabajos sin clave ni tope (M2) y siete bajos.
+- **Frontend**: `studioModule` (mis versiones, detalle, enviar, copiar e importar con seguimiento e informe) y
+  `reviewModule` (bandeja, comentarios por sección, decisiones y publicar), ambos con diferencias
+  ([front#69](https://github.com/wasichai/elearning-frontend/pull/69), [front#70](https://github.com/wasichai/elearning-frontend/pull/70),
+  [front#73](https://github.com/wasichai/elearning-frontend/pull/73), [front#74](https://github.com/wasichai/elearning-frontend/pull/74)).
+
+REST change: nuevo `/api/lms/studio/versions` (lista, detalle, `diff`, `submit`), `POST /api/lms/studio/courses/{id}/versions`,
+`/api/lms/review/versions` (lista, detalle, `diff`, `comments`, `decision`, `publish`) y `POST /api/lms/review/comments/{id}/resolve`,
+`/api/lms/studio/import` (`sources`, encolar, estado) y `POST /api/lms/studio/sources/{id}/render` con
+`GET /api/lms/studio/renders/{id}`. Contrato en [docs/api/lms.md](api/lms.md).
+New tests: backend 112 métodos `@Test` nuevos (estudio, bandeja, diferencias, cola, importador, generación, tipos de
+archivo y S3), `model/` 2; frontend, las unitarias y e2e simulados de cada PR.
+
+## 2026-10-31 — Rendimiento, filtros del catálogo y confirmaciones
+
+Lo que no es de la Fase 4 y se entregó el mismo día; cierra pendientes de [#103](https://github.com/wasichai/elearning-backend/issues/103)
+y parte de M1 de [#104](https://github.com/wasichai/elearning-backend/issues/104) y M4 de
+[#183](https://github.com/wasichai/elearning-backend/issues/183).
+
+- **Rendimiento**: el alcance de lectura (`ContentReadScope`, `EnrollmentReadScope`) se calcula una vez por petición, en
+  el contexto de Reactor, con un tope de sentencias por unidad del aula medido en la prueba (#198). El roster y la cola del
+  docente leen por lotes, sin instantáneas en la cola: menos de media sentencia por estudiante y por intento (#202).
+- **Catálogo** (RF-CAT-08): filtros de duración, inscripción abierta y horas por tipo, en la API y en la interfaz (#201,
+  [front#68](https://github.com/wasichai/elearning-frontend/pull/68)); «conocimientos previos» sigue pendiente porque es
+  texto libre.
+- **Confirmaciones y errores** (RNF-UX-08): empezar un intento y emitir el certificado se confirman, y los 403 y los
+  errores de red se explican ([front#66](https://github.com/wasichai/elearning-frontend/pull/66)).
+- **Requisitos** de las Fases 2 y 3 al día con lo integrado (#199).
+
+REST change: `GET /api/lms/public/catalog/courses` admite `minWeeks`, `maxWeeks`, `enrollmentOpen`, `minTheoryHours`,
+`minPracticeHours` y `minAutonomousHours`. Contrato en [docs/api/lms.md](api/lms.md).
+New tests: backend 6 métodos `@Test` y 2 pruebas dinámicas de coste (`StatementCount`).
+
 ## 2026-10-31 — Hallazgos de las revisiones de las Fases 2 y 3 ([#104](https://github.com/wasichai/elearning-backend/issues/104), [#183](https://github.com/wasichai/elearning-backend/issues/183))
 
 - **Matrícula**: estado, ventana, versión y cupo se comprueban con el cerrojo del cupo tomado (#189). Una `RETIRADA` no abre
