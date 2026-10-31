@@ -55,6 +55,7 @@ abstract class ClassroomApiTestSupport : LmsApiTest() {
         withEvaluation: Boolean = false,
         withFileQuestion: Boolean = false,
         assessmentLessonType: String = "EVALUACION",
+        completionRules: Map<String, Any?> = emptyMap(),
     ): Course {
         val resource = publishedHtml()
         return runBlocking {
@@ -85,7 +86,7 @@ abstract class ClassroomApiTestSupport : LmsApiTest() {
                                 "semanas" to 1,
                                 "sistema_credito" to "NINGUNO",
                                 "contenido_ilustrativo" to true,
-                            ),
+                            ) + completionRules,
                         ),
                     )
                 val unit = records.create("unidad", RecordRequest(mapOf("version_curso" to version.id, "orden" to 1, "titulo" to "Unidad 1")))
