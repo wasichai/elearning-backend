@@ -126,6 +126,7 @@ flowchart BT
     assessment --> learning
     assessment --> enrollment
     authoring --> course
+    importer
     ai --> authoring
     media --> authoring
     reputation --> enrollment
