@@ -72,6 +72,24 @@ class SubmissionApiTest : ClassroomApiTestSupport() {
         ok(call(s.teacher, "/api/lms/teaching/attempts/${s.attempt}/grades", mapOf("questionId" to s.file, "points" to 5)))
     }
 
+    // RNF-SEG-07: una entrega admite documentos, imágenes, texto y zip según lo que wasichai-files detecta; lo que no
+    // reconoce (un ejecutable, un binario que dice ser texto) se rechaza y la entrega sigue sin archivo
+    @Test
+    fun `a submission takes only the allowed file types`() {
+        val s = Scene()
+        val created = s.create().second!!
+        val url = created["uploadUrl"].asString()
+        val executable = byteArrayOf(0x4D, 0x5A, 0x90.toByte(), 0, 3, 0, 0, 0)
+        val png = byteArrayOf(0x89.toByte(), 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0, 0, 0, 0x0D)
+
+        fun file() = call(s.student, "/api/objects/entrega/records/${created["id"].asString()}").second!!["attributes"].path("archivo")
+
+        assertEquals(HttpStatus.BAD_REQUEST, upload(s.student, url, "informe.txt", executable))
+        assertTrue(file().isNull || file().isMissingNode, file().toString())
+        assertEquals(HttpStatus.OK, upload(s.student, url, "captura.png", png))
+        assertEquals("image/png", file()["contentType"].asString())
+    }
+
     @Test
     fun `a submission is fixed once the attempt is submitted`() {
         val s = Scene()

@@ -89,6 +89,65 @@ class CatalogListApiTest : LmsApiTest() {
         assertEquals(0, list("?q=no-existe-ningun-curso-asi")["totalElements"].asInt())
     }
 
+    // RF-CAT-08. la demo: SRTM 3 semanas (6 h de teoría, 6 de práctica, 6 autónomas), SGSPE 2 (6, 6, 4), IA 6 (72, 72, 72) y
+    // CORTO 1 (1, 1, 1). otras clases crean cursos de prueba en la misma base: se mira solo lo que es de la demo
+    private fun demo(query: String): Set<String> = list(query).codes().filter { it in DEMO }.toSet()
+
+    @Test
+    fun `duration filters by weeks, inclusive on both ends`() {
+        assertEquals(setOf("SRTM-ANU-101", "IA-AGT-201"), demo("?minWeeks=3"))
+        assertEquals(setOf("CORTO-101", "SGSPE-101"), demo("?maxWeeks=2"))
+        assertEquals(setOf("SGSPE-101", "SRTM-ANU-101"), demo("?minWeeks=2&maxWeeks=3"))
+        assertEquals(emptySet<String>(), demo("?minWeeks=12"), "ningún curso de la demo es semestral")
+    }
+
+    @Test
+    fun `enrollment open keeps the courses with an offering open today, and false the rest`() {
+        // SRTM y CORTO tienen una edición INSCRIPCION_ABIERTA cuya ventana incluye hoy; SGSPE e IA solo programadas
+        assertEquals(setOf("SRTM-ANU-101", "CORTO-101"), demo("?enrollmentOpen=true"))
+        assertEquals(setOf("SGSPE-101", "IA-AGT-201"), demo("?enrollmentOpen=false"))
+    }
+
+    @Test
+    fun `an offering whose enrollment window is over does not count as open`() {
+        // la ventana de SRTM cerró ayer: el estado sigue INSCRIPCION_ABIERTA, pero la ficha diría enrollmentOpen=false
+        runBlocking {
+            db
+                .sql(
+                    """
+                    UPDATE lms.catalogo_publicado
+                    SET ficha = jsonb_set(ficha, '{offerings}', (
+                        SELECT jsonb_agg(jsonb_set(o, '{enrollmentUntil}', to_jsonb((CURRENT_DATE - 3)::text))) FROM jsonb_array_elements(ficha->'offerings') o
+                    )), hash = 'x'
+                    WHERE codigo = 'SRTM-ANU-101'
+                    """.trimIndent(),
+                ).fetch()
+                .rowsUpdated()
+                .awaitSingle()
+        }
+        try {
+            assertEquals(setOf("CORTO-101"), demo("?enrollmentOpen=true"))
+        } finally {
+            runBlocking { projection.refreshNow() }
+        }
+    }
+
+    @Test
+    fun `hours by type filter by the total hours of each type`() {
+        assertEquals(setOf("SRTM-ANU-101", "SGSPE-101", "IA-AGT-201"), demo("?minTheoryHours=6"))
+        assertEquals(setOf("IA-AGT-201"), demo("?minPracticeHours=6.5"))
+        assertEquals(setOf("SRTM-ANU-101", "IA-AGT-201"), demo("?minAutonomousHours=5"))
+        assertEquals(setOf("IA-AGT-201"), demo("?minTheoryHours=6&minAutonomousHours=72"))
+    }
+
+    @Test
+    fun `the new filters combine with the others and narrow the facets`() {
+        assertEquals(setOf("CORTO-101"), demo("?modality=HIBRIDA&enrollmentOpen=true&maxWeeks=4"))
+        // con 10 h de práctica o más solo queda IA: su categoría es la única del filtro de categorías
+        val ia = list()["content"].values().first { it["code"].asString() == "IA-AGT-201" }["category"]["slug"].asString()
+        assertEquals(setOf(ia), list("?minPracticeHours=10")["facets"]["categories"].values().map { it["slug"].asString() }.toSet())
+    }
+
     @Test
     fun `category facets count the published courses regardless of the category filter`() {
         val all = list()
@@ -124,6 +183,15 @@ class CatalogListApiTest : LmsApiTest() {
             "?startsFrom=mañana" to "startsFrom",
             "?sort=azar" to "sort",
             "?page=-1" to "page",
+            "?minWeeks=0" to "minWeeks",
+            "?maxWeeks=27" to "maxWeeks",
+            "?maxWeeks=dos" to "maxWeeks",
+            "?minWeeks=4&maxWeeks=2" to "maxWeeks",
+            "?enrollmentOpen=yes" to "enrollmentOpen",
+            "?minTheoryHours=-1" to "minTheoryHours",
+            "?minPracticeHours=1e3" to "minPracticeHours",
+            "?minAutonomousHours=10001" to "minAutonomousHours",
+            "?minAutonomousHours=1.255" to "minAutonomousHours",
         )) {
             client
                 .get()
@@ -218,5 +286,9 @@ class CatalogListApiTest : LmsApiTest() {
         assertEquals(0, again.written)
         assertEquals(0, again.deleted)
         assertEquals(4, again.published)
+    }
+
+    companion object {
+        private val DEMO = setOf("SRTM-ANU-101", "SGSPE-101", "IA-AGT-201", "CORTO-101")
     }
 }
