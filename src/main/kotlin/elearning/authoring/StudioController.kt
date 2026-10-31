@@ -16,6 +16,7 @@ import java.util.UUID
 class StudioController(
     private val versions: NewVersionService,
     private val reader: StudioReader,
+    private val differ: VersionDiffer,
 ) {
     @GetMapping("/versions")
     suspend fun mine(): List<StudioVersion> = reader.mine()
@@ -24,6 +25,12 @@ class StudioController(
     suspend fun detail(
         @PathVariable id: UUID,
     ): StudioVersionDetail = reader.detail(id)
+
+    // contra la versión anterior del mismo curso (ADR-0018 §3)
+    @GetMapping("/versions/{id}/diff")
+    suspend fun diff(
+        @PathVariable id: UUID,
+    ): VersionDiff = differ.againstPrevious(reader.own(id))
 
     @PostMapping("/versions/{id}/submit")
     suspend fun submit(
