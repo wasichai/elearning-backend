@@ -200,7 +200,7 @@ queda ninguna. `percent` es entero (0–100) sobre las lecciones que se pueden c
 
 ### GET /api/lms/classroom/enrollments
 
-Mis matrículas `ACTIVA` → `Enrollment[]`, la de inicio más próximo primero. Solo las propias, también para quien puede
+Mis matrículas `ACTIVA` y `FINALIZADA` (F3; esta última en solo lectura: eventos e intentos nuevos → `409`) → `Enrollment[]`, la de inicio más próximo primero. Solo las propias, también para quien puede
 ver todas las matrículas (un docente): el aula es del estudiante.
 
 ### GET /api/lms/classroom/enrollments/{id}
@@ -309,6 +309,10 @@ Con sesión, siempre sobre una matrícula propia: lo ajeno o inexistente respond
 | POST   | `/api/lms/classroom/attempts/{attemptId}/submit`                            | envía y califica lo automático → `Attempt`              |
 | POST   | `/api/lms/classroom/attempts/{attemptId}/questions/{questionId}/submission` | crea la entrega de una pregunta `FILE` → `Submission`   |
 
+`PUT answers` recibe `{ "answers": [{ "questionId", "optionIds": [], "text": null, "submissionId": null }] }` con todas
+las respuestas: reemplaza a las guardadas. Un intento vencido se cierra con lo guardado: sus escrituras responden `409` y
+su lectura ya trae el resultado.
+
 `409` (`detail` legible): intentos agotados, plazo vencido (el servidor lo comprueba; el envío tardío se rechaza),
 intento ya enviado, lección sin evaluación o matrícula no activa. `400`: respuesta que no corresponde al tipo de pregunta.
 
@@ -358,6 +362,11 @@ intento ya enviado, lección sin evaluación o matrícula no activa. `400`: resp
 
 `percent` y `passed` son `null` mientras `pending`. `solution` (`{ "optionIds": [...], "acceptedAnswers": [...] }`) solo
 si la evaluación muestra las soluciones al enviar (`showSolutions: "ON_SUBMIT"`); con `NEVER`, siempre `null`.
+
+En `answers[]`, `submission` es `null` o `{ "id", "file": null | { "name", "contentType", "size", "url" } }`, tanto para el
+estudiante como para el docente. `deadline` es `null` sin tiempo límite. En `result`, una pregunta pendiente trae `points` y
+`correct` a `null`; `points` admite decimales. Una pregunta abierta o de archivo sin responder vale 0 y no queda pendiente.
+En `assessment.best`, `percent` y `passed` son `null` mientras `pending`.
 
 `Submission`: `{ "id", "file": null | { "name", "contentType", "size", "url" }, "uploadUrl" }`. El archivo se sube con
 `POST uploadUrl` (multipart, parte `file`, máx. 25 MB) y la misma sesión; queda fijo al enviar el intento.
@@ -433,6 +442,7 @@ registro de otra edición → `404`. Nadie lo usa por su rol: lo decide la asign
 | GET    | `/api/lms/teaching/sessions/{id}/attendance`    | `AttendanceRow[]`                                                     |
 | PUT    | `/api/lms/teaching/sessions/{id}/attendance`    | `{ records: [{ enrollmentId, status }], reason }` → `AttendanceRow[]` |
 
+- `email` puede ser `null` en `Roster`, `PendingAttempt` y `AttendanceRow`: lo guarda la matrícula al crearse.
 - `TeachingOffering`: `{ "code", "status", "startDate", "endDate", "timeZone", "course": { "slug", "code", "title" },
 "enrolled": 12, "pendingAttempts": 3 }`.
 - `Roster`: `{ "enrollmentId", "email", "status", "progress": ProgressSummary, "attendance": { "attended": 3,
