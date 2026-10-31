@@ -568,6 +568,10 @@ en borrador.
   commit. `courseId` tiene que ser un curso que quien importa puede leer (`400` si no es un id, `404` si no existe).
 - El trabajo corre en la cola persistente: se consulta con `GET` hasta que `status` sea `HECHO` o `FALLIDO`. Solo lo ve quien lo
   pidió; para cualquier otro, también el administrador, es `404`.
+- Pedir la misma fuente sobre el mismo curso mientras el trabajo anterior de la misma persona está `PENDIENTE` o `EN_CURSO`
+  devuelve ese trabajo (`202`), sin otro borrador; terminado, importar otra vez es otro trabajo. Con
+  `lms.jobs.max-active-per-requester` (5) trabajos pendientes o en curso, entre importaciones y generaciones, uno más es `429`
+  con `Retry-After` ([ADR-0022](../adr/0022-limites-y-ciclo-de-vida-de-los-trabajos.md)).
 - `ImportJob`: `{ "id", "status": "PENDIENTE" | "EN_CURSO" | "HECHO" | "FALLIDO", "error": null, "versionId": null, "report": null }`.
   `error` es el motivo de `FALLIDO` (o el último fallo pasajero mientras se reintenta). Con `HECHO`, `versionId` es la versión
   nueva del curso y `report`: `{ "source", "files", "includes", "sections", "images", "units", "lessons", "problemCount",
@@ -599,6 +603,9 @@ sobrescribe.
 (sin Asciidoctor: `asciidoctor is not available on this server (…): the deployment image must include Asciidoctor
 (ADR-0018 §7)`); un intento fallido vuelve a `PENDIENTE` hasta agotar `lms.jobs.max-attempts`.
 
+- **Una a la vez**: pedir la misma fuente mientras el trabajo anterior de la misma persona está `PENDIENTE` o `EN_CURSO`
+  devuelve ese trabajo (`202`); terminado, generar otra vez es otro trabajo y otra versión. El tope de trabajos activos por
+  persona es el de la importación (`429` con `Retry-After`, [ADR-0022](../adr/0022-limites-y-ciclo-de-vida-de-los-trabajos.md)).
 - **Permisos**: ambas rutas exigen `CREATE` sobre `version_recurso` (`403`; REVISOR y ESTUDIANTE no lo tienen) y la fuente
   se lee como quien pide (`404` si no existe o no la ve). Solo se generan recursos `HTML` o `PDF` (`409` para otro tipo).
   Un trabajo que no es de generación, de otra organización o **de otra persona** es `404`: solo lo lee quien lo pidió, también

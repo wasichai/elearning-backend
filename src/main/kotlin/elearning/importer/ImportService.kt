@@ -112,7 +112,9 @@ class ImportService(
             throw NotFoundException("Course not found")
         }
         val payload = ImportPayload(user.userId.toString(), courseId.toString(), source.toString())
-        val id = queue.enqueue(user.organizationId, JOB_TYPE, MAPPER.writeValueAsString(payload))
+        // la misma persona, el mismo curso y la misma fuente mientras el trabajo no termina: el mismo trabajo (ADR-0022)
+        val key = "${user.userId}:$courseId:$source"
+        val id = queue.enqueue(user.organizationId, JOB_TYPE, MAPPER.writeValueAsString(payload), key = key, requester = user.userId)
         return view(queue.find(user.organizationId, id)!!)
     }
 

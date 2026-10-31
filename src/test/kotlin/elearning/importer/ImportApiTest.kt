@@ -97,6 +97,24 @@ class ImportApiTest : ClassroomApiTestSupport() {
         assertTrue(versionId in ok(call(creator, "/api/lms/studio/versions")).values().map { it["id"].asString() })
     }
 
+    // M2 de #216: cada clic no es un trabajo ni un borrador más
+    @Test
+    fun `asking again while the import waits returns the same job and makes one draft`() {
+        val course = courseId()
+        val before = records("version_curso", "curso", course).size
+        val (_, first) = start(creator, "acme/manuales@$SHA:manual.adoc", course)
+        val (status, again) = start(creator, "acme/manuales@$SHA:manual.adoc", course)
+
+        assertEquals(HttpStatus.ACCEPTED, status, again.toString())
+        assertEquals(first!!["id"].asString(), again!!["id"].asString())
+        drain()
+        assertEquals(before + 1, records("version_curso", "curso", course).size)
+
+        val (_, later) = start(creator, "acme/manuales@$SHA:manual.adoc", course)
+        assertTrue(later!!["id"].asString() != first["id"].asString(), "terminado, importar otra vez es otro trabajo")
+        drain()
+    }
+
     @Test
     fun `a cycle is reported and the import still ends with its draft`() {
         val job = imported(source = "acme/manuales@$SHA:ciclo/raiz.adoc")
