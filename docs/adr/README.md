@@ -41,3 +41,4 @@ secciones Contexto, Decisión, Alternativas consideradas y Consecuencias. El for
 | [0023](0023-cupo-agotado-en-la-proyeccion-del-catalogo.md)                    | El cupo agotado llega al catálogo como un sí o un no, por la proyección                        | aceptada                     | 2026-11-01 |
 | [0024](0024-prerrequisitos-como-campo-de-la-version.md)                       | Los prerrequisitos son un campo de la versión y los comprueba el comando de matrícula          | aceptada                     | 2026-11-01 |
 | [0025](0025-alcances-de-lectura-con-subconsultas-sobre-tablas-de-wasichai.md) | Los alcances de lectura se resuelven con subconsultas sobre las tablas de Wasichai             | aceptada (provisional)       | 2026-11-01 |
+| [0026](0026-sistema-de-diseno-quipu.md)                                       | La interfaz se viste con el sistema de diseño Quipu como tema de app sobre `@wasichai/ui`      | propuesta                    | 2026-11-01 |
