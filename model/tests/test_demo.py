@@ -65,6 +65,11 @@ def versions_of(course_code):
     return children("version_curso", "curso", course["ref"])
 
 
+def data_writes(writes):
+    # iniciar sesión no escribe datos: comprobar el intento demo exige leer como el estudiante y como el docente
+    return [w for w in writes if w != "POST /api/auth/login"]
+
+
 def problems(data):
     try:
         apply.validate_demo(data, MODEL, ROLES)
@@ -202,8 +207,22 @@ class DemoDataTest(unittest.TestCase):
         self.assertTrue((HERE / "demo" / "archivos" / "guia-estados-del-anuncio.pdf").read_bytes().startswith(b"%PDF-"))
         self.assertTrue((HERE / "demo" / "archivos" / "presentacion-padron-con-filtros.pdf").read_bytes().startswith(b"%PDF-"))
 
-    def test_the_demo_student_is_enrolled_in_the_open_offering(self):
-        self.assertEqual([{"user": "estudiante@demo.wasichai-learning.test", "offering": "edicion-srtm-a"}], DATA["enrollments"])
+    def test_the_demo_student_is_enrolled_in_the_open_offerings(self):
+        student = "estudiante@demo.wasichai-learning.test"
+        self.assertEqual([{"user": student, "offering": "edicion-srtm-a"}, {"user": student, "offering": "edicion-corto-a"}], DATA["enrollments"])
+
+    def test_the_demo_student_took_the_short_course_assessment_and_its_teacher_graded_it(self):
+        (attempt,) = DATA["attempts"]
+        refs = by_ref()
+        self.assertEqual(("estudiante@demo.wasichai-learning.test", "edicion-corto-a", "docente@demo.wasichai-learning.test"),
+                         (attempt["student"], attempt["offering"], attempt["teacher"]))
+        evaluation = next(r for r in records("evaluacion") if r["refs"]["leccion"] == attempt["lesson"])
+        questions = {r["ref"] for r in children("pregunta", "evaluacion", evaluation["ref"])}
+        # responde todas, y el docente califica todas las que se corrigen a mano
+        self.assertEqual(questions, {a["question"] for a in attempt["answers"]})
+        manual = {q for q in questions if refs[q]["attributes"]["tipo"] in ("ABIERTA", "ARCHIVO")}
+        self.assertEqual(manual, {g["question"] for g in attempt["grades"]})
+        self.assertTrue(all(g["comment"].strip() for g in attempt["grades"]))
 
     def test_one_user_per_role_and_one_multi_role(self):
         role_sets = [tuple(sorted(u["roles"])) for u in DATA["users"]]
@@ -290,6 +309,30 @@ class DemoValidationTest(unittest.TestCase):
         self.assertTrue(any("'edicion-ia-a' debe tener la inscripción abierta hoy" in p for p in found))
         self.assertTrue(any("'inmediato' es true o false" in p for p in found))
 
+    def test_attempts_are_checked(self):
+        def change(data):
+            data["attempts"] = [
+                {
+                    "student": "creador@demo.wasichai-learning.test",
+                    "offering": "edicion-corto-a",
+                    "lesson": "corto-v1-u1-l2",
+                    "teacher": "docente.revisor@demo.wasichai-learning.test",
+                    "answers": [{"question": "corto-q1", "options": ["corto-q2-a"]}, {"question": "no-existe", "text": "x"}],
+                    "grades": [{"question": "corto-q1", "points": 1, "comment": "x"}, {"question": "corto-q3", "points": 7, "comment": "x"}],
+                },
+                {"student": "estudiante@demo.wasichai-learning.test", "offering": "edicion-ia-a", "lesson": "corto-v1-u1-l2"},
+                {"student": "estudiante@demo.wasichai-learning.test", "offering": "edicion-corto-a", "lesson": "corto-v1-u1-l1"},
+            ]
+        found = self.broken(change)
+        self.assertTrue(any("intento #1: 'creador@demo.wasichai-learning.test' no está matriculado en 'edicion-corto-a'" in p for p in found), found)
+        self.assertTrue(any("intento #3: 'corto-v1-u1-l1' no es una lección con evaluación" in p for p in found), found)
+        self.assertTrue(any("intento #1: 'docente.revisor@demo.wasichai-learning.test' no está asignado a 'edicion-corto-a'" in p for p in found), found)
+        self.assertTrue(any("intento #1: 'corto-q2-a' no es una opción de 'corto-q1'" in p for p in found), found)
+        self.assertTrue(any("intento #1: 'no-existe' no es una pregunta" in p for p in found), found)
+        self.assertTrue(any("intento #1: 'corto-q1' se corrige sola" in p for p in found), found)
+        self.assertTrue(any("intento #1: 'corto-q3' vale entre 0 y 6 puntos" in p for p in found), found)
+        self.assertTrue(any("intento #2: 'estudiante@demo.wasichai-learning.test' no está matriculado en 'edicion-ia-a'" in p for p in found), found)
+
     def test_relative_dates_resolve_against_the_day_of_application(self):
         today = datetime.date(2027, 2, 27)
         resolved = apply.resolve_dates({"a": "hoy", "b": "hoy+3", "c": "hoy-30", "d": "hoyo", "e": 7}, today)
@@ -325,6 +368,7 @@ class FakeWasichai:
         self.objects, self.actions, self.relationships, self.roles, self.writes = {}, {}, {}, {}, []
         self.users, self.records, self.transitions, self.decisions = {}, {}, [], []
         self.uploads, self.tokens = [], {}
+        self.attempts = {}
         # un servidor que no aplicara el filtro por clave natural (#60)
         self.ignore_filters = False
 
@@ -343,6 +387,8 @@ class FakeWasichai:
             return 200, {"token": f"u-{user['id']}"}
         if method == "POST" and (m := re.fullmatch(r"/api/lms/teaching/offerings/([\w-]+)/sessions", path)):
             return self.create_session((auth or "").removeprefix("Bearer "), m[1], body)
+        if path.startswith(("/api/lms/classroom/", "/api/lms/teaching/")):
+            return self.assessment(method, path, query, body, self.tokens.get((auth or "").removeprefix("Bearer ")))
         if (method, path) == ("POST", "/api/lms/enrollments"):
             return self.enroll((auth or "").removeprefix("Bearer "), body)
         if method == "POST" and (m := re.fullmatch(r"/api/lms/review/versions/([\w-]+)/decision", path)):
@@ -437,14 +483,97 @@ class FakeWasichai:
             return 200, {}
         return 404, {"detail": f"no route {method} {raw_path}"}
 
+    def assigned(self, teacher, offering_id):
+        return teacher is not None and any(
+            a["attributes"]["edicion_curso"] == offering_id and a["attributes"].get("usuario_id") == teacher["id"]
+            for a in self.records.get("docente_edicion", [])
+        )
+
+    def find(self, obj, record_id):
+        return next((r for r in self.records.get(obj, []) if r["id"] == record_id), None)
+
+    def assessment(self, method, path, query, body, user):
+        """El aula y la corrección, como sus comandos: el estudiante sobre su matrícula, el docente sobre su edición."""
+        if user is None:
+            return 401, {"detail": "no session"}
+        evaluations = {e["attributes"]["leccion"]: e for e in self.records.get("evaluacion", [])}
+
+        def questions(lesson):
+            return [q for q in self.records.get("pregunta", []) if q["attributes"]["evaluacion"] == evaluations[lesson]["id"]]
+
+        def mine(enrollment_id):
+            enrollment = self.find("matricula", enrollment_id)
+            return enrollment if enrollment and enrollment["attributes"]["estudiante_id"] == user["id"] else None
+
+        if m := re.fullmatch(r"/api/lms/classroom/enrollments/([\w-]+)", path):
+            if not mine(m[1]):
+                return 404, {"detail": "not yours"}
+            lessons = []
+            for lesson in evaluations:
+                taken = [a for a in self.attempts.values() if a["enrollmentId"] == m[1] and a["lessonId"] == lesson]
+                opened = next((a["id"] for a in taken if a["status"] == "OPEN"), None)
+                lessons.append({"id": lesson, "assessment": {"attemptsUsed": len(taken), "openAttemptId": opened}})
+            return 200, {"units": [{"lessons": lessons}]}
+        if m := re.fullmatch(r"/api/lms/classroom/enrollments/([\w-]+)/lessons/([\w-]+)/attempts", path):
+            if not mine(m[1]) or m[2] not in evaluations:
+                return 404, {"detail": "not yours"}
+            opened = next((a for a in self.attempts.values() if a["enrollmentId"] == m[1] and a["lessonId"] == m[2] and a["status"] == "OPEN"), None)
+            if opened:
+                return 200, opened
+            attempt = {"id": str(uuid.uuid4()), "enrollmentId": m[1], "lessonId": m[2], "studentId": user["id"], "status": "OPEN", "answers": [], "history": []}
+            self.attempts[attempt["id"]] = attempt
+            return 201, attempt
+        if m := re.fullmatch(r"/api/lms/classroom/attempts/([\w-]+)(/answers|/submit)", path):
+            attempt = self.attempts.get(m[1])
+            if attempt is None or attempt["studentId"] != user["id"]:
+                return 404, {"detail": "not yours"}
+            if attempt["status"] != "OPEN":
+                return 409, {"detail": "already submitted"}
+            if m[2] == "/answers":
+                ids = {q["id"]: q for q in questions(attempt["lessonId"])}
+                for answer in body["answers"]:
+                    question = ids.get(answer["questionId"])
+                    options = {o["id"] for o in self.records.get("opcion", []) if question and o["attributes"]["pregunta"] == question["id"]}
+                    if question is None or not set(answer.get("optionIds") or []) <= options:
+                        return 400, {"detail": "answer does not fit its question"}
+                attempt["answers"] = body["answers"]
+            else:
+                manual = [q for q in questions(attempt["lessonId"]) if q["attributes"]["tipo"] in ("ABIERTA", "ARCHIVO")]
+                attempt["status"] = "SUBMITTED" if manual else "GRADED"
+            return 200, attempt
+        if m := re.fullmatch(r"/api/lms/teaching/offerings/([\w-]+)/attempts", path):
+            offering = next((r for r in self.records.get("edicion_curso", []) if r["attributes"]["codigo"] == m[1]), None)
+            if offering is None or not self.assigned(user, offering["id"]):
+                return 404, {"detail": "not your offering"}
+            wanted = query.get("status", "SUBMITTED")
+            offering_of = lambda a: self.find("matricula", a["enrollmentId"])["attributes"]["edicion"]  # noqa: E731
+            rows = [a for a in self.attempts.values() if a["status"] == wanted and offering_of(a) == offering["id"]]
+            return 200, [{"attemptId": a["id"], "enrollmentId": a["enrollmentId"], "lessonId": a["lessonId"]} for a in rows]
+        if m := re.fullmatch(r"/api/lms/teaching/attempts/([\w-]+)(/grades)?", path):
+            attempt = self.attempts.get(m[1])
+            if attempt is None or not self.assigned(user, self.find("matricula", attempt["enrollmentId"])["attributes"]["edicion"]):
+                return 404, {"detail": "not your offering"}
+            if m[2] is None:
+                return 200, attempt
+            question = next((q for q in questions(attempt["lessonId"]) if q["id"] == body["questionId"]), None)
+            if attempt["status"] == "OPEN":
+                return 409, {"detail": "not submitted"}
+            if question is None or question["attributes"]["tipo"] not in ("ABIERTA", "ARCHIVO") or not 0 <= body["points"] <= question["attributes"]["puntos"]:
+                return 400, {"detail": "invalid grade"}
+            if any(h["questionId"] == question["id"] for h in attempt["history"]) and not body.get("reason"):
+                return 409, {"detail": "changing a grade needs a reason"}
+            attempt["history"].append({"questionId": question["id"], "points": body["points"], "comment": body.get("comment"), "authorId": user["id"]})
+            manual = {q["id"] for q in questions(attempt["lessonId"]) if q["attributes"]["tipo"] in ("ABIERTA", "ARCHIVO")}
+            if manual <= {h["questionId"] for h in attempt["history"]}:
+                attempt["status"] = "GRADED"
+            return 200, attempt
+        return 404, {"detail": f"no route {method} {path}"}
+
     def create_session(self, token, code, body):
         # como el comando: la persona debe tener esa edición asignada
         teacher = self.tokens.get(token)
         offering = next((r for r in self.records.get("edicion_curso", []) if r["attributes"]["codigo"] == code), None)
-        assigned = offering and any(
-            a["attributes"]["edicion_curso"] == offering["id"] and teacher and a["attributes"].get("usuario_id") == teacher["id"] for a in self.records.get("docente_edicion", [])
-        )
-        if not assigned:
+        if not (offering and self.assigned(teacher, offering["id"])):
             return 404, {"detail": "not your offering"}
         session = {"id": str(uuid.uuid4()), "attributes": {"edicion": offering["id"], "titulo": body["title"], "leccion_id": body["lessonId"]}}
         self.records.setdefault("sesion", []).append(session)
@@ -610,8 +739,7 @@ class ApplyDemoTest(unittest.TestCase):
         code, _, err = self.run_main()
         self.assertEqual(0, code, err)
         student = next(u for u in self.fake.users.values() if u["email"] == "estudiante@demo.wasichai-learning.test")
-        (enrollment,) = self.fake.records["matricula"]
-        self.assertEqual(student["id"], enrollment["attributes"]["estudiante_id"])
+        self.assertEqual([student["id"]] * 2, [e["attributes"]["estudiante_id"] for e in self.fake.records["matricula"]])
         self.assertIn("POST /api/lms/enrollments", self.fake.writes)
         self.assertNotIn("POST /api/objects/matricula/records", self.fake.writes)
 
@@ -623,6 +751,29 @@ class ApplyDemoTest(unittest.TestCase):
         self.assertEqual(lesson["id"], session["attributes"]["leccion_id"])
         self.assertNotIn("POST /api/objects/sesion/records", self.fake.writes)
 
+    def test_the_demo_attempt_is_taken_by_the_student_and_graded_by_the_assigned_teacher(self):
+        code, _, err = self.run_main()
+        self.assertEqual(0, code, err)
+        ids = {u["email"]: u["id"] for u in self.fake.users.values()}
+        (attempt,) = self.fake.attempts.values()
+        self.assertEqual("GRADED", attempt["status"])
+        self.assertEqual(ids["estudiante@demo.wasichai-learning.test"], attempt["studentId"])
+        self.assertEqual(3, len(attempt["answers"]))
+        (grade,) = attempt["history"]
+        self.assertEqual(ids["docente@demo.wasichai-learning.test"], grade["authorId"])
+        self.assertEqual(4, grade["points"])
+        # por los comandos del aula y de la corrección, nunca por la API de registros
+        for route in ("/answers", "/submit", "/grades"):
+            self.assertTrue(any(w.startswith(("PUT /api/lms/", "POST /api/lms/")) and w.endswith(route) for w in self.fake.writes), route)
+
+    def test_an_attempt_left_open_or_ungraded_is_finished_on_the_next_run(self):
+        self.assertEqual(0, self.run_main()[0])
+        (attempt,) = self.fake.attempts.values()
+        attempt.update({"status": "OPEN", "history": []})
+        self.assertEqual(0, self.run_main()[0])
+        self.assertEqual(1, len(self.fake.attempts))
+        self.assertEqual(("GRADED", 1), (attempt["status"], len(attempt["history"])))
+
     def test_existing_records_are_found_beyond_the_first_page_even_if_the_server_ignores_the_filter(self):
         self.assertEqual(0, self.run_main()[0])
         # 250 lecciones de relleno delante: el registro buscado queda más allá de la primera página de 200
@@ -632,16 +783,17 @@ class ApplyDemoTest(unittest.TestCase):
         writes = len(self.fake.writes)
         code, out, err = self.run_main()
         self.assertEqual(0, code, err)
-        # como en la segunda ejecución normal: solo el inicio de sesión, ningún registro demo creado de nuevo
-        self.assertEqual(["POST /api/auth/login"], self.fake.writes[writes:])
+        # como en la segunda ejecución normal: solo inicios de sesión, ningún registro demo creado de nuevo
+        self.assertEqual([], data_writes(self.fake.writes[writes:]))
 
     def test_second_run_writes_nothing(self):
         self.assertEqual(0, self.run_main()[0])
         writes = len(self.fake.writes)
         code, out, _ = self.run_main()
         self.assertEqual(0, code)
-        # la única escritura de la segunda ejecución es el inicio de sesión
-        self.assertEqual(["POST /api/auth/login"], self.fake.writes[writes:])
+        # la segunda ejecución solo inicia sesión: la del administrador y las de quienes comprueban el intento demo
+        self.assertEqual([], data_writes(self.fake.writes[writes:]))
+        self.assertIn("POST /api/auth/login", self.fake.writes[writes:])
         self.assertIn("Sin cambios", out)
 
     def test_existing_user_gets_the_declared_roles_without_a_new_account(self):
@@ -650,7 +802,7 @@ class ApplyDemoTest(unittest.TestCase):
         multi["roles"] = ["DOCENTE"]
         writes = len(self.fake.writes)
         self.assertEqual(0, self.run_main()[0])
-        self.assertEqual(["POST /api/auth/login", f"PUT /api/users/{multi['id']}/roles"], self.fake.writes[writes:])
+        self.assertEqual([f"PUT /api/users/{multi['id']}/roles"], data_writes(self.fake.writes[writes:]))
         self.assertEqual(["DOCENTE", "REVISOR"], multi["roles"])
 
     def test_missing_demo_password_is_a_clear_error_before_any_call(self):
