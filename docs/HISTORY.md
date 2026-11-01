@@ -10,6 +10,12 @@ Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este
 - Las calificaciones siguen en `lms.calificacion`: quien tiene `MANAGE_ORGANIZATION` lee la cola de corrección y el
   intento con su `history` de cualquier edición, sin asignación y sin poder calificar.
 
+## 2026-11-01 — El aula lee sus recursos por lotes ([#104](https://github.com/wasichai/elearning-backend/issues/104), M1)
+
+- `ClassroomReader.resources()` lee los enlaces de las lecciones del aula, sus versiones de recurso y sus recursos en una
+  lectura cada uno (`listAllIn`, `listByIds`), no un `get` por versión y por recurso: el aula pasa de unas 2 sentencias SQL
+  por recurso distinto a ninguna (`ClassroomCostApiTest`). Un enlace cuya versión o recurso no se puede leer no se muestra.
+
 ## 2026-11-01 — Aviso de publicación de contenido ([#231](https://github.com/wasichai/elearning-backend/issues/231), RF-AUL-09)
 
 - Publicar una versión de curso, por la bandeja, la API de registros o la plataforma, avisa por `wasichai-notifications`
