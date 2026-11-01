@@ -142,11 +142,13 @@ el cuándo, en [`roadmap.md`](roadmap.md).
   _Aceptación:_ prueba E2E con los datos de demostración.
   _Avance:_ el aula muestra sesiones, plazos, evaluaciones, intentos, calificaciones, retroalimentación y certificado
   (#153, front#42, front#45, recorrido real de front#61); faltan los «logros», que aún no tienen definición.
-- **RF-AUL-09** · F3 · planificado — Notificaciones de publicación de contenido y de cambios de calendario.
+- **RF-AUL-09** · F3 · implementado ([#155](https://github.com/wasichai/elearning-backend/pull/155), [#238](https://github.com/wasichai/elearning-backend/pull/238), [front#61](https://github.com/wasichai/elearning-frontend/pull/61)) — Notificaciones de publicación de contenido y de cambios de calendario.
   _Aceptación:_ reprogramar una sesión notifica a los matriculados de esa edición y a nadie más (prueba con el canal de
   correo local).
-  _Avance:_ reprogramar o cancelar una sesión avisa por correo solo a los matriculados de esa edición, comprobado en
-  Mailpit en el CI del frontend (#155, front#61); falta el aviso de publicación de contenido.
+  _Nota:_ reprogramar o cancelar una sesión avisa por correo solo a los matriculados de esa edición, comprobado en Mailpit
+  en el CI del frontend. Publicar una versión nueva de un curso avisa a quien cursa otra versión de ese curso con su
+  matrícula activa, nunca a una retirada ni a otro curso (`PublicationNoticesApiTest`); una versión de recurso publicada
+  no avisa, porque ninguna lección con matriculados puede usarla aún.
 
 ### RF-SES — Sesiones síncronas y asistencia (§6.5)
 
