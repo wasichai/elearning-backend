@@ -9,6 +9,8 @@ ktlintTool = "1.7.1"
 springdoc = "3.2.0"
 # almacén S3 compatible de wasichai-files (RF-CON-02): la misma versión con la que Wasichai 1.6.0 lo compila y prueba
 awsSdk = "2.57.1"
+# saneado con lista blanca del HTML generado (docs/security/README.md §5.2, ADR-0022): ni Wasichai ni el JDK traen uno
+jsoup = "1.21.2"
 
 [libraries]
 wasichai-bom = { module = "wasichai:wasichai-bom", version.ref = "wasichai" }
@@ -20,6 +22,7 @@ wasichai-starter-files = { module = "wasichai:wasichai-spring-boot-starter-files
 aws-sdk-s3 = { module = "software.amazon.awssdk:s3", version.ref = "awsSdk" }
 wasichai-starter-notifications = { module = "wasichai:wasichai-spring-boot-starter-notifications" }
 spring-boot-starter-mail = { module = "org.springframework.boot:spring-boot-starter-mail" }
+jsoup = { module = "org.jsoup:jsoup", version.ref = "jsoup" }
 wasichai-test = { module = "wasichai:wasichai-test" }
 springdoc-webflux-api = { module = "org.springdoc:springdoc-openapi-starter-webflux-api", version.ref = "springdoc" }
 

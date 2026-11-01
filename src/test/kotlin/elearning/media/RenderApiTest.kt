@@ -181,6 +181,26 @@ class RenderApiTest : LmsApiTest() {
         assertTrue(String(download("/api/objects/version_recurso/records/${done["versionId"].asString()}/files/archivo", creator)).contains("Texto propio"))
     }
 
+    // L3 de #216: lo que el autor cuela por ++++ o pass:[] no llega al HTML guardado, y el hash es el de lo saneado
+    @Test
+    fun `the generated html is sanitized before it is stored`() {
+        val (_, source) = source("HTML", "= Con script\n\n++++\n<script>alert('x')</script><p onclick=\"alert(1)\">Texto propio</p>\n++++")
+
+        val job = render(source)["id"].asString()
+        drain()
+
+        val done = get("/api/lms/studio/renders/$job", creator)
+        assertEquals("HECHO", done["status"].asString(), done.toString())
+        val html = done["artifacts"].values().first { it["format"].asString() == "HTML" }
+        val bytes = download("/api/objects/artefacto_generado/records/${html["id"].asString()}/files/archivo", creator)
+        val text = String(bytes)
+        assertTrue("Texto propio" in text, text)
+        assertTrue("<script" !in text && "onclick" !in text, text)
+        assertEquals(sha256(bytes), html["sha256"].asString())
+        val versionFile = download("/api/objects/version_recurso/records/${done["versionId"].asString()}/files/archivo", creator)
+        assertTrue("<script" !in String(versionFile))
+    }
+
     @Test
     fun `a pdf resource gets the pdf as its version file`() {
         val (_, source) = source("PDF")

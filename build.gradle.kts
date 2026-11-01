@@ -24,6 +24,8 @@ dependencies {
     implementation(libs.wasichai.starter.notifications)
     implementation(libs.spring.boot.starter.mail)
     implementation(libs.springdoc.webflux.api)
+    // el HTML que genera Asciidoctor se sanea con lista blanca antes de guardarse (ADR-0022)
+    implementation(libs.jsoup)
     testImplementation(libs.wasichai.test)
     // S3ResourceFilesApiTest crea el bucket y lee el objeto directamente en MinIO
     testImplementation(libs.aws.sdk.s3)

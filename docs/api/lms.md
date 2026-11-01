@@ -594,7 +594,8 @@ en borrador.
 Una fuente AsciiDoc produce un HTML y un PDF en la cola ([ADR-0018 §7](../adr/0018-fase-4-estudio-revision-e-importador.md)),
 y el resultado es una `version_recurso` **nueva en `BORRADOR`**, a nombre de quien la pidió, con el artefacto del tipo de su
 recurso como `archivo`. Sigue el flujo editorial como cualquier otra versión; generar otra vez crea otra versión, nunca
-sobrescribe.
+sobrescribe. El HTML se guarda saneado con lista blanca (sin scripts, manejadores de eventos, `iframe`, formularios ni hojas
+externas, [ADR-0022](../adr/0022-limites-y-ciclo-de-vida-de-los-trabajos.md)); su `sha256` es el de lo guardado.
 
 | Método | Ruta                                  | Resultado                                            |
 | ------ | ------------------------------------- | ---------------------------------------------------- |
