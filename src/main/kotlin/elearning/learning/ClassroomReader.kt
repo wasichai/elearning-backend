@@ -2,6 +2,8 @@ package elearning.learning
 
 import elearning.common.instantOf
 import elearning.common.listAll
+import elearning.common.listAllIn
+import elearning.common.listByIds
 import elearning.common.ref
 import org.springframework.stereotype.Component
 import wasichai.core.common.NotFoundException
@@ -203,20 +205,19 @@ class ClassroomReader(
         present: Set<String>,
     ): Map<String, RecordResponse?> = linked.mapValues { (_, sessions) -> sessions.firstOrNull { it.id in present } }
 
-    // los recursos de esas lecciones, en su orden; cada versión de recurso y su recurso se leen una vez
+    // los recursos de esas lecciones, en su orden. por lotes (M1 de #104): los enlaces de esas lecciones, sus versiones y
+    // sus recursos en una lectura cada uno, no un get por versión y por recurso. lo que el alcance no deja leer no se muestra
     private suspend fun resources(lessons: Set<String>): Map<String, List<ResourceView>> {
-        val links = all(RESOURCE_LINK, emptyMap()).filter { it.attributes.ref(LESSON) in lessons }
-        val versions = links.mapNotNull { it.attributes.ref(RESOURCE_VERSION) }.distinct().associateWith { records.get(RESOURCE_VERSION, UUID.fromString(it)) }
-        val resources =
-            versions.values
-                .mapNotNull { it.attributes.ref(RESOURCE) }
-                .distinct()
-                .associateWith { records.get(RESOURCE, UUID.fromString(it)) }
+        val links = records.listAllIn(RESOURCE_LINK, LESSON, lessons)
+        val versions = records.listByIds(RESOURCE_VERSION, links.mapNotNull { it.attributes.ref(RESOURCE_VERSION) }).associateBy { it.id }
+        val resources = records.listByIds(RESOURCE, versions.values.mapNotNull { it.attributes.ref(RESOURCE) }).associateBy { it.id }
         return links
             .sortedWith(compareBy({ it.int(ORDER) }, { it.id }))
-            .groupBy({ it.attributes.ref(LESSON)!! }) { link ->
-                val version = versions.getValue(link.attributes.ref(RESOURCE_VERSION)!!)
-                val resource = resources.getValue(version.attributes.ref(RESOURCE)!!)
+            .mapNotNull { link ->
+                val version = versions[link.attributes.ref(RESOURCE_VERSION)] ?: return@mapNotNull null
+                val resource = resources[version.attributes.ref(RESOURCE)] ?: return@mapNotNull null
+                Triple(link, version, resource)
+            }.groupBy({ it.first.attributes.ref(LESSON)!! }) { (_, version, resource) ->
                 ResourceView(
                     id = version.id,
                     title = resource.text(TITLE),
