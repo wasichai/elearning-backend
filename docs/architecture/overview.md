@@ -16,7 +16,7 @@ REST, y módulos opcionales (files, notifications, automation, workflow, documen
 por sus SPI. Dos repositorios:
 
 - **`elearning-backend`** (este): app Spring Boot `@WasichaiApplication`, paquete raíz `elearning`, `model/` (metadata) y
-  la documentación de arquitectura. Consume `wasichai:wasichai-bom:1.6.0` y sus starters
+  la documentación de arquitectura. Consume `wasichai:wasichai-bom:1.8.0` y sus starters
   ([ADR-0002](../adr/0002-wasichai-desde-github-packages.md)).
 - **`elearning-frontend`**: app Vite con `<WasichaiApp>` y los módulos LMS por experiencia. Consume
   `@wasichai/{core,ui,testing}` 1.3.0.
@@ -32,7 +32,7 @@ flowchart LR
     end
     subgraph be[elearning-backend]
         lms["elearning.*<br/>/api/lms/**"]
-        wcore["Wasichai 1.6.0<br/>core + módulos opcionales<br/>/api/**"]
+        wcore["Wasichai 1.8.0<br/>core + módulos opcionales<br/>/api/**"]
         lms -- SPI y RecordService --> wcore
     end
     pg[("PostgreSQL 18<br/>wasichai · app_data · lms")]

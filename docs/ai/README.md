@@ -46,7 +46,8 @@ validaciones. Extraer de una fuente, diseñar pedagógicamente y aprobar son tre
 
 - **Versión**: Embabel Agent 1.5.3 (Apache-2.0). Verificado en `embabel-agent-api-1.5.3.pom`: declara
   `spring-boot-starter:4.1.1` y `spring-ai-client-chat:2.0.1`, compatible con Boot 4.1 y Spring AI 2.0
-  ([referencias](../research/reference-repositories.md#1-versiones-reales)). Es la misma versión que fija Wasichai 1.6.0.
+  ([referencias](../research/reference-repositories.md#1-versiones-reales)). Wasichai 1.8.0 fija
+  1.5.4 (desde 1.7.0), con `claude-haiku-5-5` como modelo por defecto del agente.
 - **Uso selectivo**: Embabel solo en los pasos 2–5 (y la opinión del 6). Sin abstracción multi-proveedor propia: una
   interfaz interna pequeña por paso (`SourceAnalyzer`, `CourseDesigner`, `LessonDrafter`, `ScriptWriter`) que tiene dos
   implementaciones, Embabel y el doble determinista (§7). Sirve para probar y para comparar modelos (§9).

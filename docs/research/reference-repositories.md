@@ -56,7 +56,9 @@ que se cambian con un ADR nuevo, nunca editando uno viejo.
 auditoría), `wasichai-bom`, `wasichai-test`, y opcionales `views`, `forms`, `pages`, `workflow`,
 `automation`, `documents`, `gis`, `agent`, `notifications`, `files`; un starter por módulo en `starters/`.
 
-**Consumo.** Grupo Maven `wasichai`, versión 1.6.0 (`gradle.properties`, release 2026-10-26), 24 artefactos
+**Consumo.** Grupo Maven `wasichai`, versión 1.8.0 (`gradle.properties`, release 2026-11-01, `56bfde9`; se leyó 1.6.0 y
+luego el diff hasta 1.8.0: Spring Boot 4.1.2, Flyway 13.11.1, Embabel 1.5.4, AWS SDK 2.57.5 y la comprobación del
+sha256 en cada descarga de `wasichai-files`, ADR-074), 24 artefactos
 (`.github/scripts/check-maven-publications.sh`), publicados **solo** en
 `https://maven.pkg.github.com/wasichai/wasichai` (`build-logic/src/main/kotlin/wasichai.publishing.gradle.kts`).
 `docs/development/releasing.md`: «GitHub Packages requires a token even for public packages; `read:packages`

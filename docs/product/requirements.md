@@ -252,8 +252,9 @@ el cuándo, en [`roadmap.md`](roadmap.md).
 - **RF-CON-02** · F4 · implementado ([#98](https://github.com/wasichai/elearning-backend/pull/98), [#205](https://github.com/wasichai/elearning-backend/pull/205)) — Los binarios (PDF, vídeo, imágenes) van a almacenamiento de objetos, no a
   PostgreSQL, con hash registrado.
   _Aceptación:_ prueba de integración con almacenamiento S3 compatible local; el hash se comprueba al descargar.
-  _Nota:_ la prueba sube a MinIO por la API y compara el sha256 de lo descargado con el registrado; un objeto alterado en
-  el bucket ya no coincide. El servidor no lo comprueba al servir la descarga (wasichai-files 1.6.0): pendiente en #216 (L6).
+  _Nota:_ la prueba sube a MinIO por la API y comprueba el sha256 de lo descargado y su `Repr-Digest`; desde Wasichai
+  1.8.0 el servidor también lo comprueba al servir la descarga y un objeto alterado en el bucket no se sirve entero
+  (L6 de #216).
 - **RF-CON-03** · F4 · implementado ([#212](https://github.com/wasichai/elearning-backend/pull/212)) — Fuente canónica (AsciiDoc o LaTeX) separada de los artefactos generados, con
   relación fuente↔producto (versión de la fuente, generador, hash).
   _Aceptación:_ cada artefacto publicado identifica su fuente exacta.
@@ -383,8 +384,8 @@ el cuándo, en [`roadmap.md`](roadmap.md).
 
 ### RNF-ARQ — Arquitectura y stack (stack, §5, §15)
 
-- **RNF-ARQ-01** · F1 · implementado ([#48](https://github.com/wasichai/elearning-backend/pull/48)) — Kotlin 2.4.21, Spring Boot 4.1.1 WebFlux, JDK 25, PostgreSQL 18 y la BOM de
-  Wasichai 1.6.0; frontend React 19, Vite 8, Tailwind 4 y `@wasichai/*` 1.3.0.
+- **RNF-ARQ-01** · F1 · implementado ([#48](https://github.com/wasichai/elearning-backend/pull/48)) — Kotlin 2.4.21, Spring Boot 4.1.2 WebFlux, JDK 25, PostgreSQL 18 y la BOM de
+  Wasichai 1.8.0; frontend React 19, Vite 8, Tailwind 4 y `@wasichai/*` 1.3.0.
   _Aceptación:_ `./gradlew build` y `yarn build` pasan con esas versiones fijadas.
 - **RNF-ARQ-02** · F1 · implementado ([#53](https://github.com/wasichai/elearning-backend/pull/53)) — Sin JPA, Hibernate, Spring Data ni JDBC bloqueante en flujos reactivos.
   _Aceptación:_ la prueba de arquitectura falla ante esas importaciones en `src/main`.
@@ -430,7 +431,7 @@ el cuándo, en [`roadmap.md`](roadmap.md).
   quien tiene acceso.
   _Aceptación:_ pruebas de tipo prohibido, tamaño excedido y descarga ajena.
   _Nota:_ la lista de tipos se comprueba sobre el tipo que detecta `wasichai-files`; `HTML` y `VIDEO` admiten
-  `application/octet-stream` porque Wasichai 1.6.0 no los reconoce (riesgo aceptado en `docs/security/README.md` §4.4).
+  `application/octet-stream` porque Wasichai 1.8.0 no los reconoce (riesgo aceptado en `docs/security/README.md` §4.4).
 - **RNF-SEG-08** · F4 · planificado — Control de URLs externas contra SSRF (importador, enlaces de laboratorio).
   _Aceptación:_ URLs a direcciones internas o con redirecciones hacia ellas se rechazan.
   _Avance:_ el importador no acepta URL: lee de repositorios de una lista, en un commit exacto, de un host fijo y sin seguir

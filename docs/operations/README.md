@@ -110,12 +110,15 @@ docker compose up -d                                            # postgres, mail
 
 - **Al subir**: `wasichai-files` calcula el sha256 de los bytes que recibió y lo registra; el descriptor del archivo
   (`{id, name, contentType, size, sha256}`) lo devuelve en cada lectura del registro.
-- **Al descargar**: quien descarga (la UI, un script de verificación, una restauración) recalcula el sha256 de lo
-  recibido y lo compara con el del descriptor; un objeto alterado en el bucket no coincide.
-  `S3ResourceFilesApiTest` lo prueba contra MinIO en Testcontainers.
-- **Hueco de Wasichai 1.6.0**: el servidor **no** recalcula el hash al servir la descarga (la respuesta lleva el tamaño
-  registrado, no un resumen) y no ofrece un recorrido de verificación del almacén. Se pide en `wasichai/wasichai`; no
-  se reimplementa aquí (regla 1 de CLAUDE.md).
+- **Al descargar** (Wasichai 1.8.0, su ADR-074): el servidor comprueba el tamaño y el sha256 mientras transmite y la
+  respuesta lleva `Repr-Digest: sha-256=:<base64>:` (RFC 9530) para que el cliente también pueda comprobarlo. Un objeto
+  alterado en el almacén **nunca se sirve entero**: un archivo pequeño es un `500`; uno grande se corta antes de su
+  `Content-Length`. Cada fallo deja una línea `ERROR` con la clave y los dos hashes, marca `stored_files.damaged_at`
+  (la primera vez) y escribe en el rastro de administración, que ADMIN consulta con
+  `GET /api/audit?objectName=admin:stored-file`. La marca no bloquea: devueltos los bytes originales desde la copia, el
+  archivo se sirve otra vez. `S3ResourceFilesApiTest` lo prueba contra MinIO en Testcontainers.
+- `wasichai.files.verify-on-download` (por defecto `true`) apaga la comprobación: **no** se cambia en este proyecto.
+- Wasichai no ofrece un recorrido de verificación de todo el almacén: un archivo dañado se descubre al descargarlo.
 
 ### Copia de los archivos
 
@@ -189,7 +192,7 @@ Una copia no cuenta hasta haberse restaurado. Procedimiento (manual ahora, autom
 | `./gradlew integrationTest` falla al iniciar el contenedor                      | Docker no accesible; o usar `WASICHAI_TEST_DB_*` con una base cuyo nombre termine en `_test`        |
 | El backend no arranca: `wasichai.files.store=s3 needs wasichai.files.s3.bucket` | Definir `WASICHAI_FILES_S3_BUCKET` (o, en local, usar el perfil `minio`)                            |
 | Subida o descarga con `NoSuchBucket` o conexión rechazada a 9010                | `docker compose ps`: `minio` en marcha y `minio-bucket` terminado con código 0                      |
-| El sha256 de un archivo descargado no coincide con el del descriptor            | El objeto cambió en el almacén: restaurarlo desde la copia; nunca editar `stored_files.sha256`      |
+| Una descarga es `500` o se corta; `admin:stored-file` en `/api/audit`           | El objeto cambió en el almacén: restaurarlo desde la copia; nunca editar `stored_files.sha256`      |
 | Seguir una petición concreta                                                    | Tomar `X-Correlation-Id` de la respuesta y buscarlo en el registro y en `/api/audit?correlationId=` |
 
 ## Despliegue objetivo (k3s)

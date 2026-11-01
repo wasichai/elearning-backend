@@ -15,7 +15,7 @@ Este repositorio es el **backend** y la casa de la documentación. La interfaz e
 
 ## Arquitectura en una línea
 
-Monolito modular Kotlin + Spring Boot 4.1 WebFlux que consume Wasichai 1.6.0 como librerías: las entidades del LMS son
+Monolito modular Kotlin + Spring Boot 4.1 WebFlux que consume Wasichai 1.8.0 como librerías: las entidades del LMS son
 Custom Objects de Wasichai (`model/model.json`) y las reglas propias del dominio viven en paquetes por capacidad bajo
 `elearning.*`. Detalle en [docs/architecture/overview.md](docs/architecture/overview.md).
 

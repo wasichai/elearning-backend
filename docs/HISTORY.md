@@ -2,6 +2,16 @@
 
 Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este archivo registra lo que se entregó.
 
+## 2026-11-01 — Wasichai 1.8.0: el servidor comprueba el hash de cada descarga ([#216](https://github.com/wasichai/elearning-backend/issues/216), L6)
+
+- `wasichai` pasa de 1.6.0 a 1.8.0 y, alineados con él, Spring Boot a 4.1.2 y el AWS SDK a 2.57.5. 1.7.0 trae Embabel
+  1.5.4 y `claude-haiku-5-5` como modelo por defecto del agente; 1.8.0, la comprobación del sha256 en cada descarga de
+  `wasichai-files` ([wasichai#145](https://github.com/wasichai/wasichai/pull/145), su ADR-074).
+- L6 de #216: la descarga de un `FILE` lleva `Repr-Digest` (RFC 9530) y se comprueba contra el tamaño y el sha256
+  registrados mientras se transmite. Un objeto alterado en el almacén nunca se sirve entero (`500`, o un cuerpo más
+  corto que su `Content-Length`) y queda en el rastro `admin:stored-file`; devueltos sus bytes, se sirve otra vez.
+  `S3ResourceFilesApiTest` lo prueba contra MinIO, con un archivo pequeño y uno grande.
+
 ## 2026-11-01 — La cola de corrección por páginas ([#183](https://github.com/wasichai/elearning-backend/issues/183), M4)
 
 - `GET /api/lms/teaching/offerings/{code}/attempts` (también con `?status=GRADED`) admite `?page` y `?size` opcionales,
