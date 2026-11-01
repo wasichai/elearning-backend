@@ -2,6 +2,13 @@
 
 Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este archivo registra lo que se entregó.
 
+## 2026-11-01 — Intentos y calificaciones en la semilla ([#231](https://github.com/wasichai/elearning-backend/issues/231), RNF-OSS-06)
+
+- `model/demo/data.json` gana `attempts`: el estudiante demo, matriculado también en `CORTO-101-A`, responde y envía su
+  evaluación por el aula, y el docente demo asignado corrige la abierta (8 de 10, aprobada). `apply.py` lo hace por los
+  comandos, como cada persona, lo valida sin red y es idempotente; un intento que quedó a medias se termina en la
+  siguiente ejecución. Los recorridos e2e crean sus propios estudiantes: sus conteos no cambian.
+
 ## 2026-11-01 — Barrido de intentos vencidos ([#183](https://github.com/wasichai/elearning-backend/issues/183), L4)
 
 - Un intento vencido se cierra con `enviado_en` = su plazo (`min(ahora, plazo)`), no el momento en que alguien lo toca: el

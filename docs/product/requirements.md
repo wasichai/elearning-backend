@@ -478,11 +478,12 @@ el cuándo, en [`roadmap.md`](roadmap.md).
   _Aceptación:_ cada curso de demostración cita sus referencias `repositorio@sha:ruta#ancla`.
 - **RNF-OSS-05** · F1 · implementado ([#38](https://github.com/wasichai/elearning-backend/pull/38)) — Política de seguridad y guía de contribución.
   _Aceptación:_ `SECURITY.md` y `CONTRIBUTING.md` presentes y enlazados desde el README.
-- **RNF-OSS-06** · F3 · planificado — La semilla de demostración incluye perfiles de todos los roles, matrículas,
-  intentos y calificaciones; valoraciones en F6.
+- **RNF-OSS-06** · F3 · implementado ([#240](https://github.com/wasichai/elearning-backend/pull/240)) — La semilla de
+  demostración incluye perfiles de todos los roles, matrículas, intentos y calificaciones; valoraciones en F6.
   _Aceptación:_ los recorridos E2E de §20 corren sobre esa semilla.
   _Avance:_ la semilla tiene perfiles de todos los roles, matrículas y el curso corto `CORTO-101` (#161), y los recorridos
-  de §20 corren sobre ella; faltan intentos y calificaciones en la semilla, que hoy crean los propios recorridos.
+  de §20 corren sobre ella. Trae además un intento del estudiante demo en `CORTO-101-A`, enviado por el aula y calificado
+  por su docente asignado (clave `attempts` de `model/demo/data.json`, #240). Las valoraciones llegan en F6.
 - **RNF-OSS-07** · F6 · planificado — Licencia del proyecto elegida y publicada solo con autorización expresa
   (ADR-0009).
   _Aceptación:_ archivo `LICENSE` fusionado por decisión registrada del titular.
