@@ -113,6 +113,12 @@ data class OfferingView(
     val enrollmentStatus: EnrollmentStatus = EnrollmentStatus.CLOSED,
 )
 
+// una clave del vocabulario conocimiento_previo que declara la versión publicada (RF-CAT-08, ADR-0028), con su nombre
+data class KnowledgeTag(
+    val key: String,
+    val name: String,
+)
+
 data class TeacherView(
     val name: String,
     val professionalTitle: String?,
@@ -144,6 +150,8 @@ data class CourseDetail(
     val units: List<UnitView>,
     val offerings: List<OfferingView>,
     val teachers: List<TeacherView>,
+    // las claves estructuradas, junto al texto libre prerequisiteKnowledge. vacío lee las filas proyectadas antes (ADR-0028)
+    val prerequisiteKnowledgeTags: List<KnowledgeTag> = emptyList(),
 )
 
 data class NextOffering(
@@ -177,8 +185,15 @@ data class CategoryFacet(
     val count: Long,
 )
 
+data class KnowledgeFacet(
+    val key: String,
+    val name: String,
+    val count: Long,
+)
+
 data class Facets(
     val categories: List<CategoryFacet>,
+    val prerequisiteKnowledge: List<KnowledgeFacet>,
 )
 
 data class CoursePage(

@@ -2,6 +2,19 @@
 
 Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este archivo registra lo que se entregó.
 
+## 2026-11-01 — Filtro del catálogo por conocimientos previos ([#248](https://github.com/wasichai/elearning-backend/issues/248), RF-CAT-08)
+
+- [ADR-0028](adr/0028-conocimientos-previos-como-claves-de-la-version.md): los conocimientos previos se declaran como
+  claves del vocabulario nuevo `conocimiento_previo` (lo escribe ADMIN, lo leen todos los roles) en
+  `version_curso.conocimientos_previos_claves`, una por línea; se congelan con la versión publicada. El texto libre de
+  `curso.conocimientos_previos` sigue para la ficha. `PrerequisiteKnowledgeGuard` exige claves bien formadas y
+  declaradas, y que una clave del vocabulario no cambie ni se borre.
+- Catálogo público: la ficha lleva `prerequisiteKnowledgeTags`, el listado acepta `?prerequisiteKnowledge=<clave>|none`
+  y devuelve `facets.prerequisiteKnowledge`, todo sobre la proyección (sin migración nueva). `CatalogListApiTest` prueba
+  una clave, `none` y una clave sin cursos; `PrerequisiteKnowledgeGuardApiTest`, el vocabulario y la guarda.
+- La semilla declara cuatro claves (una sin cursos) y las pone en las versiones publicadas de SRTM e IA. Con esto
+  RF-CAT-08 queda implementado.
+
 ## 2026-11-01 — Wasichai 1.8.0: el servidor comprueba el hash de cada descarga ([#216](https://github.com/wasichai/elearning-backend/issues/216), L6)
 
 - `wasichai` pasa de 1.6.0 a 1.8.0 y, alineados con él, Spring Boot a 4.1.2 y el AWS SDK a 2.57.5. 1.7.0 trae Embabel

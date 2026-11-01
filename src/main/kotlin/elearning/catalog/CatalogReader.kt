@@ -23,16 +23,17 @@ class CatalogReader(
         coroutineScope {
             // consultas independientes: en paralelo, no una tras otra
             val page = async { repository.page(query) }
-            val facets = async { repository.categoryFacets(query) }
+            val categories = async { repository.categoryFacets(query) }
+            val knowledge = async { repository.knowledgeFacets(query) }
             val (rows, total) = page.await()
-            build(query, rows, total, facets.await())
+            build(query, rows, total, Facets(categories.await(), knowledge.await()))
         }
 
     private fun build(
         query: CatalogQuery,
         rows: List<String>,
         total: Long,
-        facets: List<CategoryFacet>,
+        facets: Facets,
     ): CoursePage =
         CoursePage(
             content = rows.map { summary(parse(it)) },
@@ -40,7 +41,7 @@ class CatalogReader(
             size = query.size,
             totalElements = total,
             totalPages = ceil(total.toDouble() / query.size).toInt(),
-            facets = Facets(facets),
+            facets = facets,
         )
 
     suspend fun detail(slug: String): CourseDetail {

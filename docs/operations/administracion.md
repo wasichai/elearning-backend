@@ -45,6 +45,14 @@ Una categoría es un registro del objeto `categoria`. El catálogo las muestra d
 3. Rellena «Nombre» e «Identificador en URL» (el _slug_, único), y opcionalmente «Descripción» y «Orden», y guarda. La
    categoría aparece en la lista.
 
+## Conocimientos previos
+
+El filtro «Conocimientos previos» del catálogo usa el vocabulario `conocimiento_previo`
+([ADR-0028](../adr/0028-conocimientos-previos-como-claves-de-la-version.md)). Se da de alta igual que una categoría,
+en «Conocimientos previos» (`/data/objects/conocimiento_previo/records`): «Clave» (minúsculas, dígitos y guiones;
+`none` está reservada) y «Nombre». La clave no se cambia ni el registro se borra después: el nombre sí se corrige. El
+creador escribe las claves, una por línea, en «Conocimientos previos: claves…» de su versión en borrador.
+
 ## Auditoría
 
 **Administración → Auditoría** (`/admin/audit`) lista quién cambió qué y cuándo, con filtros por objeto y operación. Tras
