@@ -2,6 +2,17 @@
 
 Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este archivo registra lo que se entregó.
 
+## 2026-11-01 — El laboratorio completo y sus entornos externos validados ([#250](https://github.com/wasichai/elearning-backend/pull/250), [front#106](https://github.com/wasichai/elearning-frontend/pull/106))
+
+- RF-LAB-01 ([ADR-0027](adr/0027-laboratorio-en-la-leccion-y-entornos-por-matricula.md)): `leccion` gana `objetivo`,
+  `requisitos`, `hitos`, `criterios_aceptacion` y `entregables`; los enlaces a entornos son un Custom Object nuevo,
+  `entorno_laboratorio`, que solo leen los matriculados (`ContentReadScope`), congelado con la versión
+  (`EditorialWorkflowGuard`), copiado a la versión siguiente y comparado en las diferencias. El aula devuelve `lab` en cada
+  lección `LABORATORIO`, y la interfaz lo muestra con los entornos en otra pestaña (`rel="noopener noreferrer"`).
+- RF-LAB-03 y RNF-SEG-08: `LabEnvironmentGuard` valida cada enlace con `SafeLink`, el mismo validador que las sesiones,
+  para toda escritura, la plataforma incluida (`400` en `enlace`). `LabApiTest` prueba rechazo y aceptación, autorización
+  negativa, inmutabilidad de lo publicado y el alcance de lectura.
+
 ## 2026-11-01 — Wasichai 1.8.0: el servidor comprueba el hash de cada descarga ([#216](https://github.com/wasichai/elearning-backend/issues/216), L6)
 
 - `wasichai` pasa de 1.6.0 a 1.8.0 y, alineados con él, Spring Boot a 4.1.2 y el AWS SDK a 2.57.5. 1.7.0 trae Embabel
