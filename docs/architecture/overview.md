@@ -123,6 +123,7 @@ flowchart BT
     learning --> enrollment
     learning --> course
     learning --> workload
+    learning --> jobs
     assessment --> learning
     assessment --> enrollment
     assessment --> jobs

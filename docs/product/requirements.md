@@ -50,11 +50,13 @@ el cuándo, en [`roadmap.md`](roadmap.md).
   _Aceptación:_ pruebas de integración por filtro y control de la UI con estado vacío.
   _Pendiente de F2 (#103):_ duración, estado de matrícula y horas por tipo hechos ([#201](https://github.com/wasichai/elearning-backend/pull/201), [front#68](https://github.com/wasichai/elearning-frontend/pull/68)); falta
   «conocimientos previos», que exige un campo estructurado nuevo (hoy `curso.conocimientos_previos` es texto libre).
-- **RF-CAT-09** · F3 · planificado — La ficha describe evaluación y requisitos de certificación, y el estado de
+- **RF-CAT-09** · F3 · implementado ([#237](https://github.com/wasichai/elearning-backend/pull/237)) — La ficha describe evaluación y requisitos de certificación, y el estado de
   matrícula de cada edición (abierta, cerrada, completa).
   _Aceptación:_ prueba de integración con ediciones en cada estado.
-  _Avance:_ la ficha publica `sistema_evaluacion`, `certificacion`, el estado de cada edición y si la inscripción está
-  abierta; falta el estado «completa» (cupo agotado) y la prueba de integración con ediciones en cada estado.
+  La ficha publica `sistema_evaluacion`, `certificacion` y, por edición, `enrollmentStatus` (`OPEN`, `CLOSED`, `FULL`) y
+  `full`, un booleano de cupo agotado que la proyección lee de `lms.ocupacion_edicion`
+  ([ADR-0023](../adr/0023-cupo-agotado-en-la-proyeccion-del-catalogo.md)); una edición completa no cuenta para
+  `enrollmentOpen` (RF-CAT-08). `CatalogEnrollmentStatusApiTest` crea ediciones en cada estado.
 
 ### RF-ACA — Gestión académica: cursos, versiones, ediciones y matrículas (§5, §6.2, §16)
 
@@ -82,8 +84,12 @@ el cuándo, en [`roadmap.md`](roadmap.md).
 - **RF-ACA-07** · F2 · implementado ([#97](https://github.com/wasichai/elearning-backend/pull/97)) — La matrícula respeta capacidad y ventana de inscripción.
   _Aceptación:_ pruebas fuera de ventana y con cupo agotado, incluida una prueba concurrente que no sobrepasa la
   capacidad.
-- **RF-ACA-08** · F3 · planificado — Prerrequisitos declarados por versión, comprobados al matricular.
+- **RF-ACA-08** · F3 · implementado ([#239](https://github.com/wasichai/elearning-backend/pull/239)) — Prerrequisitos declarados por versión, comprobados al matricular.
   _Aceptación:_ prueba de rechazo con motivo explícito cuando falta un prerrequisito obligatorio.
+  `version_curso.cursos_previos` lista los códigos de los cursos exigidos
+  ([ADR-0024](../adr/0024-prerrequisitos-como-campo-de-la-version.md)); `EnrollmentService.enroll` responde `409` y nombra
+  los que faltan si el estudiante no tiene en ellos una matrícula `FINALIZADA` y `APROBADO`
+  (`EnrollmentPrerequisiteApiTest`).
 - **RF-ACA-09** · F3 · implementado ([#159](https://github.com/wasichai/elearning-backend/pull/159)) — Reglas de finalización explícitas por versión (lecciones requeridas,
   evaluaciones aprobadas, asistencia mínima).
   _Aceptación:_ pruebas unitarias del cálculo con cada regla y su combinación; el resultado cita la regla aplicada.
@@ -140,11 +146,13 @@ el cuándo, en [`roadmap.md`](roadmap.md).
   _Aceptación:_ prueba E2E con los datos de demostración.
   _Avance:_ el aula muestra sesiones, plazos, evaluaciones, intentos, calificaciones, retroalimentación y certificado
   (#153, front#42, front#45, recorrido real de front#61); faltan los «logros», que aún no tienen definición.
-- **RF-AUL-09** · F3 · planificado — Notificaciones de publicación de contenido y de cambios de calendario.
+- **RF-AUL-09** · F3 · implementado ([#155](https://github.com/wasichai/elearning-backend/pull/155), [#238](https://github.com/wasichai/elearning-backend/pull/238), [front#61](https://github.com/wasichai/elearning-frontend/pull/61)) — Notificaciones de publicación de contenido y de cambios de calendario.
   _Aceptación:_ reprogramar una sesión notifica a los matriculados de esa edición y a nadie más (prueba con el canal de
   correo local).
-  _Avance:_ reprogramar o cancelar una sesión avisa por correo solo a los matriculados de esa edición, comprobado en
-  Mailpit en el CI del frontend (#155, front#61); falta el aviso de publicación de contenido.
+  _Nota:_ reprogramar o cancelar una sesión avisa por correo solo a los matriculados de esa edición, comprobado en Mailpit
+  en el CI del frontend. Publicar una versión nueva de un curso avisa a quien cursa otra versión de ese curso con su
+  matrícula activa, nunca a una retirada ni a otro curso (`PublicationNoticesApiTest`); una versión de recurso publicada
+  no avisa, porque ninguna lección con matriculados puede usarla aún.
 
 ### RF-SES — Sesiones síncronas y asistencia (§6.5)
 
@@ -358,12 +366,13 @@ el cuándo, en [`roadmap.md`](roadmap.md).
   _Aceptación:_ prueba de arquitectura sin el literal del nombre en el código de dominio.
 - **RF-ADM-02** · F3 · implementado ([#149](https://github.com/wasichai/elearning-backend/pull/149)) — Usuarios, roles y categorías se administran con las pantallas de Wasichai.
   _Aceptación:_ recorrido manual documentado; no existen pantallas LMS paralelas para ello.
-- **RF-ADM-03** · F3 · planificado — Auditoría de contenidos, calificaciones, roles y publicaciones con la auditoría
-  de Wasichai.
+- **RF-ADM-03** · F3 · implementado ([#235](https://github.com/wasichai/elearning-backend/pull/235)) — Auditoría de
+  contenidos, calificaciones, roles y publicaciones con la auditoría de Wasichai.
   _Aceptación:_ cada operación sensible deja un registro consultable por ADMIN.
-  _Avance:_ los contenidos y los roles pasan por la auditoría de Wasichai, y las calificaciones y los motivos de sesiones
-  y asistencia quedan en `lms.calificacion` y en el historial de cada registro; falta una prueba de que cada operación
-  sensible deja un registro consultable por ADMIN.
+  _Avance:_ contenidos, publicaciones y roles quedan en el `audit_log` de Wasichai; las calificaciones, en
+  `lms.calificacion`, que ADMIN lee en la cola y el historial del intento del espacio docente (solo leer).
+  `SensitiveOperationsAuditApiTest` lo prueba, con las negativas de quien no es ADMIN
+  ([seguridad §6](../security/README.md#6-auditoría)).
 - **RF-ADM-04** · F6 · planificado — Informes de progreso, asistencia y resultados por edición, respetando el
   alcance de quien consulta.
   _Aceptación:_ un docente solo obtiene datos de sus ediciones.

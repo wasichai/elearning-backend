@@ -283,7 +283,27 @@ permisos y modelo quedan como `admin:*` y solo los lee `MANAGE_ORGANIZATION`. Co
 
 Debe quedar auditado (especificación §13): contenido y estado editorial, calificaciones, roles y asignaciones,
 publicaciones y ejecuciones IA. Lo que se escribe en Custom Objects pasa por Wasichai y queda registrado sin código
-extra; lo que viva en tablas fijas `lms` necesita registro explícito, a diseñar con cada tabla. En producción la
+extra; lo que viva en tablas fijas `lms` necesita registro explícito, a diseñar con cada tabla.
+
+Qué consulta ADMIN de cada operación sensible (RF-ADM-03, `SensitiveOperationsAuditApiTest`):
+
+| Operación                                     | Dónde queda                                    | Cómo la lee ADMIN                                                      |
+| --------------------------------------------- | ---------------------------------------------- | ---------------------------------------------------------------------- |
+| Crear o cambiar una versión, unidad o lección | `audit_log`, con quién, campo, antes y después | `/api/audit?objectName=leccion&recordId=…` o el `history` del registro |
+| Decisión de revisión y publicación            | `audit_log` (cambio de `estado`, con su autor) | igual, sobre `version_curso`; la decisión, además, en la bandeja       |
+| Roles de un usuario                           | `audit_log` como `admin:user`                  | `/api/audit?objectName=admin:user&recordId=<usuario>`                  |
+| Calificación manual (y su cambio, con motivo) | `lms.calificacion`, de solo inserción          | cola `?status=GRADED` e intento con `history` del espacio docente      |
+
+Las calificaciones no pasan por `audit_log`: escribir en él desde la aplicación sería usar `AuditService`, interno de
+Wasichai. Su registro es `lms.calificacion` (nota, comentario, motivo, autor e instante, sin `UPDATE` ni `DELETE`), y la
+vía de lectura mínima es la que ya tiene el docente: la cola de corrección y el intento con su `history`. Además del
+docente asignado, la abre quien tiene `MANAGE_ORGANIZATION`, el permiso que en Wasichai lee el rastro `admin:*` y que
+ningún rol del LMS puede tener; solo para leer: calificar sigue siendo de la asignación (`404` para ADMIN), y nadie abre
+ahí su propio intento.
+
+Nadie más lee la auditoría ajena: `/api/audit` exige `READ` sobre toda la organización, que ningún rol del LMS tiene
+(`403`); el rastro `admin:*` sale vacío para quien no tiene `MANAGE_ORGANIZATION`, y el historial de un registro es una
+lectura de ese registro, con su `RecordReadScope` (lo ajeno, `404`). En producción la
 aplicación se conecta con un rol que no es dueño de las tablas, para que nadie pueda quitar los triggers
 ([operación](../operations/README.md#base-de-datos-y-roles)).
 

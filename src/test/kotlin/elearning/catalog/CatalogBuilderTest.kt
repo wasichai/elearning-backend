@@ -239,4 +239,38 @@ class CatalogBuilderTest {
         assertEquals(a.hash, b.hash)
         assertTrue(a.hash != c.hash)
     }
+
+    // RF-CAT-09: la ficha dice si una edición está completa, sin publicar cuántos ni quiénes se matricularon
+    @Test
+    fun `an offering is full when its enrollments reach its capacity, never without a capacity`() {
+        fun full(
+            capacity: Int?,
+            taken: Int?,
+        ): Boolean {
+            val base = records(version("v1", 1, "PUBLICADA"))
+            val offerings = base.offerings.map { if (it.id == "e1") it.copy(attributes = it.attributes + ("capacidad" to capacity)) else it }
+            val occupancy = if (taken == null) emptyMap() else mapOf("e1" to taken)
+            val built = CatalogBuilder().build(base.copy(offerings = offerings, occupancy = occupancy)).single()
+            return built.detail.offerings
+                .single()
+                .full
+        }
+
+        assertTrue(full(capacity = 2, taken = 2))
+        assertTrue(full(capacity = 2, taken = 3), "un cupo reducido por debajo de lo ocupado también está completo")
+        assertFalse(full(capacity = 2, taken = 1))
+        assertFalse(full(capacity = 2, taken = null), "nadie matriculado todavía")
+        assertFalse(full(capacity = null, taken = 500), "sin capacidad no hay límite")
+    }
+
+    @Test
+    fun `the occupancy changes the hash only when the offering fills up`() {
+        val base = records(version("v1", 1, "PUBLICADA"))
+        val offerings = base.offerings.map { if (it.id == "e1") it.copy(attributes = it.attributes + ("capacidad" to 3)) else it }
+
+        fun hash(taken: Int) = CatalogBuilder().build(base.copy(offerings = offerings, occupancy = mapOf("e1" to taken))).single().hash
+
+        assertEquals(hash(1), hash(2), "una matrícula más que no agota el cupo no reescribe la proyección")
+        assertFalse(hash(2) == hash(3))
+    }
 }

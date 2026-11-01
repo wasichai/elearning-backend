@@ -37,7 +37,7 @@ Los filtros se combinan (intersección). Un valor inválido (enum desconocido, f
 con más de dos decimales o en notación científica) → **400** con `errors`; cada error nombra su parámetro.
 
 Filtros de RF-CAT-08: `enrollmentOpen` usa la misma regla que el campo `enrollmentOpen` de la ficha (ver más abajo), en la
-zona horaria de cada edición; no mira el cupo, que no es público. Las horas son las totales de la ficha
+zona horaria de cada edición; una edición completa (`full`, RF-CAT-09) no cuenta como abierta. Las horas son las totales de la ficha
 (`horas_*_semana × semanas`); las horas supervisadas no tienen filtro. No hay filtro de conocimientos previos:
 `prerequisiteKnowledge` es texto libre y un `null` significa «no declarado», no «ninguno».
 
@@ -75,7 +75,8 @@ filtros).
     "startDate": "2026-11-09",
     "endDate": "2026-12-04",
     "timeZone": "America/Lima",
-    "enrollmentOpen": true
+    "enrollmentOpen": true,
+    "enrollmentStatus": "OPEN"
   },
   "illustrative": true
 }
@@ -148,6 +149,8 @@ Respuesta 200 `CourseDetail` = todos los campos de `CourseSummary` (salvo `nextO
       "enrollmentFrom": "2026-10-15",
       "enrollmentUntil": "2026-11-06",
       "enrollmentOpen": true,
+      "enrollmentStatus": "OPEN", // "OPEN" | "CLOSED" | "FULL"
+      "full": false, // cupo agotado
       "capacity": 30,
       "schedule": "…",
       "teachers": [{ "name": "…", "professionalTitle": "…", "role": "TITULAR" }]
@@ -157,15 +160,21 @@ Respuesta 200 `CourseDetail` = todos los campos de `CourseSummary` (salvo `nextO
 }
 ```
 
-`enrollmentOpen` = estado `INSCRIPCION_ABIERTA` y la fecha de hoy (en la zona de la edición) dentro de
-[`enrollmentFrom`, `enrollmentUntil`] cuando existen. Los créditos son siempre una **propuesta**: la interfaz debe decir
+`enrollmentStatus` (RF-CAT-09, [ADR-0023](../adr/0023-cupo-agotado-en-la-proyeccion-del-catalogo.md)) = `CLOSED` si la
+edición no está en `INSCRIPCION_ABIERTA` o la fecha de hoy (en la zona de la edición) cae fuera de
+[`enrollmentFrom`, `enrollmentUntil`] cuando existen; si no, `FULL` cuando `full` y `OPEN` en otro caso. `enrollmentOpen`
+= `enrollmentStatus` es `OPEN`. `full` = los matriculados alcanzan `capacity` (sin `capacity`, siempre `false`): la ficha
+dice solo eso, nunca cuántos ni quiénes se matricularon; llega con el refresco de la proyección, así que el comando de
+matrícula puede responder «sin cupo» antes de que la ficha lo diga. `full`, `enrollmentStatus` y el `enrollmentStatus`
+de `nextOffering` son campos añadidos: un cliente que no los lee sigue funcionando. Los créditos son siempre una **propuesta**: la interfaz debe decir
 «créditos propuestos, no oficiales» salvo que `approved` tenga valor.
 
 ## Valores y nulos
 
 - **Enumeraciones** (las del modelo, `model/model.json`): `level` `INICIAL` \| `INTERMEDIO` \| `AVANZADO`; `modality`
   `ASINCRONA` \| `SINCRONA` \| `HIBRIDA` \| `PRESENCIAL`; edición `status` `PROGRAMADA` \| `INSCRIPCION_ABIERTA` \| `EN_CURSO` (las
-  `FINALIZADA` y `CANCELADA` no se publican); lección `type` `LECTURA` \| `VIDEO` \| `PRESENTACION` \| `LABORATORIO` \|
+  `FINALIZADA` y `CANCELADA` no se publican); edición `enrollmentStatus` `OPEN` \| `CLOSED` \| `FULL` (propio del
+  catálogo, no del modelo); lección `type` `LECTURA` \| `VIDEO` \| `PRESENTACION` \| `LABORATORIO` \|
   `EVALUACION` \| `SESION`; docente `role` `TITULAR` \| `ASISTENTE`. Un valor nuevo llega primero al modelo y aquí.
 - **Pueden ser `null`**: `summary`, `category`, `nextOffering`, `prerequisiteKnowledge`, `version.publishedAt`,
   `requirements`, `assessment`, `certification`, `credits.system`, `credits.approved`, `credits.proposal`;
@@ -191,8 +200,13 @@ versión en la que no se está matriculado— responde `404`, igual que uno inex
 Cuerpo `{ "offering": "<código de la edición>" }`. Cabecera opcional `Idempotency-Key`.
 
 - `201` → `Enrollment` (nueva) · `200` → la misma `Enrollment` si ya existía.
-- `404` edición desconocida · `409` (`problem+json`, `detail` legible) inscripción cerrada, sin cupo o edición no
-  disponible · `401` sin sesión · `403` sin permiso de matricularse.
+- `404` edición desconocida · `409` (`problem+json`, `detail` legible) inscripción cerrada, sin cupo, edición no
+  disponible o prerrequisito sin cumplir · `401` sin sesión · `403` sin permiso de matricularse.
+- Prerrequisitos (RF-ACA-08): si la versión de la edición declara cursos previos (`cursos_previos`), cada uno exige una
+  matrícula propia `FINALIZADA` con resultado `APROBADO` en cualquier versión de ese curso. Si falta alguno, `409` con
+  `detail` «Para matricularte en esta edición antes debes aprobar: `<código> (<título>)`; …», que nombra todos los que
+  faltan; un código que no corresponde a ningún curso se nombra igual y nunca se cumple. Se comprueban después del
+  estado y la ventana y antes del cupo.
 
 `Enrollment`:
 
@@ -448,7 +462,9 @@ Congelado al emitirse: no cambia aunque cambien después el curso o la matrícul
 ## Espacio docente (F3, ADR-0016)
 
 Con sesión, solo sobre las ediciones **asignadas** a la persona (`docente_edicion.usuario_id`); otra edición o un
-registro de otra edición → `404`. Nadie lo usa por su rol: lo decide la asignación.
+registro de otra edición → `404`. Nadie lo usa por su rol: lo decide la asignación. Para auditar las calificaciones
+(RF-ADM-03), quien tiene `MANAGE_ORGANIZATION` (ADMIN) **lee** la cola de corrección y el intento con su `history` de
+cualquier edición, sin asignación; calificar le sigue respondiendo `404`.
 
 | Método | Ruta                                            | Resultado                                                             |
 | ------ | ----------------------------------------------- | --------------------------------------------------------------------- |

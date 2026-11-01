@@ -9,6 +9,48 @@ Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este
   comandos, como cada persona, lo valida sin red y es idempotente; un intento que quedó a medias se termina en la
   siguiente ejecución. Los recorridos e2e crean sus propios estudiantes: sus conteos no cambian.
 
+## 2026-11-01 — Registro consultable de cada operación sensible ([#231](https://github.com/wasichai/elearning-backend/issues/231), RF-ADM-03)
+
+- `SensitiveOperationsAuditApiTest` prueba que contenidos (versión y lección), decisiones y publicaciones, y roles
+  quedan en el `audit_log` de Wasichai con su autor, y que ADMIN los consulta; quien no es ADMIN recibe `403` en
+  `/api/audit`, nada del rastro `admin:*` y `404` en el historial de lo ajeno.
+- Las calificaciones siguen en `lms.calificacion`: quien tiene `MANAGE_ORGANIZATION` lee la cola de corrección y el
+  intento con su `history` de cualquier edición, sin asignación y sin poder calificar.
+
+## 2026-11-01 — Prerrequisitos al matricular ([#239](https://github.com/wasichai/elearning-backend/pull/239), RF-ACA-08)
+
+- `version_curso.cursos_previos` (`model/model.json`): los códigos de los cursos que la versión exige haber aprobado, uno
+  por línea; se congela con la versión publicada ([ADR-0024](adr/0024-prerrequisitos-como-campo-de-la-version.md)).
+- `POST /api/lms/enrollments` responde `409` con un `detail` que nombra cada curso que falta si el estudiante no tiene en
+  él una matrícula propia `FINALIZADA` y `APROBADO`. Un código desconocido nunca se cumple.
+
+## 2026-11-01 — Ediciones completas en el catálogo ([#237](https://github.com/wasichai/elearning-backend/pull/237), RF-CAT-09)
+
+- La ficha pública dice el estado de la matrícula de cada edición, `enrollmentStatus` `OPEN`, `CLOSED` o `FULL`, y `full`
+  (cupo agotado), también en `nextOffering`. La proyección lee `lms.ocupacion_edicion` en cada refresco y publica solo un
+  sí o un no, nunca cuántos ni quiénes; una matrícula que no agota el cupo no reescribe la fila
+  ([ADR-0023](adr/0023-cupo-agotado-en-la-proyeccion-del-catalogo.md)).
+- `enrollmentOpen`, en la ficha y en el filtro de RF-CAT-08, deja fuera las ediciones completas.
+
+## 2026-11-01 — El aula lee sus recursos por lotes ([#104](https://github.com/wasichai/elearning-backend/issues/104), M1)
+
+- `ClassroomReader.resources()` lee los enlaces de las lecciones del aula, sus versiones de recurso y sus recursos en una
+  lectura cada uno (`listAllIn`, `listByIds`), no un `get` por versión y por recurso: el aula pasa de unas 2 sentencias SQL
+  por recurso distinto a ninguna (`ClassroomCostApiTest`). Un enlace cuya versión o recurso no se puede leer no se muestra.
+
+## 2026-11-01 — Aviso de publicación de contenido ([#231](https://github.com/wasichai/elearning-backend/issues/231), RF-AUL-09)
+
+- Publicar una versión de curso, por la bandeja, la API de registros o la plataforma, avisa por `wasichai-notifications`
+  (bandeja y correo, Mailpit en desarrollo) a quien cursa **otra versión de ese curso** con su matrícula `ACTIVA`: lo
+  publicado no cambia y solo se matricula en una versión publicada, así que el contenido nuevo para alguien ya matriculado
+  es una versión nueva de su curso. Nunca a una matrícula retirada ni a otro curso; cada estudiante es destinatario
+  propio y nadie ve quién más lo recibió. Una `version_recurso` publicada no avisa: una lección solo enlaza recursos ya
+  publicados y en un temario en borrador.
+- `PublicationNoticeListener` (un `RecordChangeListener`) encola el trabajo `aviso-publicacion` en la transacción de la
+  publicación, con clave por versión; el trabajo lee las matrículas como la plataforma (quien publica no las lee,
+  ADR-0014) y publica el aviso con clave `version/<id>`: repetirlo no avisa dos veces. La primera versión de un curso no
+  encola nada. Publicar en la bandeja pasa a ser una transacción; `learning` puede usar `jobs` (ArchitectureTest).
+
 ## 2026-11-01 — Barrido de intentos vencidos ([#183](https://github.com/wasichai/elearning-backend/issues/183), L4)
 
 - Un intento vencido se cierra con `enviado_en` = su plazo (`min(ahora, plazo)`), no el momento en que alguien lo toca: el
