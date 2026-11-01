@@ -175,6 +175,22 @@ class RealModelTest(unittest.TestCase):
         self.assertEqual("LONG_TEXT", field["type"])
         self.assertFalse(field.get("required", False))
 
+    # RF-CAT-08 (ADR-0028): las claves de conocimientos previos son de la versión, como cursos_previos, y se eligen de un
+    # vocabulario declarado que todo el personal lee y solo ADMIN escribe
+    def test_versions_declare_prerequisite_knowledge_keys_from_a_vocabulary(self):
+        version = next(o for o in MODEL["objects"] if o["name"] == "version_curso")
+        field = next(f for f in version["fields"] if f["name"] == "conocimientos_previos_claves")
+        self.assertEqual("LONG_TEXT", field["type"])
+        self.assertFalse(field.get("required", False))
+        vocabulary = next(o for o in MODEL["objects"] if o["name"] == "conocimiento_previo")
+        fields = {f["name"]: f for f in vocabulary["fields"]}
+        self.assertTrue(fields["clave"]["unique"])
+        self.assertTrue(fields["nombre"]["required"])
+        for role in ROLES["roles"]:
+            self.assertTrue(holds(role["name"], "conocimiento_previo", "READ"), role["name"])
+            for action in ("CREATE", "UPDATE", "DELETE"):
+                self.assertFalse(holds(role["name"], "conocimiento_previo", action), f"{role['name']} no debe {action}")
+
     def test_curriculum_is_separate_from_offering_and_schedule(self):
         # el temario (curso/versión) no tiene fechas; la edición sí, con su zona horaria
         course = {f["name"] for o in MODEL["objects"] if o["name"] in ("curso", "version_curso") for f in o["fields"]}

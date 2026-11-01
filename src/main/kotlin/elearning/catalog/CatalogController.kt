@@ -1,6 +1,7 @@
 package elearning.catalog
 
 import elearning.common.LmsProperties
+import elearning.course.PrerequisiteKnowledge
 import org.springframework.http.CacheControl
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.GetMapping
@@ -38,6 +39,7 @@ class CatalogController(
         @RequestParam(required = false) minTheoryHours: String?,
         @RequestParam(required = false) minPracticeHours: String?,
         @RequestParam(required = false) minAutonomousHours: String?,
+        @RequestParam(required = false) prerequisiteKnowledge: String?,
         @RequestParam(required = false) sort: String?,
         @RequestParam(required = false) page: String?,
         @RequestParam(required = false) size: String?,
@@ -55,6 +57,7 @@ class CatalogController(
                 minTheoryHours,
                 minPracticeHours,
                 minAutonomousHours,
+                prerequisiteKnowledge,
                 sort,
                 page,
                 size,
@@ -84,6 +87,7 @@ class CatalogController(
         val minTheoryHours: String?,
         val minPracticeHours: String?,
         val minAutonomousHours: String?,
+        val prerequisiteKnowledge: String?,
         val sort: String?,
         val page: String?,
         val size: String?,
@@ -128,6 +132,10 @@ class CatalogController(
                 practice = hours("minPracticeHours", raw.minPracticeHours, errors),
                 autonomous = hours("minAutonomousHours", raw.minAutonomousHours, errors),
             )
+        val knowledge = raw.prerequisiteKnowledge
+        if (knowledge != null && knowledge != PrerequisiteKnowledge.NONE && !PrerequisiteKnowledge.isKey(knowledge)) {
+            errors += FieldViolation("prerequisiteKnowledge", "must be a prerequisite knowledge key or ${PrerequisiteKnowledge.NONE}")
+        }
         val order = if (raw.sort == null) CatalogSort.UPCOMING else CatalogSort.of(raw.sort)
         if (order == null) errors += FieldViolation("sort", "must be one of ${CatalogSort.entries.joinToString { it.param }}")
         val pageNumber = raw.page?.toIntOrNull() ?: if (raw.page == null) 0 else -1
@@ -146,6 +154,7 @@ class CatalogController(
             maxWeeks = maxWeeks,
             enrollmentOpen = open,
             minHours = hours,
+            prerequisiteKnowledge = knowledge,
             sort = order!!,
             page = pageNumber,
             size = pageSize,

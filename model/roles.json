@@ -10,6 +10,10 @@
           "actions": ["READ"]
         },
         {
+          "object": "conocimiento_previo",
+          "actions": ["READ"]
+        },
+        {
           "object": "curso",
           "actions": ["READ"]
         },
@@ -69,6 +73,10 @@
       "permissions": [
         {
           "object": "categoria",
+          "actions": ["READ"]
+        },
+        {
+          "object": "conocimiento_previo",
           "actions": ["READ"]
         },
         {
@@ -147,6 +155,10 @@
       "permissions": [
         {
           "object": "categoria",
+          "actions": ["READ"]
+        },
+        {
+          "object": "conocimiento_previo",
           "actions": ["READ"]
         },
         {
@@ -233,6 +245,10 @@
       "permissions": [
         {
           "object": "categoria",
+          "actions": ["READ"]
+        },
+        {
+          "object": "conocimiento_previo",
           "actions": ["READ"]
         },
         {
