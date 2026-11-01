@@ -604,7 +604,10 @@ sobrescribe.
 `RenderJob`: `{ "id", "status": "PENDIENTE" | "EN_CURSO" | "HECHO" | "FALLIDO", "error": null, "versionId": null,
 "versionNumber": null, "artifacts": [{ "id", "format": "HTML" | "PDF", "sha256" }] }`. `error` es el del último intento
 (sin Asciidoctor: `asciidoctor is not available on this server (…): the deployment image must include Asciidoctor
-(ADR-0018 §7)`); un intento fallido vuelve a `PENDIENTE` hasta agotar `lms.jobs.max-attempts`.
+(ADR-0018 §7)`). Lo que reintentar no arregla (tipo no generable, fuente sin archivo o con otro hash, falta del
+binario, fallo de Asciidoctor, salida vacía o demasiado grande, tiempo límite) es `FALLIDO` en el primer intento; un fallo
+pasajero (almacenamiento, interrupción) vuelve a `PENDIENTE` hasta agotar `lms.jobs.max-attempts`
+([ADR-0022](../adr/0022-limites-y-ciclo-de-vida-de-los-trabajos.md)).
 
 - **Una a la vez**: pedir la misma fuente mientras el trabajo anterior de la misma persona está `PENDIENTE` o `EN_CURSO`
   devuelve ese trabajo (`202`); terminado, generar otra vez es otro trabajo y otra versión. El tope de trabajos activos por

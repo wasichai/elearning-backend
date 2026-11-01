@@ -26,6 +26,8 @@ Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este
 - **L7**: al ejecutarse, la importación y la generación vuelven a comprobar como plataforma que quien las pidió sigue
   habilitado y que sus roles guardados le dan lo que se le exigió al encolar; si no, el trabajo termina `FALLIDO` sin
   reintentos ni escritura (`PermanentJobFailure`).
+- **L2**: la generación no reintenta lo que no cambia (tipo, hash, falta del binario, fallo o tiempo límite de Asciidoctor,
+  salida vacía o enorme): termina `FALLIDO` en ese intento. Lo pasajero (almacenamiento, interrupción) se sigue reintentando.
 
 ## 2026-10-31 — Fase 4: estudio editorial, revisión e importador ([#179](https://github.com/wasichai/elearning-backend/issues/179))
 
