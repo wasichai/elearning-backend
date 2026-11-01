@@ -167,6 +167,14 @@ class RealModelTest(unittest.TestCase):
         self.assertEqual("true", fields["contenido_ilustrativo"]["defaultValue"])
         self.assertNotIn("defaultValue", fields["creditos_aprobados"], "los créditos aprobados los pone una persona")
 
+    # RF-ACA-08: la versión declara los cursos que exige haber aprobado; los comprueba el comando de matrícula. es un campo
+    # de la versión, así que se congela con ella al publicarse y nadie sin acceso a la versión lo lee
+    def test_versions_declare_the_courses_they_require(self):
+        version = next(o for o in MODEL["objects"] if o["name"] == "version_curso")
+        field = next(f for f in version["fields"] if f["name"] == "cursos_previos")
+        self.assertEqual("LONG_TEXT", field["type"])
+        self.assertFalse(field.get("required", False))
+
     def test_curriculum_is_separate_from_offering_and_schedule(self):
         # el temario (curso/versión) no tiene fechas; la edición sí, con su zona horaria
         course = {f["name"] for o in MODEL["objects"] if o["name"] in ("curso", "version_curso") for f in o["fields"]}

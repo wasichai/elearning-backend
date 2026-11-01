@@ -1,5 +1,7 @@
 package elearning.enrollment
 
+import elearning.common.listAll
+import elearning.common.listByIds
 import elearning.common.ref
 import kotlinx.coroutines.reactor.awaitSingle
 import org.springframework.r2dbc.core.DatabaseClient
@@ -28,7 +30,8 @@ data class Enrolled(
 
 // el comando de matrícula (ADR-0012, ADR-0013). todo como la persona que se matricula: sus permisos y sus alcances
 // aplican, así que una edición de una versión no publicada ni siquiera se encuentra. el cupo se cuenta en
-// lms.ocupacion_edicion, bloqueada en la misma transacción que crea la matrícula
+// lms.ocupacion_edicion, bloqueada en la misma transacción que crea la matrícula. los prerrequisitos de la versión
+// (RF-ACA-08) se comprueban antes que el cupo: el motivo del rechazo es el que la persona puede resolver
 @Service
 class EnrollmentService(
     private val currentUser: CurrentUser,
@@ -49,10 +52,12 @@ class EnrollmentService(
             // mientras se esperaba cuentan (revisión de la Fase 2, L10)
             val current = records.get(OFFERING, UUID.fromString(offering.id))
             val version = current.attributes.ref(VERSION) ?: throw NotFoundException(NOT_FOUND)
-            if (records.get(VERSION, UUID.fromString(version)).attributes[STATE]?.toString() != PUBLISHED) {
+            val published = records.get(VERSION, UUID.fromString(version))
+            if (published.attributes[STATE]?.toString() != PUBLISHED) {
                 throw ConflictException("La versión de esta edición ya no está publicada")
             }
             open(current)
+            prerequisites(user, published)
             val capacity = (current.attributes[CAPACITY] as? Number)?.toInt()
             if (capacity != null && taken >= capacity) throw ConflictException("La edición no tiene cupo")
             val created =
@@ -90,6 +95,42 @@ class EnrollmentService(
         val until = a[UNTIL]?.toString()?.take(10)?.let(LocalDate::parse)
         if (from != null && today.isBefore(from)) throw ConflictException("La inscripción de esta edición aún no empieza")
         if (until != null && today.isAfter(until)) throw ConflictException("La inscripción de esta edición ya cerró")
+    }
+
+    // RF-ACA-08: los cursos que la versión exige haber aprobado (cursos_previos, un código por línea). cuenta una matrícula
+    // propia FINALIZADA y APROBADO en cualquier versión de ese curso. todo se lee como el estudiante: su alcance ya le deja
+    // ver solo sus matrículas, así que la de otra persona no cuenta. un código que no se encuentra no se cumple (falla
+    // cerrada): el motivo lo nombra para que se corrija la versión
+    private suspend fun prerequisites(
+        user: AuthenticatedUser,
+        version: RecordResponse,
+    ) {
+        val codes =
+            version.attributes[PREREQUISITES]
+                ?.toString()
+                ?.lines()
+                ?.map { it.trim() }
+                ?.filter { it.isNotEmpty() }
+                ?.distinct()
+                .orEmpty()
+        if (codes.isEmpty()) return
+        val passed =
+            records
+                .listAll(ENROLLMENT, mapOf(STUDENT to user.userId.toString(), STATE to FINISHED, RESULT to PASSED))
+                .mapNotNull { it.attributes.ref(VERSION) }
+        val passedCourses = records.listByIds(VERSION, passed).mapNotNull { it.attributes.ref(COURSE) }.toSet()
+        val missing =
+            codes.mapNotNull { code ->
+                val course = one(COURSE, mapOf(CODE to code))
+                when {
+                    course == null -> code
+                    course.id in passedCourses -> null
+                    else -> course.attributes[TITLE]?.toString()?.let { "$code ($it)" } ?: code
+                }
+            }
+        if (missing.isNotEmpty()) {
+            throw ConflictException("Para matricularte en esta edición antes debes aprobar: ${missing.joinToString("; ")}")
+        }
     }
 
     private suspend fun lockOccupancy(
@@ -139,6 +180,12 @@ class EnrollmentService(
         const val UNTIL = "inscripcion_hasta"
         const val ENROLLED_AT = "matriculado_en"
         const val ACTIVE = "ACTIVA"
+        const val COURSE = "curso"
+        const val TITLE = "titulo"
+        const val PREREQUISITES = "cursos_previos"
+        const val RESULT = "resultado"
+        const val FINISHED = "FINALIZADA"
+        const val PASSED = "APROBADO"
         const val OPEN = "INSCRIPCION_ABIERTA"
         const val PUBLISHED = "PUBLICADA"
         const val DEFAULT_ZONE = "America/Lima"

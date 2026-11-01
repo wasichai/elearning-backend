@@ -2,6 +2,13 @@
 
 Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este archivo registra lo que se entregó.
 
+## 2026-11-01 — Prerrequisitos al matricular ([#231](https://github.com/wasichai/elearning-backend/issues/231), RF-ACA-08)
+
+- `version_curso.cursos_previos` (`model/model.json`): los códigos de los cursos que la versión exige haber aprobado, uno
+  por línea; se congela con la versión publicada ([ADR-0024](adr/0024-prerrequisitos-como-campo-de-la-version.md)).
+- `POST /api/lms/enrollments` responde `409` con un `detail` que nombra cada curso que falta si el estudiante no tiene en
+  él una matrícula propia `FINALIZADA` y `APROBADO`. Un código desconocido nunca se cumple.
+
 ## 2026-11-01 — Barrido de intentos vencidos ([#183](https://github.com/wasichai/elearning-backend/issues/183), L4)
 
 - Un intento vencido se cierra con `enviado_en` = su plazo (`min(ahora, plazo)`), no el momento en que alguien lo toca: el
