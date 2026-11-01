@@ -35,6 +35,9 @@ Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este
   reintentos ni escritura (`PermanentJobFailure`).
 - **L2**: la generación no reintenta lo que no cambia (tipo, hash, falta del binario, fallo o tiempo límite de Asciidoctor,
   salida vacía o enorme): termina `FALLIDO` en ese intento. Lo pasajero (almacenamiento, interrupción) se sigue reintentando.
+- **L3**: el HTML generado se sanea con lista blanca (jsoup) antes de guardarse: quedan el contenido, sus clases y anclas,
+  URL `http`, `https` o `mailto`, el título y el estilo de Asciidoctor; se van scripts, manejadores de eventos, `iframe`,
+  formularios y hojas externas. Su `sha256` es el de lo saneado.
 
 ## 2026-10-31 — Fase 4: estudio editorial, revisión e importador ([#179](https://github.com/wasichai/elearning-backend/issues/179))
 

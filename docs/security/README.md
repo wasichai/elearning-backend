@@ -254,15 +254,17 @@ el único sitio del código que lanza un proceso (`ArchitectureTest`, regla `EXT
   (ADR-0022); nunca en el hilo de WebFlux. Pedir en bucle → la misma fuente mientras espera es el mismo trabajo y cada
   persona tiene un tope de trabajos activos (`429`, ADR-0022).
 - **E** Ejecución de código vía extensiones → sin `-r` ni extensiones; la imagen de despliegue trae Asciidoctor (F6) y la
-  aplicación no tiene acceso a Docker. Sin el binario, el trabajo falla con un error claro. El HTML generado se descarga
-  como adjunto con `nosniff`, como cualquier HTML (§4.4).
+  aplicación no tiene acceso a Docker. Sin el binario, el trabajo falla con un error claro. El HTML que el autor cuela
+  con `++++` o `pass:[]` (modo `secure` lo deja pasar) → el HTML generado se sanea con lista blanca antes de guardarse
+  (`GeneratedHtml`, jsoup; sin scripts, manejadores, `iframe`, formularios ni hojas externas, ADR-0022) y además se
+  descarga como adjunto con `nosniff`, como cualquier HTML (§4.4).
 
 ## 5. Controles transversales
 
 1. **Validación de entradas**: DTO propios validados en el borde; filtros y orden por lista blanca; errores
    `ProblemDetail` de Wasichai sin trazas internas.
 2. **HTML de lecciones**: generado por el servidor desde la fuente canónica y saneado con lista blanca antes de
-   guardarse (F2/F4).
+   guardarse (F2/F4). El que genera Asciidoctor lo sanea `GeneratedHtml` con jsoup (ADR-0022).
 3. **URL externas**: enlaces a reuniones y recursos con esquema `https` y host público; el servidor solo hace peticiones
    salientes donde una función lo exige (comprobar enlaces, proveedor IA, almacenamiento).
 4. **Abuso y spam** (valoraciones y feedback, F6): solo matriculados, una valoración por par, moderación, límite de tasa.
