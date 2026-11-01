@@ -252,6 +252,39 @@ class ReviewApiTest : ClassroomApiTestSupport() {
         assertEquals(HttpStatus.CONFLICT, decide(reviewer, id, "APROBAR").first)
     }
 
+    // #223: con revisor asignado, quien publica no abría en la bandeja lo aprobado para publicarlo
+    @Test
+    fun `the publisher reads an approved version with an assigned reviewer, but only the assigned reviewer decides`() {
+        val author = account("CREADOR")
+        val reviewer = account("REVISOR")
+        val other = account("REVISOR")
+        val id = inReview(author)
+        assertEquals(HttpStatus.OK, patch(admin, id, mapOf("revisor_id" to userId(reviewer))))
+
+        // en revisión, quien publica la lee pero no la decide: es del revisor asignado
+        assertEquals("EN_REVISION", ok(call(admin, "/api/lms/review/versions/$id"))["status"].asString())
+        assertEquals(HttpStatus.NOT_FOUND, decide(admin, id, "APROBAR").first)
+        assertEquals("EN_REVISION", ok(call(reviewer, "/api/lms/review/versions/$id"))["status"].asString())
+
+        ok(decide(reviewer, id, "APROBAR"))
+        try {
+            assertEquals("APROBADA", ok(call(admin, "/api/lms/review/versions/$id"))["status"].asString())
+            assertEquals(HttpStatus.OK, call(admin, "/api/lms/review/versions/$id/diff").first)
+            // los demás, como antes: otro revisor no la ve y el autor no la abre en la bandeja
+            assertEquals(HttpStatus.NOT_FOUND, call(other, "/api/lms/review/versions/$id").first)
+            assertEquals(HttpStatus.NOT_FOUND, call(other, "/api/lms/review/versions/$id/diff").first)
+            assertEquals(HttpStatus.FORBIDDEN, call(author, "/api/lms/review/versions/$id").first)
+            assertEquals(HttpStatus.FORBIDDEN, call(author, "/api/lms/review/versions/$id/diff").first)
+            assertEquals(HttpStatus.FORBIDDEN, call(newStudent(), "/api/lms/review/versions/$id").first)
+            assertEquals("PUBLICADA", ok(call(admin, "/api/lms/review/versions/$id/publish", emptyMap()))["status"].asString())
+        } finally {
+            // fuera del catálogo de las demás pruebas
+            runBlocking {
+                records.asPlatform(ORG) { records.patch("version_curso", UUID.fromString(id), RecordRequest(mapOf("estado" to "RETIRADA")), null, null) }
+            }
+        }
+    }
+
     @Test
     fun `publishing needs PUBLICAR and an approved version`() {
         val author = account("CREADOR")

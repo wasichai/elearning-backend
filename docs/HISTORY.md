@@ -2,6 +2,11 @@
 
 Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este archivo registra lo que se entregó.
 
+## 2026-10-31 — Quien publica abre en la bandeja lo aprobado ([#223](https://github.com/wasichai/elearning-backend/issues/223))
+
+- Con revisor asignado, quien tiene `PUBLICAR` lee en la bandeja el detalle y las diferencias de una versión ajena para
+  publicarla; decidir sigue siendo del revisor asignado y nadie abre ahí lo suyo.
+
 ## 2026-10-31 — Hallazgos de la revisión de la Fase 4 ([#216](https://github.com/wasichai/elearning-backend/issues/216))
 
 - **L4**: el detalle del estudio y de la bandeja, las diferencias, la bandeja y «mis versiones» leen por niveles o de una vez,

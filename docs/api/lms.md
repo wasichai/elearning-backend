@@ -527,6 +527,8 @@ en borrador.
 - **A mi cargo**: tengo `APROBAR` sobre `version_curso` (si no, `403` en toda la bandeja), no soy el autor (`403`) y la versión
   no tiene revisor asignado o lo soy yo; una asignada a otra persona no existe para mí (`404`). La bandeja lista las que están
   `EN_REVISION`, la que más espera primero; el detalle, los comentarios y su resolución valen en cualquier estado.
+- **Quien publica** (`PUBLICAR`) lee el detalle y las diferencias de cualquier versión que no sea suya, también con revisor
+  asignado, para publicar lo aprobado (#223); decidir y comentar siguen siendo de quien la revisa.
 - **Revisor asignado**: `revisor_id` de `version_curso`, por la API de registros. Lo pone o lo quita quien tiene `PUBLICAR`
   (`403` si no), en `BORRADOR` o `EN_REVISION` (`409` después), nunca al autor (`400`) ni a sí mismo (`403`). La guarda
   exige lo mismo a la API de registros: con revisor asignado, nadie más aprueba, pide cambios ni rechaza (`403`).
