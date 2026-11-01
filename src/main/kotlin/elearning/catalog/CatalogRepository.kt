@@ -8,6 +8,7 @@ import java.math.BigDecimal
 import java.time.Clock
 import java.time.LocalDate
 import java.time.OffsetDateTime
+import java.util.UUID
 
 data class CatalogQuery(
     val organization: String,
@@ -103,6 +104,18 @@ class CatalogRepository(
             .rowsUpdated()
             .awaitSingle()
     }
+
+    // matriculados por edición de una organización (lms.ocupacion_edicion, ADR-0013): solo el número, para saber si una
+    // edición está completa. lo lee la proyección, en segundo plano; la ruta pública nunca
+    suspend fun occupancy(organization: UUID): Map<String, Int> =
+        db
+            .sql("SELECT edicion_id, matriculados FROM lms.ocupacion_edicion WHERE organizacion_id = :org")
+            .bind("org", organization)
+            .map { row, _ -> row.get("edicion_id", UUID::class.java)!!.toString() to row.get("matriculados", Number::class.java)!!.toInt() }
+            .all()
+            .collectList()
+            .awaitSingle()
+            .toMap()
 
     suspend fun delete(
         organization: String,
@@ -261,12 +274,14 @@ class CatalogRepository(
     }
 }
 
-// una edición de la ficha con la inscripción abierta hoy: INSCRIPCION_ABIERTA, sin terminar y dentro de la ventana
+// una edición de la ficha con la inscripción abierta hoy: INSCRIPCION_ABIERTA, con plazas, sin terminar y dentro de la
+// ventana
 private val OPEN_OFFERING =
     """
     SELECT 1 FROM jsonb_array_elements(ficha->'offerings') o
     CROSS JOIN LATERAL (SELECT (CAST(:now AS timestamptz) AT TIME ZONE (o->>'timeZone'))::date AS hoy) t
     WHERE o->>'status' = '${OfferingCalendar.OPEN}'
+      AND NOT COALESCE((o->>'full')::boolean, false)
       AND (o->>'endDate')::date >= t.hoy
       AND (o->>'enrollmentFrom' IS NULL OR (o->>'enrollmentFrom')::date <= t.hoy)
       AND (o->>'enrollmentUntil' IS NULL OR (o->>'enrollmentUntil')::date >= t.hoy)

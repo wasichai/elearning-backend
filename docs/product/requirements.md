@@ -50,11 +50,13 @@ el cuándo, en [`roadmap.md`](roadmap.md).
   _Aceptación:_ pruebas de integración por filtro y control de la UI con estado vacío.
   _Pendiente de F2 (#103):_ duración, estado de matrícula y horas por tipo hechos ([#201](https://github.com/wasichai/elearning-backend/pull/201), [front#68](https://github.com/wasichai/elearning-frontend/pull/68)); falta
   «conocimientos previos», que exige un campo estructurado nuevo (hoy `curso.conocimientos_previos` es texto libre).
-- **RF-CAT-09** · F3 · planificado — La ficha describe evaluación y requisitos de certificación, y el estado de
+- **RF-CAT-09** · F3 · implementado ([#231](https://github.com/wasichai/elearning-backend/issues/231)) — La ficha describe evaluación y requisitos de certificación, y el estado de
   matrícula de cada edición (abierta, cerrada, completa).
   _Aceptación:_ prueba de integración con ediciones en cada estado.
-  _Avance:_ la ficha publica `sistema_evaluacion`, `certificacion`, el estado de cada edición y si la inscripción está
-  abierta; falta el estado «completa» (cupo agotado) y la prueba de integración con ediciones en cada estado.
+  La ficha publica `sistema_evaluacion`, `certificacion` y, por edición, `enrollmentStatus` (`OPEN`, `CLOSED`, `FULL`) y
+  `full`, un booleano de cupo agotado que la proyección lee de `lms.ocupacion_edicion`
+  ([ADR-0023](../adr/0023-cupo-agotado-en-la-proyeccion-del-catalogo.md)); una edición completa no cuenta para
+  `enrollmentOpen` (RF-CAT-08). `CatalogEnrollmentStatusApiTest` crea ediciones en cada estado.
 
 ### RF-ACA — Gestión académica: cursos, versiones, ediciones y matrículas (§5, §6.2, §16)
 

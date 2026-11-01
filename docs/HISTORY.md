@@ -2,6 +2,14 @@
 
 Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este archivo registra lo que se entregó.
 
+## 2026-11-01 — Ediciones completas en el catálogo ([#231](https://github.com/wasichai/elearning-backend/issues/231), RF-CAT-09)
+
+- La ficha pública dice el estado de la matrícula de cada edición, `enrollmentStatus` `OPEN`, `CLOSED` o `FULL`, y `full`
+  (cupo agotado), también en `nextOffering`. La proyección lee `lms.ocupacion_edicion` en cada refresco y publica solo un
+  sí o un no, nunca cuántos ni quiénes; una matrícula que no agota el cupo no reescribe la fila
+  ([ADR-0023](adr/0023-cupo-agotado-en-la-proyeccion-del-catalogo.md)).
+- `enrollmentOpen`, en la ficha y en el filtro de RF-CAT-08, deja fuera las ediciones completas.
+
 ## 2026-11-01 — Barrido de intentos vencidos ([#183](https://github.com/wasichai/elearning-backend/issues/183), L4)
 
 - Un intento vencido se cierra con `enviado_en` = su plazo (`min(ahora, plazo)`), no el momento en que alguien lo toca: el

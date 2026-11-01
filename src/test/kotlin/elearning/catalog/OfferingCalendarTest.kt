@@ -20,6 +20,7 @@ class OfferingCalendarTest {
         zone: String = "America/Lima",
         from: String? = null,
         until: String? = null,
+        full: Boolean = false,
     ) = OfferingView(
         code = code,
         status = status,
@@ -32,6 +33,7 @@ class OfferingCalendarTest {
         capacity = null,
         schedule = null,
         teachers = emptyList(),
+        full = full,
     )
 
     @Test
@@ -75,5 +77,23 @@ class OfferingCalendarTest {
         // 04:30 UTC: aún rige EDT (UTC-4) hasta las 06:00 UTC, así que allí ya es 1 de noviembre 00:30 y está cerrada.
         // con un desfase fijo de UTC-5 serían las 23:30 del 31 y saldría abierta: este caso distingue el horario de verano
         assertFalse(OfferingCalendar.current(listOf(closing), at("2026-11-01T04:30:00Z")).single().enrollmentOpen)
+    }
+
+    // RF-CAT-09: abierta, cerrada o completa. completa es una abierta por estado y ventana a la que no le quedan plazas:
+    // no admite matrículas, así que enrollmentOpen dice false
+    @Test
+    fun `an offering is open, closed or full`() {
+        val now = at("2026-10-28T12:00:00Z")
+        val open = offering("A", "2026-11-09", "2026-11-27", from = "2026-10-15", until = "2026-11-06")
+
+        fun of(o: OfferingView) = OfferingCalendar.current(listOf(o), now).single()
+
+        assertEquals(EnrollmentStatus.OPEN, of(open).enrollmentStatus)
+        assertTrue(of(open).enrollmentOpen)
+        assertEquals(EnrollmentStatus.FULL, of(open.copy(full = true)).enrollmentStatus)
+        assertFalse(of(open.copy(full = true)).enrollmentOpen)
+        assertEquals(EnrollmentStatus.CLOSED, of(open.copy(status = "PROGRAMADA")).enrollmentStatus)
+        assertEquals(EnrollmentStatus.CLOSED, of(open.copy(status = "EN_CURSO", full = true)).enrollmentStatus, "sin inscripción, cerrada aunque esté llena")
+        assertEquals(EnrollmentStatus.CLOSED, of(open.copy(enrollmentUntil = LocalDate.parse("2026-10-27"), full = true)).enrollmentStatus)
     }
 }
