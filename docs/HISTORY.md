@@ -9,6 +9,10 @@ Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este
 
 ## 2026-10-31 — Hallazgos de la revisión de la Fase 4 ([#216](https://github.com/wasichai/elearning-backend/issues/216))
 
+- **L4**: el detalle del estudio y de la bandeja, las diferencias, la bandeja y «mis versiones» leen por niveles o de una vez,
+  no por lección ni por versión (`listAllIn`, `listByIds`); su coste ya no crece con el temario ni con la bandeja. La copia
+  lee cada nivel de una vez y lo escribe con `createAll`: ≈23 sentencias por unidad de dos lecciones, antes ≈40
+  (`AuthoringCostApiTest`).
 - **L5, comentarios**: `comentario_revision` tiene alcance de lectura (`ReviewCommentReadScope`); un CREADOR ya no lee por la
   API de registros los comentarios de versiones ajenas. `ScopeMemo` pasa a `elearning.common`.
 - **M1**: la revisión de un curso se decide solo en la bandeja, que deja la decisión y su motivo en `lms.decision_revision`;
@@ -17,6 +21,8 @@ Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este
 - **M2**: importar y generar lo mismo mientras el trabajo anterior espera devuelve ese trabajo, sin otro borrador ni otra
   versión; cada persona tiene a lo sumo `lms.jobs.max-active-per-requester` (5) trabajos pendientes o en curso, y uno más es
   `429` con `Retry-After` ([ADR-0022](adr/0022-limites-y-ciclo-de-vida-de-los-trabajos.md)).
+- **L1**: el borrador importado y el cierre de su trabajo van en una transacción; si la réplica muere tras el commit, no hay
+  reintento que haga otro borrador, y la que perdió el reclamo deshace el suyo.
 
 ## 2026-10-31 — Fase 4: estudio editorial, revisión e importador ([#179](https://github.com/wasichai/elearning-backend/issues/179))
 
