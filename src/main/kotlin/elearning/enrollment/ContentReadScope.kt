@@ -21,6 +21,7 @@ import java.util.UUID
 // con subconsultas SQL (M4 de #183, M1 de #104): antes listaba versiones, unidades y lecciones y las ligaba como arreglos de
 // ids que crecían con el catálogo publicado; ahora la base de datos resuelve la cadena en la misma sentencia. cada nivel
 // repite lo que leerlo como quien llama aplicaba: su organización, su VER_TODAS y, sin READ sobre él, nada (falla cerrada)
+// own_records_only no se repite: ningún rol del LMS lo fija (model/roles.json)
 @Component
 class ContentReadScope(
     private val currentUser: CurrentUser,
