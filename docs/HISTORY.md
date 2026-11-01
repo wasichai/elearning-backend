@@ -12,6 +12,13 @@ Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este
   corto que su `Content-Length`) y queda en el rastro `admin:stored-file`; devueltos sus bytes, se sirve otra vez.
   `S3ResourceFilesApiTest` lo prueba contra MinIO, con un archivo pequeño y uno grande.
 
+## 2026-11-01 — ADR-0025: alcances con subconsultas sobre las tablas de Wasichai ([#236](https://github.com/wasichai/elearning-backend/pull/236))
+
+- [ADR-0025](adr/0025-alcances-de-lectura-con-subconsultas-sobre-tablas-de-wasichai.md) registra, como provisional, lo
+  que #236 integró: `ContentReadScope` y `EnrollmentReadScope` leen las tablas de datos de Wasichai con subconsultas y
+  repiten a mano su organización, `VER_TODAS` y `READ`, no `ownRecordsOnly`. Qué revisar al subir de versión de Wasichai,
+  y la petición de una vía propia: [wasichai/wasichai#147](https://github.com/wasichai/wasichai/issues/147).
+
 ## 2026-11-01 — El roster por páginas ([#183](https://github.com/wasichai/elearning-backend/issues/183), M4)
 
 - `GET /api/lms/teaching/offerings/{code}/students` admite `?page` y `?size` opcionales, como la API de registros: una
