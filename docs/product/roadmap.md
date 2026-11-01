@@ -191,7 +191,7 @@ contra el backend real, con los recorridos 5, 6, 7 y 13 y el aviso por correo en
 `e2e-real`, [front#61](https://github.com/wasichai/elearning-frontend/pull/61)). Épicas E18–E23
 ([#112](https://github.com/wasichai/elearning-backend/issues/112) … [#130](https://github.com/wasichai/elearning-backend/issues/130));
 diseño en ADR-0016, ADR-0017, ADR-0019 y ADR-0020. El hallazgo de su revisión que queda (M4, en parte; L4 lo cerró #232) se
-siguen en [#183](https://github.com/wasichai/elearning-backend/issues/183); los requisitos F3 que aún no cumplen su
+sigue en [#183](https://github.com/wasichai/elearning-backend/issues/183); los requisitos F3 que aún no cumplen su
 aceptación (RF-CAT-09, RF-ACA-08, RF-AUL-08/09, RF-LAB-01/03, RF-ADM-03 y RNF-OSS-06) llevan un «Avance» en
 [requirements.md](requirements.md) y se siguen en [#231](https://github.com/wasichai/elearning-backend/issues/231).
 
