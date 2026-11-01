@@ -1,6 +1,7 @@
 package elearning.assessment
 
 import elearning.common.listAll
+import elearning.common.listByIds
 import elearning.learning.AssessmentFacts
 import elearning.learning.LessonAssessment
 import elearning.learning.LessonAssessmentFact
@@ -11,6 +12,7 @@ import org.springframework.transaction.reactive.executeAndAwait
 import wasichai.core.common.Actions
 import wasichai.core.common.ConflictException
 import wasichai.core.common.NotFoundException
+import wasichai.core.common.PageRequest
 import wasichai.core.common.ValidationException
 import wasichai.core.data.RecordService
 import wasichai.core.identity.AuthenticatedUser
@@ -34,9 +36,12 @@ class GradingService(
     private val transactions: TransactionalOperator,
     private val clock: Clock,
 ) {
+    // page y size opcionales, como en la API de registros: sin ninguno, la cola entera. con ellos, una página en el orden
+    // de siempre (el de envío), y los correos se leen por las matrículas de esa página (M4 de #183)
     suspend fun queue(
         code: String,
         status: String?,
+        page: PageRequest? = null,
     ): List<PendingAttempt> {
         val wanted = status ?: AttemptService.SUBMITTED
         if (wanted !in LISTABLE) throw ValidationException("Invalid status", "status", "must be one of $LISTABLE")
@@ -47,10 +52,10 @@ class GradingService(
             } else {
                 teaching.assignedOffering(code)
             }
-        val lines = attempts.linesOfOffering(user.organizationId, UUID.fromString(offering.id), wanted).filter { it.studentId != user.userId }
-        // correos y títulos por lotes, no por intento (M4 de #183): las matrículas de la edición, también las retiradas, y cada
-        // lección una vez
-        val emails = records.listAll(ENROLLMENT, mapOf(OFFERING to offering.id)).associate { it.id to it.attributes[EMAIL]?.toString() }
+        val lines = attempts.queueOfOffering(user.organizationId, UUID.fromString(offering.id), wanted, user.userId, page)
+        // correos y títulos por lotes, no por intento (M4 de #183): las matrículas de esos intentos, también las retiradas, y
+        // cada lección una vez
+        val emails = records.listByIds(ENROLLMENT, lines.map { it.enrollmentId.toString() }).associate { it.id to it.attributes[EMAIL]?.toString() }
         val titles = lines.map { it.lessonId }.distinct().associateWith { records.get(LESSON, it).attributes[TITLE].toString() }
         return lines.map { a ->
             PendingAttempt(
@@ -134,7 +139,6 @@ class GradingService(
         const val ENROLLMENT = "matricula"
         const val OFFERING_OBJECT = "edicion_curso"
         const val CODE = "codigo"
-        const val OFFERING = "edicion"
         const val LESSON = "leccion"
         const val TITLE = "titulo"
         const val EMAIL = "estudiante_correo"
