@@ -46,11 +46,12 @@ class ReviewService(
     // en revisión y a mi cargo, la que más espera primero
     suspend fun inbox(): List<StudioVersion> {
         val user = reviewer()
-        return records
-            .listAll(VERSION, mapOf(STATE to IN_REVIEW))
-            .filter { mine(it, user) }
-            .sortedBy { it.updatedAt }
-            .map { reader.summary(it) }
+        val versions =
+            records
+                .listAll(VERSION, mapOf(STATE to IN_REVIEW))
+                .filter { mine(it, user) }
+                .sortedBy { it.updatedAt }
+        return reader.summaries(versions)
     }
 
     suspend fun detail(id: UUID): StudioVersionDetail = reader.detailOf(reviewable(id))

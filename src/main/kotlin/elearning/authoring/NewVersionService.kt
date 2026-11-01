@@ -1,6 +1,7 @@
 package elearning.authoring
 
 import elearning.common.listAll
+import elearning.common.listAllIn
 import elearning.common.ref
 import org.springframework.stereotype.Service
 import org.springframework.transaction.reactive.TransactionalOperator
@@ -43,49 +44,49 @@ class NewVersionService(
         return transactions.executeAndAwait {
             val attributes = scalars(source, DRAFT_DROPS) + mapOf(COURSE to course.id, "numero" to next, "autor_id" to me, "estado" to "BORRADOR")
             val created = records.create(VERSION, RecordRequest(attributes))
-            for (unit in records.listAll(UNIT, mapOf(VERSION to source.id))) {
-                val newUnit = copyChild(unit, UNIT, VERSION, created.id)
-                for (lesson in records.listAll(LESSON, mapOf(UNIT to unit.id))) {
-                    val newLesson = copyChild(lesson, LESSON, UNIT, newUnit.id)
-                    for (link in records.listAll(LINK, mapOf(LESSON to lesson.id))) {
-                        records.create(
-                            LINK,
-                            RecordRequest(
-                                mapOf(
-                                    LESSON to newLesson.id,
-                                    RESOURCE_VERSION to link.attributes.ref(RESOURCE_VERSION),
-                                    "orden" to link.attributes["orden"],
-                                ),
-                            ),
-                        )
-                    }
-                    for (evaluation in records.listAll(EVALUATION, mapOf(LESSON to lesson.id))) {
-                        copyEvaluation(evaluation, newLesson.id)
-                    }
-                }
-            }
+            // nivel a nivel: cada uno se lee de una vez y se escribe en lote, no registro a registro (L4 de #216)
+            val units = records.listAll(UNIT, mapOf(VERSION to source.id))
+            val newUnits = copyAll(units, UNIT, VERSION, mapOf(source.id to created.id))
+            val lessons = records.listAllIn(LESSON, UNIT, units.map { it.id })
+            val newLessons = copyAll(lessons, LESSON, UNIT, newUnits)
+            val lessonIds = lessons.map { it.id }
+            records.createAll(
+                LINK,
+                records.listAllIn(LINK, LESSON, lessonIds).map { link ->
+                    RecordRequest(
+                        mapOf(
+                            LESSON to newLessons.getValue(link.attributes.ref(LESSON)!!),
+                            RESOURCE_VERSION to link.attributes.ref(RESOURCE_VERSION),
+                            "orden" to link.attributes["orden"],
+                        ),
+                    )
+                },
+            )
+            val evaluations = records.listAllIn(EVALUATION, LESSON, lessonIds)
+            val newEvaluations = copyAll(evaluations, EVALUATION, LESSON, newLessons, drop = setOf("codigo"))
+            val questions = records.listAllIn(QUESTION, EVALUATION, evaluations.map { it.id })
+            val newQuestions = copyAll(questions, QUESTION, EVALUATION, newEvaluations)
+            val questionIds = questions.map { it.id }
+            copyAll(records.listAllIn(OPTION, QUESTION, questionIds), OPTION, QUESTION, newQuestions)
+            copyAll(records.listAllIn(RUBRIC, QUESTION, questionIds), RUBRIC, QUESTION, newQuestions)
             UUID.fromString(created.id)
         }
     }
 
-    private suspend fun copyEvaluation(
-        evaluation: RecordResponse,
-        lesson: String,
-    ) {
-        val copied = records.create(EVALUATION, RecordRequest(scalars(evaluation, setOf(LESSON, "codigo")) + mapOf(LESSON to lesson)))
-        for (question in records.listAll(QUESTION, mapOf(EVALUATION to evaluation.id))) {
-            val newQuestion = copyChild(question, QUESTION, EVALUATION, copied.id)
-            for (option in records.listAll(OPTION, mapOf(QUESTION to question.id))) copyChild(option, OPTION, QUESTION, newQuestion.id)
-            for (criterion in records.listAll(RUBRIC, mapOf(QUESTION to question.id))) copyChild(criterion, RUBRIC, QUESTION, newQuestion.id)
-        }
-    }
-
-    private suspend fun copyChild(
-        record: RecordResponse,
+    // copia los registros bajo sus padres nuevos, en orden y en un lote; devuelve la identidad nueva de cada uno
+    private suspend fun copyAll(
+        sources: List<RecordResponse>,
         objectName: String,
         parentField: String,
-        parent: String,
-    ) = records.create(objectName, RecordRequest(scalars(record, setOf(parentField)) + mapOf(parentField to parent)))
+        parents: Map<String, String>,
+        drop: Set<String> = emptySet(),
+    ): Map<String, String> {
+        val requests =
+            sources.map {
+                RecordRequest(scalars(it, drop + parentField) + mapOf(parentField to parents.getValue(it.attributes.ref(parentField)!!)))
+            }
+        return sources.map { it.id }.zip(records.createAll(objectName, requests).map { it.id }).toMap()
+    }
 
     // los valores propios del registro, sin los vacíos ni lo que no se hereda
     private fun scalars(
