@@ -182,7 +182,7 @@ abstract class ClassroomApiTestSupport : LmsApiTest() {
     }
 
     // una versión de recurso HTML con su archivo, publicada: la sube su autor (el administrador) y la publica la plataforma
-    private fun publishedHtml(): String {
+    protected fun publishedHtml(): String {
         val author = get("/api/auth/me", admin)["userId"].asString()
         val version =
             runBlocking {
