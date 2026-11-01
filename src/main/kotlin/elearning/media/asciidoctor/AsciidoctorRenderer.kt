@@ -125,7 +125,7 @@ class AsciidoctorRenderer(
         } catch (e: InterruptedException) {
             process.destroyForcibly()
             Thread.currentThread().interrupt()
-            throw RenderException("$command was interrupted", e)
+            throw RenderException("$command was interrupted", e, permanent = false)
         }
         val output = if (log.isFile) log.readText().takeLast(MAX_LOG) else ""
         if (process.exitValue() != 0) throw RenderException("$command failed with exit code ${process.exitValue()}: ${output.trim()}")

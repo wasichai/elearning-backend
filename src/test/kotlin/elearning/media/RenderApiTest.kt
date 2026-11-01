@@ -27,12 +27,13 @@ import java.security.MessageDigest
 import java.util.HexFormat
 import java.util.UUID
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
 
 // generación de artefactos desde una fuente (ADR-0018 §7, RF-CON-03/07). En CI no hay Asciidoctor: el generador es un doble
 // que devuelve un HTML y un PDF mínimos, salvo cuando la prueba lo cambia por el adaptador real sin binario. La cola se
 // mueve a mano con runOnce
 @Import(RenderApiTest.FakeRenderer::class)
-@TestPropertySource(properties = ["lms.jobs.scheduling=false", "lms.jobs.max-attempts=1"])
+@TestPropertySource(properties = ["lms.jobs.scheduling=false", "lms.jobs.max-attempts=3", "lms.jobs.backoff=0s"])
 class RenderApiTest : LmsApiTest() {
     @Autowired
     private lateinit var runner: JobRunner
@@ -265,7 +266,37 @@ class RenderApiTest : LmsApiTest() {
         assertTrue(error.contains("not available") && error.contains("deployment image must include Asciidoctor"), error)
         assertTrue(failed["versionId"].isNull || failed["versionId"].isMissingNode)
         assertEquals(0, get("/api/objects/version_recurso/records?recurso=$resource", creator)["totalElements"].asInt())
+        assertEquals(1, attemptsOf(job), "sin el binario, reintentar no lo arregla (L2 de #216)")
     }
+
+    // L2 de #216: lo que la fuente rompe se rompe igual en cada intento; lo pasajero se reintenta
+    @Test
+    fun `a source the generator rejects fails at once, and a passing failure is retried`() {
+        val (_, broken) = source("HTML", "= Rota\n\n$BROKEN")
+        val (_, flaky) = source("HTML", "= Pasajera\n\n$FLAKY")
+        flakyCalls.set(0)
+
+        val brokenJob = render(broken)["id"].asString()
+        val flakyJob = render(flaky)["id"].asString()
+        drain()
+
+        val failed = get("/api/lms/studio/renders/$brokenJob", creator)
+        assertEquals("FALLIDO", failed["status"].asString(), failed.toString())
+        assertTrue(failed["error"].asString().contains(BROKEN), failed.toString())
+        assertEquals(1, attemptsOf(brokenJob))
+        assertEquals("HECHO", get("/api/lms/studio/renders/$flakyJob", creator)["status"].asString())
+        assertEquals(2, attemptsOf(flakyJob))
+    }
+
+    private fun attemptsOf(id: String): Int =
+        runBlocking {
+            db
+                .sql("SELECT intentos FROM lms.trabajo WHERE id = :id")
+                .bind("id", UUID.fromString(id))
+                .map { row, _ -> row.get("intentos", Number::class.java)!!.toInt() }
+                .one()
+                .awaitSingle()
+        }
 
     @Test
     fun `only someone who may create resource versions asks for a render or reads it`() {
@@ -367,6 +398,8 @@ class RenderApiTest : LmsApiTest() {
                 ): RenderedDocument {
                     if (missingBinary.get()) return missing.render(source, format)
                     val text = String(source)
+                    if (BROKEN in text) throw RenderException("asciidoctor failed with exit code 1: $BROKEN")
+                    if (FLAKY in text && flakyCalls.incrementAndGet() == 1) throw RenderException("interrupted", permanent = false)
                     val bytes =
                         when (format) {
                             ArtifactFormat.HTML -> "<html><body><pre>$text</pre></body></html>"
@@ -382,6 +415,11 @@ class RenderApiTest : LmsApiTest() {
         private const val FAKE = "fake-renderer"
         private const val SOURCE_TEXT = "= Lección generada\n\nTexto propio de la prueba."
         private val missingBinary = AtomicBoolean(false)
+
+        // una fuente que el generador siempre rechaza, y otra cuyo primer intento sufre un fallo pasajero
+        private const val BROKEN = "FUENTE-ROTA"
+        private const val FLAKY = "FALLO-PASAJERO"
+        private val flakyCalls = AtomicInteger(0)
 
         private fun sha256(bytes: ByteArray) = HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(bytes))
     }

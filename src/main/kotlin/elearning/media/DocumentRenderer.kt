@@ -27,10 +27,13 @@ interface DocumentRenderer {
     ): RenderedDocument
 }
 
-// la generación no pudo hacerse: el mensaje es claro y va al error del trabajo, que ve quien la pidió
+// la generación no pudo hacerse: el mensaje es claro y va al error del trabajo, que ve quien la pidió. permanent: reintentar
+// no lo arregla (la fuente, su tipo o el despliegue no cambian entre intentos), así que el trabajo termina en ese intento
+// (ADR-0022); false solo para lo pasajero, como el almacenamiento o una interrupción
 open class RenderException(
     message: String,
     cause: Throwable? = null,
+    val permanent: Boolean = true,
 ) : RuntimeException(message, cause)
 
 // falta el generador en esta réplica: la imagen de despliegue debe traerlo (ADR-0018 §7)

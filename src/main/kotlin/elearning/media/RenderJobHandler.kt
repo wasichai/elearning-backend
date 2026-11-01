@@ -4,6 +4,7 @@ import elearning.common.listAll
 import elearning.common.ref
 import elearning.jobs.Job
 import elearning.jobs.JobHandler
+import elearning.jobs.PermanentJobFailure
 import elearning.jobs.Requesters
 import elearning.jobs.RequiredPermission
 import kotlinx.coroutines.reactor.awaitSingle
@@ -52,12 +53,18 @@ class RenderJobHandler(
         val payload = MAPPER.readTree(job.payload)
         val source = UUID.fromString(payload.required(SOURCE_ID).asString())
         val requester = UUID.fromString(payload.required(REQUESTER_ID).asString()).toString()
-        return records.asPlatform(job.organizationId, AUDIT_SOURCE) {
-            existing(job.id) ?: run {
-                // quien la pidió puede todavía lo que se le exigió al encolar (ADR-0022)
-                requesters.requireStillAllowed(job.organizationId, UUID.fromString(requester), REQUIRED)
-                generate(job, source, requester)
+        return try {
+            records.asPlatform(job.organizationId, AUDIT_SOURCE) {
+                existing(job.id) ?: run {
+                    // quien la pidió puede todavía lo que se le exigió al encolar (ADR-0022)
+                    requesters.requireStillAllowed(job.organizationId, UUID.fromString(requester), REQUIRED)
+                    generate(job, source, requester)
+                }
             }
+        } catch (e: RenderException) {
+            // lo que no cambia por reintentar termina el trabajo; lo pasajero vuelve a la cola (ADR-0022)
+            if (e.permanent) throw PermanentJobFailure(e.message ?: "The render failed", e)
+            throw e
         }
     }
 
@@ -136,7 +143,9 @@ class RenderJobHandler(
     ): FileDescriptor {
         val content: Flux<DataBuffer> = Flux.just(DefaultDataBufferFactory.sharedInstance.wrap(document.bytes))
         val staged = files.stage(objectName, FILE, FileUpload(name, document.format.contentType, content))
-        if (!staged.sha256.equals(sha256(document.bytes), ignoreCase = true)) throw RenderException("The stored ${document.format} does not match its hash")
+        if (!staged.sha256.equals(sha256(document.bytes), ignoreCase = true)) {
+            throw RenderException("The stored ${document.format} does not match its hash", permanent = false)
+        }
         return staged
     }
 
