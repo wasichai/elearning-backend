@@ -358,12 +358,13 @@ el cuándo, en [`roadmap.md`](roadmap.md).
   _Aceptación:_ prueba de arquitectura sin el literal del nombre en el código de dominio.
 - **RF-ADM-02** · F3 · implementado ([#149](https://github.com/wasichai/elearning-backend/pull/149)) — Usuarios, roles y categorías se administran con las pantallas de Wasichai.
   _Aceptación:_ recorrido manual documentado; no existen pantallas LMS paralelas para ello.
-- **RF-ADM-03** · F3 · planificado — Auditoría de contenidos, calificaciones, roles y publicaciones con la auditoría
-  de Wasichai.
+- **RF-ADM-03** · F3 · implementado ([#235](https://github.com/wasichai/elearning-backend/pull/235)) — Auditoría de
+  contenidos, calificaciones, roles y publicaciones con la auditoría de Wasichai.
   _Aceptación:_ cada operación sensible deja un registro consultable por ADMIN.
-  _Avance:_ los contenidos y los roles pasan por la auditoría de Wasichai, y las calificaciones y los motivos de sesiones
-  y asistencia quedan en `lms.calificacion` y en el historial de cada registro; falta una prueba de que cada operación
-  sensible deja un registro consultable por ADMIN.
+  _Avance:_ contenidos, publicaciones y roles quedan en el `audit_log` de Wasichai; las calificaciones, en
+  `lms.calificacion`, que ADMIN lee en la cola y el historial del intento del espacio docente (solo leer).
+  `SensitiveOperationsAuditApiTest` lo prueba, con las negativas de quien no es ADMIN
+  ([seguridad §6](../security/README.md#6-auditoría)).
 - **RF-ADM-04** · F6 · planificado — Informes de progreso, asistencia y resultados por edición, respetando el
   alcance de quien consulta.
   _Aceptación:_ un docente solo obtiene datos de sus ediciones.

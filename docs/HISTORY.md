@@ -2,6 +2,14 @@
 
 Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este archivo registra lo que se entregó.
 
+## 2026-11-01 — Registro consultable de cada operación sensible ([#231](https://github.com/wasichai/elearning-backend/issues/231), RF-ADM-03)
+
+- `SensitiveOperationsAuditApiTest` prueba que contenidos (versión y lección), decisiones y publicaciones, y roles
+  quedan en el `audit_log` de Wasichai con su autor, y que ADMIN los consulta; quien no es ADMIN recibe `403` en
+  `/api/audit`, nada del rastro `admin:*` y `404` en el historial de lo ajeno.
+- Las calificaciones siguen en `lms.calificacion`: quien tiene `MANAGE_ORGANIZATION` lee la cola de corrección y el
+  intento con su `history` de cualquier edición, sin asignación y sin poder calificar.
+
 ## 2026-11-01 — Barrido de intentos vencidos ([#183](https://github.com/wasichai/elearning-backend/issues/183), L4)
 
 - Un intento vencido se cierra con `enviado_en` = su plazo (`min(ahora, plazo)`), no el momento en que alguien lo toca: el
