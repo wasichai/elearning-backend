@@ -150,6 +150,20 @@ class JobQueueTest : WasichaiIntegrationTest() {
         assertNull(failed.result)
     }
 
+    // ADR-0022: lo que reintentar no arregla termina en su intento
+    @Test
+    fun `a permanent failure is not retried`() {
+        val id = runBlocking { queue.enqueue(org, DOOMED, maxAttempts = 3) }
+
+        drain()
+
+        val failed = status(id)
+        assertEquals(JobState.FAILED, failed.state)
+        assertEquals(1, failed.attempts)
+        assertEquals("no way", failed.error)
+        assertNotNull(failed.finishedAt)
+    }
+
     @Test
     fun `a job that exceeds the time limit fails`() {
         val id = runBlocking { queue.enqueue(org, SLOW, maxAttempts = 1) }
@@ -225,6 +239,21 @@ class JobQueueTest : WasichaiIntegrationTest() {
         assertEquals(json.readTree("""{"from": "current"}"""), json.readTree(status(id).result))
     }
 
+    // ADR-0022: un manejador cierra su trabajo en su transacción y el runner lo cierra otra vez con el mismo resultado
+    @Test
+    fun `closing the same attempt again is harmless and still fenced`() {
+        val type = "test.twice-${UUID.randomUUID()}"
+        val id = runBlocking { queue.enqueue(org, type) }
+        val claimed = runBlocking { queue.claim(listOf(type), 1) }.single()
+
+        assertTrue(runBlocking { queue.complete(claimed, """{"n": 1}""") })
+        assertTrue(runBlocking { queue.complete(claimed, """{"n": 1}""") })
+        assertFalse(runBlocking { queue.complete(claimed.copy(attempt = 2), """{"n": 2}""") })
+        assertFalse(runBlocking { queue.fail(claimed, "late") })
+        assertEquals(JobState.DONE, status(id).state)
+        assertEquals(json.readTree("""{"n": 1}"""), json.readTree(status(id).result))
+    }
+
     // RNF-ARQ-09: la API responde mientras un trabajo que bloquea está en curso
     @Test
     fun `the api answers while a blocking job is running`() {
@@ -277,6 +306,9 @@ class JobQueueTest : WasichaiIntegrationTest() {
         fun flakyHandler(): JobHandler = handler(FLAKY) { error("boom ${it.attempt}") }
 
         @Bean
+        fun doomedHandler(): JobHandler = handler(DOOMED) { throw PermanentJobFailure("no way") }
+
+        @Bean
         fun slowHandler(): JobHandler =
             handler(SLOW) {
                 delay(60_000)
@@ -321,6 +353,7 @@ class JobQueueTest : WasichaiIntegrationTest() {
         const val ECHO = "test.echo"
         const val FLAKY = "test.flaky"
         const val SLOW = "test.slow"
+        const val DOOMED = "test.doomed"
         const val COUNT = "test.count"
         const val BLOCKING = "test.blocking"
 

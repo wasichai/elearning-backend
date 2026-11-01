@@ -4,6 +4,7 @@ import elearning.LmsApiTest
 import elearning.jobs.JobRunner
 import elearning.media.asciidoctor.AsciidoctorProperties
 import elearning.media.asciidoctor.AsciidoctorRenderer
+import kotlinx.coroutines.reactor.awaitSingle
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -18,6 +19,7 @@ import org.springframework.core.io.ByteArrayResource
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.http.client.MultipartBodyBuilder
+import org.springframework.r2dbc.core.DatabaseClient
 import org.springframework.test.context.TestPropertySource
 import org.springframework.web.reactive.function.BodyInserters
 import tools.jackson.databind.JsonNode
@@ -34,6 +36,9 @@ import java.util.concurrent.atomic.AtomicBoolean
 class RenderApiTest : LmsApiTest() {
     @Autowired
     private lateinit var runner: JobRunner
+
+    @Autowired
+    private lateinit var db: DatabaseClient
 
     private val admin by lazy { bearer() }
     private val creator by lazy { demoUser("creador") }
@@ -53,6 +58,7 @@ class RenderApiTest : LmsApiTest() {
             when (method) {
                 "POST" -> if (body == null) client.post().uri(path) else client.post().uri(path).bodyValue(body)
                 "PATCH" -> client.patch().uri(path).bodyValue(body!!)
+                "PUT" -> client.put().uri(path).bodyValue(body!!)
                 else -> client.get().uri(path)
             }
         val r =
@@ -80,8 +86,9 @@ class RenderApiTest : LmsApiTest() {
     private fun source(
         type: String,
         text: String = SOURCE_TEXT,
+        owner: String = creator,
     ): Pair<String, String> {
-        val resource = create(creator, "recurso", mapOf("titulo" to "Generado $type", "tipo" to type, "idioma" to "es"))
+        val resource = create(owner, "recurso", mapOf("titulo" to "Generado $type", "tipo" to type, "idioma" to "es"))
         val parts = MultipartBodyBuilder()
         parts
             .part(
@@ -94,7 +101,7 @@ class RenderApiTest : LmsApiTest() {
             client
                 .post()
                 .uri("/api/objects/fuente_recurso/files/archivo")
-                .header("Authorization", creator)
+                .header("Authorization", owner)
                 .contentType(MediaType.MULTIPART_FORM_DATA)
                 .body(BodyInserters.fromMultipartData(parts.build()))
                 .exchange()
@@ -104,7 +111,7 @@ class RenderApiTest : LmsApiTest() {
                 .returnResult()
                 .responseBody!!
         val file = json.readTree(staged)["id"].asString()
-        return resource to create(creator, "fuente_recurso", mapOf("recurso" to resource, "numero" to 1, "archivo" to file))
+        return resource to create(owner, "fuente_recurso", mapOf("recurso" to resource, "numero" to 1, "archivo" to file))
     }
 
     private fun render(
@@ -214,6 +221,35 @@ class RenderApiTest : LmsApiTest() {
         assertEquals(first, again)
         assertEquals(1, get("/api/objects/version_recurso/records?recurso=$resource", creator)["totalElements"].asInt())
     }
+
+    // L7 de #216: quien pidió la generación tiene que poder todavía crear la versión cuando el trabajo corre
+    @Test
+    fun `a render whose requester lost the permission before it ran fails without a version`() {
+        val person = account("CREADOR")
+        val personId = me(person)
+        val (resource, source) = source("HTML", owner = person)
+        val job = render(source, person)["id"].asString()
+        val (status, body) = exchange("PUT", "/api/users/$personId/roles", admin, mapOf("roles" to listOf("ESTUDIANTE")))
+        assertEquals(HttpStatus.OK, status, body.toString())
+
+        drain()
+
+        val (state, error) = stateOf(job)
+        assertEquals("FAILED", state, error)
+        assertTrue(error.contains("no longer"), error)
+        assertEquals(0, get("/api/objects/version_recurso/records?recurso=$resource", admin)["totalElements"].asInt())
+    }
+
+    // el estado y el error del trabajo, leídos de la cola: quien lo pidió ya no puede leerlo
+    private fun stateOf(id: String): Pair<String, String> =
+        runBlocking {
+            db
+                .sql("SELECT estado, error FROM lms.trabajo WHERE id = :id")
+                .bind("id", UUID.fromString(id))
+                .map { row, _ -> row.get("estado", String::class.java)!! to (row.get("error", String::class.java) ?: "") }
+                .one()
+                .awaitSingle()
+        }
 
     @Test
     fun `without the asciidoctor binary the job fails with a clear error and writes nothing`() {

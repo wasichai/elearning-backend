@@ -1,6 +1,8 @@
 package elearning.authoring
 
 import elearning.common.listAll
+import elearning.common.listAllIn
+import elearning.common.listByIds
 import elearning.common.ref
 import org.springframework.stereotype.Service
 import wasichai.core.common.ConflictException
@@ -95,31 +97,37 @@ class StudioReader(
             } catch (_: ForbiddenException) {
                 emptyList()
             }
-        return versions.sortedByDescending { it.updatedAt }.map { summary(it) }
+        return summaries(versions.sortedByDescending { it.updatedAt })
     }
 
     suspend fun detail(id: UUID): StudioVersionDetail = detailOf(own(id))
 
-    // el detalle de una versión que quien llama ya puede ver aquí: su temario, sus comentarios y sus decisiones
+    // el detalle de una versión que quien llama ya puede ver aquí: su temario, sus comentarios y sus decisiones. el temario
+    // se lee por niveles, no lección a lección (L4 de #216)
     suspend fun detailOf(version: RecordResponse): StudioVersionDetail {
         val notes = comments(version.id)
         val s = summary(version, notes)
+        val unitRecords = records.listAll(UNIT, mapOf(VERSION to version.id))
+        val lessonRecords = records.listAllIn(LESSON, UNIT, unitRecords.map { it.id }).groupBy { it.attributes.ref(UNIT) }
+        val lessonIds = lessonRecords.values.flatten().map { it.id }
+        val assessed = records.listAllIn(EVALUATION, LESSON, lessonIds).mapNotNull { it.attributes.ref(LESSON) }.toSet()
+        val linked = records.listAllIn(LINK, LESSON, lessonIds).groupingBy { it.attributes.ref(LESSON) }.eachCount()
         val units =
-            records.listAll(UNIT, mapOf(VERSION to version.id)).sortedBy { int(it, ORDER) }.map { unit ->
+            unitRecords.sortedBy { int(it, ORDER) }.map { unit ->
                 StudioUnit(
                     id = unit.id,
                     order = int(unit, ORDER),
                     title = unit.attributes[TITLE].toString(),
                     lessons =
-                        records.listAll(LESSON, mapOf(UNIT to unit.id)).sortedBy { int(it, ORDER) }.map { lesson ->
+                        lessonRecords[unit.id].orEmpty().sortedBy { int(it, ORDER) }.map { lesson ->
                             StudioLesson(
                                 id = lesson.id,
                                 order = int(lesson, ORDER),
                                 title = lesson.attributes[TITLE].toString(),
                                 type = lesson.attributes["tipo"].toString(),
                                 sourceRef = lesson.attributes["referencia_fuente"]?.toString(),
-                                hasAssessment = records.listAll(EVALUATION, mapOf(LESSON to lesson.id)).isNotEmpty(),
-                                resources = records.listAll(LINK, mapOf(LESSON to lesson.id)).size,
+                                hasAssessment = lesson.id in assessed,
+                                resources = linked[lesson.id] ?: 0,
                             )
                         },
                 )
@@ -151,26 +159,47 @@ class StudioReader(
         version: RecordResponse,
         known: List<ReviewComment>? = null,
     ): StudioVersion {
-        val open = (known ?: comments(version.id)).count { !it.resolved }
         val course = records.get(COURSE, UUID.fromString(version.attributes.ref(COURSE)!!))
-        return StudioVersion(
-            id = version.id,
-            number = int(version, "numero"),
-            status = version.attributes[STATE].toString(),
-            course = StudioCourse(course.id, course.attributes["codigo"].toString(), course.attributes[TITLE].toString()),
-            authorId = version.attributes[AUTHOR]?.toString(),
-            reviewerId = version.attributes["revisor_id"]?.toString(),
-            updatedAt = version.updatedAt,
-            openComments = open,
-        )
+        return summaryOf(version, course, known ?: comments(version.id))
     }
 
+    // el resumen de varias versiones con sus cursos y sus comentarios leídos de una vez, no por versión (L4 de #216)
+    suspend fun summaries(versions: List<RecordResponse>): List<StudioVersion> {
+        if (versions.isEmpty()) return emptyList()
+        val courses = records.listByIds(COURSE, versions.mapNotNull { it.attributes.ref(COURSE) }).associateBy { it.id }
+        val notes = comments(versions.map { it.id })
+        return versions.map { version ->
+            val course = courses[version.attributes.ref(COURSE)] ?: records.get(COURSE, UUID.fromString(version.attributes.ref(COURSE)!!))
+            summaryOf(version, course, notes[version.id].orEmpty())
+        }
+    }
+
+    private fun summaryOf(
+        version: RecordResponse,
+        course: RecordResponse,
+        notes: List<ReviewComment>,
+    ) = StudioVersion(
+        id = version.id,
+        number = int(version, "numero"),
+        status = version.attributes[STATE].toString(),
+        course = StudioCourse(course.id, course.attributes["codigo"].toString(), course.attributes[TITLE].toString()),
+        authorId = version.attributes[AUTHOR]?.toString(),
+        reviewerId = version.attributes["revisor_id"]?.toString(),
+        updatedAt = version.updatedAt,
+        openComments = notes.count { !it.resolved },
+    )
+
     // los comentarios de una versión, en el orden en que se hicieron. quien no los puede leer no ve ninguno
-    suspend fun comments(version: String): List<ReviewComment> =
+    suspend fun comments(version: String): List<ReviewComment> = comments(listOf(version))[version].orEmpty()
+
+    private suspend fun comments(versions: List<String>): Map<String, List<ReviewComment>> =
         try {
-            records.listAll(COMMENT, mapOf(VERSION to version)).map { comment(it) }.sortedBy { it.createdAt }
+            records
+                .listAllIn(COMMENT, VERSION, versions)
+                .groupBy { it.attributes.ref(VERSION).orEmpty() }
+                .mapValues { (_, notes) -> notes.map { comment(it) }.sortedBy { it.createdAt } }
         } catch (_: ForbiddenException) {
-            emptyList()
+            emptyMap()
         }
 
     fun comment(record: RecordResponse) =

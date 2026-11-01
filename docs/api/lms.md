@@ -527,6 +527,8 @@ en borrador.
 - **A mi cargo**: tengo `APROBAR` sobre `version_curso` (si no, `403` en toda la bandeja), no soy el autor (`403`) y la versión
   no tiene revisor asignado o lo soy yo; una asignada a otra persona no existe para mí (`404`). La bandeja lista las que están
   `EN_REVISION`, la que más espera primero; el detalle, los comentarios y su resolución valen en cualquier estado.
+- **Quien publica** (`PUBLICAR`) lee el detalle y las diferencias de cualquier versión que no sea suya, también con revisor
+  asignado, para publicar lo aprobado (#223); decidir y comentar siguen siendo de quien la revisa.
 - **Revisor asignado**: `revisor_id` de `version_curso`, por la API de registros. Lo pone o lo quita quien tiene `PUBLICAR`
   (`403` si no), en `BORRADOR` o `EN_REVISION` (`409` después), nunca al autor (`400`) ni a sí mismo (`403`). La guarda
   exige lo mismo a la API de registros: con revisor asignado, nadie más aprueba, pide cambios ni rechaza (`403`).
@@ -583,8 +585,9 @@ en borrador.
   duración y la modalidad de la última versión: una unidad por capítulo (sección de nivel 1, tras `leveloffset`) y una lección
   `LECTURA` por sección de nivel 2, con su título y `sourceRef` (`owner/repo@sha:ruta#ancla`); un capítulo sin secciones lleva
   una lección con su propio título. **Sin el texto del manual** (ADR-0018 §6) y **nunca publica**. Falla (`FALLIDO`, sin
-  borrador) si el maestro no existe, el origen dejó de estar permitido, el curso desapareció o la fuente pasa de
-  `lms.importer.max-files` archivos.
+  borrador) si el maestro no existe, el origen dejó de estar permitido, el curso desapareció, la fuente pasa de
+  `lms.importer.max-files` archivos o quien la pidió ya no está habilitado o perdió alguno de los permisos de arriba antes de
+  que el trabajo corriera.
 
 ### Generación de artefactos
 
@@ -609,7 +612,8 @@ sobrescribe.
 - **Permisos**: ambas rutas exigen `CREATE` sobre `version_recurso` (`403`; REVISOR y ESTUDIANTE no lo tienen) y la fuente
   se lee como quien pide (`404` si no existe o no la ve). Solo se generan recursos `HTML` o `PDF` (`409` para otro tipo).
   Un trabajo que no es de generación, de otra organización o **de otra persona** es `404`: solo lo lee quien lo pidió, también
-  frente al administrador, como el de la importación.
+  frente al administrador, como el de la importación. Si antes de ejecutarse quien la pidió deja de estar habilitado o
+  pierde esos permisos, el trabajo es `FALLIDO` sin versión.
 - **La fuente** se crea con la API de registros: se sube el archivo con `POST /api/objects/fuente_recurso/files/archivo`
   (parte `file`, **tipo declarado `text/plain`**, UTF-8, hasta 1 MB) y su `id` va en el alta
   `POST /api/objects/fuente_recurso/records` `{ "attributes": { "recurso", "numero", "archivo" } }`. Es de solo inserción

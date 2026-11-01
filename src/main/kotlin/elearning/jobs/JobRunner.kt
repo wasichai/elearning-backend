@@ -63,6 +63,7 @@ class JobRunner(
     }
 
     private suspend fun run(job: Job) {
+        var permanent = false
         val error =
             if (job.attempt > job.maxAttempts) {
                 // retomado tras perder su réplica en el último intento: no se ejecuta otra vez
@@ -78,11 +79,16 @@ class JobRunner(
                 } catch (e: CancellationException) {
                     // la réplica se apaga: el reclamo caduca y otra lo retoma
                     throw e
+                } catch (e: PermanentJobFailure) {
+                    // reintentar no lo arregla (ADR-0022): termina en este intento
+                    log.info("job {} ({}) failed for good: {}", job.id, job.type, e.message)
+                    permanent = true
+                    e.message ?: e.javaClass.simpleName
                 } catch (e: Exception) {
                     log.warn("job {} ({}) attempt {}/{} failed", job.id, job.type, job.attempt, job.maxAttempts, e)
                     e.message ?: e.javaClass.simpleName
                 }
             }
-        if (!queue.fail(job, error)) log.warn("job {} ({}) failed after losing its claim: {}", job.id, job.type, error)
+        if (!queue.fail(job, error, permanent)) log.warn("job {} ({}) failed after losing its claim: {}", job.id, job.type, error)
     }
 }

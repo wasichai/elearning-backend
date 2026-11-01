@@ -1,7 +1,9 @@
 package elearning.importer
 
+import elearning.jobs.JobQueue
 import elearning.jobs.JobRunner
 import elearning.learning.ClassroomApiTestSupport
+import kotlinx.coroutines.reactor.awaitSingle
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
@@ -14,6 +16,7 @@ import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Import
 import org.springframework.context.annotation.Primary
 import org.springframework.http.HttpStatus
+import org.springframework.r2dbc.core.DatabaseClient
 import org.springframework.test.context.TestPropertySource
 import reactor.core.publisher.Mono
 import tools.jackson.databind.JsonNode
@@ -26,6 +29,15 @@ import java.util.UUID
 class ImportApiTest : ClassroomApiTestSupport() {
     @Autowired
     private lateinit var runner: JobRunner
+
+    @Autowired
+    private lateinit var queue: JobQueue
+
+    @Autowired
+    private lateinit var handler: ImportJobHandler
+
+    @Autowired
+    private lateinit var db: DatabaseClient
 
     private val creator by lazy { demoUser("creador") }
 
@@ -114,6 +126,86 @@ class ImportApiTest : ClassroomApiTestSupport() {
         assertTrue(later!!["id"].asString() != first["id"].asString(), "terminado, importar otra vez es otro trabajo")
         drain()
     }
+
+    // L1 de #216: el borrador y el cierre del trabajo van juntos. el manejador se llama a mano, como lo haría una réplica que
+    // muere justo después, sin que el runner cierre el trabajo
+    @Test
+    fun `a replica that dies after the draft leaves the job closed with it, and no retry makes another`() {
+        val course = courseId()
+        val before = records("version_curso", "curso", course).size
+        val (_, started) = start(creator, "acme/manuales@$SHA:manual.adoc", course)
+        val job = runBlocking { queue.claim(listOf(ImportService.JOB_TYPE), 1) }.single()
+        assertEquals(started!!["id"].asString(), job.id.toString())
+
+        runBlocking { handler.handle(job) }
+
+        val done = ok(call(creator, "/api/lms/studio/import/${job.id}"))
+        assertEquals("HECHO", done["status"].asString(), done.toString())
+        assertEquals(before + 1, records("version_curso", "curso", course).size)
+        drain()
+        assertEquals(before + 1, records("version_curso", "curso", course).size)
+    }
+
+    @Test
+    fun `a replica that lost its claim rolls its draft back`() {
+        val course = courseId()
+        val before = records("version_curso", "curso", course).size
+        start(creator, "acme/manuales@$SHA:manual.adoc", course)
+        val job = runBlocking { queue.claim(listOf(ImportService.JOB_TYPE), 1) }.single()
+
+        // otro intento: el reclamo es de otra réplica
+        val lost = runCatching { runBlocking { handler.handle(job.copy(attempt = job.attempt + 1)) } }
+        assertTrue(lost.isFailure, lost.toString())
+        assertEquals(before, records("version_curso", "curso", course).size)
+
+        runBlocking { handler.handle(job) }
+        assertEquals(before + 1, records("version_curso", "curso", course).size)
+    }
+
+    // L7 de #216: los permisos de quien la pidió se miran otra vez al ejecutar, con sus roles guardados
+    @Test
+    fun `an import whose requester lost the permission or the account before it ran fails without a draft`() {
+        val revocations =
+            listOf<(String) -> Pair<HttpStatus, JsonNode?>>(
+                { id -> put(admin, "/api/users/$id/roles", mapOf("roles" to listOf("ESTUDIANTE"))) },
+                { id -> put(admin, "/api/users/$id", mapOf("enabled" to false)) },
+            )
+        for (revoke in revocations) {
+            val course = courseId()
+            val before = records("version_curso", "curso", course).size
+            val person = newCreator()
+            val personId = userId(person)
+            val (status, started) = start(person, "acme/manuales@$SHA:manual.adoc", course)
+            assertEquals(HttpStatus.ACCEPTED, status, started.toString())
+            assertEquals(HttpStatus.OK, revoke(personId).first)
+
+            drain()
+
+            val (state, error) = stateOf(started!!["id"].asString())
+            assertEquals("FAILED", state, error)
+            assertTrue(error.contains("no longer"), error)
+            assertEquals(before, records("version_curso", "curso", course).size)
+        }
+    }
+
+    private fun newCreator(): String {
+        val email = "${uniqueName("imp")}@demo.wasichai-learning.test"
+        val roles = listOf("CREADOR")
+        val (status, body) = call(admin, "/api/users", mapOf("email" to email, "displayName" to "Persona", "password" to DEMO_PASSWORD, "roles" to roles))
+        assertEquals(HttpStatus.CREATED, status, body.toString())
+        return bearer(email, DEMO_PASSWORD)
+    }
+
+    // el estado y el error del trabajo, leídos de la cola: quien lo pidió puede no tener ya sesión
+    private fun stateOf(id: String): Pair<String, String> =
+        runBlocking {
+            db
+                .sql("SELECT estado, error FROM lms.trabajo WHERE id = :id")
+                .bind("id", UUID.fromString(id))
+                .map { row, _ -> row.get("estado", String::class.java)!! to (row.get("error", String::class.java) ?: "") }
+                .one()
+                .awaitSingle()
+        }
 
     @Test
     fun `a cycle is reported and the import still ends with its draft`() {
