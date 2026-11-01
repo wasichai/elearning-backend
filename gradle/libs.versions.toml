@@ -1,14 +1,14 @@
 [versions]
-# alineadas con Wasichai 1.6.0 (su gradle/libs.versions.toml): no se adelantan por separado
+# alineadas con Wasichai 1.8.0 (su gradle/libs.versions.toml): no se adelantan por separado
 kotlin = "2.4.21"
-springBoot = "4.1.1"
-wasichai = "1.6.0"
+springBoot = "4.1.2"
+wasichai = "1.8.0"
 ktlint = "14.2.0"
 ktlintTool = "1.7.1"
 # OpenAPI del LMS (ADR-0008): la línea 3.x es la de Spring Boot 4
 springdoc = "3.2.0"
-# almacén S3 compatible de wasichai-files (RF-CON-02): la misma versión con la que Wasichai 1.6.0 lo compila y prueba
-awsSdk = "2.57.1"
+# almacén S3 compatible de wasichai-files (RF-CON-02): la misma versión con la que Wasichai 1.8.0 lo compila y prueba
+awsSdk = "2.57.5"
 # saneado con lista blanca del HTML generado (docs/security/README.md §5.2, ADR-0022): ni Wasichai ni el JDK traen uno
 jsoup = "1.21.2"
 

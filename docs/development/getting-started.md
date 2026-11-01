@@ -18,7 +18,7 @@ No hace falta instalar Gradle: el repositorio trae el wrapper (`./gradlew`, Grad
 
 ## 2. Acceso a los paquetes de Wasichai
 
-Wasichai (`wasichai:*` 1.6.0 en Maven y `@wasichai/*` 1.3.0 en npm) **solo se publica en GitHub Packages**, que pide un
+Wasichai (`wasichai:*` 1.8.0 en Maven y `@wasichai/*` 1.3.0 en npm) **solo se publica en GitHub Packages**, que pide un
 token con el permiso `read:packages` incluso para leer paquetes públicos ([ADR-0002](../adr/0002-wasichai-desde-github-packages.md)).
 
 ```bash
@@ -39,7 +39,7 @@ El token **nunca va a un archivo del repositorio**:
   ```
 
 Comprobación: `npm view @wasichai/core@1.3.0 version --registry=https://npm.pkg.github.com` responde `1.3.0`, y
-`./gradlew build` descarga `wasichai-bom-1.6.0`. Un `401`/`403` significa que falta `read:packages`.
+`./gradlew build` descarga `wasichai-bom-1.8.0`. Un `401`/`403` significa que falta `read:packages`.
 
 ## 3. Backend
 

@@ -1,7 +1,7 @@
 # Seguridad
 
 Cómo se autentica, se autoriza, se audita y se protege wasichai-learning. Este proyecto **no** construye un sistema
-de identidad, permisos ni auditoría propio: usa los de Wasichai 1.6.0 y los extiende por sus SPI. Lo que Wasichai hace
+de identidad, permisos ni auditoría propio: usa los de Wasichai 1.8.0 y los extiende por sus SPI. Lo que Wasichai hace
 está verificado en [`docs/research/reference-repositories.md`](../research/reference-repositories.md) y en
 `wasichai/wasichai@a9ad74d56338:docs/security/authentication.md`; lo que este proyecto añade se marca como
 **implementado**, **planificado (Fx)** o **a verificar**. Hoy no hay código: todo lo propio está planificado.
@@ -170,6 +170,11 @@ zip y texto solo si coinciden con el tipo declarado), aplica una lista blanca po
 
 - **S** Descargar con el enlace de otro → descarga por la API con permiso y alcance del registro, nunca por URL pública
   del bucket.
+- **T** Objeto alterado en el almacén después de subirlo → **implementado** en `wasichai-files` 1.8.0 (ADR-074 de
+  Wasichai): cada descarga se comprueba contra el tamaño y el sha256 registrados al subir mientras se transmite y lleva
+  `Repr-Digest`; lo alterado nunca se sirve entero (`500`, o un cuerpo más corto que su `Content-Length`) y queda en el
+  registro, en `stored_files.damaged_at` y en el rastro `admin:stored-file`. `wasichai.files.verify-on-download` se
+  deja en `true`. Prueba: `S3ResourceFilesApiTest` (L6 de #216).
 - **T** Archivo con tipo falso o polimorfo → detección por bytes y lista blanca por tipo de recurso y para las
   entregas (RNF-SEG-07, ADR-0018 §8), comprobada en `FileTypeGuard` y `SubmissionGuard` sobre el tipo que
   `wasichai-files` detectó (nunca la extensión ni el tipo declarado); `400` en el campo. Cambiar el `tipo` de un recurso
@@ -177,7 +182,7 @@ zip y texto solo si coinciden con el tipo declarado), aplica una lista blanca po
 
   | Dónde                      | Tipos detectados admitidos                                                                |
   | -------------------------- | ----------------------------------------------------------------------------------------- |
-  | `HTML`, `VIDEO`            | `application/octet-stream` (Wasichai 1.6.0 no los reconoce: no hay otra forma)            |
+  | `HTML`, `VIDEO`            | `application/octet-stream` (Wasichai 1.8.0 no los reconoce: no hay otra forma)            |
   | `PDF`                      | `application/pdf`                                                                         |
   | `PRESENTACION`             | PDF, `.pptx`, `.odp`                                                                      |
   | `LABORATORIO`              | zip, PDF, `text/plain`, `text/csv`                                                        |
