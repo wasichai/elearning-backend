@@ -35,7 +35,12 @@ class PrerequisiteKnowledgeGuard(
         if (malformed.isNotEmpty()) throw ValidationException("Invalid prerequisite knowledge keys: ${malformed.joinToString()}", FIELD, MALFORMED)
         // la plataforma (importación, semilla) es código de confianza: el formato sí, el vocabulario lo comprueba la persona
         if (change.userId == null || keys.isEmpty()) return
-        val declared = records.getObject().listAll(VOCABULARY).mapNotNull { it.attributes[KEY]?.toString() }.toSet()
+        val declared =
+            records
+                .getObject()
+                .listAll(VOCABULARY)
+                .mapNotNull { it.attributes[KEY]?.toString() }
+                .toSet()
         val unknown = keys.filter { it !in declared }
         if (unknown.isNotEmpty()) {
             throw ValidationException("Unknown prerequisite knowledge keys: ${unknown.joinToString()}", FIELD, "must be keys of $VOCABULARY")
