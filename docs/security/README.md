@@ -227,7 +227,8 @@ Detalle en [`docs/ai/README.md`](../ai/README.md#6-protección-contra-prompt-inj
   profundidad; detección de ciclos. Importar en bucle (cada importación lee hasta 300 archivos con el token del servidor) → la
   misma petición mientras espera es el mismo trabajo y cada persona tiene un tope de trabajos activos (`429`, ADR-0022).
 - **E** Ejecución de código vía extensiones → Asciidoctor en contenedor aislado, sin extensiones arbitrarias, sin red y
-  sin privilegios; el importador nunca publica.
+  sin privilegios; el importador nunca publica. Quitar el rol o la cuenta a quien encoló una importación la detiene al ejecutarse: el trabajo
+  vuelve a comprobar sus permisos con sus roles guardados (ADR-0022).
 
 ### 4.7 Generación de artefactos HTML y PDF (F4)
 
@@ -237,7 +238,9 @@ el único sitio del código que lanza un proceso (`ArchitectureTest`, regla `EXT
 
 - **S** Generar en nombre de otro → `POST /api/lms/studio/sources/{id}/render` exige `CREATE` sobre `version_recurso`
   y leer la fuente como quien lo pide; la versión nueva lleva su `autor_id`, tomado del token, nunca de la petición. El
-  trabajo, su error y su resultado solo los lee quien lo pidió (`404` a cualquier otro, como en la importación).
+  trabajo, su error y su resultado solo los lee quien lo pidió (`404` a cualquier otro, como en la importación). Al
+  ejecutarse, el trabajo vuelve a comprobar que esa persona sigue habilitada y conserva esos permisos con sus roles
+  guardados (ADR-0022); si no, falla sin escribir.
 - **T** Cambiar la fuente o el artefacto después de generar → `fuente_recurso` es `appendOnly`; `artefacto_generado`,
   `appendOnly` y `apiOnly` (solo lo escribe el trabajo). El trabajo comprueba el hash de la fuente contra el que guardó
   `wasichai-files` y el de cada artefacto contra lo que se almacenó.

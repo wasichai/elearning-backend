@@ -23,6 +23,9 @@ Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este
   `429` con `Retry-After` ([ADR-0022](adr/0022-limites-y-ciclo-de-vida-de-los-trabajos.md)).
 - **L1**: el borrador importado y el cierre de su trabajo van en una transacción; si la réplica muere tras el commit, no hay
   reintento que haga otro borrador, y la que perdió el reclamo deshace el suyo.
+- **L7**: al ejecutarse, la importación y la generación vuelven a comprobar como plataforma que quien las pidió sigue
+  habilitado y que sus roles guardados le dan lo que se le exigió al encolar; si no, el trabajo termina `FALLIDO` sin
+  reintentos ni escritura (`PermanentJobFailure`).
 
 ## 2026-10-31 — Fase 4: estudio editorial, revisión e importador ([#179](https://github.com/wasichai/elearning-backend/issues/179))
 
