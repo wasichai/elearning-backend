@@ -329,7 +329,8 @@ Con sesión, siempre sobre una matrícula propia: lo ajeno o inexistente respond
 
 `PUT answers` recibe `{ "answers": [{ "questionId", "optionIds": [], "text": null, "submissionId": null }] }` con todas
 las respuestas: reemplaza a las guardadas. Un intento vencido se cierra con lo guardado: sus escrituras responden `409` y
-su lectura ya trae el resultado.
+su lectura ya trae el resultado. Su `submittedAt` es el plazo, no el momento en que se tocó; el que nadie toca lo cierra un
+barrido periódico en la cola de trabajos (`lms.assessment.sweep-every`, 1 min) y llega así a la cola del docente y al roster.
 
 `409` (`detail` legible): intentos agotados, plazo vencido (el servidor lo comprueba; el envío tardío se rechaza),
 intento ya enviado, lección sin evaluación o matrícula no activa. `400`: respuesta que no corresponde al tipo de pregunta.

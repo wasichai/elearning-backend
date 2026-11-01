@@ -17,7 +17,8 @@ import java.time.temporal.ChronoUnit
 import java.util.UUID
 
 // los intentos del estudiante (ADR-0016 §2). siempre los suyos: lo ajeno es 404, también para quien ve más. el servidor
-// impone los intentos y el plazo: un intento vencido se cierra con lo guardado y ya no admite nada
+// impone los intentos y el plazo: un intento vencido se cierra con lo guardado, enviado en su plazo, y ya no admite nada.
+// el abandonado lo cierra ExpiredAttemptSweep
 @Service
 class AttemptService(
     private val currentUser: CurrentUser,
@@ -97,6 +98,18 @@ class AttemptService(
 
     suspend fun submit(id: UUID): Attempt = whileOpen(id) { close(it, Instant.now(clock)) }
 
+    // el barrido (L4 de #183): como la plataforma, sin persona, cierra con lo guardado hasta limit intentos abiertos y
+    // vencidos de la organización. el mismo cerrojo de fila que guardar y enviar: lo que tiene bloqueado un estudiante se
+    // salta y lo cierra él al tocarlo. devuelve los intentos que cerró
+    suspend fun closeExpired(
+        organization: UUID,
+        limit: Int,
+    ): List<UUID> =
+        transactions.executeAndAwait {
+            val now = Instant.now(clock)
+            attempts.lockExpired(organization, now, limit).map { attempt -> close(attempt, now).id }
+        }
+
     // ejecuta sobre el intento abierto; si venció, lo cierra (eso se confirma) y después responde 409
     private suspend fun whileOpen(
         id: UUID,
@@ -134,9 +147,11 @@ class AttemptService(
         attempt: Attempt,
         now: Instant,
     ): Attempt {
+        // vencido, se envió al vencer y no cuando alguien lo tocó (L4 de #183): de aquí sale passedAt
+        val submittedAt = attempt.deadline?.takeIf { it.isBefore(now) } ?: now
         val result = AttemptGrader.grade(attempt.snapshot, attempt.answers)
-        attempts.saveResult(attempt.id, result, now)
-        return attempt.copy(status = if (result.pending) SUBMITTED else GRADED, result = result, submittedAt = now)
+        attempts.saveResult(attempt.id, result, submittedAt)
+        return attempt.copy(status = if (result.pending) SUBMITTED else GRADED, result = result, submittedAt = submittedAt)
     }
 
     private fun validate(

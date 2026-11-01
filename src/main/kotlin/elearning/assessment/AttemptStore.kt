@@ -104,6 +104,36 @@ class AttemptStore(
             .one()
             .awaitSingleOrNull()
 
+    // los intentos abiertos de la organización con el plazo vencido, bloqueados como en lock (L4 de #183). salta los que
+    // tiene bloqueados otra transacción: quien escribe en ellos los cierra al ver el plazo, o los toma la vuelta siguiente
+    suspend fun lockExpired(
+        organization: UUID,
+        now: Instant,
+        limit: Int,
+    ): List<Attempt> =
+        db
+            .sql(
+                "SELECT $COLUMNS FROM lms.intento " +
+                    "WHERE organizacion_id = :org AND estado = 'OPEN' AND vence_en < :now " +
+                    "ORDER BY vence_en, id LIMIT :limit FOR UPDATE SKIP LOCKED",
+            ).bind("org", organization)
+            .bind("now", now.atOffset(ZoneOffset.UTC))
+            .bind("limit", limit)
+            .map { row, _ -> attempt(row) }
+            .all()
+            .collectList()
+            .awaitSingle()
+
+    // las organizaciones con algún intento abierto y vencido, para encolar su barrido
+    suspend fun organizationsWithExpired(now: Instant): List<UUID> =
+        db
+            .sql("SELECT DISTINCT organizacion_id FROM lms.intento WHERE estado = 'OPEN' AND vence_en < :now")
+            .bind("now", now.atOffset(ZoneOffset.UTC))
+            .map { row, _ -> row.get("organizacion_id", UUID::class.java)!! }
+            .all()
+            .collectList()
+            .awaitSingle()
+
     suspend fun find(
         organization: UUID,
         id: UUID,

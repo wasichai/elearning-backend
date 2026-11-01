@@ -125,6 +125,7 @@ flowchart BT
     learning --> workload
     assessment --> learning
     assessment --> enrollment
+    assessment --> jobs
     authoring --> course
     importer
     ai --> authoring
