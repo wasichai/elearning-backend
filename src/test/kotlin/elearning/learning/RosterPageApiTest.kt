@@ -20,7 +20,10 @@ class RosterPageApiTest : ClassroomApiTestSupport() {
 
         fun students(count: Int) = repeat(count) { enroll(newStudent(), course) }
 
-        fun ids(query: String = ""): List<String> = ok(call(teacher, path + query)).map { it["enrollmentId"].asString() }
+        fun ids(query: String = ""): List<String> {
+            val rows = ok(call(teacher, path + query))
+            return (0 until rows.size()).map { rows[it]["enrollmentId"].asString() }
+        }
     }
 
     @Test
