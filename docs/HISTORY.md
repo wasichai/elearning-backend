@@ -129,6 +129,55 @@ New tests: backend 6 métodos `@Test` y 2 pruebas dinámicas de coste (`Statemen
 - **Decisiones** (ADR-0020): el certificado lleva el nombre tal como se escribe, asistir completa la lección y los eventos se
   guardan mientras el estudiante acepte los términos.
 
+## 2026-10-31 — Fase 3: evaluaciones y operación docente ([#130](https://github.com/wasichai/elearning-backend/issues/130))
+
+Criterio de la Fase 3 cumplido ([roadmap](product/roadmap.md)): el curso corto `CORTO-101` se completa de principio a
+fin con su certificado emitido y verificado, por la API y en el navegador contra el backend real, con los recorridos 5,
+6, 7 y 13, en local y en CI. Épicas E18–E23 ([#112](https://github.com/wasichai/elearning-backend/issues/112) …
+[#130](https://github.com/wasichai/elearning-backend/issues/130)); diseño en
+[ADR-0016](adr/0016-fase-3-evaluaciones-docente-sesiones-certificados.md) y
+[ADR-0017](adr/0017-copia-del-contenido-de-evaluaciones.md). Los requisitos F3 que aún no cumplen su aceptación se
+siguen en [#231](https://github.com/wasichai/elearning-backend/issues/231); lo corregido después de la revisión está en
+«Hallazgos de las revisiones de las Fases 2 y 3» y en «Rendimiento, filtros del catálogo y confirmaciones», más arriba.
+
+- **Docente por asignación**: `docente_edicion.usuario_id`; el docente lee las matrículas y el progreso solo de sus
+  ediciones (#137) y su espacio lista sus ediciones y sus matriculados (#142).
+- **Evaluaciones**: `evaluacion`, `pregunta` (seis tipos), `opcion` y `criterio_rubrica` se congelan con su versión y
+  el estudiante no los lee (#143). Cada intento vive en `lms.intento` sobre una instantánea inmutable; el servidor
+  impone intentos y plazo y corrige lo cerrado (#147). La corrección manual por pregunta deja `lms.calificacion`, de
+  solo inserción, con motivo al cambiar una nota (#151); las entregas de archivo se congelan al enviar (#152). Una
+  lección con evaluación se aprueba al aprobar un intento, calculado y no guardado (#153).
+- **Sesiones**: series con hora local en la zona de la edición, también al cruzar el horario de verano, y enlace por el
+  puerto `MeetingProvider` validado por `SafeLink` (#154); reprogramar y cancelar con motivo avisan a los matriculados
+  de esa edición por `wasichai-notifications` y correo, con Mailpit en Compose (#155). La asistencia la pasa el docente
+  asignado, no toca el progreso de materiales y completa la lección de su sesión (#158).
+- **Finalización y certificado**: reglas declaradas por versión que se citan una a una (#159); el certificado se emite
+  una vez al cumplirlas, con su instantánea en `lms.certificado`, y se verifica sin sesión (#160).
+- **Demo**: curso corto `CORTO-101` con lectura, evaluación con rúbrica, sesión enlazada y docente asignado; la sesión
+  se crea por el comando como ese docente (#161).
+- **Revisión de seguridad** del cierre (E23.3): se corrigieron que cualquier docente leyera las soluciones de todos los
+  cursos (M1), que un docente matriculado en su edición viera sus soluciones y se acreditara asistencia (M2), y que con
+  varios intentos se aprobara enviando el primero en blanco (M3), además de tres bajos (#184,
+  [ADR-0019](adr/0019-docente-sin-claves-y-soluciones-al-terminar.md)); y en el frontend, que una subida en curso pisara
+  las respuestas (M5, [front#63](https://github.com/wasichai/elearning-frontend/pull/63)). El resto quedó en
+  [#183](https://github.com/wasichai/elearning-backend/issues/183).
+- **Frontend**: evaluaciones en el aula con cada tipo de pregunta, plazo y resultado
+  ([front#42](https://github.com/wasichai/elearning-frontend/pull/42)); sesiones, finalización y certificado imprimible
+  con verificación pública ([front#45](https://github.com/wasichai/elearning-frontend/pull/45)); `teachingModule` con
+  sus ediciones y matriculados ([front#50](https://github.com/wasichai/elearning-frontend/pull/50)), corrección,
+  sesiones y asistencia ([front#52](https://github.com/wasichai/elearning-frontend/pull/52), que entró en `main` con
+  [front#61](https://github.com/wasichai/elearning-frontend/pull/61)); y el curso corto de punta a punta contra el
+  backend real, con el aviso de reprogramar comprobado en Mailpit en el trabajo `e2e-real`
+  ([front#61](https://github.com/wasichai/elearning-frontend/pull/61)).
+
+REST change: nuevo `/api/lms/classroom/enrollments/{id}/lessons/{lessonId}/attempts`, `/api/lms/classroom/attempts/{id}`
+(`answers`, `submit`, `questions/{questionId}/submission`), `GET /api/lms/classroom/enrollments/{id}/sessions` y
+`/completion`, `POST /api/lms/classroom/enrollments/{id}/certificate`, `GET /api/lms/public/certificates/{code}` (sin
+sesión) y `/api/lms/teaching` (`offerings`, `students`, `attempts`, `grades`, `sessions`, `reschedule`, `cancel`,
+`attendance`). Contrato en [docs/api/lms.md](api/lms.md).
+New tests: backend 216 al integrar la revisión (#184), `model/` 79 (antes 75); frontend 303 unitarias, 42 e2e con API
+simulada y 11 contra el backend real (front#61), también en CI.
+
 ## 2026-10-31 — Pendientes de la Fase 2 ([#103](https://github.com/wasichai/elearning-backend/issues/103))
 
 - **Roles**: una cuenta ESTUDIANTE + CREADOR tiene la unión exacta de permisos (RF-ROL-03, #111). Nadie se da privilegios

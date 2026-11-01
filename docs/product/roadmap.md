@@ -15,14 +15,14 @@ ejecutando las pruebas y los recorridos indicados, en local y en CI, y el result
 | F0   | Investigación y arquitectura                                                               | completada (épicas E0, E1)                                                   |
 | F1   | Esqueleto ejecutable y primer incremento: catálogo público con carga y créditos propuestos | completada (2026-10-28): épicas E2–E10, 42 requisitos implementados          |
 | F2   | LMS básico: aula, matrícula, unidades, lecciones, recursos y progreso                      | criterio cumplido (2026-10-28): épicas E12–E16; pendientes a F3/F4/F6 (#103) |
-| F3   | Evaluaciones y operación docente                                                           | planificada                                                                  |
+| F3   | Evaluaciones y operación docente                                                           | cumplida (2026-10-31): épicas E18–E23; pendientes en #183 y #231             |
 | F4   | Estudio editorial e importador AsciiDoc                                                    | integrada (2026-10-31): épicas E24–E28; criterio pendiente (#179)            |
 | F5   | IA y multimedia                                                                            | planificada                                                                  |
 | F6   | Calidad, reputación y despliegue                                                           | planificada                                                                  |
 
 Las épicas viven en [wasichai/elearning-backend](https://github.com/wasichai/elearning-backend/issues); los pasos de
 frontend, en [wasichai/elearning-frontend](https://github.com/wasichai/elearning-frontend/issues). Cada paso es un
-sub-issue que se cierra con su PR. Las fases F3–F6 aún no tienen issues: sus épicas se crean al planificar cada fase.
+sub-issue que se cierra con su PR. Las fases F5 y F6 aún no tienen issues: sus épicas se crean al planificar cada fase.
 
 ## F0 — Investigación y arquitectura
 
@@ -184,6 +184,16 @@ sesiones con zonas IANA, puerto de videoconferencia, `teachingModule`, buzón de
 
 **Criterio de aceptación.** Recorridos E2E 5–7 y 13 de §20 (evaluación, resultado, el docente ve solo lo permitido,
 sin permiso no se puede) y un curso de demostración corto completado de principio a fin con certificado emitido.
+
+**Estado (2026-10-31).** Criterio cumplido: el curso corto `CORTO-101` se completa de principio a fin con su certificado
+emitido y verificado, por la API ([#161](https://github.com/wasichai/elearning-backend/pull/161)) y en el navegador
+contra el backend real, con los recorridos 5, 6, 7 y 13 y el aviso por correo en Mailpit, en local y en CI (trabajo
+`e2e-real`, [front#61](https://github.com/wasichai/elearning-frontend/pull/61)). Épicas E18–E23
+([#112](https://github.com/wasichai/elearning-backend/issues/112) … [#130](https://github.com/wasichai/elearning-backend/issues/130));
+diseño en ADR-0016, ADR-0017, ADR-0019 y ADR-0020. El hallazgo de su revisión que queda (M4, en parte; L4 lo cerró #232) se
+sigue en [#183](https://github.com/wasichai/elearning-backend/issues/183); los requisitos F3 que aún no cumplen su
+aceptación (RF-CAT-09, RF-ACA-08, RF-AUL-08/09, RF-LAB-01/03, RF-ADM-03 y RNF-OSS-06) llevan un «Avance» en
+[requirements.md](requirements.md) y se siguen en [#231](https://github.com/wasichai/elearning-backend/issues/231).
 
 **Riesgos.** Consistencia entre registros de Wasichai y tablas fijas propias en una misma operación (frontera
 transaccional a verificar). Horario de verano en sesiones recurrentes. `wasichai-documents` no tiene motor PDF en el
