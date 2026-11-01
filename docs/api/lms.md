@@ -200,8 +200,13 @@ versión en la que no se está matriculado— responde `404`, igual que uno inex
 Cuerpo `{ "offering": "<código de la edición>" }`. Cabecera opcional `Idempotency-Key`.
 
 - `201` → `Enrollment` (nueva) · `200` → la misma `Enrollment` si ya existía.
-- `404` edición desconocida · `409` (`problem+json`, `detail` legible) inscripción cerrada, sin cupo o edición no
-  disponible · `401` sin sesión · `403` sin permiso de matricularse.
+- `404` edición desconocida · `409` (`problem+json`, `detail` legible) inscripción cerrada, sin cupo, edición no
+  disponible o prerrequisito sin cumplir · `401` sin sesión · `403` sin permiso de matricularse.
+- Prerrequisitos (RF-ACA-08): si la versión de la edición declara cursos previos (`cursos_previos`), cada uno exige una
+  matrícula propia `FINALIZADA` con resultado `APROBADO` en cualquier versión de ese curso. Si falta alguno, `409` con
+  `detail` «Para matricularte en esta edición antes debes aprobar: `<código> (<título>)`; …», que nombra todos los que
+  faltan; un código que no corresponde a ningún curso se nombra igual y nunca se cumple. Se comprueban después del
+  estado y la ventana y antes del cupo.
 
 `Enrollment`:
 
