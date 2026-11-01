@@ -462,7 +462,9 @@ Congelado al emitirse: no cambia aunque cambien después el curso o la matrícul
 ## Espacio docente (F3, ADR-0016)
 
 Con sesión, solo sobre las ediciones **asignadas** a la persona (`docente_edicion.usuario_id`); otra edición o un
-registro de otra edición → `404`. Nadie lo usa por su rol: lo decide la asignación.
+registro de otra edición → `404`. Nadie lo usa por su rol: lo decide la asignación. Para auditar las calificaciones
+(RF-ADM-03), quien tiene `MANAGE_ORGANIZATION` (ADMIN) **lee** la cola de corrección y el intento con su `history` de
+cualquier edición, sin asignación; calificar le sigue respondiendo `404`.
 
 | Método | Ruta                                            | Resultado                                                             |
 | ------ | ----------------------------------------------- | --------------------------------------------------------------------- |

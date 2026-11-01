@@ -13,6 +13,14 @@ Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este
 - `StatementCount` guarda el arreglo ligado más largo de una petición (`ScopeCostApiTest`): el del aula pasaba de 16 a 19
   con tres cursos publicados más y el del roster de 3 a 8 con seis estudiantes más; ya no crecen.
 
+## 2026-11-01 — Registro consultable de cada operación sensible ([#231](https://github.com/wasichai/elearning-backend/issues/231), RF-ADM-03)
+
+- `SensitiveOperationsAuditApiTest` prueba que contenidos (versión y lección), decisiones y publicaciones, y roles
+  quedan en el `audit_log` de Wasichai con su autor, y que ADMIN los consulta; quien no es ADMIN recibe `403` en
+  `/api/audit`, nada del rastro `admin:*` y `404` en el historial de lo ajeno.
+- Las calificaciones siguen en `lms.calificacion`: quien tiene `MANAGE_ORGANIZATION` lee la cola de corrección y el
+  intento con su `history` de cualquier edición, sin asignación y sin poder calificar.
+
 ## 2026-11-01 — Prerrequisitos al matricular ([#239](https://github.com/wasichai/elearning-backend/pull/239), RF-ACA-08)
 
 - `version_curso.cursos_previos` (`model/model.json`): los códigos de los cursos que la versión exige haber aprobado, uno

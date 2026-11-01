@@ -8,10 +8,12 @@ import elearning.learning.TeachingReader
 import org.springframework.stereotype.Service
 import org.springframework.transaction.reactive.TransactionalOperator
 import org.springframework.transaction.reactive.executeAndAwait
+import wasichai.core.common.Actions
 import wasichai.core.common.ConflictException
 import wasichai.core.common.NotFoundException
 import wasichai.core.common.ValidationException
 import wasichai.core.data.RecordService
+import wasichai.core.identity.AuthenticatedUser
 import wasichai.core.identity.CurrentUser
 import java.math.BigDecimal
 import java.time.Clock
@@ -19,7 +21,9 @@ import java.time.Instant
 import java.util.UUID
 
 // la corrección manual (ADR-0016 §2): solo el docente de la edición del intento, y nunca sobre su propio intento.
-// lo ajeno es 404. cada calificación queda en lms.calificacion; cambiar una nota ya puesta exige motivo
+// lo ajeno es 404. cada calificación queda en lms.calificacion; cambiar una nota ya puesta exige motivo.
+// la cola y el intento con su historial también los lee quien audita la organización (MANAGE_ORGANIZATION, el permiso
+// que lee el rastro admin:* de Wasichai; RF-ADM-03): solo leer, calificar sigue siendo de la asignación
 @Service
 class GradingService(
     private val currentUser: CurrentUser,
@@ -36,8 +40,13 @@ class GradingService(
     ): List<PendingAttempt> {
         val wanted = status ?: AttemptService.SUBMITTED
         if (wanted !in LISTABLE) throw ValidationException("Invalid status", "status", "must be one of $LISTABLE")
-        val offering = teaching.assignedOffering(code)
         val user = currentUser.require()
+        val offering =
+            if (audits(user)) {
+                records.listAll(OFFERING_OBJECT, mapOf(CODE to code)).singleOrNull() ?: throw NotFoundException(NOT_FOUND)
+            } else {
+                teaching.assignedOffering(code)
+            }
         val lines = attempts.linesOfOffering(user.organizationId, UUID.fromString(offering.id), wanted).filter { it.studentId != user.userId }
         // correos y títulos por lotes, no por intento (M4 de #183): las matrículas de la edición, también las retiradas, y cada
         // lección una vez
@@ -56,7 +65,10 @@ class GradingService(
         }
     }
 
-    suspend fun read(id: UUID): TeacherAttemptView = view(reachable(attempts.find(currentUser.require().organizationId, id)))
+    suspend fun read(id: UUID): TeacherAttemptView {
+        val user = currentUser.require()
+        return view(reachable(attempts.find(user.organizationId, id), audits(user)))
+    }
 
     suspend fun grade(
         id: UUID,
@@ -93,14 +105,20 @@ class GradingService(
     }
 
     // un intento solo existe para el docente de su edición, y nunca el suyo: lee sus soluciones por el aula, cuando toque
-    private suspend fun reachable(attempt: Attempt?): Attempt {
-        if (attempt == null || attempt.offeringId.toString() !in teaching.assigned() ||
+    // quien audita lo lee aunque no esté asignado, nunca el suyo
+    private suspend fun reachable(
+        attempt: Attempt?,
+        audit: Boolean = false,
+    ): Attempt {
+        if (attempt == null || (!audit && attempt.offeringId.toString() !in teaching.assigned()) ||
             attempt.studentId == currentUser.require().userId
         ) {
             throw NotFoundException(NOT_FOUND)
         }
         return attempt
     }
+
+    private suspend fun audits(user: AuthenticatedUser): Boolean = currentUser.hasPermission(user, Actions.MANAGE_ORGANIZATION)
 
     private suspend fun view(attempt: Attempt) =
         TeacherAttemptView(AttemptViews.teacher(attempt, submissions.of(attempt)), attempt.enrollmentId.toString(), email(attempt), attempts.grades(attempt.id))
@@ -114,6 +132,8 @@ class GradingService(
 
     companion object {
         const val ENROLLMENT = "matricula"
+        const val OFFERING_OBJECT = "edicion_curso"
+        const val CODE = "codigo"
         const val OFFERING = "edicion"
         const val LESSON = "leccion"
         const val TITLE = "titulo"
