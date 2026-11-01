@@ -46,7 +46,13 @@ class ClassroomReader(
                 .map { it.id }
                 .toSet()
         val resources = resources(lessonIds)
-        val environments = environments(content.units.flatMap { it.lessons }.filter { it.text(TYPE) == LAB }.map { it.id }.toSet())
+        val labs =
+            content.units
+                .flatMap { it.lessons }
+                .filter { it.text(TYPE) == LAB }
+                .map { it.id }
+                .toSet()
+        val environments = environments(labs)
         val units =
             content.units.map { unit ->
                 UnitView(
@@ -387,4 +393,9 @@ private fun RecordResponse.textOrNull(name: String): String? = attributes[name]?
 private fun RecordResponse.int(name: String): Int = (attributes[name] as? Number)?.toInt() ?: attributes[name]?.toString()?.toIntOrNull() ?: 0
 
 // un campo «uno por línea» como lista, sin las líneas vacías
-private fun RecordResponse.lines(name: String): List<String> = textOrNull(name)?.lines()?.map { it.trim() }?.filter { it.isNotEmpty() }.orEmpty()
+private fun RecordResponse.lines(name: String): List<String> =
+    textOrNull(name)
+        ?.lines()
+        ?.map { it.trim() }
+        ?.filter { it.isNotEmpty() }
+        .orEmpty()
