@@ -66,7 +66,7 @@ export WASICHAI_DEMO_PASSWORD='elige-una-contraseña-de-desarrollo'   # la de lo
 python3 model/apply.py --demo
 ```
 
-La primera ejecución crea el modelo (20 objetos, relaciones, acciones), los 4 roles, 5 usuarios y 111 registros; una
+La primera ejecución crea el modelo (20 objetos, relaciones, acciones), los 4 roles, 5 usuarios y 121 registros; una
 segunda responde «Sin cambios». Sin `--demo` aplica solo el modelo y los roles. `--validate-only` valida sin servidor.
 
 Lo que deja la demo para el aula (F2):
@@ -82,6 +82,10 @@ Lo que deja la demo para el aula (F2):
 - **Curso corto de punta a punta** (`CORTO-101`, F3): una unidad con una lectura, una evaluación con una pregunta abierta y una
   sesión, y `docente@…` asignado. Quien se matricule en `CORTO-101-A` puede llegar al certificado: completa la lectura, envía la
   evaluación, el docente la corrige y pasa asistencia.
+
+- **Curso del recorrido editorial** (`TRAMITE-101`, F4): v1 publicada de `creador@…` y la edición `TRAMITE-101-A` con la
+  inscripción abierta. Es solo del e2e editorial del frontend, que publica una versión nueva en cada ejecución: no lo uses
+  para otros recorridos.
 
 Si aplicaste una demo anterior a estos cambios, el temario de SRTM ya está publicado y no admite la lección ni los
 recursos nuevos: recrea la base (`docker compose down -v && docker compose up -d`) y vuelve a aplicar.

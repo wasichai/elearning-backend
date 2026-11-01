@@ -42,8 +42,10 @@ VERIFIED_ANCHORS = {
         "usr-compromisos", "consultar-compromisos", "registrar-un-compromiso", "la-ficha-del-compromiso", "aprobar",
         "registrar-una-entrega-y-el-cumplimiento", "reprogramar-bloquear-e-informar-retrasos", "candidatos-a-compromiso", "acuerdos-y-convenios"},
 }
-EXPECTED_COURSES = {"SRTM-ANU-101": "srtm", "SGSPE-101": "sgspe", "IA-AGT-201": None, "SRTM-ATC-001": None, "CORTO-101": None}
+EXPECTED_COURSES = {"SRTM-ANU-101": "srtm", "SGSPE-101": "sgspe", "IA-AGT-201": None, "SRTM-ATC-001": None, "CORTO-101": None, "TRAMITE-101": None}
 DRAFT_ONLY = "SRTM-ATC-001"
+# el del recorrido editorial (e2e real del frontend): cada ejecución lo copia, lo revisa y publica otra versión
+EDITORIAL = "TRAMITE-101"
 
 
 def records(obj):
@@ -154,9 +156,32 @@ class DemoDataTest(unittest.TestCase):
             self.assertTrue(children("docente_edicion", "edicion_curso", edition["ref"]), f"{edition['ref']} sin docente")
             course = version["refs"]["curso"]
             per_course[course] = per_course.get(course, 0) + 1
-        self.assertEqual(4, len(per_course))
+        self.assertEqual(5, len(per_course))
         self.assertTrue(all(1 <= n <= 2 for n in per_course.values()))
-        self.assertEqual(["edicion-srtm-a", "edicion-corto-a"], open_today)
+        self.assertEqual(["edicion-srtm-a", "edicion-corto-a", "edicion-tramite-a"], open_today)
+
+    def test_the_editorial_course_has_a_published_v1_and_an_open_offering_that_only_its_journey_uses(self):
+        # #224: el recorrido editorial publica una versión nueva en cada ejecución, y publicar saca del catálogo las
+        # ediciones de la anterior. con un curso propio no rompe los de otros recorridos ni crea su edición por la API
+        refs = by_ref()
+        (version,) = versions_of(EDITORIAL)
+        self.assertEqual((1, "PUBLICADA"), (version["attributes"]["numero"], version["attributes"]["estado"]))
+        self.assertEqual({"autor_id": "creador@demo.wasichai-learning.test"}, version["users"])
+        (edition,) = children("edicion_curso", "version_curso", version["ref"])
+        a = edition["attributes"]
+        self.assertEqual("INSCRIPCION_ABIERTA", a["estado"])
+        self.assertTrue(apply._days(a["inscripcion_desde"]) <= 0 <= apply._days(a["inscripcion_hasta"]), "se matricula hoy")
+        # cada ejecución matricula a un estudiante nuevo; y su edición empieza después de la de SRTM, la más próxima
+        self.assertGreaterEqual(a["capacidad"], 500)
+        self.assertGreater(apply._days(a["fecha_inicio"]), apply._days(refs["edicion-srtm-a"]["attributes"]["fecha_inicio"]))
+        # la primera lección de la primera unidad, la que se edita, es una lectura que se completa sin recursos
+        unit = next(u for u in children("unidad", "version_curso", version["ref"]) if u["attributes"]["orden"] == 1)
+        lesson = next(l for l in children("leccion", "unidad", unit["ref"]) if l["attributes"]["orden"] == 1)
+        self.assertEqual("LECTURA", lesson["attributes"]["tipo"])
+        lessons = {l["ref"] for u in children("unidad", "version_curso", version["ref"]) for l in children("leccion", "unidad", u["ref"])}
+        self.assertFalse([r["ref"] for r in records("recurso_leccion") + records("evaluacion") if r["refs"]["leccion"] in lessons])
+        # nadie más lo usa: ni la matrícula ni las sesiones de la demo
+        self.assertNotIn(edition["ref"], [e["offering"] for e in DATA["enrollments"]] + [s["offering"] for s in DATA["sessions"]])
 
     def test_the_classroom_has_a_reading_a_pdf_a_video_and_a_presentation_with_their_own_synthetic_files(self):
         refs = by_ref()

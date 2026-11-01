@@ -1810,6 +1810,172 @@
       "users": {
         "usuario_id": "docente@demo.wasichai-learning.test"
       }
+    },
+    {
+      "ref": "curso-tramite",
+      "object": "curso",
+      "key": ["codigo"],
+      "attributes": {
+        "codigo": "TRAMITE-101",
+        "slug": "instrucciones-claras-para-un-tramite",
+        "titulo": "Instrucciones claras para un trámite en línea",
+        "resumen": "Un curso breve para escribir las instrucciones de un trámite en línea: qué pedir, en qué orden y cómo avisar de un error. Contenido ilustrativo de demostración: no ha sido validado por un experto en la materia.",
+        "idioma": "es",
+        "nivel": "INICIAL"
+      },
+      "refs": {
+        "categoria": "cat-sistemas-municipales"
+      }
+    },
+    {
+      "ref": "version-tramite-1",
+      "object": "version_curso",
+      "key": ["curso", "numero"],
+      "attributes": {
+        "numero": 1,
+        "estado": "PUBLICADA",
+        "modalidad": "ASINCRONA",
+        "semanas": 1,
+        "horas_teoria_semana": 1,
+        "horas_practica_semana": 1,
+        "horas_supervisadas_semana": 0,
+        "horas_autonomas_semana": 1,
+        "sistema_credito": "NINGUNO",
+        "objetivos": "Ordenar los pasos de un trámite desde lo que la persona ya tiene a mano.\nAvisar de un error diciendo qué pasó y qué hacer.",
+        "resultados_aprendizaje": "Escribe la lista de requisitos de un trámite antes de sus pasos.\nReescribe un aviso de error con su causa y la siguiente acción.",
+        "requisitos": "Ninguno. Curso ilustrativo de la demostración.",
+        "sistema_evaluacion": "Práctica final: reescribir las instrucciones de un trámite de ejemplo. Nota mínima: 60 sobre 100.",
+        "certificacion": "Constancia de participación. No otorga créditos académicos.",
+        "fuentes": "Contenido propio de la demostración de wasichai-learning.",
+        "contenido_ilustrativo": true,
+        "publicada_en": "2026-10-30T14:00:00Z"
+      },
+      "refs": {
+        "curso": "curso-tramite"
+      },
+      "users": {
+        "autor_id": "creador@demo.wasichai-learning.test"
+      }
+    },
+    {
+      "ref": "tramite-v1-u1",
+      "object": "unidad",
+      "key": ["version_curso", "orden"],
+      "attributes": {
+        "orden": 1,
+        "titulo": "Antes de empezar el trámite",
+        "descripcion": "Lo que la persona necesita saber y tener antes del primer paso."
+      },
+      "refs": {
+        "version_curso": "version-tramite-1"
+      }
+    },
+    {
+      "ref": "tramite-v1-u1-l1",
+      "object": "leccion",
+      "key": ["unidad", "orden"],
+      "attributes": {
+        "orden": 1,
+        "titulo": "Qué pedir y en qué orden",
+        "tipo": "LECTURA",
+        "duracion_minutos": 15,
+        "resumen": "Los requisitos van antes que los pasos, y cada paso empieza por lo que la persona hace."
+      },
+      "refs": {
+        "unidad": "tramite-v1-u1"
+      }
+    },
+    {
+      "ref": "tramite-v1-u1-l2",
+      "object": "leccion",
+      "key": ["unidad", "orden"],
+      "attributes": {
+        "orden": 2,
+        "titulo": "Una lista de requisitos que se puede comprobar",
+        "tipo": "LECTURA",
+        "duracion_minutos": 15,
+        "resumen": "Cada requisito dice dónde se consigue y cómo saber si ya se tiene."
+      },
+      "refs": {
+        "unidad": "tramite-v1-u1"
+      }
+    },
+    {
+      "ref": "tramite-v1-u2",
+      "object": "unidad",
+      "key": ["version_curso", "orden"],
+      "attributes": {
+        "orden": 2,
+        "titulo": "Cuando algo falla",
+        "descripcion": "Avisos de error que ayudan a seguir."
+      },
+      "refs": {
+        "version_curso": "version-tramite-1"
+      }
+    },
+    {
+      "ref": "tramite-v1-u2-l1",
+      "object": "leccion",
+      "key": ["unidad", "orden"],
+      "attributes": {
+        "orden": 1,
+        "titulo": "Un aviso de error con causa y salida",
+        "tipo": "LECTURA",
+        "duracion_minutos": 15,
+        "resumen": "Qué pasó, por qué importa y qué puede hacer la persona ahora."
+      },
+      "refs": {
+        "unidad": "tramite-v1-u2"
+      }
+    },
+    {
+      "ref": "tramite-v1-u2-l2",
+      "object": "leccion",
+      "key": ["unidad", "orden"],
+      "attributes": {
+        "orden": 2,
+        "titulo": "Repaso: reescribir unas instrucciones",
+        "tipo": "LECTURA",
+        "duracion_minutos": 20,
+        "resumen": "Unas instrucciones de ejemplo, antes y después de aplicar lo visto en el curso."
+      },
+      "refs": {
+        "unidad": "tramite-v1-u2"
+      }
+    },
+    {
+      "ref": "edicion-tramite-a",
+      "object": "edicion_curso",
+      "key": ["codigo"],
+      "attributes": {
+        "codigo": "TRAMITE-101-A",
+        "estado": "INSCRIPCION_ABIERTA",
+        "fecha_inicio": "hoy+28",
+        "fecha_fin": "hoy+35",
+        "zona_horaria": "America/Lima",
+        "inscripcion_desde": "hoy-1",
+        "inscripcion_hasta": "hoy+27",
+        "capacidad": 500,
+        "calendario": "Asíncrona, una semana, a tu ritmo."
+      },
+      "refs": {
+        "version_curso": "version-tramite-1"
+      }
+    },
+    {
+      "ref": "edicion-tramite-a-diego",
+      "object": "docente_edicion",
+      "key": ["edicion_curso", "perfil_docente"],
+      "attributes": {
+        "rol_docente": "TITULAR"
+      },
+      "refs": {
+        "edicion_curso": "edicion-tramite-a",
+        "perfil_docente": "perfil-diego"
+      },
+      "users": {
+        "usuario_id": "docente@demo.wasichai-learning.test"
+      }
     }
   ],
   "enrollments": [
