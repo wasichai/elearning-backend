@@ -28,7 +28,12 @@ class LabApiTest : ClassroomApiTestSupport() {
                 "DELETE" -> client.delete().uri(path)
                 else -> client.post().uri(path).bodyValue(body!!)
             }
-        val r = spec.header("Authorization", token).exchange().expectBody(String::class.java).returnResult()
+        val r =
+            spec
+                .header("Authorization", token)
+                .exchange()
+                .expectBody(String::class.java)
+                .returnResult()
         return HttpStatus.valueOf(r.status.value()) to r.responseBody?.let { runCatching { json.readTree(it) }.getOrNull() }
     }
 
@@ -40,7 +45,8 @@ class LabApiTest : ClassroomApiTestSupport() {
     // un curso del creador con una versión en borrador y una lección LABORATORIO: devuelve curso, versión y lección
     private fun draftLab(): Triple<String, String, String> {
         val slug = uniqueName("lab-")
-        val course = created(write("POST", creator, "/api/objects/curso/records", mapOf("codigo" to slug.uppercase(), "slug" to slug, "titulo" to "Laboratorio")))
+        val attributes = mapOf("codigo" to slug.uppercase(), "slug" to slug, "titulo" to "Laboratorio")
+        val course = created(write("POST", creator, "/api/objects/curso/records", attributes))
         val version =
             created(
                 write(
@@ -130,8 +136,9 @@ class LabApiTest : ClassroomApiTestSupport() {
             val (status, body) = environment(creator, lesson, link, order = i + 2)
             assertEquals(HttpStatus.BAD_REQUEST, status, "$link → $body")
         }
-        assertEquals(HttpStatus.BAD_REQUEST, write("PATCH", creator, "/api/objects/entorno_laboratorio/records/$accepted", mapOf("enlace" to "http://x.org/")).first)
-        assertEquals(HttpStatus.OK, write("PATCH", creator, "/api/objects/entorno_laboratorio/records/$accepted", mapOf("titulo" to "Otro")).first)
+        val path = "/api/objects/entorno_laboratorio/records/$accepted"
+        assertEquals(HttpStatus.BAD_REQUEST, write("PATCH", creator, path, mapOf("enlace" to "http://x.org/")).first)
+        assertEquals(HttpStatus.OK, write("PATCH", creator, path, mapOf("titulo" to "Otro")).first)
         // es un dato inválido, no un permiso: tampoco la plataforma lo escribe
         assertThrows<ValidationException> {
             runBlocking {
