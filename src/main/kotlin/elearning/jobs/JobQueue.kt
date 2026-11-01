@@ -183,7 +183,8 @@ class JobQueue(
             .awaitSingle()
     }
 
-    // false: el reclamo ya no era de quien termina
+    // false: el reclamo ya no era de quien termina. cerrar otra vez el mismo intento es inocuo: un manejador puede cerrar su
+    // trabajo dentro de su propia transacción (ADR-0022) y el runner lo vuelve a cerrar con el mismo resultado
     suspend fun complete(
         job: Job,
         result: String?,
@@ -193,7 +194,7 @@ class JobQueue(
                 .sql(
                     """
                     UPDATE lms.trabajo SET estado = 'DONE', resultado = CAST(:result AS jsonb), error = NULL, reclamado_en = NULL, terminado_en = :now
-                    WHERE id = :id AND estado = 'RUNNING' AND intentos = :attempt
+                    WHERE id = :id AND estado IN ('RUNNING', 'DONE') AND intentos = :attempt
                     """.trimIndent(),
                 ).bind("now", now())
                 .bind("id", job.id)

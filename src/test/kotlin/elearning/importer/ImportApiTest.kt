@@ -1,5 +1,6 @@
 package elearning.importer
 
+import elearning.jobs.JobQueue
 import elearning.jobs.JobRunner
 import elearning.learning.ClassroomApiTestSupport
 import kotlinx.coroutines.runBlocking
@@ -26,6 +27,12 @@ import java.util.UUID
 class ImportApiTest : ClassroomApiTestSupport() {
     @Autowired
     private lateinit var runner: JobRunner
+
+    @Autowired
+    private lateinit var queue: JobQueue
+
+    @Autowired
+    private lateinit var handler: ImportJobHandler
 
     private val creator by lazy { demoUser("creador") }
 
@@ -113,6 +120,41 @@ class ImportApiTest : ClassroomApiTestSupport() {
         val (_, later) = start(creator, "acme/manuales@$SHA:manual.adoc", course)
         assertTrue(later!!["id"].asString() != first["id"].asString(), "terminado, importar otra vez es otro trabajo")
         drain()
+    }
+
+    // L1 de #216: el borrador y el cierre del trabajo van juntos. el manejador se llama a mano, como lo haría una réplica que
+    // muere justo después, sin que el runner cierre el trabajo
+    @Test
+    fun `a replica that dies after the draft leaves the job closed with it, and no retry makes another`() {
+        val course = courseId()
+        val before = records("version_curso", "curso", course).size
+        val (_, started) = start(creator, "acme/manuales@$SHA:manual.adoc", course)
+        val job = runBlocking { queue.claim(listOf(ImportService.JOB_TYPE), 1) }.single()
+        assertEquals(started!!["id"].asString(), job.id.toString())
+
+        runBlocking { handler.handle(job) }
+
+        val done = ok(call(creator, "/api/lms/studio/import/${job.id}"))
+        assertEquals("HECHO", done["status"].asString(), done.toString())
+        assertEquals(before + 1, records("version_curso", "curso", course).size)
+        drain()
+        assertEquals(before + 1, records("version_curso", "curso", course).size)
+    }
+
+    @Test
+    fun `a replica that lost its claim rolls its draft back`() {
+        val course = courseId()
+        val before = records("version_curso", "curso", course).size
+        start(creator, "acme/manuales@$SHA:manual.adoc", course)
+        val job = runBlocking { queue.claim(listOf(ImportService.JOB_TYPE), 1) }.single()
+
+        // otro intento: el reclamo es de otra réplica
+        val lost = runCatching { runBlocking { handler.handle(job.copy(attempt = job.attempt + 1)) } }
+        assertTrue(lost.isFailure, lost.toString())
+        assertEquals(before, records("version_curso", "curso", course).size)
+
+        runBlocking { handler.handle(job) }
+        assertEquals(before + 1, records("version_curso", "curso", course).size)
     }
 
     @Test
