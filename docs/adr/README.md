@@ -41,3 +41,4 @@ secciones Contexto, Decisión, Alternativas consideradas y Consecuencias. El for
 | [0023](0023-cupo-agotado-en-la-proyeccion-del-catalogo.md)                    | El cupo agotado llega al catálogo como un sí o un no, por la proyección                        | aceptada                     | 2026-11-01 |
 | [0024](0024-prerrequisitos-como-campo-de-la-version.md)                       | Los prerrequisitos son un campo de la versión y los comprueba el comando de matrícula          | aceptada                     | 2026-11-01 |
 | [0025](0025-alcances-de-lectura-con-subconsultas-sobre-tablas-de-wasichai.md) | Los alcances de lectura se resuelven con subconsultas sobre las tablas de Wasichai             | aceptada (provisional)       | 2026-11-01 |
+| [0027](0027-laboratorio-en-la-leccion-y-entornos-por-matricula.md)            | Laboratorio en campos de la lección; sus entornos, un objeto que solo leen los matriculados    | aceptada                     | 2026-11-01 |

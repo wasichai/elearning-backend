@@ -37,6 +37,7 @@ erDiagram
     version_curso ||--o{ unidad : contiene
     unidad ||--o{ leccion : contiene
     leccion }o--o{ version_recurso : "usa (recurso_leccion)"
+    leccion ||--o{ entorno_laboratorio : "enlaza"
     curso ||--o{ edicion_curso : "se programa en"
     version_curso ||--o{ edicion_curso : "se imparte en"
     edicion_curso ||--o{ docente_edicion : "asigna"
@@ -149,8 +150,16 @@ transacción; el comando de reordenar deja 1..n sin huecos [servicio].
 PRESENTACION, LABORATORIO, EVALUACION)` · `duracion_estimada_min · INTEGER` · `obligatoria · BOOLEAN` ·
 `criterio_finalizacion · ENUM(FINALIZACION_EXPLICITA, VIDEO_COMPLETO, EVALUACION_APROBADA, ENTREGA_CALIFICADA)` (F2) ·
 `evaluacion · RELATION → evaluacion` (F3, si `tipo = EVALUACION`).
+Laboratorio (F3, ADR-0027): `objetivo · LONG_TEXT` · `requisitos`, `hitos`, `criterios_aceptacion` y `entregables` ·
+`LONG_TEXT · uno por línea`; el aula los muestra solo en una lección `LABORATORIO`.
 Invariantes: editable solo en versión `BORRADOR` [guarda]; `criterio_finalizacion` coherente con `tipo` (una lectura no
 se completa por tiempo abierto) [guarda].
+
+**`entorno_laboratorio`** — enlace a un entorno externo de un laboratorio. F3 (ADR-0027).
+`leccion · RELATION → leccion · requerido` · `orden · INTEGER` · `titulo · TEXT` · `enlace · TEXT`;
+`uniqueConstraints: [[leccion, orden]]`. Invariantes: `enlace` es `https` hacia un host público (`SafeLink`,
+`LabEnvironmentGuard`, RF-LAB-03) [guarda]; se congela con la versión de su lección [guarda]; lo leen solo los
+matriculados en esa versión y el personal con `VER_TODAS` (`ContentReadScope`) [alcance].
 
 **`recurso`** y **`version_recurso`** (LearningResource) — material reutilizable y versionado, independiente del formato
 de salida. F2 (subida de archivos) · F4 (flujo editorial).

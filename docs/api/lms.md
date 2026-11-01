@@ -265,7 +265,23 @@ legible. Lo mismo vale para sus sesiones y su finalización.
               "version": 1,
               "file": { "name": "leccion.html", "contentType": "text/html", "size": 2048, "url": "/api/objects/version_recurso/records/<id>/files/archivo" }
             }
-          ]
+          ],
+          "assessment": null,
+          "lab": null
+        },
+        {
+          "id": "…",
+          "order": 2,
+          "title": "…",
+          "type": "LABORATORIO",
+          "lab": {
+            "objective": "…",
+            "requirements": ["…"],
+            "milestones": ["…", "…"],
+            "acceptanceCriteria": ["…"],
+            "deliverables": ["…"],
+            "environments": [{ "id": "…", "title": "Entorno de práctica", "url": "https://lab.example.org/…" }]
+          }
         }
       ]
     }
@@ -283,6 +299,13 @@ legible. Lo mismo vale para sus sesiones y su finalización.
   `/api/objects/version_recurso/records/<id>/files/archivo`: la descarga de `wasichai-files`, con la misma sesión y el
   mismo alcance que el registro. Un
   `HTML` se muestra en un `iframe` con `sandbox` sin `allow-scripts`; `PDF` se descarga; `VIDEO` se reproduce.
+- `lab` (RF-LAB-01, ADR-0027): solo en una lección `LABORATORIO`; `null` en las demás. `objective` puede ser `null`;
+  `requirements`, `milestones` (en orden), `acceptanceCriteria` y `deliverables` son los campos «uno por línea» de la
+  lección, sin las líneas vacías. La guía y los archivos son sus `resources`; la entrega y la rúbrica, su `assessment`.
+- `lab.environments`: los `entorno_laboratorio` de la lección en su `orden`, leídos como el estudiante (solo los de sus
+  matrículas, `ContentReadScope`). `url` es siempre `https` hacia un host público: escribir un `enlace` `http`, `file:`,
+  con credenciales o hacia una dirección interna es `400` en `enlace` (`SafeLink`, RF-LAB-03), también para la plataforma.
+  La interfaz lo abre en otra pestaña con `rel="noopener noreferrer"`; el servidor nunca lo visita.
 - Subir a una versión de recurso un archivo cuyo tipo detectado no admite el `tipo` del recurso es `400` en `archivo`
   (lista en [seguridad §4.4](../security/README.md#44-archivos-f2-en-adelante), RNF-SEG-07).
 

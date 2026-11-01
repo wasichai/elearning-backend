@@ -59,6 +59,8 @@ class EditorialWorkflowGuard(
             UNIT -> curriculum(change, listOfNotNull(change.before.ref(VERSION), change.attributes.ref(VERSION)))
             LESSON -> curriculum(change, listOfNotNull(change.before.ref(UNIT), change.attributes.ref(UNIT)).mapNotNull { unitVersion(it) })
             RESOURCE_LINK -> resourceLink(change)
+            // los entornos de un laboratorio son temario (ADR-0027): se congelan con la versión de su lección
+            LAB_ENVIRONMENT -> curriculum(change, refs(change, LESSON).mapNotNull { lessonVersion(it) })
             RESOURCE -> resource(change)
             // las evaluaciones son temario (ADR-0016): se congelan con la versión de su lección
             EVALUATION -> {
@@ -303,6 +305,7 @@ class EditorialWorkflowGuard(
         const val RUBRIC = "criterio_rubrica"
         const val RESOURCE_VERSION = "version_recurso"
         const val RESOURCE_LINK = "recurso_leccion"
+        const val LAB_ENVIRONMENT = "entorno_laboratorio"
         const val STATE = "estado"
         const val AUTHOR = "autor_id"
         const val REVIEWER = "revisor_id"

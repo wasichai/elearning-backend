@@ -31,6 +31,7 @@ class VersionDiffer(
         val units = records.listAll(UNIT, mapOf(VERSION to version))
         val lessons = records.listAllIn(LESSON, UNIT, units.map { it.id })
         val links = records.listAllIn(LINK, LESSON, lessons.map { it.id }).groupBy { it.attributes.ref(LESSON) }
+        val environments = records.listAllIn(LAB_ENVIRONMENT, LESSON, lessons.map { it.id }).groupBy { it.attributes.ref(LESSON) }
         val byUnit = lessons.groupBy { it.attributes.ref(UNIT) }
         return units.map { unit ->
             UnitSnapshot(
@@ -42,7 +43,9 @@ class VersionDiffer(
                         LessonSnapshot(
                             order = order(lesson),
                             title = lesson.attributes[TITLE]?.toString(),
-                            values = values(lesson, UNIT) + (RESOURCES to resources(links[lesson.id].orEmpty())),
+                            values =
+                                values(lesson, UNIT) +
+                                    mapOf(RESOURCES to resources(links[lesson.id].orEmpty()), ENVIRONMENTS to environments(environments[lesson.id].orEmpty())),
                         )
                     },
             )
@@ -55,6 +58,12 @@ class VersionDiffer(
             .sortedBy { order(it) }
             .mapNotNull { it.attributes.ref(RESOURCE_VERSION) }
             .joinToString(",")
+
+    // los entornos de un laboratorio, en su orden (ADR-0027): cambiar su título o su enlace cambia la lección
+    private fun environments(environments: List<RecordResponse>): String =
+        environments
+            .sortedBy { order(it) }
+            .joinToString(",") { "${it.attributes[TITLE]} <${it.attributes[LINK_FIELD]}>" }
 
     // los valores propios del registro: sin su orden (es la identidad), su padre ni otras relaciones
     private fun values(
@@ -73,11 +82,14 @@ class VersionDiffer(
         const val LESSON = "leccion"
         const val LINK = "recurso_leccion"
         const val RESOURCE_VERSION = "version_recurso"
+        const val LAB_ENVIRONMENT = "entorno_laboratorio"
+        const val LINK_FIELD = "enlace"
         const val NUMBER = "numero"
         const val ORDER = "orden"
         const val TITLE = "titulo"
 
         // el nombre con que los recursos enlazados aparecen en fields
         const val RESOURCES = "recursos"
+        const val ENVIRONMENTS = "entornos"
     }
 }
