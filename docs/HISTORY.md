@@ -2,7 +2,7 @@
 
 Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este archivo registra lo que se entregó.
 
-## 2026-11-01 — Prerrequisitos al matricular ([#231](https://github.com/wasichai/elearning-backend/issues/231), RF-ACA-08)
+## 2026-11-01 — Prerrequisitos al matricular ([#239](https://github.com/wasichai/elearning-backend/pull/239), RF-ACA-08)
 
 - `version_curso.cursos_previos` (`model/model.json`): los códigos de los cursos que la versión exige haber aprobado, uno
   por línea; se congela con la versión publicada ([ADR-0024](adr/0024-prerrequisitos-como-campo-de-la-version.md)).

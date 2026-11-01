@@ -82,7 +82,7 @@ el cuándo, en [`roadmap.md`](roadmap.md).
 - **RF-ACA-07** · F2 · implementado ([#97](https://github.com/wasichai/elearning-backend/pull/97)) — La matrícula respeta capacidad y ventana de inscripción.
   _Aceptación:_ pruebas fuera de ventana y con cupo agotado, incluida una prueba concurrente que no sobrepasa la
   capacidad.
-- **RF-ACA-08** · F3 · implementado ([#231](https://github.com/wasichai/elearning-backend/issues/231)) — Prerrequisitos declarados por versión, comprobados al matricular.
+- **RF-ACA-08** · F3 · implementado ([#239](https://github.com/wasichai/elearning-backend/pull/239)) — Prerrequisitos declarados por versión, comprobados al matricular.
   _Aceptación:_ prueba de rechazo con motivo explícito cuando falta un prerrequisito obligatorio.
   `version_curso.cursos_previos` lista los códigos de los cursos exigidos
   ([ADR-0024](../adr/0024-prerrequisitos-como-campo-de-la-version.md)); `EnrollmentService.enroll` responde `409` y nombra
