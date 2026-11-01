@@ -16,7 +16,8 @@ el cuándo, en [`roadmap.md`](roadmap.md).
 - «A verificar» marca un detalle de Wasichai o de terceros que se confirmará al implementar, leyendo su código.
 - A fecha de 2026-10-28, F1 y F2 están cumplidas. Los 16 requisitos F2 que no cumplían su aceptación se
   repartieron entre F3, F4 y F6 (decisión de la dirección, #103); cada uno conserva su «Pendiente de F2».
-- A fecha de 2026-10-31, la Fase 4 está integrada (#179); lo que aún no cumple su aceptación lleva un «Avance».
+- A fecha de 2026-10-31, la Fase 3 está cumplida (#130, pendientes en #231) y la Fase 4 integrada (#179); lo que aún no cumple su
+  aceptación lleva un «Avance».
 
 ## Requisitos funcionales
 
@@ -52,6 +53,8 @@ el cuándo, en [`roadmap.md`](roadmap.md).
 - **RF-CAT-09** · F3 · planificado — La ficha describe evaluación y requisitos de certificación, y el estado de
   matrícula de cada edición (abierta, cerrada, completa).
   _Aceptación:_ prueba de integración con ediciones en cada estado.
+  _Avance:_ la ficha publica `sistema_evaluacion`, `certificacion`, el estado de cada edición y si la inscripción está
+  abierta; falta el estado «completa» (cupo agotado) y la prueba de integración con ediciones en cada estado.
 
 ### RF-ACA — Gestión académica: cursos, versiones, ediciones y matrículas (§5, §6.2, §16)
 
@@ -81,7 +84,7 @@ el cuándo, en [`roadmap.md`](roadmap.md).
   capacidad.
 - **RF-ACA-08** · F3 · planificado — Prerrequisitos declarados por versión, comprobados al matricular.
   _Aceptación:_ prueba de rechazo con motivo explícito cuando falta un prerrequisito obligatorio.
-- **RF-ACA-09** · F3 · planificado — Reglas de finalización explícitas por versión (lecciones requeridas,
+- **RF-ACA-09** · F3 · implementado ([#159](https://github.com/wasichai/elearning-backend/pull/159)) — Reglas de finalización explícitas por versión (lecciones requeridas,
   evaluaciones aprobadas, asistencia mínima).
   _Aceptación:_ pruebas unitarias del cálculo con cada regla y su combinación; el resultado cita la regla aplicada.
 - **RF-ACA-10** · F6 · planificado — Lista de espera como extensión de la matrícula.
@@ -135,50 +138,58 @@ el cuándo, en [`roadmap.md`](roadmap.md).
 - **RF-AUL-08** · F3 · planificado — El aula muestra próximas sesiones, plazos, evaluaciones, calificaciones,
   intentos, retroalimentación, logros y certificados.
   _Aceptación:_ prueba E2E con los datos de demostración.
+  _Avance:_ el aula muestra sesiones, plazos, evaluaciones, intentos, calificaciones, retroalimentación y certificado
+  (#153, front#42, front#45, recorrido real de front#61); faltan los «logros», que aún no tienen definición.
 - **RF-AUL-09** · F3 · planificado — Notificaciones de publicación de contenido y de cambios de calendario.
   _Aceptación:_ reprogramar una sesión notifica a los matriculados de esa edición y a nadie más (prueba con el canal de
   correo local).
+  _Avance:_ reprogramar o cancelar una sesión avisa por correo solo a los matriculados de esa edición, comprobado en
+  Mailpit en el CI del frontend (#155, front#61); falta el aviso de publicación de contenido.
 
 ### RF-SES — Sesiones síncronas y asistencia (§6.5)
 
-- **RF-SES-01** · F3 · planificado — `TeachingSession` con fecha y hora en la zona de la edición, duración, docente,
+- **RF-SES-01** · F3 · implementado ([#154](https://github.com/wasichai/elearning-backend/pull/154)) — `TeachingSession` con fecha y hora en la zona de la edición, duración, docente,
   tipo, modalidad y enlace o ubicación.
   _Aceptación:_ prueba de integración de creación y lectura por el estudiante matriculado.
-- **RF-SES-02** · F3 · planificado — Sesiones recurrentes por patrón (diario, interdiario, días configurables),
+- **RF-SES-02** · F3 · implementado ([#154](https://github.com/wasichai/elearning-backend/pull/154)) — Sesiones recurrentes por patrón (diario, interdiario, días configurables),
   correctas ante cambios de horario de verano.
   _Aceptación:_ prueba unitaria con una zona con horario de verano que cruza la transición: la hora local se mantiene.
-- **RF-SES-03** · F3 · planificado — Reprogramación, cancelación y sesión de recuperación con historial.
+- **RF-SES-03** · F3 · implementado ([#154](https://github.com/wasichai/elearning-backend/pull/154), [#155](https://github.com/wasichai/elearning-backend/pull/155), [#192](https://github.com/wasichai/elearning-backend/pull/192)) — Reprogramación, cancelación y sesión de recuperación con historial.
   _Aceptación:_ la sesión original conserva su historial y los matriculados reciben aviso (RF-AUL-09).
-- **RF-SES-04** · F3 · planificado — Acceso a la reunión mediante un adaptador de proveedor de videoconferencia; el
+- **RF-SES-04** · F3 · implementado ([#138](https://github.com/wasichai/elearning-backend/pull/138), [#154](https://github.com/wasichai/elearning-backend/pull/154)) — Acceso a la reunión mediante un adaptador de proveedor de videoconferencia; el
   adaptador por defecto es un enlace introducido por el docente.
   _Aceptación:_ prueba de arquitectura: el núcleo no depende de ningún proveedor concreto.
-- **RF-SES-05** · F3 · planificado — Asistencia (`AttendanceRecord`) registrada por el docente, separada del progreso
+  _Nota:_ `MeetingProvider` tiene un único adaptador, el enlace del docente, validado por `SafeLink` (#193).
+- **RF-SES-05** · F3 · implementado ([#158](https://github.com/wasichai/elearning-backend/pull/158)) — Asistencia (`AttendanceRecord`) registrada por el docente, separada del progreso
   de materiales.
   _Aceptación:_ marcar asistencia no modifica el progreso de lecciones, y viceversa.
 
 ### RF-EVA — Evaluaciones y certificados (§6.6, §16)
 
-- **RF-EVA-01** · F3 · planificado — Tipos de pregunta: opción única, opción múltiple, verdadero/falso, respuesta
+- **RF-EVA-01** · F3 · implementado ([#143](https://github.com/wasichai/elearning-backend/pull/143), [#147](https://github.com/wasichai/elearning-backend/pull/147), [#152](https://github.com/wasichai/elearning-backend/pull/152)) — Tipos de pregunta: opción única, opción múltiple, verdadero/falso, respuesta
   corta, abierta con rúbrica y entrega de archivo.
   _Aceptación:_ una prueba de creación, respuesta y calificación por tipo.
-- **RF-EVA-02** · F3 · planificado — Intentos máximos, tiempo límite, orden aleatorio, peso y nota mínima por
+- **RF-EVA-02** · F3 · implementado ([#143](https://github.com/wasichai/elearning-backend/pull/143), [#147](https://github.com/wasichai/elearning-backend/pull/147)) — Intentos máximos, tiempo límite, orden aleatorio, peso y nota mínima por
   evaluación.
   _Aceptación:_ pruebas de agotar intentos y de envío tras el tiempo límite (rechazado por el servidor).
-- **RF-EVA-03** · F3 · planificado — Cada intento opera sobre una instantánea inmutable de la versión de la
+- **RF-EVA-03** · F3 · implementado ([#147](https://github.com/wasichai/elearning-backend/pull/147)) — Cada intento opera sobre una instantánea inmutable de la versión de la
   evaluación.
   _Aceptación:_ editar la evaluación con un intento abierto no cambia las preguntas ni la calificación del intento.
-- **RF-EVA-04** · F3 · planificado — Las respuestas correctas no se exponen antes de lo que permita la política de la
+- **RF-EVA-04** · F3 · implementado ([#147](https://github.com/wasichai/elearning-backend/pull/147), [#184](https://github.com/wasichai/elearning-backend/pull/184)) — Las respuestas correctas no se exponen antes de lo que permita la política de la
   evaluación.
   _Aceptación:_ prueba de contrato de la API del intento abierto: no contiene soluciones.
-- **RF-EVA-05** · F3 · planificado — Corrección automática para tipos cerrados y manual con rúbrica y comentarios para
+  _Nota:_ con varios intentos, las soluciones llegan al aprobar o al agotarlos ([ADR-0019](../adr/0019-docente-sin-claves-y-soluciones-al-terminar.md)).
+- **RF-EVA-05** · F3 · implementado ([#147](https://github.com/wasichai/elearning-backend/pull/147), [#151](https://github.com/wasichai/elearning-backend/pull/151), [#152](https://github.com/wasichai/elearning-backend/pull/152)) — Corrección automática para tipos cerrados y manual con rúbrica y comentarios para
   abiertas y entregas.
   _Aceptación:_ pruebas de ambos caminos; una abierta queda pendiente hasta la corrección manual.
-- **RF-EVA-06** · F3 · planificado — Historial auditable de calificaciones; cambiar una nota exige permiso en el
+- **RF-EVA-06** · F3 · implementado ([#151](https://github.com/wasichai/elearning-backend/pull/151), [#191](https://github.com/wasichai/elearning-backend/pull/191)) — Historial auditable de calificaciones; cambiar una nota exige permiso en el
   ámbito y motivo.
   _Aceptación:_ un docente de otra edición recibe `403`; el cambio autorizado queda en la auditoría con el motivo.
-- **RF-EVA-07** · F3 · planificado — El resultado de una prueba es distinto de la aprobación del curso.
+  _Nota:_ el historial es `lms.calificacion`, de solo inserción, con autor, motivo y momento; un docente de otra edición
+  recibe `404`, no `403`, como el resto de lo ajeno (ADR-0016).
+- **RF-EVA-07** · F3 · implementado ([#153](https://github.com/wasichai/elearning-backend/pull/153), [#159](https://github.com/wasichai/elearning-backend/pull/159)) — El resultado de una prueba es distinto de la aprobación del curso.
   _Aceptación:_ aprobar una evaluación no aprueba el curso si quedan reglas de RF-ACA-09 sin cumplir.
-- **RF-EVA-08** · F3 · planificado — Certificado emitido solo al cumplir requisitos explícitos, congelado al emitirse
+- **RF-EVA-08** · F3 · implementado ([#160](https://github.com/wasichai/elearning-backend/pull/160), [front#45](https://github.com/wasichai/elearning-frontend/pull/45), [front#61](https://github.com/wasichai/elearning-frontend/pull/61)) — Certificado emitido solo al cumplir requisitos explícitos, congelado al emitirse
   y verificable.
   _Aceptación:_ sin requisitos cumplidos → rechazo; el certificado emitido no cambia si después cambian los datos.
 
@@ -187,11 +198,17 @@ el cuándo, en [`roadmap.md`](roadmap.md).
 - **RF-LAB-01** · F3 · planificado — Laboratorio con objetivo, requisitos, guía, archivos, hitos, criterios de
   aceptación, entregables, rúbrica y enlaces a entornos externos.
   _Aceptación:_ el modelo lo admite y el aula lo muestra (prueba de UI).
-- **RF-LAB-02** · F3 · planificado — Entrega, calificación con rúbrica, resultado y retroalimentación.
+  _Avance:_ hoy un laboratorio es una lección `LABORATORIO` con evaluación de archivo y rúbrica (ADR-0016 §3); el modelo
+  no tiene aún objetivo, requisitos, hitos, criterios de aceptación, entregables ni enlaces a entornos.
+- **RF-LAB-02** · F3 · implementado ([#151](https://github.com/wasichai/elearning-backend/pull/151), [#152](https://github.com/wasichai/elearning-backend/pull/152), [front#42](https://github.com/wasichai/elearning-frontend/pull/42), [front#61](https://github.com/wasichai/elearning-frontend/pull/61)) — Entrega, calificación con rúbrica, resultado y retroalimentación.
   _Aceptación:_ prueba E2E de entrega por el estudiante y corrección por el docente asignado.
+  _Nota:_ un laboratorio con entrega es una lección con su evaluación de una pregunta de archivo y rúbrica (ADR-0016 §3).
+  Entrega y corrección se prueban en el backend y en e2e con la API simulada; la corrección de front#52 entró en `main`
+  con front#61.
 - **RF-LAB-03** · F3 · planificado — Los enlaces a entornos se validan (esquema `https`, sin ejecución en el
   servidor).
   _Aceptación:_ un enlace `http`, `file:` o a una dirección interna se rechaza (ver RNF-SEG-08).
+  _Avance:_ `SafeLink` valida los enlaces de las sesiones (#154, #193); los laboratorios aún no tienen enlaces a entornos.
 
 ### RF-ROL — Roles, permisos y alcance (§7)
 
@@ -344,6 +361,9 @@ el cuándo, en [`roadmap.md`](roadmap.md).
 - **RF-ADM-03** · F3 · planificado — Auditoría de contenidos, calificaciones, roles y publicaciones con la auditoría
   de Wasichai.
   _Aceptación:_ cada operación sensible deja un registro consultable por ADMIN.
+  _Avance:_ los contenidos y los roles pasan por la auditoría de Wasichai, y las calificaciones y los motivos de sesiones
+  y asistencia quedan en `lms.calificacion` y en el historial de cada registro; falta una prueba de que cada operación
+  sensible deja un registro consultable por ADMIN.
 - **RF-ADM-04** · F6 · planificado — Informes de progreso, asistencia y resultados por edición, respetando el
   alcance de quien consulta.
   _Aceptación:_ un docente solo obtiene datos de sus ediciones.
@@ -461,6 +481,8 @@ el cuándo, en [`roadmap.md`](roadmap.md).
 - **RNF-OSS-06** · F3 · planificado — La semilla de demostración incluye perfiles de todos los roles, matrículas,
   intentos y calificaciones; valoraciones en F6.
   _Aceptación:_ los recorridos E2E de §20 corren sobre esa semilla.
+  _Avance:_ la semilla tiene perfiles de todos los roles, matrículas y el curso corto `CORTO-101` (#161), y los recorridos
+  de §20 corren sobre ella; faltan intentos y calificaciones en la semilla, que hoy crean los propios recorridos.
 - **RNF-OSS-07** · F6 · planificado — Licencia del proyecto elegida y publicada solo con autorización expresa
   (ADR-0009).
   _Aceptación:_ archivo `LICENSE` fusionado por decisión registrada del titular.
@@ -473,7 +495,7 @@ el cuándo, en [`roadmap.md`](roadmap.md).
 - **RNF-OPS-02** · F1 · implementado ([#59](https://github.com/wasichai/elearning-backend/pull/59), [#20 web](https://github.com/wasichai/elearning-frontend/pull/20)) — CI con build, formato, pruebas unitarias, de integración y de arquitectura en
   backend, y lint, tipos, pruebas, build y E2E en frontend.
   _Aceptación:_ un PR con una prueba rota queda en rojo.
-- **RNF-OPS-03** · F3 · planificado — Correo configurable, con un buzón local de pruebas en desarrollo.
+- **RNF-OPS-03** · F3 · implementado ([#155](https://github.com/wasichai/elearning-backend/pull/155), [front#61](https://github.com/wasichai/elearning-frontend/pull/61)) — Correo configurable, con un buzón local de pruebas en desarrollo.
   _Aceptación:_ las notificaciones de RF-AUL-09 se observan en el buzón local.
 - **RNF-OPS-04** · F6 · planificado — Despliegue en Kubernetes/k3s con manifiestos versionados.
   _Aceptación:_ despliegue real en un clúster de prueba con los recorridos E2E pasando contra él.
