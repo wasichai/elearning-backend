@@ -60,8 +60,8 @@ class CatalogListApiTest : LmsApiTest() {
     fun `anyone sees the published courses and nothing else`() {
         val page = list()
 
-        assertEquals(setOf("SRTM-ANU-101", "SGSPE-101", "IA-AGT-201", "CORTO-101"), page.codes().toSet())
-        assertEquals(4, page["totalElements"].asInt())
+        assertEquals(setOf("SRTM-ANU-101", "SGSPE-101", "IA-AGT-201", "CORTO-101", "TRAMITE-101"), page.codes().toSet())
+        assertEquals(5, page["totalElements"].asInt())
         // SRTM-ATC-001 solo tiene borrador; la v2 en borrador de SRTM-ANU-101 no cambia lo publicado
         assertTrue("SRTM-ATC-001" !in page.codes())
     }
@@ -90,21 +90,21 @@ class CatalogListApiTest : LmsApiTest() {
     }
 
     // RF-CAT-08. la demo: SRTM 3 semanas (6 h de teoría, 6 de práctica, 6 autónomas), SGSPE 2 (6, 6, 4), IA 6 (72, 72, 72) y
-    // CORTO 1 (1, 1, 1). otras clases crean cursos de prueba en la misma base: se mira solo lo que es de la demo
+    // CORTO y TRAMITE 1 (1, 1, 1). otras clases crean cursos de prueba en la misma base: se mira solo lo que es de la demo
     private fun demo(query: String): Set<String> = list(query).codes().filter { it in DEMO }.toSet()
 
     @Test
     fun `duration filters by weeks, inclusive on both ends`() {
         assertEquals(setOf("SRTM-ANU-101", "IA-AGT-201"), demo("?minWeeks=3"))
-        assertEquals(setOf("CORTO-101", "SGSPE-101"), demo("?maxWeeks=2"))
+        assertEquals(setOf("CORTO-101", "SGSPE-101", "TRAMITE-101"), demo("?maxWeeks=2"))
         assertEquals(setOf("SGSPE-101", "SRTM-ANU-101"), demo("?minWeeks=2&maxWeeks=3"))
         assertEquals(emptySet<String>(), demo("?minWeeks=12"), "ningún curso de la demo es semestral")
     }
 
     @Test
     fun `enrollment open keeps the courses with an offering open today, and false the rest`() {
-        // SRTM y CORTO tienen una edición INSCRIPCION_ABIERTA cuya ventana incluye hoy; SGSPE e IA solo programadas
-        assertEquals(setOf("SRTM-ANU-101", "CORTO-101"), demo("?enrollmentOpen=true"))
+        // SRTM, CORTO y TRAMITE tienen una edición INSCRIPCION_ABIERTA cuya ventana incluye hoy; SGSPE e IA solo programadas
+        assertEquals(setOf("SRTM-ANU-101", "CORTO-101", "TRAMITE-101"), demo("?enrollmentOpen=true"))
         assertEquals(setOf("SGSPE-101", "IA-AGT-201"), demo("?enrollmentOpen=false"))
     }
 
@@ -126,7 +126,7 @@ class CatalogListApiTest : LmsApiTest() {
                 .awaitSingle()
         }
         try {
-            assertEquals(setOf("CORTO-101"), demo("?enrollmentOpen=true"))
+            assertEquals(setOf("CORTO-101", "TRAMITE-101"), demo("?enrollmentOpen=true"))
         } finally {
             runBlocking { projection.refreshNow() }
         }
@@ -171,7 +171,7 @@ class CatalogListApiTest : LmsApiTest() {
 
         val second = list("?sort=title&size=2&page=1")
         assertEquals(2, second["content"].size())
-        assertEquals(2, second["totalPages"].asInt())
+        assertEquals(3, second["totalPages"].asInt())
     }
 
     @Test
@@ -232,7 +232,7 @@ class CatalogListApiTest : LmsApiTest() {
         } finally {
             runBlocking { projection.refreshNow() }
         }
-        assertEquals(4, list()["totalElements"].asInt())
+        assertEquals(5, list()["totalElements"].asInt())
     }
 
     // un NUL llegaba a PostgreSQL y salía como 500 anónimo (revisión de seguridad). uri(String) volvería a codificar
@@ -285,10 +285,10 @@ class CatalogListApiTest : LmsApiTest() {
 
         assertEquals(0, again.written)
         assertEquals(0, again.deleted)
-        assertEquals(4, again.published)
+        assertEquals(5, again.published)
     }
 
     companion object {
-        private val DEMO = setOf("SRTM-ANU-101", "SGSPE-101", "IA-AGT-201", "CORTO-101")
+        private val DEMO = setOf("SRTM-ANU-101", "SGSPE-101", "IA-AGT-201", "CORTO-101", "TRAMITE-101")
     }
 }

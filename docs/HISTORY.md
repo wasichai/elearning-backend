@@ -2,6 +2,13 @@
 
 Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este archivo registra lo que se entregó.
 
+## 2026-11-01 — Curso de demostración del recorrido editorial ([#224](https://github.com/wasichai/elearning-backend/issues/224))
+
+- `model/demo` incluye `TRAMITE-101`, con su v1 publicada y la edición `TRAMITE-101-A` con la inscripción abierta, solo
+  para el e2e editorial del frontend: publica una versión nueva en cada ejecución sin sacar del catálogo las ediciones de
+  los cursos que usan otros recorridos ni crear su edición por la API. `test_demo.py` lo comprueba; el catálogo de la
+  demo pasa a tener cinco cursos publicados.
+
 ## 2026-10-31 — Quien publica abre en la bandeja lo aprobado ([#223](https://github.com/wasichai/elearning-backend/issues/223))
 
 - Con revisor asignado, quien tiene `PUBLICAR` lee en la bandeja el detalle y las diferencias de una versión ajena para
