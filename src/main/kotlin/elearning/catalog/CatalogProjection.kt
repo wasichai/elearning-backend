@@ -18,7 +18,8 @@ data class RefreshResult(
 
 // mantiene lms.catalogo_publicado (ADR-0011). corre en segundo plano porque RecordService.asPlatform y TenantDirectory
 // lanzan dentro de una petición; con varias réplicas solo una refresca a la vez (ClusterLock). solo escribe lo que
-// cambió (hash) y borra los cursos que dejaron de estar publicados
+// cambió (hash) y borra los cursos que dejaron de estar publicados. una matrícula llega a la ficha en el refresco
+// siguiente, y solo cuando agota el cupo (full cambia una vez): el resto de altas no cambia el hash ni escribe
 @Component
 class CatalogProjection(
     private val properties: LmsProperties,
@@ -63,8 +64,9 @@ class CatalogProjection(
             // sin organización pública no hay catálogo: nada de seguir sirviendo lo que se proyectó antes
             return RefreshResult(0, 0, repository.deleteAll())
         }
+        val loaded = records.asPlatform(organization.id, SOURCE) { source.load() }
         val courses =
-            builder.build(records.asPlatform(organization.id, SOURCE) { source.load() }) { course, problem ->
+            builder.build(loaded.copy(occupancy = repository.occupancy(organization.id))) { course, problem ->
                 log.warn("course {} left out of the public catalog: {}", course, problem.message)
             }
         val stored = repository.stored(slug).associate { it.slug to it.hash }
