@@ -1,11 +1,14 @@
 package elearning.audit
 
 import elearning.learning.ClassroomApiTestSupport
+import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.springframework.http.HttpStatus
 import tools.jackson.databind.JsonNode
+import wasichai.core.data.RecordRequest
+import java.util.UUID
 
 // RF-ADM-03: cada operación sensible deja un registro que ADMIN consulta (docs/security/README.md §6). contenidos, roles y
 // publicaciones van al audit_log de Wasichai (/api/audit); las calificaciones, a lms.calificacion, de solo inserción, que
@@ -114,11 +117,20 @@ class SensitiveOperationsAuditApiTest : ClassroomApiTestSupport() {
         assertEquals("EN_REVISION", ok(call(author.token, "/api/lms/studio/versions/${draft.version}/submit", emptyMap()))["status"].asString())
         val decision = mapOf("decision" to "APROBAR", "reason" to null)
         assertEquals("APROBADA", ok(call(reviewer.token, "/api/lms/review/versions/${draft.version}/decision", decision))["status"].asString())
-        assertEquals("PUBLICADA", ok(call(admin, "/api/lms/review/versions/${draft.version}/publish", emptyMap()))["status"].asString())
+        try {
+            assertEquals("PUBLICADA", ok(call(admin, "/api/lms/review/versions/${draft.version}/publish", emptyMap()))["status"].asString())
 
-        val entries = audit("version_curso", draft.version)
-        assertTrue(entries.any { it["userEmail"].asString() == reviewer.email && it.changed("estado", "APROBADA") }, entries.toString())
-        assertTrue(entries.any { it["userEmail"].asString() == ADMIN_EMAIL && it.changed("estado", "PUBLICADA") }, entries.toString())
+            val entries = audit("version_curso", draft.version)
+            assertTrue(entries.any { it["userEmail"].asString() == reviewer.email && it.changed("estado", "APROBADA") }, entries.toString())
+            assertTrue(entries.any { it["userEmail"].asString() == ADMIN_EMAIL && it.changed("estado", "PUBLICADA") }, entries.toString())
+        } finally {
+            // fuera del catálogo de las demás pruebas
+            runBlocking {
+                records.asPlatform(ORG) {
+                    records.patch("version_curso", UUID.fromString(draft.version), RecordRequest(mapOf("estado" to "RETIRADA")), null, null)
+                }
+            }
+        }
     }
 
     @Test
