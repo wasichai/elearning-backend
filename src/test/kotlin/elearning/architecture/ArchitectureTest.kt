@@ -70,7 +70,8 @@ class ArchitectureTest {
                 "catalog" to setOf("common", "course", "workload"),
                 "enrollment" to setOf("common", "course"),
                 "learning" to setOf("common", "enrollment", "course", "workload"),
-                "assessment" to setOf("common", "learning", "enrollment"),
+                // el barrido de intentos vencidos corre en la cola persistente (L4 de #183)
+                "assessment" to setOf("common", "learning", "enrollment", "jobs"),
                 "authoring" to setOf("common", "course"),
                 "importer" to setOf("common", "jobs"),
                 "ai" to setOf("common", "authoring"),

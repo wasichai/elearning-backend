@@ -2,6 +2,16 @@
 
 Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este archivo registra lo que se entregó.
 
+## 2026-11-01 — Barrido de intentos vencidos ([#183](https://github.com/wasichai/elearning-backend/issues/183), L4)
+
+- Un intento vencido se cierra con `enviado_en` = su plazo (`min(ahora, plazo)`), no el momento en que alguien lo toca: el
+  aprobado de la lección (`passedAt`) ya no depende de cuándo se abrió el aula.
+- `ExpiredAttemptSweep` encola cada `lms.assessment.sweep-every` (1 min), en la cola persistente, un barrido por
+  organización con intentos abiertos y vencidos (clave fija: uno a la vez). El trabajo los cierra como la plataforma, con
+  lo guardado, en lotes de 100 con el mismo cerrojo de fila que guardar y enviar (`FOR UPDATE SKIP LOCKED`): el que tiene
+  bloqueado un estudiante lo cierra él. El abandonado llega así a la cola del docente y al roster. Índice parcial
+  `intento_abierto_vence` (V13). Cierra lo que ADR-0020 dejó pendiente de la cola.
+
 ## 2026-11-01 — Curso de demostración del recorrido editorial ([#224](https://github.com/wasichai/elearning-backend/issues/224))
 
 - `model/demo` incluye `TRAMITE-101`, con su v1 publicada y la edición `TRAMITE-101-A` con la inscripción abierta, solo

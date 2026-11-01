@@ -61,6 +61,9 @@ lms:
     # un trabajo terminado se borra pasado este plazo (ADR-0022); la pasada corre cada purge-every
     retention: ${LMS_JOBS_RETENTION:30d}
     purge-every: ${LMS_JOBS_PURGE_EVERY:1h}
+  assessment:
+    # cada cuánto se encola el barrido que cierra los intentos abandonados con el plazo vencido (L4 de #183)
+    sweep-every: ${LMS_ASSESSMENT_SWEEP_EVERY:1m}
   # importador AsciiDoc (ADR-0018 §5): solo lee de estos repositorios, separados por comas, como owner/repo (cualquier
   # commit) u owner/repo@sha (solo ese). vacío: no importa nada. el host de GitHub es fijo, nunca configuración
   importer:
