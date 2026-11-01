@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Assertions.assertNotEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.springframework.beans.factory.annotation.Autowired
@@ -61,6 +62,11 @@ class JobQueueTest : WasichaiIntegrationTest() {
     private fun status(id: UUID): JobStatus = runBlocking { queue.find(org, id) }!!
 
     private fun drain() = runBlocking { runner.drainAll() }
+
+    // la cola es de todas las pruebas: lo que otras dejaron pendiente (un aviso de publicación, una generación) va antes en
+    // el orden de reclamo y se colaría en las vueltas contadas de estas
+    @BeforeEach
+    fun drainLeftovers() = drain()
 
     @Test
     fun `a job runs off the request thread and keeps its result`() {

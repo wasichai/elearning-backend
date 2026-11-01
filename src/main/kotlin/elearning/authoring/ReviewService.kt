@@ -124,14 +124,17 @@ class ReviewService(
         currentUser.requirePermission(user, PUBLISH, versionObject())
         val version = visible(id)
         if (version.attributes[STATE]?.toString() != APPROVED) throw ConflictException("Solo se publica una versión aprobada")
+        // en una transacción: el aviso de publicación (RF-AUL-09) se encola con ella o no hay ninguno de los dos
         val written =
-            records.patch(
-                VERSION,
-                id,
-                RecordRequest(mapOf(STATE to PUBLISHED, "publicada_en" to Instant.now().toString())),
-                null,
-                null,
-            )
+            transactions.executeAndAwait {
+                records.patch(
+                    VERSION,
+                    id,
+                    RecordRequest(mapOf(STATE to PUBLISHED, "publicada_en" to Instant.now().toString())),
+                    null,
+                    null,
+                )
+            }
         return reader.summary(written)
     }
 
