@@ -2,6 +2,18 @@
 
 Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este archivo registra lo que se entregó.
 
+## 2026-11-01 — ADR-0026 (propuesta): sistema de diseño Quipu ([#245](https://github.com/wasichai/elearning-backend/issues/245))
+
+- [ADR-0026](adr/0026-sistema-de-diseno-quipu.md) propone lo que la interfaz ya integró del sistema de diseño Quipu:
+  - un tema de app sobre el contrato de `@wasichai/ui` (`quipu`, `quipu-dark`);
+  - una hoja de controles de 44px por `data-slot` públicos;
+  - el modo lectura como subárbol (`quipu-lectura`);
+  - Figtree y Literata servidas por la app.
+
+  La CSP de la lectura HTML no cambia; incrustar Literata en ella (`font-src data:`) queda para un ADR propio. Pedidos a
+  Wasichai: [wasichai/wasichai-ui#115](https://github.com/wasichai/wasichai-ui/issues/115) y
+  [#116](https://github.com/wasichai/wasichai-ui/issues/116).
+
 ## 2026-11-01 — Wasichai 1.8.0: el servidor comprueba el hash de cada descarga ([#216](https://github.com/wasichai/elearning-backend/issues/216), L6)
 
 - `wasichai` pasa de 1.6.0 a 1.8.0 y, alineados con él, Spring Boot a 4.1.2 y el AWS SDK a 2.57.5. 1.7.0 trae Embabel
