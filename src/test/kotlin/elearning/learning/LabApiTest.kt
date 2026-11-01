@@ -183,12 +183,13 @@ class LabApiTest : ClassroomApiTestSupport() {
         val title = uniqueName("entorno-")
         created(environment(creator, lesson, "https://lab.example.org/sala", title = title))
 
-        val copy = ok(call(creator, "/api/lms/studio/courses/$course/versions", mapOf("fromVersionId" to version)))
+        val (status, copy) = call(creator, "/api/lms/studio/courses/$course/versions", mapOf("fromVersionId" to version))
+        assertEquals(HttpStatus.CREATED, status, copy.toString())
 
         val environments = ok(call(creator, "/api/objects/entorno_laboratorio/records?titulo=$title"))["content"].values().toList()
         assertEquals(2, environments.size, environments.toString())
         val copied = environments.single { it["attributes"]["leccion"].let { l -> (if (l.isObject) l["id"] else l).asString() } != lesson }
         assertEquals("https://lab.example.org/sala", copied["attributes"]["enlace"].asString())
-        assertTrue(copy.has("id"), copy.toString())
+        assertEquals(2, copy!!["number"].asInt())
     }
 }
