@@ -34,7 +34,12 @@
       "path": ["BORRADOR", "EN_REVISION", "APROBADA", "PUBLICADA"],
       "deferred": ["publicada_en", "creditos_aprobados"],
       "commands": {
-        "APROBADA": { "path": "/api/lms/review/versions/{id}/decision", "body": { "decision": "APROBAR" } }
+        "APROBADA": {
+          "path": "/api/lms/review/versions/{id}/decision",
+          "body": {
+            "decision": "APROBAR"
+          }
+        }
       }
     },
     "version_recurso": {
@@ -1982,6 +1987,10 @@
     {
       "user": "estudiante@demo.wasichai-learning.test",
       "offering": "edicion-srtm-a"
+    },
+    {
+      "user": "estudiante@demo.wasichai-learning.test",
+      "offering": "edicion-corto-a"
     }
   ],
   "sessions": [
@@ -1996,6 +2005,36 @@
       "link": "https://reunion.wasichai-learning.test/revision",
       "date": "hoy+14",
       "localTime": "09:00"
+    }
+  ],
+  "attempts": [
+    {
+      "_comentario": "El estudiante demo responde la evaluación del curso corto y la envía; el docente asignado corrige la pregunta abierta. 4 + 4 de 10 puntos: aprueba con 80 %.",
+      "student": "estudiante@demo.wasichai-learning.test",
+      "offering": "edicion-corto-a",
+      "lesson": "corto-v1-u1-l2",
+      "teacher": "docente@demo.wasichai-learning.test",
+      "answers": [
+        {
+          "question": "corto-q1",
+          "options": ["corto-q1-a"]
+        },
+        {
+          "question": "corto-q2",
+          "options": ["corto-q2-b"]
+        },
+        {
+          "question": "corto-q3",
+          "text": "No pudimos completar la operación: falta el número de anuncio. Escríbelo y vuelve a intentarlo."
+        }
+      ],
+      "grades": [
+        {
+          "question": "corto-q3",
+          "points": 4,
+          "comment": "Dice qué pasó; falta decir dónde está ese número."
+        }
+      ]
     }
   ]
 }

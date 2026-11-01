@@ -8,6 +8,13 @@ Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este
   página de las matrículas no retiradas en el orden de siempre, con su progreso y su asistencia leídos por esas matrículas
   (`listAllIn`). Sin ellos devuelve la edición entera, como antes (`RosterPageApiTest`).
 
+## 2026-11-01 — Intentos y calificaciones en la semilla ([#231](https://github.com/wasichai/elearning-backend/issues/231), RNF-OSS-06)
+
+- `model/demo/data.json` gana `attempts`: el estudiante demo, matriculado también en `CORTO-101-A`, responde y envía su
+  evaluación por el aula, y el docente demo asignado corrige la abierta (8 de 10, aprobada). `apply.py` lo hace por los
+  comandos, como cada persona, lo valida sin red y es idempotente; un intento que quedó a medias se termina en la
+  siguiente ejecución. Los recorridos e2e crean sus propios estudiantes: sus conteos no cambian.
+
 ## 2026-11-01 — El alcance con subconsultas SQL ([#183](https://github.com/wasichai/elearning-backend/issues/183), M4, y #104, M1)
 
 - `ContentReadScope` ya no lista versiones, unidades y lecciones para ligarlas como un arreglo de ids (`ANY(?)`) que crecía

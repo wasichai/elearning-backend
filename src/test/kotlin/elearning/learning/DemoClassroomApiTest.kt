@@ -9,7 +9,7 @@ import java.nio.file.Path
 
 // la demo del aula contra el servidor real, tal como la deja model/apply.py --demo: el estudiante demo matriculado por el
 // comando en la edición abierta de SRTM, con una lectura HTML, una guía PDF, un vídeo y una
-// presentación, cada uno con su archivo
+// presentación, cada uno con su archivo, y en la del curso corto, con su intento calificado
 class DemoClassroomApiTest : LmsApiTest() {
     @Test
     fun `the demo student studies the open SRTM offering with a reading, a pdf, a video and a presentation`() {
@@ -45,6 +45,31 @@ class DemoClassroomApiTest : LmsApiTest() {
                     .responseBody!!
             assertTrue(bytes.contentEquals(Files.readAllBytes(local)), "${file["name"]}: el archivo baja tal como se subió")
         }
+    }
+
+    // RNF-OSS-06: la semilla trae un intento enviado y calificado. lo hizo el estudiante demo por el aula y lo corrigió el
+    // docente demo asignado, por los mismos comandos que una persona
+    @Test
+    fun `the demo student has a graded attempt in the short course, graded by the demo teacher`() {
+        val student = demoUser("estudiante")
+        val teacher = demoUser("docente")
+        val enrollment = get("/api/lms/classroom/enrollments", student).values().single { it["offering"]["code"].asString() == "CORTO-101-A" }
+        val lessons =
+            get("/api/lms/classroom/enrollments/${enrollment["id"].asString()}", student)["units"]
+                .values()
+                .flatMap { it["lessons"].values() }
+        val assessment = lessons.single { it["completion"].asString() == "ASSESSMENT" }["assessment"]
+        assertEquals(1, assessment["attemptsUsed"].asInt())
+        assertEquals(80, assessment["best"]["percent"].asInt())
+        assertTrue(assessment["best"]["passed"].asBoolean())
+
+        val row =
+            get("/api/lms/teaching/offerings/CORTO-101-A/attempts?status=GRADED", teacher)
+                .values()
+                .single { it["email"].asString() == "estudiante@demo.wasichai-learning.test" }
+        val grade = get("/api/lms/teaching/attempts/${row["attemptId"].asString()}", teacher)["history"].single()
+        assertEquals(get("/api/auth/me", teacher)["userId"].asString(), grade["authorId"].asString())
+        assertEquals(4.0, grade["points"].asDouble())
     }
 
     @Test

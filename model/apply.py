@@ -11,7 +11,8 @@ Fases (cada una necesita la anterior):
   3. relaciones (crean los campos RELATION), su obligatoriedad y las restricciones/índices que las nombran;
   4. roles y sus permisos (el PUT de permisos reemplaza el conjunto completo del rol);
   5. con --demo, los usuarios y registros sintéticos de model/demo/data.json (ver model/demo/README.md): cada uno se
-     busca por su clave natural y solo se crea lo que falta; lo que ya existe no se modifica.
+     busca por su clave natural y solo se crea lo que falta; lo que ya existe no se modifica. Matrículas, sesiones,
+     intentos y notas van por los comandos del LMS, como cada persona.
 
 Uso:
   python3 model/apply.py --validate-only [--demo]
@@ -53,6 +54,8 @@ ALIAS = re.compile(r"^[a-z0-9][a-z0-9-]{0,79}$")
 # una fecha relativa al día en que se aplica la demo ("hoy", "hoy+12", "hoy-2"): las ediciones no envejecen (#96)
 RELATIVE_DATE = re.compile(r"^hoy(?:([+-]\d{1,4}))?$")
 UUID = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
+# las que corrige una persona (GradingService); las demás las califica el servidor al enviar
+MANUAL_QUESTIONS = {"ABIERTA", "ARCHIVO"}
 
 
 class ModelError(Exception):
@@ -270,7 +273,7 @@ def validate_demo(data: dict, model: dict, roles: dict | None = None, base: Path
     known_roles = {"ADMIN"} | {r["name"] for r in (roles or {}).get("roles", [])}
 
     for key in data:
-        if key not in ("users", "records", "workflows", "enrollments", "sessions") and not key.startswith("_"):
+        if key not in ("users", "records", "workflows", "enrollments", "sessions", "attempts") and not key.startswith("_"):
             problems.append(f"clave desconocida '{key}' en los datos de demostración")
 
     # workflows: el camino de estados que un registro recorre hasta su estado final, como lo haría una persona
@@ -414,8 +417,54 @@ def validate_demo(data: dict, model: dict, roles: dict | None = None, base: Path
             problems.append(f"{where}: {session.get('lesson')!r} no es una leccion del archivo")
         if not (isinstance(session.get("date"), str) and RELATIVE_DATE.match(session["date"])):
             problems.append(f"{where}: la fecha debe ser relativa (hoy±N)")
+    problems += _attempt_problems(data, records_by_ref, assigned)
     if problems:
         raise ModelError(problems)
+
+
+def _attempt_problems(data: dict, records_by_ref: dict, assigned: set) -> list[str]:
+    """Intentos: de un estudiante matriculado, sobre una lección con evaluación, corregidos por el docente asignado."""
+    problems: list[str] = []
+    enrolled = {(e.get("user"), e.get("offering")) for e in data.get("enrollments", [])}
+    evaluations = {r.get("refs", {}).get("leccion"): r.get("ref") for r in data.get("records", []) if r.get("object") == "evaluacion"}
+
+    def children(obj: str, field: str, parent: object) -> dict:
+        return {r.get("ref"): r for r in data.get("records", []) if r.get("object") == obj and r.get("refs", {}).get(field) == parent}
+
+    for i, attempt in enumerate(data.get("attempts", [])):
+        where = f"intento #{i + 1}"
+        student, offering, lesson = attempt.get("student"), attempt.get("offering"), attempt.get("lesson")
+        if (student, offering) not in enrolled:
+            problems.append(f"{where}: {student!r} no está matriculado en {offering!r} (falta en 'enrollments')")
+        if (offering, attempt.get("teacher")) not in assigned:
+            problems.append(f"{where}: {attempt.get('teacher')!r} no está asignado a {offering!r}")
+        record = records_by_ref.get(lesson)
+        if record is None or record.get("object") != "leccion" or lesson not in evaluations:
+            problems.append(f"{where}: {lesson!r} no es una lección con evaluación del archivo")
+            continue
+        questions = children("pregunta", "evaluacion", evaluations[lesson])
+        for answer in attempt.get("answers", []):
+            question = answer.get("question")
+            if question not in questions:
+                problems.append(f"{where}: {question!r} no es una pregunta de la evaluación de {lesson!r}")
+                continue
+            for option in answer.get("options", []):
+                if option not in children("opcion", "pregunta", question):
+                    problems.append(f"{where}: {option!r} no es una opción de {question!r}")
+        for grade in attempt.get("grades", []):
+            question = questions.get(grade.get("question"))
+            if question is None:
+                problems.append(f"{where}: {grade.get('question')!r} no es una pregunta de la evaluación de {lesson!r}")
+                continue
+            a = question.get("attributes", {})
+            points = grade.get("points")
+            if a.get("tipo") not in MANUAL_QUESTIONS:
+                problems.append(f"{where}: {grade['question']!r} se corrige sola: solo se califican a mano {sorted(MANUAL_QUESTIONS)}")
+            elif isinstance(points, bool) or not isinstance(points, (int, float)) or not 0 <= points <= a.get("puntos", 0):
+                problems.append(f"{where}: {grade['question']!r} vale entre 0 y {a.get('puntos')} puntos")
+            if not str(grade.get("comment", "")).strip():
+                problems.append(f"{where}: la nota de {grade['question']!r} lleva un comentario")
+    return problems
 
 
 def _days(relative: str) -> int:
@@ -755,6 +804,7 @@ def apply_demo(client: Client, data: dict, password: str, report: Report, base: 
         _walk(client, record, record_id, workflows[record["object"]], final, report)
     _enroll(client, data, ids, user_ids, password, report)
     _sessions(client, data, ids, password, today, report)
+    _attempts(client, data, ids, user_ids, password, report)
 
 
 def _walk(client: Client, record: dict, record_id: str, flow: dict, final: dict, report: Report) -> None:
@@ -806,6 +856,45 @@ def _sessions(client: Client, data: dict, ids: dict, password: str, today: datet
         body["recurrence"] = {"pattern": "ONCE", "days": [], "startDate": date, "endDate": date, "localTime": session["localTime"]}
         teacher.call("POST", f"/api/lms/teaching/offerings/{codes[offering]}/sessions", body)
         report.add(f"sesión {session['title']} en {codes[offering]}")
+
+
+def _attempts(client: Client, data: dict, ids: dict, user_ids: dict, password: str, report: Report) -> None:
+    """Intentos de la demo por los comandos, como cada persona: el estudiante empieza, responde y envía; el docente
+    asignado califica lo que se corrige a mano. Lo hecho no se repite: un intento ya enviado no se rehace y una pregunta
+    ya calificada no se vuelve a calificar (cambiarla exigiría motivo). Uno que quedó a medias se termina."""
+    codes = {r["ref"]: r["attributes"]["codigo"] for r in data.get("records", []) if r["object"] == "edicion_curso"}
+    for attempt in data.get("attempts", []):
+        email, offering, lesson = attempt["student"], attempt["offering"], ids[attempt["lesson"]]
+        enrollment = _find_record(client, "matricula", {"estudiante_id": user_ids[email], "edicion": ids[offering]})
+        if enrollment is None:
+            raise DemoError(f"intento de {email}: no tiene matrícula en {codes[offering]}")
+        student = Client(client.base)
+        student.login(email, password)
+        classroom = student.call("GET", f"/api/lms/classroom/enrollments/{enrollment['id']}") or {}
+        lessons = [entry for unit in classroom.get("units", []) for entry in unit.get("lessons", [])]
+        assessment = next((entry.get("assessment") or {} for entry in lessons if entry.get("id") == lesson), {})
+        if assessment.get("attemptsUsed", 0) == 0 or assessment.get("openAttemptId"):
+            opened = student.call("POST", f"/api/lms/classroom/enrollments/{enrollment['id']}/lessons/{lesson}/attempts", {})
+            answers = [
+                {"questionId": ids[a["question"]], "optionIds": [ids[o] for o in a.get("options", [])], "text": a.get("text"), "submissionId": None}
+                for a in attempt.get("answers", [])
+            ]
+            student.call("PUT", f"/api/lms/classroom/attempts/{opened['id']}/answers", {"answers": answers})
+            student.call("POST", f"/api/lms/classroom/attempts/{opened['id']}/submit", {})
+            report.add(f"intento de {email} en {codes[offering]}")
+        teacher = Client(client.base)
+        teacher.login(attempt["teacher"], password)
+        queue = teacher.call("GET", f"/api/lms/teaching/offerings/{codes[offering]}/attempts") or []
+        for row in queue:
+            if row.get("enrollmentId") != enrollment["id"] or row.get("lessonId") != lesson:
+                continue
+            graded = {h.get("questionId") for h in (teacher.call("GET", f"/api/lms/teaching/attempts/{row['attemptId']}") or {}).get("history", [])}
+            for grade in attempt.get("grades", []):
+                if ids[grade["question"]] in graded:
+                    continue
+                body = {"questionId": ids[grade["question"]], "points": grade["points"], "comment": grade["comment"], "reason": None}
+                teacher.call("POST", f"/api/lms/teaching/attempts/{row['attemptId']}/grades", body)
+                report.add(f"nota de {grade['question']} para {email} en {codes[offering]}")
 
 
 def load(path: Path) -> dict:
