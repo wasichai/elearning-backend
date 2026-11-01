@@ -251,7 +251,9 @@ class CatalogBuilderTest {
             val offerings = base.offerings.map { if (it.id == "e1") it.copy(attributes = it.attributes + ("capacidad" to capacity)) else it }
             val occupancy = if (taken == null) emptyMap() else mapOf("e1" to taken)
             val built = CatalogBuilder().build(base.copy(offerings = offerings, occupancy = occupancy)).single()
-            return built.detail.offerings.single().full
+            return built.detail.offerings
+                .single()
+                .full
         }
 
         assertTrue(full(capacity = 2, taken = 2))
