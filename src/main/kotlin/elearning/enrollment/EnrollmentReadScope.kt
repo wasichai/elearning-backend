@@ -5,15 +5,19 @@ import elearning.common.listAll
 import elearning.common.ref
 import org.springframework.beans.factory.ObjectProvider
 import org.springframework.stereotype.Component
+import wasichai.core.common.Actions
 import wasichai.core.common.ForbiddenException
+import wasichai.core.common.NotFoundException
 import wasichai.core.data.RecordCriterion
 import wasichai.core.data.RecordReadScope
 import wasichai.core.data.RecordResponse
 import wasichai.core.data.RecordService
 import wasichai.core.identity.AuthenticatedUser
 import wasichai.core.identity.CurrentUser
+import wasichai.core.metadata.MetadataService
 import wasichai.core.metadata.ObjectDefinition
 import wasichai.core.platform.SqlIdentifier
+import wasichai.core.platform.WasichaiSchemas
 import java.util.UUID
 
 // cada persona lee sus matrículas, su progreso y sus entregas; el docente, además, los de las ediciones que tiene asignadas
@@ -24,8 +28,10 @@ import java.util.UUID
 @Component
 class EnrollmentReadScope(
     private val currentUser: CurrentUser,
-    // RecordService recibe los alcances: se pide perezosamente para no formar un ciclo
+    // RecordService y MetadataService reciben los alcances: se piden perezosamente para no formar un ciclo
     private val records: ObjectProvider<RecordService>,
+    private val metadata: ObjectProvider<MetadataService>,
+    private val schemas: WasichaiSchemas,
 ) : RecordReadScope {
     override suspend fun criterion(
         caller: AuthenticatedUser,
@@ -45,15 +51,38 @@ class EnrollmentReadScope(
         val me = caller.userId
         val taught = taughtOfferings(caller)
         if (taught.isEmpty()) return RecordCriterion { _, bind -> "$student = ${bind(me)}" }
-        // el docente: lo de sus ediciones. la matrícula por su edición; el progreso por las matrículas de esas ediciones
-        val (column, ids) =
-            when (name) {
-                ENROLLMENT -> column(definition, OFFERING) to taught
-                else -> column(definition, ENROLLMENT) to enrollmentsOf(taught)
+        // el docente: lo de sus ediciones. la matrícula por su edición; el progreso por las matrículas de esas ediciones, con una
+        // subconsulta (M4 de #183): antes se ligaban los ids de todas sus matrículas, un arreglo que crecía con los estudiantes
+        val offerings = taught.map(UUID::fromString).toTypedArray()
+        if (name == ENROLLMENT) {
+            val offering = column(definition, OFFERING) ?: return RecordCriterion { _, bind -> "$student = ${bind(me)}" }
+            return RecordCriterion { _, bind -> "($student = ${bind(me)} OR $offering = ANY(${bind(offerings)}))" }
+        }
+        val enrollment = column(definition, ENROLLMENT)
+        val enrollments = enrollmentTable(caller)
+        if (enrollment == null || enrollments == null) return RecordCriterion { _, bind -> "$student = ${bind(me)}" }
+        val (table, offering) = enrollments
+        val organization = caller.organizationId
+        return RecordCriterion { _, bind ->
+            val ofTaught =
+                "SELECT lms_m.\"id\" FROM $table lms_m WHERE lms_m.organization_id = ${bind(organization)} " +
+                    "AND lms_m.$offering = ANY(${bind(offerings)})"
+            "($student = ${bind(me)} OR $enrollment IN ($ofTaught))"
+        }
+    }
+
+    // la tabla de las matrículas y su columna de edición. como leerlas como el docente: sin READ sobre ellas, ninguna, y su
+    // alcance ya lo da la edición asignada
+    private suspend fun enrollmentTable(caller: AuthenticatedUser): Pair<String, String>? {
+        val definition =
+            try {
+                metadata.getObject().loadDefinition(caller.organizationId, ENROLLMENT)
+            } catch (_: NotFoundException) {
+                return null
             }
-        if (column == null) return RecordCriterion { _, bind -> "$student = ${bind(me)}" }
-        val values = ids.map(UUID::fromString).toTypedArray()
-        return RecordCriterion { _, bind -> "($student = ${bind(me)} OR $column = ANY(${bind(values)}))" }
+        if (!currentUser.hasPermission(caller, Actions.READ, definition.obj.id)) return null
+        val offering = column(definition, OFFERING) ?: return null
+        return schemas.dataTable(definition.obj.physicalTable) to offering
     }
 
     // las sesiones de las ediciones que cursa o que tiene asignadas
@@ -75,9 +104,6 @@ class EnrollmentReadScope(
         } catch (_: ForbiddenException) {
             emptyList()
         }
-
-    // con el alcance de la matrícula, que ya deja al docente leer las de sus ediciones
-    private suspend fun enrollmentsOf(offerings: List<String>): List<String> = offerings.flatMap { all(ENROLLMENT, mapOf(OFFERING to it)) }.map { it.id }
 
     private suspend fun all(
         objectName: String,

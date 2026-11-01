@@ -9,6 +9,17 @@ Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este
   comandos, como cada persona, lo valida sin red y es idempotente; un intento que quedó a medias se termina en la
   siguiente ejecución. Los recorridos e2e crean sus propios estudiantes: sus conteos no cambian.
 
+## 2026-11-01 — El alcance con subconsultas SQL ([#183](https://github.com/wasichai/elearning-backend/issues/183), M4, y #104, M1)
+
+- `ContentReadScope` ya no lista versiones, unidades y lecciones para ligarlas como un arreglo de ids (`ANY(?)`) que crecía
+  con el catálogo publicado: resuelve la cadena matrícula → versión → unidad → lección → enlace → recurso con subconsultas
+  SQL sobre las tablas de Wasichai (`WasichaiSchemas`, `MetadataService.loadDefinition`), con valores ligados. Cada nivel
+  repite lo que leerlo como quien llama aplicaba: su `organization_id`, su `VER_TODAS` y, sin `READ` sobre él, nada.
+- `EnrollmentReadScope` lee el progreso, las entregas y la asistencia del docente por la subconsulta de las matrículas de
+  sus ediciones, no por la lista de sus ids, que crecía con los estudiantes.
+- `StatementCount` guarda el arreglo ligado más largo de una petición (`ScopeCostApiTest`): el del aula pasaba de 16 a 19
+  con tres cursos publicados más y el del roster de 3 a 8 con seis estudiantes más; ya no crecen.
+
 ## 2026-11-01 — Registro consultable de cada operación sensible ([#231](https://github.com/wasichai/elearning-backend/issues/231), RF-ADM-03)
 
 - `SensitiveOperationsAuditApiTest` prueba que contenidos (versión y lección), decisiones y publicaciones, y roles
