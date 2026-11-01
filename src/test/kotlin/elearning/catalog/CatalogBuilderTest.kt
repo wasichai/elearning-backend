@@ -293,6 +293,11 @@ class CatalogBuilderTest {
             ),
             built.prerequisiteKnowledgeTags,
         )
-        assertEquals(emptyList<KnowledgeTag>(), CatalogBuilder().build(records(version("v1", 1, "PUBLICADA"))).single().detail.prerequisiteKnowledgeTags)
+        val none =
+            CatalogBuilder()
+                .build(records(version("v1", 1, "PUBLICADA")))
+                .single()
+                .detail
+        assertEquals(emptyList<KnowledgeTag>(), none.prerequisiteKnowledgeTags)
     }
 }

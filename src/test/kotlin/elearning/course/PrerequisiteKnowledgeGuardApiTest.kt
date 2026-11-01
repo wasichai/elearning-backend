@@ -20,9 +20,23 @@ class PrerequisiteKnowledgeGuardApiTest : LmsApiTest() {
     ): Pair<HttpStatus, String?> {
         val spec =
             when (method) {
-                "POST" -> client.post().uri(path).header("Authorization", token).bodyValue(mapOf("attributes" to attributes))
-                "PATCH" -> client.patch().uri(path).header("Authorization", token).bodyValue(mapOf("attributes" to attributes))
-                else -> client.delete().uri(path).header("Authorization", token)
+                "POST" ->
+                    client
+                        .post()
+                        .uri(path)
+                        .header("Authorization", token)
+                        .bodyValue(mapOf("attributes" to attributes))
+                "PATCH" ->
+                    client
+                        .patch()
+                        .uri(path)
+                        .header("Authorization", token)
+                        .bodyValue(mapOf("attributes" to attributes))
+                else ->
+                    client
+                        .delete()
+                        .uri(path)
+                        .header("Authorization", token)
             }
         val result = spec.exchange().expectBody(String::class.java).returnResult()
         return HttpStatus.valueOf(result.status.value()) to result.responseBody
