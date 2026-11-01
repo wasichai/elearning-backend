@@ -10,6 +10,14 @@ Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este
 - Las calificaciones siguen en `lms.calificacion`: quien tiene `MANAGE_ORGANIZATION` lee la cola de corrección y el
   intento con su `history` de cualquier edición, sin asignación y sin poder calificar.
 
+## 2026-11-01 — Ediciones completas en el catálogo ([#237](https://github.com/wasichai/elearning-backend/pull/237), RF-CAT-09)
+
+- La ficha pública dice el estado de la matrícula de cada edición, `enrollmentStatus` `OPEN`, `CLOSED` o `FULL`, y `full`
+  (cupo agotado), también en `nextOffering`. La proyección lee `lms.ocupacion_edicion` en cada refresco y publica solo un
+  sí o un no, nunca cuántos ni quiénes; una matrícula que no agota el cupo no reescribe la fila
+  ([ADR-0023](adr/0023-cupo-agotado-en-la-proyeccion-del-catalogo.md)).
+- `enrollmentOpen`, en la ficha y en el filtro de RF-CAT-08, deja fuera las ediciones completas.
+
 ## 2026-11-01 — El aula lee sus recursos por lotes ([#104](https://github.com/wasichai/elearning-backend/issues/104), M1)
 
 - `ClassroomReader.resources()` lee los enlaces de las lecciones del aula, sus versiones de recurso y sus recursos en una
