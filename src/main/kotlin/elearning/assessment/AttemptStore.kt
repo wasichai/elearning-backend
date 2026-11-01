@@ -6,6 +6,7 @@ import kotlinx.coroutines.reactor.awaitSingleOrNull
 import org.springframework.r2dbc.core.DatabaseClient
 import org.springframework.stereotype.Repository
 import tools.jackson.core.type.TypeReference
+import wasichai.core.common.PageRequest
 import java.math.BigDecimal
 import java.time.Instant
 import java.time.OffsetDateTime
@@ -205,23 +206,32 @@ class AttemptStore(
         withPassed.fetch().rowsUpdated().awaitSingle()
     }
 
-    // la cola de una edición en un estado, sin instantánea ni respuestas (M4 de #183): la lista no las devuelve
-    suspend fun linesOfOffering(
+    // la cola de una edición en un estado, sin instantánea ni respuestas (M4 de #183): la lista no las devuelve. sin los
+    // intentos de quien mira, que no existen para él. con page, esa página en el mismo orden (LIMIT y OFFSET en la base)
+    suspend fun queueOfOffering(
         organization: UUID,
         offering: UUID,
         status: String,
-    ): List<AttemptLine> =
-        db
-            .sql(
-                "SELECT $LINE_COLUMNS FROM lms.intento " +
-                    "WHERE organizacion_id = :org AND edicion_id = :offering AND estado = :status ORDER BY enviado_en, id",
-            ).bind("org", organization)
-            .bind("offering", offering)
-            .bind("status", status)
+        viewer: UUID,
+        page: PageRequest? = null,
+    ): List<AttemptLine> {
+        val sql =
+            "SELECT $LINE_COLUMNS FROM lms.intento " +
+                "WHERE organizacion_id = :org AND edicion_id = :offering AND estado = :status AND estudiante_id <> :viewer " +
+                "ORDER BY enviado_en, id"
+        val spec =
+            db
+                .sql(if (page == null) sql else "$sql LIMIT :limit OFFSET :offset")
+                .bind("org", organization)
+                .bind("offering", offering)
+                .bind("status", status)
+                .bind("viewer", viewer)
+        return (if (page == null) spec else spec.bind("limit", page.size).bind("offset", page.offset))
             .map { row, _ -> line(row) }
             .all()
             .collectList()
             .awaitSingle()
+    }
 
     // todos los intentos de una edición en una lectura, para el roster: antes se leían por matrícula (M4 de #183)
     suspend fun linesOfOffering(
