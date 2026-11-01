@@ -12,11 +12,11 @@ import org.springframework.boot.test.context.TestConfiguration
 import org.springframework.context.annotation.Bean
 import org.springframework.util.ClassUtils
 import reactor.core.publisher.Mono
-import java.lang.reflect.Array as ReflectArray
 import java.lang.reflect.InvocationTargetException
 import java.lang.reflect.Method
 import java.lang.reflect.Proxy
 import java.util.concurrent.atomic.AtomicInteger
+import java.lang.reflect.Array as ReflectArray
 
 // cuenta las sentencias SQL que la aplicación manda a PostgreSQL, para medir el coste de una petición (revisión de las
 // Fases 2 y 3: M1 de #104, M4 de #183). envuelve el ConnectionFactory y cuenta cada createStatement de sus conexiones.
