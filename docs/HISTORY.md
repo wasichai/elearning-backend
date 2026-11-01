@@ -2,7 +2,7 @@
 
 Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este archivo registra lo que se entregó.
 
-## 2026-11-01 — El alcance de contenido y de matrícula con subconsultas SQL ([#183](https://github.com/wasichai/elearning-backend/issues/183), M4; [#104](https://github.com/wasichai/elearning-backend/issues/104), M1)
+## 2026-11-01 — El alcance con subconsultas SQL ([#183](https://github.com/wasichai/elearning-backend/issues/183), M4, y #104, M1)
 
 - `ContentReadScope` ya no lista versiones, unidades y lecciones para ligarlas como un arreglo de ids (`ANY(?)`) que crecía
   con el catálogo publicado: resuelve la cadena matrícula → versión → unidad → lección → enlace → recurso con subconsultas
