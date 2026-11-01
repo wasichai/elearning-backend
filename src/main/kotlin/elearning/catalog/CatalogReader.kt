@@ -67,7 +67,7 @@ class CatalogReader(
             workload = WorkloadSummary(d.workload.totalHours, d.workload.contactHours, d.workload.autonomousHours),
             nextOffering =
                 OfferingCalendar.current(d.offerings, clock).firstOrNull()?.let {
-                    NextOffering(it.code, it.status, it.startDate, it.endDate, it.timeZone, it.enrollmentOpen)
+                    NextOffering(it.code, it.status, it.startDate, it.endDate, it.timeZone, it.enrollmentOpen, it.enrollmentStatus)
                 },
             illustrative = d.illustrative,
         )
@@ -78,7 +78,8 @@ class CatalogReader(
 }
 
 // lo que depende del día, en la zona horaria de cada edición (con su horario de verano): qué ediciones siguen vigentes
-// y si su inscripción está abierta hoy. puro: el reloj entra como argumento
+// y el estado de su inscripción hoy. abierta solo si además le quedan plazas: una completa no admite matrículas, así que
+// enrollmentOpen (y su filtro) dice false. puro: el reloj entra como argumento
 object OfferingCalendar {
     const val OPEN = "INSCRIPCION_ABIERTA"
 
@@ -89,11 +90,18 @@ object OfferingCalendar {
         offerings
             .map { o -> o to LocalDate.now(clock.withZone(ZoneId.of(o.timeZone))) }
             .filter { (o, today) -> !o.endDate.isBefore(today) }
-            .map { (o, today) -> o.copy(enrollmentOpen = enrollmentOpen(o, today)) }
+            .map { (o, today) -> status(o, today).let { o.copy(enrollmentOpen = it == EnrollmentStatus.OPEN, enrollmentStatus = it) } }
             .sortedWith(compareBy({ it.startDate }, { it.code }))
 
-    private fun enrollmentOpen(
+    private fun status(
         o: OfferingView,
         today: LocalDate,
-    ) = o.status == OPEN && (o.enrollmentFrom == null || !today.isBefore(o.enrollmentFrom)) && (o.enrollmentUntil == null || !today.isAfter(o.enrollmentUntil))
+    ): EnrollmentStatus {
+        val window = (o.enrollmentFrom == null || !today.isBefore(o.enrollmentFrom)) && (o.enrollmentUntil == null || !today.isAfter(o.enrollmentUntil))
+        return when {
+            o.status != OPEN || !window -> EnrollmentStatus.CLOSED
+            o.full -> EnrollmentStatus.FULL
+            else -> EnrollmentStatus.OPEN
+        }
+    }
 }
