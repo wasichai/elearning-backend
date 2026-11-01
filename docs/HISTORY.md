@@ -2,6 +2,12 @@
 
 Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este archivo registra lo que se entregó.
 
+## 2026-11-01 — El roster por páginas ([#183](https://github.com/wasichai/elearning-backend/issues/183), M4)
+
+- `GET /api/lms/teaching/offerings/{code}/students` admite `?page` y `?size` opcionales, como la API de registros: una
+  página de las matrículas no retiradas en el orden de siempre, con su progreso y su asistencia leídos por esas matrículas
+  (`listAllIn`). Sin ellos devuelve la edición entera, como antes (`RosterPageApiTest`).
+
 ## 2026-11-01 — El alcance con subconsultas SQL ([#183](https://github.com/wasichai/elearning-backend/issues/183), M4, y #104, M1)
 
 - `ContentReadScope` ya no lista versiones, unidades y lecciones para ligarlas como un arreglo de ids (`ANY(?)`) que crecía

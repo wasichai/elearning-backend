@@ -469,7 +469,7 @@ cualquier edición, sin asignación; calificar le sigue respondiendo `404`.
 | Método | Ruta                                            | Resultado                                                             |
 | ------ | ----------------------------------------------- | --------------------------------------------------------------------- |
 | GET    | `/api/lms/teaching/offerings`                   | `TeachingOffering[]`                                                  |
-| GET    | `/api/lms/teaching/offerings/{code}/students`   | `Roster[]`                                                            |
+| GET    | `/api/lms/teaching/offerings/{code}/students`   | `Roster[]`; `?page` y `?size` opcionales                              |
 | GET    | `/api/lms/teaching/offerings/{code}/attempts`   | cola de corrección: intentos `SUBMITTED` → `PendingAttempt[]`         |
 | GET    | `/api/lms/teaching/attempts/{attemptId}`        | `Attempt` con soluciones, respuestas y entregas                       |
 | POST   | `/api/lms/teaching/attempts/{attemptId}/grades` | `{ questionId, points, comment, reason }` → `Attempt`                 |
@@ -489,8 +489,12 @@ cualquier edición, sin asignación; calificar le sigue respondiendo `404`.
 "pendingQuestions": 1 }`.
 - La cola admite `?status=GRADED` para encontrar un intento ya corregido (por defecto `SUBMITTED`). El `Attempt` del docente
   añade `enrollmentId`, `email` e `history` (`[{ questionId, points, comment, reason, authorId, at }]`).
-- El roster y la cola devuelven la edición entera, sin paginar. Se leen por lotes (M4 de #183): las sentencias SQL crecen con
-  el temario y las sesiones, no con el número de estudiantes, y la cola no carga la instantánea ni las respuestas.
+- El roster y la cola se leen por lotes (M4 de #183): las sentencias SQL crecen con el temario y las sesiones, no con el
+  número de estudiantes, y la cola no carga la instantánea ni las respuestas. La cola devuelve la edición entera.
+- El roster admite `?page` (desde 0) y `?size` como la API de registros: con alguno de los dos devuelve esa página de las
+  matrículas no retiradas, en el mismo orden que sin paginar (el de alta), y lee solo el progreso y la asistencia de esa
+  página; `size` vale 25 si falta y se acota a 1–200, `page` a ≥ 0. Sin ninguno, la edición entera, como antes. La
+  respuesta sigue siendo `Roster[]`: una página con menos de `size` filas es la última.
 - Solo se califican a mano las preguntas `OPEN` y `FILE` (`400` en otra), con dos decimales como máximo. El intento propio no
   existe para quien lo hizo (`404`), aunque sea docente de esa edición, y tampoco se marca su propia asistencia (`403`).
 - Calificar: `points` entre 0 y los de la pregunta (`400` si no); `reason` obligatorio al **cambiar** una nota ya puesta,
