@@ -2,6 +2,13 @@
 
 Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este archivo registra lo que se entregó.
 
+## 2026-11-01 — La cola de corrección por páginas ([#183](https://github.com/wasichai/elearning-backend/issues/183), M4)
+
+- `GET /api/lms/teaching/offerings/{code}/attempts` (también con `?status=GRADED`) admite `?page` y `?size` opcionales,
+  con la misma semántica que el roster: la página se corta en SQL sobre `lms.intento` (`LIMIT`/`OFFSET`, en el orden de
+  envío de siempre y sin los intentos de quien mira) y los correos se leen solo por las matrículas de esa página. Sin
+  ellos devuelve la cola entera, como antes (`QueuePageApiTest`). Con esto M4 queda resuelto.
+
 ## 2026-11-01 — ADR-0025: alcances con subconsultas sobre las tablas de Wasichai ([#236](https://github.com/wasichai/elearning-backend/pull/236))
 
 - [ADR-0025](adr/0025-alcances-de-lectura-con-subconsultas-sobre-tablas-de-wasichai.md) registra, como provisional, lo
