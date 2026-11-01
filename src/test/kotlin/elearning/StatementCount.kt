@@ -12,6 +12,7 @@ import org.springframework.boot.test.context.TestConfiguration
 import org.springframework.context.annotation.Bean
 import org.springframework.util.ClassUtils
 import reactor.core.publisher.Mono
+import java.lang.reflect.Array as ReflectArray
 import java.lang.reflect.InvocationTargetException
 import java.lang.reflect.Method
 import java.lang.reflect.Proxy
@@ -69,7 +70,7 @@ class StatementCount {
                     if (method.name == "bind" && args?.size == 2) {
                         val value = args[1].let { if (it is Parameter) it.value else it }
                         if (value != null && value.javaClass.isArray) {
-                            val length = java.lang.reflect.Array.getLength(value)
+                            val length = ReflectArray.getLength(value)
                             largestArray.accumulateAndGet(length) { a, b -> maxOf(a, b) }
                         }
                     }
