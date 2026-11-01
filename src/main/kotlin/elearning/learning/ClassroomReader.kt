@@ -5,6 +5,7 @@ import elearning.common.listAll
 import elearning.common.listAllIn
 import elearning.common.listByIds
 import elearning.common.ref
+import elearning.course.meeting.SafeLink
 import org.springframework.stereotype.Component
 import wasichai.core.common.NotFoundException
 import wasichai.core.data.RecordResponse
@@ -45,6 +46,13 @@ class ClassroomReader(
                 .map { it.id }
                 .toSet()
         val resources = resources(lessonIds)
+        val labs =
+            content.units
+                .flatMap { it.lessons }
+                .filter { it.text(TYPE) == LAB }
+                .map { it.id }
+                .toSet()
+        val environments = environments(labs)
         val units =
             content.units.map { unit ->
                 UnitView(
@@ -66,6 +74,7 @@ class ClassroomReader(
                                 progress = progress(lesson, content),
                                 resources = resources[lesson.id].orEmpty(),
                                 assessment = content.assessments[lesson.id]?.let(::assessment),
+                                lab = if (lesson.text(TYPE) == LAB) lab(lesson, environments[lesson.id].orEmpty()) else null,
                             )
                         },
                 )
@@ -240,6 +249,29 @@ class ClassroomReader(
             }
     }
 
+    // los entornos de los laboratorios, en su orden y en una lectura. como el estudiante: ContentReadScope solo deja los de
+    // sus matrículas. un enlace que ya no pasa SafeLink (la regla se endureció) no se muestra
+    private suspend fun environments(lessons: Set<String>): Map<String, List<LabEnvironmentView>> {
+        if (lessons.isEmpty()) return emptyMap()
+        return records
+            .listAllIn(LAB_ENVIRONMENT, LESSON, lessons)
+            .filter { SafeLink.isAllowed(it.text(LINK)) }
+            .sortedWith(compareBy({ it.int(ORDER) }, { it.id }))
+            .groupBy({ it.attributes.ref(LESSON)!! }) { LabEnvironmentView(it.id, it.text(TITLE), it.text(LINK)) }
+    }
+
+    private fun lab(
+        lesson: RecordResponse,
+        environments: List<LabEnvironmentView>,
+    ) = LabView(
+        objective = lesson.textOrNull("objetivo"),
+        requirements = lesson.lines("requisitos"),
+        milestones = lesson.lines("hitos"),
+        acceptanceCriteria = lesson.lines("criterios_aceptacion"),
+        deliverables = lesson.lines("entregables"),
+        environments = environments,
+    )
+
     private fun summary(
         lessons: List<RecordResponse>,
         content: Content,
@@ -334,6 +366,9 @@ class ClassroomReader(
         const val RESOURCE = "recurso"
         const val RESOURCE_VERSION = "version_recurso"
         const val RESOURCE_LINK = "recurso_leccion"
+        const val LAB_ENVIRONMENT = "entorno_laboratorio"
+        const val LAB = "LABORATORIO"
+        const val LINK = "enlace"
         const val FILE = "archivo"
         const val ORDER = "orden"
         const val TITLE = "titulo"
@@ -356,3 +391,11 @@ private fun RecordResponse.text(name: String): String = attributes[name]?.toStri
 private fun RecordResponse.textOrNull(name: String): String? = attributes[name]?.toString()?.takeIf { it.isNotBlank() }
 
 private fun RecordResponse.int(name: String): Int = (attributes[name] as? Number)?.toInt() ?: attributes[name]?.toString()?.toIntOrNull() ?: 0
+
+// un campo «uno por línea» como lista, sin las líneas vacías
+private fun RecordResponse.lines(name: String): List<String> =
+    textOrNull(name)
+        ?.lines()
+        ?.map { it.trim() }
+        ?.filter { it.isNotEmpty() }
+        .orEmpty()

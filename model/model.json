@@ -371,6 +371,31 @@
           "name": "referencia_fuente",
           "label": "Fuente (repo@sha:ruta#ancla)",
           "type": "TEXT"
+        },
+        {
+          "name": "objetivo",
+          "label": "Objetivo del laboratorio",
+          "type": "LONG_TEXT"
+        },
+        {
+          "name": "requisitos",
+          "label": "Requisitos del laboratorio (uno por línea)",
+          "type": "LONG_TEXT"
+        },
+        {
+          "name": "hitos",
+          "label": "Hitos del laboratorio (uno por línea, en orden)",
+          "type": "LONG_TEXT"
+        },
+        {
+          "name": "criterios_aceptacion",
+          "label": "Criterios de aceptación (uno por línea)",
+          "type": "LONG_TEXT"
+        },
+        {
+          "name": "entregables",
+          "label": "Entregables (uno por línea)",
+          "type": "LONG_TEXT"
         }
       ],
       "uniqueConstraints": [["unidad", "orden"]],
@@ -713,6 +738,39 @@
         }
       ],
       "uniqueConstraints": [["leccion", "version_recurso"]]
+    },
+    {
+      "name": "entorno_laboratorio",
+      "label": "Entorno de laboratorio",
+      "pluralLabel": "Entornos de laboratorio",
+      "description": "Enlace a un entorno externo de un laboratorio (https público, ADR-0027). Solo lo leen los matriculados.",
+      "fields": [
+        {
+          "name": "orden",
+          "label": "Orden",
+          "type": "INTEGER",
+          "required": true
+        },
+        {
+          "name": "titulo",
+          "label": "Título",
+          "type": "TEXT",
+          "required": true
+        },
+        {
+          "name": "enlace",
+          "label": "Enlace (https público)",
+          "type": "TEXT",
+          "required": true
+        }
+      ],
+      "uniqueConstraints": [["leccion", "orden"]],
+      "actions": [
+        {
+          "name": "VER_TODAS",
+          "label": "Ver todos los entornos, no solo los de las matrículas propias"
+        }
+      ]
     },
     {
       "name": "fuente_recurso",
@@ -1294,6 +1352,16 @@
       "source": "recurso_leccion",
       "target": "version_recurso",
       "fieldName": "version_recurso",
+      "required": true
+    },
+    {
+      "name": "entorno_laboratorio_leccion",
+      "label": "Lección",
+      "inverseLabel": "Entornos",
+      "type": "MANY_TO_ONE",
+      "source": "entorno_laboratorio",
+      "target": "leccion",
+      "fieldName": "leccion",
       "required": true
     },
     {
