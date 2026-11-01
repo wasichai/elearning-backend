@@ -2,6 +2,12 @@
 
 Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este archivo registra lo que se entregó.
 
+## 2026-11-01 — El roster por páginas ([#183](https://github.com/wasichai/elearning-backend/issues/183), M4)
+
+- `GET /api/lms/teaching/offerings/{code}/students` admite `?page` y `?size` opcionales, como la API de registros: una
+  página de las matrículas no retiradas en el orden de siempre, con su progreso y su asistencia leídos por esas matrículas
+  (`listAllIn`). Sin ellos devuelve la edición entera, como antes (`RosterPageApiTest`).
+
 ## 2026-11-01 — Intentos y calificaciones en la semilla ([#231](https://github.com/wasichai/elearning-backend/issues/231), RNF-OSS-06)
 
 - `model/demo/data.json` gana `attempts`: el estudiante demo, matriculado también en `CORTO-101-A`, responde y envía su

@@ -2,13 +2,18 @@ package elearning.learning
 
 import elearning.common.instantOf
 import elearning.common.listAll
+import elearning.common.listAllIn
 import elearning.common.ref
 import org.springframework.stereotype.Component
 import wasichai.core.common.ForbiddenException
 import wasichai.core.common.NotFoundException
+import wasichai.core.common.PageRequest
+import wasichai.core.data.RecordCriterion
+import wasichai.core.data.RecordQuery
 import wasichai.core.data.RecordResponse
 import wasichai.core.data.RecordService
 import wasichai.core.identity.CurrentUser
+import wasichai.core.platform.SqlIdentifier
 import java.time.Clock
 import java.time.Instant
 import java.time.LocalDate
@@ -29,14 +34,24 @@ class TeachingReader(
             .map { offering(records.get(OFFERING, UUID.fromString(it))) }
             .sortedWith(compareBy({ it.startDate }, { it.code }))
 
-    // por lotes, no por estudiante (M4 de #183): las sentencias crecen con el temario y las sesiones, no con el roster
-    suspend fun students(code: String): List<RosterRow> {
+    // por lotes, no por estudiante (M4 de #183): las sentencias crecen con el temario y las sesiones, no con el roster. con
+    // page, una página en el orden de siempre (el de alta), y su asistencia y su progreso se leen por sus matrículas
+    suspend fun students(
+        code: String,
+        page: PageRequest? = null,
+    ): List<RosterRow> {
         val offering = assignedOffering(code)
         val sessions = records.listAll(SESSION, mapOf(ENROLLMENT_OFFERING to offering.id)).filter { it.attributes[STATE]?.toString() != CANCELLED }
-        val enrollments = enrollmentsOf(offering.id)
-        val attendance = sessions.flatMap { records.listAll(ATTENDANCE, mapOf(SESSION to it.id)) }
+        val enrollments = if (page == null) enrollmentsOf(offering.id) else enrollmentPage(offering.id, page)
+        val counted = sessions.map { it.id }.toSet()
+        val attendance =
+            if (page == null) {
+                sessions.flatMap { records.listAll(ATTENDANCE, mapOf(SESSION to it.id)) }
+            } else {
+                records.listAllIn(ATTENDANCE, ENROLLMENT, enrollments.map { it.id }).filter { it.attributes.ref(SESSION) in counted }
+            }
         val taken = attendance.groupBy { it.attributes.ref(ENROLLMENT).orEmpty() }
-        val progress = classroom.progress(offering.id, enrollments, sessions, attendance)
+        val progress = classroom.progress(offering.id, enrollments, sessions, attendance, byEnrollment = page != null)
         val assessments = facts.offeringAssessments(currentUser.require().organizationId, UUID.fromString(offering.id))
         return enrollments.map { enrollment ->
             RosterRow(
@@ -83,6 +98,21 @@ class TeachingReader(
 
     private suspend fun enrollmentsOf(offering: String): List<RecordResponse> =
         records.listAll(ENROLLMENT, mapOf(ENROLLMENT_OFFERING to offering)).filter { it.attributes[STATE]?.toString() != WITHDRAWN }
+
+    // una página de las matrículas no retiradas de la edición, en el orden de listAll (el de alta y, a igualdad, el id)
+    private suspend fun enrollmentPage(
+        offering: String,
+        page: PageRequest,
+    ): List<RecordResponse> {
+        val notWithdrawn =
+            RecordCriterion { definition, bind ->
+                definition.fields
+                    .firstOrNull { it.name == STATE }
+                    ?.let { "${SqlIdentifier.quote(it.columnName)} IS DISTINCT FROM ${bind(WITHDRAWN)}" } ?: "true"
+            }
+        val query = RecordQuery(page = page, filters = mapOf(ENROLLMENT_OFFERING to offering), criteria = listOf(notWithdrawn), count = false)
+        return records.list(ENROLLMENT, query).content
+    }
 
     private suspend fun offering(record: RecordResponse): TeachingOffering {
         val a = record.attributes

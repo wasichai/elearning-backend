@@ -121,12 +121,14 @@ class ClassroomReader(
 
     // el progreso de varias matrículas de una edición, leído por lotes (M4 de #183): antes el roster armaba el aula de cada
     // estudiante. el temario se lee una vez por versión, el progreso guardado por lección, los intentos de toda la edición en
-    // una lectura y la asistencia la trae quien llama. sessions: las no canceladas de la edición; attendance: la registrada
+    // una lectura y la asistencia la trae quien llama. sessions: las no canceladas de la edición; attendance: la registrada.
+    // byEnrollment: el progreso guardado de esas matrículas y no el de toda la edición (una página del roster)
     suspend fun progress(
         offering: String,
         enrollments: List<RecordResponse>,
         sessions: List<RecordResponse>,
         attendance: List<RecordResponse>,
+        byEnrollment: Boolean = false,
     ): Map<String, ProgressSummary> {
         val organization = currentUser.require().organizationId
         val linked = linked(sessions)
@@ -138,7 +140,9 @@ class ClassroomReader(
         for ((version, group) in enrollments.groupBy { it.attributes.ref(VERSION)!! }) {
             val syllabus = syllabus(version)
             val lessons = syllabus.units.flatMap { it.lessons }
-            val progress = lessons.flatMap { all(PROGRESS, mapOf(LESSON to it.id)) }.groupBy { it.attributes.ref(ENROLLMENT).orEmpty() }
+            val stored =
+                if (byEnrollment) records.listAllIn(PROGRESS, ENROLLMENT, group.map { it.id }) else lessons.flatMap { all(PROGRESS, mapOf(LESSON to it.id)) }
+            val progress = stored.groupBy { it.attributes.ref(ENROLLMENT).orEmpty() }
             val assessments = facts.offeringLessonAssessments(organization, UUID.fromString(offering), lessons.map { UUID.fromString(it.id) })
             for (enrollment in group) {
                 val content =
