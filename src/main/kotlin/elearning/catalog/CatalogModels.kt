@@ -86,6 +86,14 @@ data class OfferingTeacher(
     val role: String,
 )
 
+// el estado de la matrícula de una edición hoy (RF-CAT-09): abierta, cerrada (fuera de estado o de ventana) o completa
+// (abierta por calendario, pero sin plazas)
+enum class EnrollmentStatus {
+    OPEN,
+    CLOSED,
+    FULL,
+}
+
 data class OfferingView(
     val code: String,
     val status: String,
@@ -98,6 +106,11 @@ data class OfferingView(
     val capacity: Int?,
     val schedule: String?,
     val teachers: List<OfferingTeacher>,
+    // cupo agotado cuando se proyectó (lms.ocupacion_edicion): un sí o un no, nunca cuántos ni quiénes. los valores por
+    // defecto leen las filas proyectadas antes de que existieran
+    val full: Boolean = false,
+    // lo decide la lectura, como enrollmentOpen (OfferingCalendar)
+    val enrollmentStatus: EnrollmentStatus = EnrollmentStatus.CLOSED,
 )
 
 data class TeacherView(
@@ -140,6 +153,7 @@ data class NextOffering(
     val endDate: LocalDate,
     val timeZone: String,
     val enrollmentOpen: Boolean,
+    val enrollmentStatus: EnrollmentStatus,
 )
 
 data class CourseSummary(

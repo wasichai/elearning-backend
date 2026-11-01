@@ -9,6 +9,20 @@ Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este
 - `POST /api/lms/enrollments` responde `409` con un `detail` que nombra cada curso que falta si el estudiante no tiene en
   él una matrícula propia `FINALIZADA` y `APROBADO`. Un código desconocido nunca se cumple.
 
+## 2026-11-01 — Ediciones completas en el catálogo ([#237](https://github.com/wasichai/elearning-backend/pull/237), RF-CAT-09)
+
+- La ficha pública dice el estado de la matrícula de cada edición, `enrollmentStatus` `OPEN`, `CLOSED` o `FULL`, y `full`
+  (cupo agotado), también en `nextOffering`. La proyección lee `lms.ocupacion_edicion` en cada refresco y publica solo un
+  sí o un no, nunca cuántos ni quiénes; una matrícula que no agota el cupo no reescribe la fila
+  ([ADR-0023](adr/0023-cupo-agotado-en-la-proyeccion-del-catalogo.md)).
+- `enrollmentOpen`, en la ficha y en el filtro de RF-CAT-08, deja fuera las ediciones completas.
+
+## 2026-11-01 — El aula lee sus recursos por lotes ([#104](https://github.com/wasichai/elearning-backend/issues/104), M1)
+
+- `ClassroomReader.resources()` lee los enlaces de las lecciones del aula, sus versiones de recurso y sus recursos en una
+  lectura cada uno (`listAllIn`, `listByIds`), no un `get` por versión y por recurso: el aula pasa de unas 2 sentencias SQL
+  por recurso distinto a ninguna (`ClassroomCostApiTest`). Un enlace cuya versión o recurso no se puede leer no se muestra.
+
 ## 2026-11-01 — Aviso de publicación de contenido ([#231](https://github.com/wasichai/elearning-backend/issues/231), RF-AUL-09)
 
 - Publicar una versión de curso, por la bandeja, la API de registros o la plataforma, avisa por `wasichai-notifications`

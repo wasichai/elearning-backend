@@ -23,6 +23,8 @@ data class CatalogRecords(
     val offerings: List<RecordResponse>,
     val profiles: List<RecordResponse>,
     val assignments: List<RecordResponse>,
+    // matriculados por edición (id → número), de lms.ocupacion_edicion: solo para saber si está completa
+    val occupancy: Map<String, Int> = emptyMap(),
 )
 
 // un curso listo para la proyección: la ficha completa y las columnas por las que se filtra y ordena
@@ -73,7 +75,7 @@ class CatalogBuilder(
             .mapNotNull { course ->
                 val version = published[course.id] ?: return@mapNotNull null
                 try {
-                    course(course, version, categories, profiles, lessonsByUnit, unitsByVersion, offeringsByVersion, teachersByOffering)
+                    course(course, version, categories, profiles, lessonsByUnit, unitsByVersion, offeringsByVersion, teachersByOffering, records.occupancy)
                 } catch (e: IllegalArgumentException) {
                     onReject(course.text("codigo") ?: course.id, e)
                     null
@@ -99,6 +101,7 @@ class CatalogBuilder(
         unitsByVersion: Map<String?, List<RecordResponse>>,
         offeringsByVersion: Map<String?, List<RecordResponse>>,
         teachersByOffering: Map<String?, List<RecordResponse>>,
+        occupancy: Map<String, Int>,
     ): PublishedCourse {
         val slug = requireNotNull(course.text("slug")) { "course without slug" }
         require(PUBLIC_SLUG.matches(slug)) { "slug '$slug' is not a public slug" }
@@ -106,7 +109,7 @@ class CatalogBuilder(
             offeringsByVersion[version.id]
                 .orEmpty()
                 .filter { it.text("estado") in CURRENT_OFFERINGS }
-                .map { it to offering(it, teachersByOffering[it.id].orEmpty(), profiles) }
+                .map { it to offering(it, teachersByOffering[it.id].orEmpty(), profiles, occupancy[it.id] ?: 0) }
                 .sortedWith(compareBy({ it.second.startDate }, { it.second.code }))
         val offerings = current.map { it.second }
         val units =
@@ -238,7 +241,9 @@ class CatalogBuilder(
         offering: RecordResponse,
         assignments: List<RecordResponse>,
         profiles: Map<String, RecordResponse>,
+        taken: Int,
     ): OfferingView {
+        val capacity = offering.int("capacidad")
         val zone = offering.text("zona_horaria")?.takeIf { runCatching { ZoneId.of(it) }.isSuccess } ?: DEFAULT_ZONE
         return OfferingView(
             code = requireNotNull(offering.text("codigo")) { "offering without code" },
@@ -250,8 +255,10 @@ class CatalogBuilder(
             enrollmentUntil = offering.date("inscripcion_hasta"),
             // depende del día: lo decide la lectura (CatalogClock), no la proyección
             enrollmentOpen = false,
-            capacity = offering.int("capacidad"),
+            capacity = capacity,
             schedule = offering.text("calendario"),
+            // sin capacidad no hay límite: nunca está completa
+            full = capacity != null && taken >= capacity,
             teachers =
                 assignments
                     .mapNotNull { a ->
