@@ -13,6 +13,19 @@ Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este
 - `StatementCount` guarda el arreglo ligado más largo de una petición (`ScopeCostApiTest`): el del aula pasaba de 16 a 19
   con tres cursos publicados más y el del roster de 3 a 8 con seis estudiantes más; ya no crecen.
 
+## 2026-11-01 — Aviso de publicación de contenido ([#231](https://github.com/wasichai/elearning-backend/issues/231), RF-AUL-09)
+
+- Publicar una versión de curso, por la bandeja, la API de registros o la plataforma, avisa por `wasichai-notifications`
+  (bandeja y correo, Mailpit en desarrollo) a quien cursa **otra versión de ese curso** con su matrícula `ACTIVA`: lo
+  publicado no cambia y solo se matricula en una versión publicada, así que el contenido nuevo para alguien ya matriculado
+  es una versión nueva de su curso. Nunca a una matrícula retirada ni a otro curso; cada estudiante es destinatario
+  propio y nadie ve quién más lo recibió. Una `version_recurso` publicada no avisa: una lección solo enlaza recursos ya
+  publicados y en un temario en borrador.
+- `PublicationNoticeListener` (un `RecordChangeListener`) encola el trabajo `aviso-publicacion` en la transacción de la
+  publicación, con clave por versión; el trabajo lee las matrículas como la plataforma (quien publica no las lee,
+  ADR-0014) y publica el aviso con clave `version/<id>`: repetirlo no avisa dos veces. La primera versión de un curso no
+  encola nada. Publicar en la bandeja pasa a ser una transacción; `learning` puede usar `jobs` (ArchitectureTest).
+
 ## 2026-11-01 — Barrido de intentos vencidos ([#183](https://github.com/wasichai/elearning-backend/issues/183), L4)
 
 - Un intento vencido se cierra con `enviado_en` = su plazo (`min(ahora, plazo)`), no el momento en que alguien lo toca: el
