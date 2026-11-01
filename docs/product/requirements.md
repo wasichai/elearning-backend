@@ -45,7 +45,7 @@ el cuándo, en [`roadmap.md`](roadmap.md).
 - **RF-CAT-07** · F1 · implementado ([#56](https://github.com/wasichai/elearning-backend/pull/56), [#64](https://github.com/wasichai/elearning-backend/pull/64)) — El catálogo solo expone campos públicos (DTO propio, no el registro de Wasichai).
   _Aceptación:_ prueba de contrato que falla si la respuesta incluye identificadores de autor, estado editorial,
   comentarios de revisión u otros campos internos.
-- **RF-CAT-08** · F6 · implementado ([#201](https://github.com/wasichai/elearning-backend/pull/201), [front#68](https://github.com/wasichai/elearning-frontend/pull/68), PRCAT) — Filtros adicionales: duración, conocimientos previos, estado de matrícula y horas
+- **RF-CAT-08** · F6 · implementado ([#201](https://github.com/wasichai/elearning-backend/pull/201), [front#68](https://github.com/wasichai/elearning-frontend/pull/68), [#249](https://github.com/wasichai/elearning-backend/pull/249)) — Filtros adicionales: duración, conocimientos previos, estado de matrícula y horas
   por tipo (teoría, práctica/laboratorio, autónomo).
   _Aceptación:_ pruebas de integración por filtro y control de la UI con estado vacío.
   _Cómo:_ conocimientos previos son claves del vocabulario `conocimiento_previo` en la versión publicada
