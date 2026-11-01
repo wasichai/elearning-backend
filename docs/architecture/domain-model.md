@@ -132,6 +132,7 @@ LONG_TEXT` · `conocimientos_previos · LONG_TEXT` · `requisitos · LONG_TEXT` 
 Invariantes: solo se edita en `BORRADOR`, y con ella sus unidades y lecciones [guarda]; las transiciones son las de §5.1
 [guarda + comando]; quien aprueba no es el autor [guarda, F4]; un curso tiene a lo sumo una versión `PUBLICADA` a la vez:
 publicar retira la anterior en la misma transacción, bajo `ClusterLock.withXactLock("lms.curso.<id>")` [servicio];
+publicarla avisa a quien cursa otra versión del curso con su matrícula `ACTIVA` (RF-AUL-09) [listener + cola];
 `duracion · ENUM(SEMANAS, SEMESTRAL)` (por defecto `SEMANAS`) y `semanas`: de 1 a 8, o de 12 a 26 si es semestral
 (`CourseDurationGuard`, RF-ACA-05) [guarda]; horas ≥ 0. Los créditos **no se guardan** en F1: `workload` los calcula al
 leer a partir de las horas y de la política configurada, y la respuesta dice «propuestos», con sistema, método, parámetros,

@@ -69,7 +69,8 @@ class ArchitectureTest {
                 "course" to setOf("common", "workload"),
                 "catalog" to setOf("common", "course", "workload"),
                 "enrollment" to setOf("common", "course"),
-                "learning" to setOf("common", "enrollment", "course", "workload"),
+                // el aviso de publicación de contenido sale de la cola persistente (RF-AUL-09)
+                "learning" to setOf("common", "enrollment", "course", "workload", "jobs"),
                 // el barrido de intentos vencidos corre en la cola persistente (L4 de #183)
                 "assessment" to setOf("common", "learning", "enrollment", "jobs"),
                 "authoring" to setOf("common", "course"),
