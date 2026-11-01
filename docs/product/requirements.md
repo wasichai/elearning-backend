@@ -50,7 +50,7 @@ el cuándo, en [`roadmap.md`](roadmap.md).
   _Aceptación:_ pruebas de integración por filtro y control de la UI con estado vacío.
   _Pendiente de F2 (#103):_ duración, estado de matrícula y horas por tipo hechos ([#201](https://github.com/wasichai/elearning-backend/pull/201), [front#68](https://github.com/wasichai/elearning-frontend/pull/68)); falta
   «conocimientos previos», que exige un campo estructurado nuevo (hoy `curso.conocimientos_previos` es texto libre).
-- **RF-CAT-09** · F3 · implementado ([#231](https://github.com/wasichai/elearning-backend/issues/231)) — La ficha describe evaluación y requisitos de certificación, y el estado de
+- **RF-CAT-09** · F3 · implementado ([#237](https://github.com/wasichai/elearning-backend/pull/237)) — La ficha describe evaluación y requisitos de certificación, y el estado de
   matrícula de cada edición (abierta, cerrada, completa).
   _Aceptación:_ prueba de integración con ediciones en cada estado.
   La ficha publica `sistema_evaluacion`, `certificacion` y, por edición, `enrollmentStatus` (`OPEN`, `CLOSED`, `FULL`) y

@@ -2,7 +2,7 @@
 
 Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este archivo registra lo que se entregó.
 
-## 2026-11-01 — Ediciones completas en el catálogo ([#231](https://github.com/wasichai/elearning-backend/issues/231), RF-CAT-09)
+## 2026-11-01 — Ediciones completas en el catálogo ([#237](https://github.com/wasichai/elearning-backend/pull/237), RF-CAT-09)
 
 - La ficha pública dice el estado de la matrícula de cada edición, `enrollmentStatus` `OPEN`, `CLOSED` o `FULL`, y `full`
   (cupo agotado), también en `nextOffering`. La proyección lee `lms.ocupacion_edicion` en cada refresco y publica solo un
