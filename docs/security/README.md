@@ -301,6 +301,9 @@ aplicación se conecta con un rol que no es dueño de las tablas, para que nadie
 - **Retención**: plazos por tipo de dato en F6 (cuentas inactivas, intentos, registros IA). Los eventos de aprendizaje se
   guardan mientras el estudiante acepte los términos y se suprimen al retirarla (ADR-0020).
   La purga de `audit_log` solo la hace el rol de purga de Wasichai (`wasichai.audit.purge-role`), nunca la aplicación.
+  Los trabajos terminados de `lms.trabajo` (sus datos nombran a quien los pidió y su error puede citar la fuente) los
+  borra la propia cola pasado `lms.jobs.retention` (30 días, ADR-0022); la versión y los artefactos que crearon guardan
+  autor, fuente y trabajo.
 - **Eliminación de cuenta**: a diseñar en F6, conservando lo que deba conservarse (calificaciones emitidas,
   certificados, auditoría). Plazos legales: a verificar con la organización; este documento no fija ninguno.
 - **Datos de demostración y pruebas**: siempre sintéticos ([pruebas](../testing/README.md#datos-sintéticos)).

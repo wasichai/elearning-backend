@@ -235,6 +235,16 @@ class JobQueue(
             .awaitSingle() > 0
     }
 
+    // borra los trabajos terminados (DONE o FAILED) hace más de lms.jobs.retention (ADR-0022): sus datos nombran a quien
+    // los pidió y su error puede citar la fuente. devuelve cuántos borró
+    suspend fun purge(): Long =
+        db
+            .sql("DELETE FROM lms.trabajo WHERE estado IN ('DONE', 'FAILED') AND terminado_en < :before")
+            .bind("before", now().minus(properties.retention))
+            .fetch()
+            .rowsUpdated()
+            .awaitSingle()
+
     private fun now(): OffsetDateTime = clock.instant().atOffset(ZoneOffset.UTC)
 
     private fun status(row: Readable) =

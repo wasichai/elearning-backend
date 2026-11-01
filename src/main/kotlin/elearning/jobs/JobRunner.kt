@@ -42,6 +42,20 @@ class JobRunner(
         }
     }
 
+    // retención (ADR-0022): cada réplica que ejecuta trabajos borra los terminados antiguos; dos a la vez no se estorban
+    @Scheduled(fixedDelayString = "\${lms.jobs.purge-every:1h}", initialDelayString = "\${lms.jobs.initial-delay:10s}")
+    suspend fun purge() {
+        if (!properties.scheduling) return
+        try {
+            val purged = queue.purge()
+            if (purged > 0) log.info("purged {} jobs finished more than {} ago", purged, properties.retention)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            log.warn("job purge failed", e)
+        }
+    }
+
     // una vuelta: reclama, ejecuta y espera a que terminen. devuelve cuántos reclamó. para pruebas y operación manual
     suspend fun runOnce(): Int {
         val claimed = queue.claim(handlers.keys, properties.parallelism)

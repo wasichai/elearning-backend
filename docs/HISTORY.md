@@ -38,6 +38,8 @@ Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este
 - **L3**: el HTML generado se sanea con lista blanca (jsoup) antes de guardarse: quedan el contenido, sus clases y anclas,
   URL `http`, `https` o `mailto`, el título y el estilo de Asciidoctor; se van scripts, manejadores de eventos, `iframe`,
   formularios y hojas externas. Su `sha256` es el de lo saneado.
+- **L5, trabajos**: cada réplica que ejecuta trabajos borra cada `lms.jobs.purge-every` (1 h) los terminados hace más de
+  `lms.jobs.retention` (30 días); lo pendiente y lo reciente no se toca.
 
 ## 2026-10-31 — Fase 4: estudio editorial, revisión e importador ([#179](https://github.com/wasichai/elearning-backend/issues/179))
 
