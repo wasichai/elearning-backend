@@ -57,6 +57,24 @@ servidor tiene dos registros con la misma clave natural, el script se detiene co
 Los registros van ordenados por dependencias. `apply.py --validate-only --demo` comprueba todo lo anterior, además de
 los campos y relaciones obligatorios y que ninguna clave natural se repita.
 
+### Lo que hace una persona: matrículas, sesiones, intentos y notas
+
+Lo que en el producto es un comando del LMS, la demo lo hace por ese comando e iniciando sesión como quien lo haría, así
+que pasa por las mismas reglas (ventana de inscripción, asignación del docente, plazos, motivo al cambiar una nota):
+
+| Clave         | Qué hace                                                                                                                 |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `workflows`   | El camino de estados de cada objeto; `commands` da un paso por una ruta `/api/lms/` (aprobar por la bandeja).            |
+| `enrollments` | `{ user, offering }`: el estudiante se matricula con `POST /api/lms/enrollments`, en una edición abierta hoy.            |
+| `sessions`    | Las crea el docente asignado a la edición con el comando de sesiones.                                                    |
+| `attempts`    | `{ student, offering, lesson, teacher, answers, grades }`: el estudiante responde y envía; el docente asignado califica. |
+
+En `attempts`, `answers` y `grades` nombran preguntas y opciones por su `ref`. El estudiante debe estar en `enrollments`
+para esa edición, el docente asignado a ella (`docente_edicion`), la lección tener evaluación y cada nota ir a una
+pregunta `ABIERTA` o `ARCHIVO`, dentro de sus puntos y con comentario. Es idempotente como lo demás: un intento ya enviado
+no se rehace y una pregunta ya calificada no se vuelve a calificar; uno que quedó a medias se termina en la siguiente
+ejecución.
+
 ## Contenido
 
 | Código         | Curso                                                                  | Versiones                     | Ediciones         |
@@ -98,3 +116,10 @@ datos de sus capturas ni el nombre de la municipalidad de los manuales.
 Uno por rol (`estudiante@`, `docente@`, `creador@`, `revisor@`) y uno con dos roles (`docente.revisor@`, DOCENTE y
 REVISOR), todos en `demo.wasichai-learning.test`, con nombres ficticios evidentes. Los dos docentes tienen
 `perfil_docente` y están asignados a ediciones con `docente_edicion`.
+
+### Matrículas, intentos y calificaciones
+
+`estudiante@` está matriculado en `SRTM-ANU-101-A` y en `CORTO-101-A`. En el curso corto ya respondió la evaluación y
+`docente@`, su docente asignado, corrigió la pregunta abierta: 8 de 10 puntos, aprobada con el 80 %. El intento queda en la
+cola de lo corregido (`?status=GRADED`) y con su nota en el historial; la sesión y la asistencia quedan por hacer. Los
+recorridos e2e crean sus propios estudiantes, así que este intento no cambia sus conteos.
