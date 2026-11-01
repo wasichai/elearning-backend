@@ -120,7 +120,7 @@ class RolesApiTest : LmsApiTest() {
         val target = account("ESTUDIANTE")
 
         assertEquals(HttpStatus.OK, send("PUT", "/api/users/${target.id}/roles", admin, mapOf("roles" to listOf("ESTUDIANTE", "CREADOR"))))
-        val entries = get("/api/audit?object=admin:user&recordId=${target.id}", admin).values()
+        val entries = get("/api/audit?objectName=admin:user&recordId=${target.id}", admin).values()
 
         assertTrue(
             entries.any {
