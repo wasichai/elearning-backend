@@ -65,8 +65,13 @@ los campos y relaciones obligatorios y que ninguna clave natural se repita.
 | `SGSPE-101`    | B · SGSPE: primeros pasos y gestión de compromisos                     | v1 `PUBLICADA`                | 2027-01           |
 | `IA-AGT-201`   | C · Agentes de IA con trazabilidad y revisión humana                   | v1 `PUBLICADA`                | 2027-04           |
 | `SRTM-ATC-001` | Atención al contribuyente en ventanilla (solo borrador)                | v1 `BORRADOR`                 | ninguna           |
+| `CORTO-101`    | Curso corto: mensajes de error claros                                  | v1 `PUBLICADA`                | abierta hoy       |
+| `TRAMITE-101`  | Instrucciones claras para un trámite en línea (recorrido editorial)    | v1 `PUBLICADA`                | abierta hoy       |
 
 - La v2 de A y el curso `SRTM-ATC-001` sirven para comprobar que lo no publicado no se ve en el catálogo.
+- `TRAMITE-101` es solo del recorrido editorial (e2e real del frontend, issue #224): cada ejecución copia su v1, la
+  revisa y publica otra versión, y matricula a un estudiante nuevo en `TRAMITE-101-A`. Publicar saca del catálogo las
+  ediciones de la versión anterior, así que ningún otro recorrido ni la matrícula de la demo lo usan.
 - C usa la carga de ejemplo de la especificación: 6 semanas × (12 h de teoría + 12 h de práctica o laboratorio + 12 h
   autónomas), sistema ECTS y **sin** `creditos_aprobados`: los créditos los aprueba una persona con su regla.
 - Ediciones en `America/Lima`, entre noviembre de 2026 y junio de 2027, con periodo de inscripción y capacidad.
