@@ -234,6 +234,11 @@
           "type": "LONG_TEXT"
         },
         {
+          "name": "cursos_previos",
+          "label": "Prerrequisitos: códigos de los cursos que hay que haber aprobado antes (uno por línea)",
+          "type": "LONG_TEXT"
+        },
+        {
           "name": "sistema_evaluacion",
           "label": "Sistema de evaluación",
           "type": "LONG_TEXT"

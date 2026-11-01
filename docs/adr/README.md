@@ -39,3 +39,4 @@ secciones Contexto, Decisión, Alternativas consideradas y Consecuencias. El for
 | [0021](0021-la-revision-de-un-curso-se-decide-en-la-bandeja.md)     | La revisión de un curso se decide solo en la bandeja; la de un recurso, con motivo             | aceptada                     | 2026-10-31 |
 | [0022](0022-limites-y-ciclo-de-vida-de-los-trabajos.md)             | Límites y ciclo de vida de los trabajos de la cola                                             | aceptada                     | 2026-10-31 |
 | [0023](0023-cupo-agotado-en-la-proyeccion-del-catalogo.md)          | El cupo agotado llega al catálogo como un sí o un no, por la proyección                        | aceptada                     | 2026-11-01 |
+| [0024](0024-prerrequisitos-como-campo-de-la-version.md)             | Los prerrequisitos son un campo de la versión y los comprueba el comando de matrícula          | aceptada                     | 2026-11-01 |
