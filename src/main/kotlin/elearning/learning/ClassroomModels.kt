@@ -70,6 +70,25 @@ data class LessonView(
     val progress: LessonProgress,
     val resources: List<ResourceView>,
     val assessment: AssessmentSummary?,
+    // solo en una lección LABORATORIO (ADR-0027)
+    val lab: LabView?,
+)
+
+// el laboratorio de una lección (RF-LAB-01): las listas son una entrada por línea del campo, sin las vacías
+data class LabView(
+    val objective: String?,
+    val requirements: List<String>,
+    val milestones: List<String>,
+    val acceptanceCriteria: List<String>,
+    val deliverables: List<String>,
+    val environments: List<LabEnvironmentView>,
+)
+
+// un entorno externo: https público (SafeLink, RF-LAB-03). la interfaz lo abre en otra pestaña; el servidor nunca lo visita
+data class LabEnvironmentView(
+    val id: String,
+    val title: String,
+    val url: String,
 )
 
 data class AssessmentBest(

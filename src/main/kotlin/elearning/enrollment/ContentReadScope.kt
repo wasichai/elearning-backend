@@ -17,7 +17,7 @@ import java.util.UUID
 
 // lo que una persona sin VER_TODAS lee del contenido (ADR-0012, ADR-0013): las versiones PUBLICADAS o de sus matrículas
 // no retiradas, y las unidades, lecciones y ediciones de esas versiones. un borrador se lee como inexistente. los recursos
-// (E13.1) quedan solo para las versiones de sus matrículas. nunca por rol.
+// (E13.1) y los entornos de laboratorio (ADR-0027) quedan solo para las versiones de sus matrículas. nunca por rol.
 // con subconsultas SQL (M4 de #183, M1 de #104): antes listaba versiones, unidades y lecciones y las ligaba como arreglos de
 // ids que crecían con el catálogo publicado; ahora la base de datos resuelve la cadena en la misma sentencia. cada nivel
 // repite lo que leerlo como quien llama aplicaba: su organización, su VER_TODAS y, sin READ sobre él, nada (falla cerrada)
@@ -52,7 +52,8 @@ class ContentReadScope(
                 UNIT, OFFERING -> column(definition, VERSION) to chain.visibleVersions()
                 LESSON -> column(definition, UNIT) to chain.visibleUnits()
                 // los recursos, solo por las lecciones de las versiones en que está matriculado (ADR-0013)
-                RESOURCE_LINK -> column(definition, LESSON) to chain.enrolledLessons()
+                // los entornos de un laboratorio, igual: solo los de las lecciones de sus matrículas (ADR-0027)
+                RESOURCE_LINK, LAB_ENVIRONMENT -> column(definition, LESSON) to chain.enrolledLessons()
                 RESOURCE_VERSION -> ID_COLUMN to chain.linkedResourceVersions()
                 else -> ID_COLUMN to chain.linkedResources()
             }
@@ -182,6 +183,7 @@ class ContentReadScope(
         const val RESOURCE = "recurso"
         const val RESOURCE_VERSION = "version_recurso"
         const val RESOURCE_LINK = "recurso_leccion"
+        const val LAB_ENVIRONMENT = "entorno_laboratorio"
         const val PUBLISHED = "PUBLICADA"
         const val ENROLLMENT = "matricula"
         const val STUDENT = "estudiante_id"
@@ -190,6 +192,6 @@ class ContentReadScope(
         const val SEE_ALL = "VER_TODAS"
         const val NOTHING = "false"
         const val ID_COLUMN = "\"id\""
-        val SCOPED = setOf(VERSION, UNIT, LESSON, OFFERING, RESOURCE, RESOURCE_VERSION, RESOURCE_LINK)
+        val SCOPED = setOf(VERSION, UNIT, LESSON, OFFERING, RESOURCE, RESOURCE_VERSION, RESOURCE_LINK, LAB_ENVIRONMENT)
     }
 }

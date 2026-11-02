@@ -273,4 +273,31 @@ class CatalogBuilderTest {
         assertEquals(hash(1), hash(2), "una matrícula más que no agota el cupo no reescribe la proyección")
         assertFalse(hash(2) == hash(3))
     }
+
+    // RF-CAT-08 (ADR-0028): las claves que declaró la versión publicada, sin repetir, con el nombre del vocabulario
+    @Test
+    fun `the sheet carries the prerequisite knowledge keys the published version declares`() {
+        val vocabulary =
+            listOf(
+                record("k1", "clave" to "hoja-de-calculo", "nombre" to "Hoja de cálculo"),
+                record("k2", "clave" to "navegador-web", "nombre" to "Navegador web"),
+            )
+        val declared = version("v1", 1, "PUBLICADA", "conocimientos_previos_claves" to "navegador-web\n\n hoja-de-calculo \nnavegador-web\nsin-nombre")
+        val built = CatalogBuilder().build(records(declared).copy(knowledge = vocabulary)).single().detail
+
+        assertEquals(
+            listOf(
+                KnowledgeTag("navegador-web", "Navegador web"),
+                KnowledgeTag("hoja-de-calculo", "Hoja de cálculo"),
+                KnowledgeTag("sin-nombre", "sin-nombre"),
+            ),
+            built.prerequisiteKnowledgeTags,
+        )
+        val none =
+            CatalogBuilder()
+                .build(records(version("v1", 1, "PUBLICADA")))
+                .single()
+                .detail
+        assertEquals(emptyList<KnowledgeTag>(), none.prerequisiteKnowledgeTags)
+    }
 }

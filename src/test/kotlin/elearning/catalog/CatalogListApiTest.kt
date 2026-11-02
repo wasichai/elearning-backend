@@ -140,6 +140,47 @@ class CatalogListApiTest : LmsApiTest() {
         assertEquals(setOf("IA-AGT-201"), demo("?minTheoryHours=6&minAutonomousHours=72"))
     }
 
+    // RF-CAT-08 (ADR-0028). la demo declara navegador-web en SRTM y programacion-basica y json-y-api-rest en IA; SGSPE,
+    // CORTO y TRAMITE no declaran ninguna. hoja-de-calculo está en el vocabulario, pero ninguna versión publicada la nombra
+    @Test
+    fun `prerequisite knowledge filters by a declared key`() {
+        assertEquals(setOf("IA-AGT-201"), demo("?prerequisiteKnowledge=programacion-basica"))
+        assertEquals(setOf("SRTM-ANU-101"), demo("?prerequisiteKnowledge=navegador-web"))
+        assertEquals(emptySet<String>(), demo("?prerequisiteKnowledge=hoja-de-calculo"), "declarada en el vocabulario, sin curso que la pida")
+        assertEquals(0, list("?prerequisiteKnowledge=hoja-de-calculo")["totalElements"].asInt())
+    }
+
+    @Test
+    fun `none keeps the courses that declare no prerequisite knowledge`() {
+        assertEquals(setOf("SGSPE-101", "CORTO-101", "TRAMITE-101"), demo("?prerequisiteKnowledge=none"))
+        assertEquals(emptySet<String>(), demo("?prerequisiteKnowledge=none&modality=HIBRIDA&minWeeks=2"), "IA es la única híbrida de 2 semanas o más")
+    }
+
+    @Test
+    fun `the sheet names its prerequisite knowledge and the facets count it regardless of its own filter`() {
+        val slug = list()["content"].values().first { it["code"].asString() == "IA-AGT-201" }["slug"].asString()
+        val sheet =
+            json.readTree(
+                client
+                    .get()
+                    .uri("/api/lms/public/catalog/courses/$slug")
+                    .exchange()
+                    .expectBody(String::class.java)
+                    .returnResult()
+                    .responseBody,
+            )
+        assertEquals(listOf("programacion-basica", "json-y-api-rest"), sheet["prerequisiteKnowledgeTags"].strings { it["key"] })
+        assertEquals("Programación básica", sheet["prerequisiteKnowledgeTags"][0]["name"].asString())
+
+        fun facets(query: String) = list(query)["facets"]["prerequisiteKnowledge"].values().associate { it["key"].asString() to it["count"].asInt() }
+        val all = facets("")
+        assertEquals(1, all["navegador-web"])
+        assertEquals(1, all["programacion-basica"])
+        assertTrue("hoja-de-calculo" !in all, "una clave sin curso publicado no se ofrece")
+        assertEquals(all, facets("?prerequisiteKnowledge=navegador-web"), "el filtro propio no reduce su faceta")
+        assertEquals(setOf("navegador-web"), facets("?modality=ASINCRONA&minWeeks=3").keys)
+    }
+
     @Test
     fun `the new filters combine with the others and narrow the facets`() {
         assertEquals(setOf("CORTO-101"), demo("?modality=HIBRIDA&enrollmentOpen=true&maxWeeks=4"))
@@ -192,6 +233,8 @@ class CatalogListApiTest : LmsApiTest() {
             "?minPracticeHours=1e3" to "minPracticeHours",
             "?minAutonomousHours=10001" to "minAutonomousHours",
             "?minAutonomousHours=1.255" to "minAutonomousHours",
+            "?prerequisiteKnowledge=Programacion" to "prerequisiteKnowledge",
+            "?prerequisiteKnowledge=-guion" to "prerequisiteKnowledge",
         )) {
             client
                 .get()

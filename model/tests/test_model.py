@@ -67,6 +67,23 @@ class RealModelTest(unittest.TestCase):
         self.assertLessEqual({"codigo", "titulo", "descripcion", "tipo", "idioma", "responsable_editorial_id"}, fields("recurso"))
         self.assertLessEqual({"numero", "autor_id", "estado", "archivo"}, fields("version_recurso"))
 
+    def test_a_lab_lesson_carries_its_lab_fields_and_its_environments(self):
+        # RF-LAB-01 (ADR-0027): lo que es texto va en la lección; los enlaces a entornos, en su objeto, que solo leen los matriculados
+        def fields(name: str) -> set[str]:
+            return {f["name"] for f in next(o for o in MODEL["objects"] if o["name"] == name)["fields"]}
+
+        self.assertLessEqual({"objetivo", "requisitos", "hitos", "criterios_aceptacion", "entregables"}, fields("leccion"))
+        self.assertLessEqual({"orden", "titulo", "enlace"}, fields("entorno_laboratorio"))
+        link = next(r for r in MODEL["relationships"] if r["source"] == "entorno_laboratorio")
+        self.assertEqual(("leccion", "leccion", True), (link["target"], link["fieldName"], link["required"]))
+        self.assertTrue(holds("ESTUDIANTE", "entorno_laboratorio", "READ"))
+        self.assertFalse(holds("ESTUDIANTE", "entorno_laboratorio", "VER_TODAS"))
+        for action in ("CREATE", "UPDATE", "DELETE"):
+            self.assertFalse(holds("ESTUDIANTE", "entorno_laboratorio", action), action)
+            self.assertFalse(holds("DOCENTE", "entorno_laboratorio", action), action)
+            self.assertFalse(holds("REVISOR", "entorno_laboratorio", action), action)
+            self.assertTrue(holds("CREADOR", "entorno_laboratorio", action), action)
+
     def test_students_never_read_assessment_content(self):
         # llevan las soluciones: el estudiante responde sobre la instantánea de su intento (ADR-0016)
         for obj in ("evaluacion", "pregunta", "opcion", "criterio_rubrica"):
@@ -174,6 +191,22 @@ class RealModelTest(unittest.TestCase):
         field = next(f for f in version["fields"] if f["name"] == "cursos_previos")
         self.assertEqual("LONG_TEXT", field["type"])
         self.assertFalse(field.get("required", False))
+
+    # RF-CAT-08 (ADR-0028): las claves de conocimientos previos son de la versión, como cursos_previos, y se eligen de un
+    # vocabulario declarado que todo el personal lee y solo ADMIN escribe
+    def test_versions_declare_prerequisite_knowledge_keys_from_a_vocabulary(self):
+        version = next(o for o in MODEL["objects"] if o["name"] == "version_curso")
+        field = next(f for f in version["fields"] if f["name"] == "conocimientos_previos_claves")
+        self.assertEqual("LONG_TEXT", field["type"])
+        self.assertFalse(field.get("required", False))
+        vocabulary = next(o for o in MODEL["objects"] if o["name"] == "conocimiento_previo")
+        fields = {f["name"]: f for f in vocabulary["fields"]}
+        self.assertTrue(fields["clave"]["unique"])
+        self.assertTrue(fields["nombre"]["required"])
+        for role in ROLES["roles"]:
+            self.assertTrue(holds(role["name"], "conocimiento_previo", "READ"), role["name"])
+            for action in ("CREATE", "UPDATE", "DELETE"):
+                self.assertFalse(holds(role["name"], "conocimiento_previo", action), f"{role['name']} no debe {action}")
 
     def test_curriculum_is_separate_from_offering_and_schedule(self):
         # el temario (curso/versión) no tiene fechas; la edición sí, con su zona horaria

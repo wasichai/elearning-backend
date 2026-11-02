@@ -1,5 +1,6 @@
 package elearning.catalog
 
+import elearning.course.PrerequisiteKnowledge
 import kotlinx.coroutines.reactive.awaitFirstOrNull
 import kotlinx.coroutines.reactor.awaitSingle
 import org.springframework.r2dbc.core.DatabaseClient
@@ -21,6 +22,8 @@ data class CatalogQuery(
     val maxWeeks: Int? = null,
     val enrollmentOpen: Boolean? = null,
     val minHours: HoursFilter = HoursFilter(),
+    // una clave del vocabulario conocimiento_previo, o PrerequisiteKnowledge.NONE: los que no declaran ninguna (ADR-0028)
+    val prerequisiteKnowledge: String? = null,
     val sort: CatalogSort = CatalogSort.UPCOMING,
     val page: Int = 0,
     val size: Int = 12,
@@ -150,7 +153,7 @@ class CatalogRepository(
             .awaitSingle()
 
     suspend fun page(query: CatalogQuery): Pair<List<String>, Long> {
-        val (where, bindings) = where(query, withCategory = true)
+        val (where, bindings) = where(query)
         val total = count(where, bindings)
         var spec =
             db.sql(
@@ -170,7 +173,7 @@ class CatalogRepository(
 
     // las categorías con cursos según todos los filtros menos el de categoría: para pintar el filtro
     suspend fun categoryFacets(query: CatalogQuery): List<CategoryFacet> {
-        val (where, bindings) = where(query, withCategory = false)
+        val (where, bindings) = where(query.copy(category = null))
         var spec =
             db.sql(
                 """
@@ -184,6 +187,30 @@ class CatalogRepository(
                 CategoryFacet(
                     row.get("categoria_slug", String::class.java)!!,
                     row.get("categoria_nombre", String::class.java)!!,
+                    row.get("n", Number::class.java)!!.toLong(),
+                )
+            }.all()
+            .collectList()
+            .awaitSingle()
+    }
+
+    // las claves de conocimientos previos con cursos según todos los filtros menos el suyo, como las categorías
+    suspend fun knowledgeFacets(query: CatalogQuery): List<KnowledgeFacet> {
+        val (where, bindings) = where(query.copy(prerequisiteKnowledge = null))
+        var spec =
+            db.sql(
+                """
+                SELECT t->>'key' AS clave, max(t->>'name') AS nombre, count(*) AS n FROM lms.catalogo_publicado
+                CROSS JOIN LATERAL jsonb_array_elements(COALESCE(ficha->'$KNOWLEDGE', '[]'::jsonb)) t
+                WHERE $where GROUP BY t->>'key' ORDER BY nombre, clave
+                """.trimIndent(),
+            )
+        bindings.forEach { (k, v) -> spec = spec.bind(k, v) }
+        return spec
+            .map { row, _ ->
+                KnowledgeFacet(
+                    row.get("clave", String::class.java)!!,
+                    row.get("nombre", String::class.java)!!,
                     row.get("n", Number::class.java)!!.toLong(),
                 )
             }.all()
@@ -215,22 +242,18 @@ class CatalogRepository(
             .awaitSingle()
     }
 
-    // el texto de la consulta solo lleva nombres de parámetro fijos; los valores van siempre ligados
-    private fun where(
-        query: CatalogQuery,
-        withCategory: Boolean,
-    ): Pair<String, Map<String, Any>> {
+    // el texto de la consulta solo lleva nombres de parámetro fijos; los valores van siempre ligados. una faceta se cuenta
+    // con la consulta sin su propio filtro
+    private fun where(query: CatalogQuery): Pair<String, Map<String, Any>> {
         val clauses = mutableListOf("organizacion = :org")
         val bindings = mutableMapOf<String, Any>("org" to query.organization)
         query.q?.let {
             clauses += "(titulo ILIKE :q ESCAPE '\\' OR resumen ILIKE :q ESCAPE '\\')"
             bindings["q"] = "%" + it.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
         }
-        if (withCategory) {
-            query.category?.let {
-                clauses += "categoria_slug = :category"
-                bindings["category"] = it
-            }
+        query.category?.let {
+            clauses += "categoria_slug = :category"
+            bindings["category"] = it
         }
         query.level?.let {
             clauses += "nivel = :level"
@@ -270,9 +293,21 @@ class CatalogRepository(
             clauses += "(ficha->'workload'->>'autonomousHours')::numeric >= :minAutonomousHours"
             bindings["minAutonomousHours"] = it
         }
+        // lo que declaró la versión publicada, tal como está en la ficha (ADR-0028)
+        query.prerequisiteKnowledge?.let {
+            if (it == PrerequisiteKnowledge.NONE) {
+                clauses += "jsonb_array_length(COALESCE(ficha->'$KNOWLEDGE', '[]'::jsonb)) = 0"
+            } else {
+                clauses += "ficha->'$KNOWLEDGE' @> jsonb_build_array(jsonb_build_object('key', CAST(:knowledge AS text)))"
+                bindings["knowledge"] = it
+            }
+        }
         return clauses.joinToString(" AND ") to bindings
     }
 }
+
+// el nombre del campo de la ficha (CourseDetail.prerequisiteKnowledgeTags): fijo, nunca un valor
+private const val KNOWLEDGE = "prerequisiteKnowledgeTags"
 
 // una edición de la ficha con la inscripción abierta hoy: INSCRIPCION_ABIERTA, con plazas, sin terminar y dentro de la
 // ventana

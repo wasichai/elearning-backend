@@ -45,11 +45,12 @@ el cuándo, en [`roadmap.md`](roadmap.md).
 - **RF-CAT-07** · F1 · implementado ([#56](https://github.com/wasichai/elearning-backend/pull/56), [#64](https://github.com/wasichai/elearning-backend/pull/64)) — El catálogo solo expone campos públicos (DTO propio, no el registro de Wasichai).
   _Aceptación:_ prueba de contrato que falla si la respuesta incluye identificadores de autor, estado editorial,
   comentarios de revisión u otros campos internos.
-- **RF-CAT-08** · F6 · planificado — Filtros adicionales: duración, conocimientos previos, estado de matrícula y horas
+- **RF-CAT-08** · F6 · implementado ([#201](https://github.com/wasichai/elearning-backend/pull/201), [front#68](https://github.com/wasichai/elearning-frontend/pull/68), [#249](https://github.com/wasichai/elearning-backend/pull/249), [front#105](https://github.com/wasichai/elearning-frontend/pull/105)) — Filtros adicionales: duración, conocimientos previos, estado de matrícula y horas
   por tipo (teoría, práctica/laboratorio, autónomo).
   _Aceptación:_ pruebas de integración por filtro y control de la UI con estado vacío.
-  _Pendiente de F2 (#103):_ duración, estado de matrícula y horas por tipo hechos ([#201](https://github.com/wasichai/elearning-backend/pull/201), [front#68](https://github.com/wasichai/elearning-frontend/pull/68)); falta
-  «conocimientos previos», que exige un campo estructurado nuevo (hoy `curso.conocimientos_previos` es texto libre).
+  _Cómo:_ conocimientos previos son claves del vocabulario `conocimiento_previo` en la versión publicada
+  ([ADR-0028](../adr/0028-conocimientos-previos-como-claves-de-la-version.md)); `CatalogListApiTest` prueba cada filtro
+  (con clave, `none` y resultado vacío) y `PrerequisiteKnowledgeGuardApiTest` el vocabulario.
 - **RF-CAT-09** · F3 · implementado ([#237](https://github.com/wasichai/elearning-backend/pull/237)) — La ficha describe evaluación y requisitos de certificación, y el estado de
   matrícula de cada edición (abierta, cerrada, completa).
   _Aceptación:_ prueba de integración con ediciones en cada estado.
@@ -203,20 +204,23 @@ el cuándo, en [`roadmap.md`](roadmap.md).
 
 ### RF-LAB — Laboratorios (§6.7)
 
-- **RF-LAB-01** · F3 · planificado — Laboratorio con objetivo, requisitos, guía, archivos, hitos, criterios de
+- **RF-LAB-01** · F3 · implementado ([#250](https://github.com/wasichai/elearning-backend/pull/250), [front#106](https://github.com/wasichai/elearning-frontend/pull/106)) — Laboratorio con objetivo, requisitos, guía, archivos, hitos, criterios de
   aceptación, entregables, rúbrica y enlaces a entornos externos.
   _Aceptación:_ el modelo lo admite y el aula lo muestra (prueba de UI).
-  _Avance:_ hoy un laboratorio es una lección `LABORATORIO` con evaluación de archivo y rúbrica (ADR-0016 §3); el modelo
-  no tiene aún objetivo, requisitos, hitos, criterios de aceptación, entregables ni enlaces a entornos.
+  _Nota:_ un laboratorio es una lección `LABORATORIO`: objetivo, requisitos, hitos, criterios y entregables son campos de
+  la lección; la guía y los archivos, sus recursos; la rúbrica, su evaluación de archivo (ADR-0016 §3); los entornos,
+  `entorno_laboratorio`, que solo leen los matriculados (ADR-0027). El aula los devuelve en `lab` y `Lab.test.tsx` prueba
+  la pantalla.
 - **RF-LAB-02** · F3 · implementado ([#151](https://github.com/wasichai/elearning-backend/pull/151), [#152](https://github.com/wasichai/elearning-backend/pull/152), [front#42](https://github.com/wasichai/elearning-frontend/pull/42), [front#61](https://github.com/wasichai/elearning-frontend/pull/61)) — Entrega, calificación con rúbrica, resultado y retroalimentación.
   _Aceptación:_ prueba E2E de entrega por el estudiante y corrección por el docente asignado.
   _Nota:_ un laboratorio con entrega es una lección con su evaluación de una pregunta de archivo y rúbrica (ADR-0016 §3).
   Entrega y corrección se prueban en el backend y en e2e con la API simulada; la corrección de front#52 entró en `main`
   con front#61.
-- **RF-LAB-03** · F3 · planificado — Los enlaces a entornos se validan (esquema `https`, sin ejecución en el
+- **RF-LAB-03** · F3 · implementado ([#250](https://github.com/wasichai/elearning-backend/pull/250)) — Los enlaces a entornos se validan (esquema `https`, sin ejecución en el
   servidor).
   _Aceptación:_ un enlace `http`, `file:` o a una dirección interna se rechaza (ver RNF-SEG-08).
-  _Avance:_ `SafeLink` valida los enlaces de las sesiones (#154, #193); los laboratorios aún no tienen enlaces a entornos.
+  _Nota:_ `LabEnvironmentGuard` aplica `SafeLink`, el validador de las sesiones (#154, #193), a toda escritura de
+  `entorno_laboratorio`, la plataforma incluida; el servidor no resuelve ni visita el enlace (`LabApiTest`).
 
 ### RF-ROL — Roles, permisos y alcance (§7)
 
@@ -432,11 +436,12 @@ el cuándo, en [`roadmap.md`](roadmap.md).
   _Aceptación:_ pruebas de tipo prohibido, tamaño excedido y descarga ajena.
   _Nota:_ la lista de tipos se comprueba sobre el tipo que detecta `wasichai-files`; `HTML` y `VIDEO` admiten
   `application/octet-stream` porque Wasichai 1.8.0 no los reconoce (riesgo aceptado en `docs/security/README.md` §4.4).
-- **RNF-SEG-08** · F4 · planificado — Control de URLs externas contra SSRF (importador, enlaces de laboratorio).
+- **RNF-SEG-08** · F4 · implementado ([#210](https://github.com/wasichai/elearning-backend/pull/210), [#250](https://github.com/wasichai/elearning-backend/pull/250)) — Control de URLs externas contra SSRF (importador, enlaces de laboratorio).
   _Aceptación:_ URLs a direcciones internas o con redirecciones hacia ellas se rechazan.
-  _Avance:_ el importador no acepta URL: lee de repositorios de una lista, en un commit exacto, de un host fijo y sin seguir
-  redirecciones ([#210](https://github.com/wasichai/elearning-backend/pull/210)); el enlace de una sesión rechaza direcciones privadas ([#193](https://github.com/wasichai/elearning-backend/pull/193)). Faltan los enlaces de
-  laboratorio (RF-LAB-03).
+  _Nota:_ el importador no acepta URL: lee de repositorios de una lista, en un commit exacto, de un host fijo y sin seguir
+  redirecciones ([#210](https://github.com/wasichai/elearning-backend/pull/210)); el enlace de una sesión rechaza direcciones privadas ([#193](https://github.com/wasichai/elearning-backend/pull/193)), y el de un entorno de
+  laboratorio también, con el mismo `SafeLink` ([#250](https://github.com/wasichai/elearning-backend/pull/250), RF-LAB-03). Ninguno se visita, así que no hay
+  redirección que seguir.
 - **RNF-SEG-09** · F5 · planificado — Claves de proveedores de IA protegidas; nunca en registros ni en `AgentRun`.
   _Aceptación:_ prueba que busca la clave de prueba en registros y persistencia.
 - **RNF-SEG-10** · F6 · planificado — Límites de abuso y spam en endpoints públicos y de valoración.

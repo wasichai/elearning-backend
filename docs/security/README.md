@@ -271,7 +271,11 @@ el único sitio del código que lanza un proceso (`ArchitectureTest`, regla `EXT
 2. **HTML de lecciones**: generado por el servidor desde la fuente canónica y saneado con lista blanca antes de
    guardarse (F2/F4). El que genera Asciidoctor lo sanea `GeneratedHtml` con jsoup (ADR-0022).
 3. **URL externas**: enlaces a reuniones y recursos con esquema `https` y host público; el servidor solo hace peticiones
-   salientes donde una función lo exige (comprobar enlaces, proveedor IA, almacenamiento).
+   salientes donde una función lo exige (comprobar enlaces, proveedor IA, almacenamiento). Los de las sesiones y los de
+   los entornos de laboratorio pasan por `SafeLink` (sin `http`, `file:`, credenciales, `localhost`, `.local`,
+   `.internal` ni IPv4 privadas o escritas de otra forma; `LabEnvironmentGuard` para toda escritura, RNF-SEG-08). El
+   servidor no los resuelve ni los visita, así que no hay redirección que seguir; los entornos solo los leen los
+   matriculados (ADR-0027).
 4. **Abuso y spam** (valoraciones y feedback, F6): solo matriculados, una valoración por par, moderación, límite de tasa.
 5. **Idempotencia**: `Idempotency-Key` (ADR-058 de Wasichai) en creaciones y comandos con efecto.
 6. **Concurrencia**: ETag e `If-Match` en las ediciones.

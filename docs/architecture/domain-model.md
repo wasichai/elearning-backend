@@ -37,6 +37,7 @@ erDiagram
     version_curso ||--o{ unidad : contiene
     unidad ||--o{ leccion : contiene
     leccion }o--o{ version_recurso : "usa (recurso_leccion)"
+    leccion ||--o{ entorno_laboratorio : "enlaza"
     curso ||--o{ edicion_curso : "se programa en"
     version_curso ||--o{ edicion_curso : "se imparte en"
     edicion_curso ||--o{ docente_edicion : "asigna"
@@ -103,6 +104,12 @@ invariantes llevan entre corchetes quién las hace cumplir; la tabla completa es
 `orden · INTEGER` · `activa · BOOLEAN`.
 Invariante: sin ciclos en `padre` [guarda].
 
+**`conocimiento_previo`** — vocabulario de los conocimientos previos que declara una versión (RF-CAT-08,
+[ADR-0028](../adr/0028-conocimientos-previos-como-claves-de-la-version.md)). F6.
+`clave · TEXT · unique` · `nombre · TEXT · requerido` · `descripcion · LONG_TEXT`.
+Invariante: la `clave` (minúsculas, dígitos y guiones; `none` reservada) no cambia y el registro no se borra, porque la
+nombran versiones publicadas [guarda].
+
 **`curso`** (CourseDefinition) — identidad estable de un curso reutilizable, independiente de sus versiones y ediciones. F1.
 `codigo · TEXT · unique` · `slug · TEXT · unique, URL pública` · `categoria · RELATION → categoria` ·
 `nivel · ENUM(INTRODUCTORIO, INTERMEDIO, AVANZADO)` · `responsable_id · UUID · creador responsable` ·
@@ -127,6 +134,9 @@ LONG_TEXT` · `conocimientos_previos · LONG_TEXT` · `requisitos · LONG_TEXT` 
 - Prerrequisitos (F3, RF-ACA-08, [ADR-0024](../adr/0024-prerrequisitos-como-campo-de-la-version.md)):
   `cursos_previos · LONG_TEXT · códigos de curso, uno por línea`. Los comprueba el comando de matrícula: cada uno exige
   una matrícula propia `FINALIZADA` y `APROBADO` en cualquier versión de ese curso [servicio]. Se congela con la versión.
+- Conocimientos previos (RF-CAT-08, [ADR-0028](../adr/0028-conocimientos-previos-como-claves-de-la-version.md)):
+  `conocimientos_previos_claves · LONG_TEXT · claves de conocimiento_previo, una por línea`. Una persona solo declara
+  claves del vocabulario [guarda]; se congela con la versión y el catálogo filtra por ellas.
 - `uniqueConstraints: [[curso, numero]]`.
 
 Invariantes: solo se edita en `BORRADOR`, y con ella sus unidades y lecciones [guarda]; las transiciones son las de §5.1
@@ -149,8 +159,16 @@ transacción; el comando de reordenar deja 1..n sin huecos [servicio].
 PRESENTACION, LABORATORIO, EVALUACION)` · `duracion_estimada_min · INTEGER` · `obligatoria · BOOLEAN` ·
 `criterio_finalizacion · ENUM(FINALIZACION_EXPLICITA, VIDEO_COMPLETO, EVALUACION_APROBADA, ENTREGA_CALIFICADA)` (F2) ·
 `evaluacion · RELATION → evaluacion` (F3, si `tipo = EVALUACION`).
+Laboratorio (F3, ADR-0027): `objetivo · LONG_TEXT` · `requisitos`, `hitos`, `criterios_aceptacion` y `entregables` ·
+`LONG_TEXT · uno por línea`; el aula los muestra solo en una lección `LABORATORIO`.
 Invariantes: editable solo en versión `BORRADOR` [guarda]; `criterio_finalizacion` coherente con `tipo` (una lectura no
 se completa por tiempo abierto) [guarda].
+
+**`entorno_laboratorio`** — enlace a un entorno externo de un laboratorio. F3 (ADR-0027).
+`leccion · RELATION → leccion · requerido` · `orden · INTEGER` · `titulo · TEXT` · `enlace · TEXT`;
+`uniqueConstraints: [[leccion, orden]]`. Invariantes: `enlace` es `https` hacia un host público (`SafeLink`,
+`LabEnvironmentGuard`, RF-LAB-03) [guarda]; se congela con la versión de su lección [guarda]; lo leen solo los
+matriculados en esa versión y el personal con `VER_TODAS` (`ContentReadScope`) [alcance].
 
 **`recurso`** y **`version_recurso`** (LearningResource) — material reutilizable y versionado, independiente del formato
 de salida. F2 (subida de archivos) · F4 (flujo editorial).

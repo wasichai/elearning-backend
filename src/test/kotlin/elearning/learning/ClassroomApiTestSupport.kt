@@ -38,6 +38,8 @@ abstract class ClassroomApiTestSupport : LmsApiTest() {
         // con withEvaluation: la evaluación de la lección de evaluación y sus preguntas por tipo
         val evaluation: String? = null,
         val questions: Map<String, String> = emptyMap(),
+        // con lab: el entorno del laboratorio (la lección de evaluación es un LABORATORIO con sus campos, ADR-0027)
+        val environment: String? = null,
     )
 
     @AfterEach
@@ -56,6 +58,7 @@ abstract class ClassroomApiTestSupport : LmsApiTest() {
         withFileQuestion: Boolean = false,
         assessmentLessonType: String = "EVALUACION",
         completionRules: Map<String, Any?> = emptyMap(),
+        lab: Boolean = false,
     ): Course {
         val resource = publishedHtml()
         return runBlocking {
@@ -97,7 +100,8 @@ abstract class ClassroomApiTestSupport : LmsApiTest() {
                 ) = records.create("leccion", RecordRequest(mapOf("unidad" to unit.id, "orden" to order, "titulo" to "Lección $order", "tipo" to type)))
                 val reading = lesson(1, "LECTURA")
                 val video = lesson(2, "VIDEO")
-                val assessment = lesson(3, assessmentLessonType)
+                val assessment = lesson(3, if (lab) "LABORATORIO" else assessmentLessonType)
+                val environment = if (lab) labOf(assessment.id) else null
                 records.create("recurso_leccion", RecordRequest(mapOf("leccion" to reading.id, "version_recurso" to resource, "orden" to 1)))
                 val (evaluation, questions) = if (withEvaluation) evaluation(assessment.id, withFileQuestion) else null to emptyMap()
                 records.patch("version_curso", UUID.fromString(version.id), RecordRequest(mapOf("estado" to "PUBLICADA")), null, null)
@@ -118,9 +122,17 @@ abstract class ClassroomApiTestSupport : LmsApiTest() {
                         ),
                     ),
                 )
-                Course(code, unit.id, reading.id, video.id, assessment.id, resource, evaluation, questions)
+                Course(code, unit.id, reading.id, video.id, assessment.id, resource, evaluation, questions, environment)
             }
         }
+    }
+
+    // los campos de un laboratorio y un entorno externo, mientras el temario es borrador; devuelve el entorno
+    private suspend fun labOf(lesson: String): String {
+        records.patch("leccion", UUID.fromString(lesson), RecordRequest(LAB_FIELDS), null, null)
+        return records
+            .create("entorno_laboratorio", RecordRequest(mapOf("leccion" to lesson, "orden" to 1, "titulo" to "Entorno de práctica", "enlace" to LAB_LINK)))
+            .id
     }
 
     // una evaluación de 10 puntos (aprueba con 60 %, dos intentos, soluciones al enviar): una pregunta de cada tipo que se
@@ -338,5 +350,14 @@ abstract class ClassroomApiTestSupport : LmsApiTest() {
 
     companion object {
         val ORG: UUID = UUID.fromString("00000000-0000-0000-0000-000000000001")
+        const val LAB_LINK = "https://lab.example.org/practica"
+        val LAB_FIELDS =
+            mapOf(
+                "objetivo" to "Consultar el padrón a una fecha pasada",
+                "requisitos" to "Cuenta en el entorno\nNavegador actual",
+                "hitos" to "Abrir el entorno\n\nConsultar el padrón\nRedactar el informe",
+                "criterios_aceptacion" to "Cada estado justificado",
+                "entregables" to "Informe en PDF",
+            )
     }
 }

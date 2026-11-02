@@ -1,5 +1,7 @@
 package elearning.catalog
 
+import elearning.course.PrerequisiteKnowledge
+import elearning.course.PrerequisiteKnowledgeGuard
 import elearning.workload.CreditPolicy
 import elearning.workload.EctsPolicy
 import elearning.workload.SemesterCreditHourPolicy
@@ -13,7 +15,7 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 
-// lo que se lee de Wasichai para armar el catálogo: los registros de los ocho objetos de model/model.json
+// lo que se lee de Wasichai para armar el catálogo: los registros de los nueve objetos de model/model.json
 data class CatalogRecords(
     val categories: List<RecordResponse>,
     val courses: List<RecordResponse>,
@@ -25,6 +27,8 @@ data class CatalogRecords(
     val assignments: List<RecordResponse>,
     // matriculados por edición (id → número), de lms.ocupacion_edicion: solo para saber si está completa
     val occupancy: Map<String, Int> = emptyMap(),
+    // el vocabulario conocimiento_previo: el nombre de cada clave que declara una versión (ADR-0028)
+    val knowledge: List<RecordResponse> = emptyList(),
 )
 
 // un curso listo para la proyección: la ficha completa y las columnas por las que se filtra y ordena
@@ -64,6 +68,7 @@ class CatalogBuilder(
         val unitsByVersion = records.units.groupBy { it.ref("version_curso") }
         val offeringsByVersion = records.offerings.groupBy { it.ref("version_curso") }
         val teachersByOffering = records.assignments.groupBy { it.ref("edicion_curso") }
+        val knowledge = records.knowledge.mapNotNull { k -> k.text("clave")?.let { it to (k.text("nombre") ?: it) } }.toMap()
         val published =
             records.versions
                 .filter { it.text("estado") == PUBLISHED }
@@ -75,7 +80,18 @@ class CatalogBuilder(
             .mapNotNull { course ->
                 val version = published[course.id] ?: return@mapNotNull null
                 try {
-                    course(course, version, categories, profiles, lessonsByUnit, unitsByVersion, offeringsByVersion, teachersByOffering, records.occupancy)
+                    course(
+                        course,
+                        version,
+                        categories,
+                        profiles,
+                        lessonsByUnit,
+                        unitsByVersion,
+                        offeringsByVersion,
+                        teachersByOffering,
+                        records.occupancy,
+                        knowledge,
+                    )
                 } catch (e: IllegalArgumentException) {
                     onReject(course.text("codigo") ?: course.id, e)
                     null
@@ -102,6 +118,7 @@ class CatalogBuilder(
         offeringsByVersion: Map<String?, List<RecordResponse>>,
         teachersByOffering: Map<String?, List<RecordResponse>>,
         occupancy: Map<String, Int>,
+        knowledge: Map<String, String>,
     ): PublishedCourse {
         val slug = requireNotNull(course.text("slug")) { "course without slug" }
         require(PUBLIC_SLUG.matches(slug)) { "slug '$slug' is not a public slug" }
@@ -152,6 +169,8 @@ class CatalogBuilder(
                     units = units,
                     offerings = offerings,
                     teachers = teachers,
+                    // lo que declaró la versión publicada, que no cambia; una clave sin registro en el vocabulario lleva su clave
+                    prerequisiteKnowledgeTags = PrerequisiteKnowledge.keys(version.text(KNOWLEDGE_KEYS)).map { KnowledgeTag(it, knowledge[it] ?: it) },
                 ),
             startDates = offerings.map { it.startDate },
             endDates = offerings.map { it.endDate },
@@ -271,6 +290,7 @@ class CatalogBuilder(
 
     companion object {
         const val PUBLISHED = "PUBLICADA"
+        const val KNOWLEDGE_KEYS = PrerequisiteKnowledgeGuard.FIELD
         const val DEFAULT_ZONE = "America/Lima"
 
         // lo que acepta la ruta GET /courses/{slug}: un curso con otro slug se listaría pero su ficha daría 404

@@ -84,6 +84,46 @@
       }
     },
     {
+      "ref": "conocimiento-navegador-web",
+      "object": "conocimiento_previo",
+      "key": ["clave"],
+      "attributes": {
+        "clave": "navegador-web",
+        "nombre": "Manejo de un navegador web",
+        "descripcion": "Abrir un portal, iniciar y cerrar sesión, usar pestañas y descargar archivos."
+      }
+    },
+    {
+      "ref": "conocimiento-programacion-basica",
+      "object": "conocimiento_previo",
+      "key": ["clave"],
+      "attributes": {
+        "clave": "programacion-basica",
+        "nombre": "Programación básica",
+        "descripcion": "Variables, condiciones, bucles y funciones en un lenguaje de propósito general."
+      }
+    },
+    {
+      "ref": "conocimiento-json-y-api-rest",
+      "object": "conocimiento_previo",
+      "key": ["clave"],
+      "attributes": {
+        "clave": "json-y-api-rest",
+        "nombre": "JSON y API REST",
+        "descripcion": "Leer y escribir JSON y llamar a una API REST con sus códigos de respuesta."
+      }
+    },
+    {
+      "ref": "conocimiento-hoja-de-calculo",
+      "object": "conocimiento_previo",
+      "key": ["clave"],
+      "attributes": {
+        "clave": "hoja-de-calculo",
+        "nombre": "Hoja de cálculo",
+        "descripcion": "Fórmulas, filtros y tablas en una hoja de cálculo."
+      }
+    },
+    {
       "ref": "perfil-diego",
       "object": "perfil_docente",
       "key": ["usuario_id"],
@@ -151,7 +191,8 @@
         "certificacion": "Constancia de participación al aprobar las tres evaluaciones. No otorga créditos académicos.",
         "fuentes": "wasichai/srtm-backend@6daacd3:docs/manuales/comun/acceso.adoc\nwasichai/srtm-backend@6daacd3:docs/manuales/usuario/anuncios.adoc\nLos manuales no declaran licencia: el curso cita secciones y anclas y resume con palabras propias; no reproduce su texto.",
         "contenido_ilustrativo": true,
-        "publicada_en": "2026-10-15T14:00:00Z"
+        "publicada_en": "2026-10-15T14:00:00Z",
+        "conocimientos_previos_claves": "navegador-web"
       },
       "refs": {
         "curso": "curso-srtm"
@@ -885,7 +926,8 @@
         "certificacion": "Constancia de aprobación con la carga horaria: 6 semanas, 12 h de teoría, 12 h de práctica o laboratorio y 12 h de estudio autónomo por semana (216 h en total). La carga se expresa para el sistema ECTS, pero los créditos no están aprobados: los calcula y aprueba la institución que reconozca el curso, con su propia regla.",
         "fuentes": "wasichai/srtm-backend@6daacd3:docs/manuales/usuario/anuncios.adoc\nwasichai/sgspe@0ebf69f:docs/manuals/user/02-primeros-pasos.adoc\nwasichai/sgspe@0ebf69f:docs/manuals/user/05-compromisos.adoc\nLos manuales se usan como casos de estudio; no declaran licencia y no se reproduce su texto.",
         "contenido_ilustrativo": true,
-        "publicada_en": "2026-10-22T16:00:00Z"
+        "publicada_en": "2026-10-22T16:00:00Z",
+        "conocimientos_previos_claves": "programacion-basica\njson-y-api-rest"
       },
       "refs": {
         "curso": "curso-ia"
