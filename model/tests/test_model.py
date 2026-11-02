@@ -67,6 +67,23 @@ class RealModelTest(unittest.TestCase):
         self.assertLessEqual({"codigo", "titulo", "descripcion", "tipo", "idioma", "responsable_editorial_id"}, fields("recurso"))
         self.assertLessEqual({"numero", "autor_id", "estado", "archivo"}, fields("version_recurso"))
 
+    def test_a_lab_lesson_carries_its_lab_fields_and_its_environments(self):
+        # RF-LAB-01 (ADR-0027): lo que es texto va en la lección; los enlaces a entornos, en su objeto, que solo leen los matriculados
+        def fields(name: str) -> set[str]:
+            return {f["name"] for f in next(o for o in MODEL["objects"] if o["name"] == name)["fields"]}
+
+        self.assertLessEqual({"objetivo", "requisitos", "hitos", "criterios_aceptacion", "entregables"}, fields("leccion"))
+        self.assertLessEqual({"orden", "titulo", "enlace"}, fields("entorno_laboratorio"))
+        link = next(r for r in MODEL["relationships"] if r["source"] == "entorno_laboratorio")
+        self.assertEqual(("leccion", "leccion", True), (link["target"], link["fieldName"], link["required"]))
+        self.assertTrue(holds("ESTUDIANTE", "entorno_laboratorio", "READ"))
+        self.assertFalse(holds("ESTUDIANTE", "entorno_laboratorio", "VER_TODAS"))
+        for action in ("CREATE", "UPDATE", "DELETE"):
+            self.assertFalse(holds("ESTUDIANTE", "entorno_laboratorio", action), action)
+            self.assertFalse(holds("DOCENTE", "entorno_laboratorio", action), action)
+            self.assertFalse(holds("REVISOR", "entorno_laboratorio", action), action)
+            self.assertTrue(holds("CREADOR", "entorno_laboratorio", action), action)
+
     def test_students_never_read_assessment_content(self):
         # llevan las soluciones: el estudiante responde sobre la instantánea de su intento (ADR-0016)
         for obj in ("evaluacion", "pregunta", "opcion", "criterio_rubrica"):

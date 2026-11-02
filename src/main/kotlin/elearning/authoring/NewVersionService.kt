@@ -17,8 +17,9 @@ data class NewVersionRequest(
     val fromVersionId: String? = null,
 )
 
-// copia una versión a un borrador de quien la pide (ADR-0018 §1): su temario, sus evaluaciones y sus enlaces a recursos, con
-// identidades nuevas. todo como la persona, así que sus permisos y la guarda editorial aplican. el original no se toca.
+// copia una versión a un borrador de quien la pide (ADR-0018 §1): su temario, sus evaluaciones, sus enlaces a recursos y
+// los entornos de sus laboratorios (ADR-0027), con identidades nuevas. todo como la persona, así que sus permisos y la
+// guarda editorial aplican. el original no se toca.
 // devuelve la identidad del borrador; su detalle lo lee el estudio (StudioReader), ya confirmada la copia
 @Service
 class NewVersionService(
@@ -62,6 +63,7 @@ class NewVersionService(
                     )
                 },
             )
+            copyAll(records.listAllIn(LAB_ENVIRONMENT, LESSON, lessonIds), LAB_ENVIRONMENT, LESSON, newLessons)
             val evaluations = records.listAllIn(EVALUATION, LESSON, lessonIds)
             val newEvaluations = copyAll(evaluations, EVALUATION, LESSON, newLessons, drop = setOf("codigo"))
             val questions = records.listAllIn(QUESTION, EVALUATION, evaluations.map { it.id })
@@ -103,6 +105,7 @@ class NewVersionService(
         const val LESSON = "leccion"
         const val LINK = "recurso_leccion"
         const val RESOURCE_VERSION = "version_recurso"
+        const val LAB_ENVIRONMENT = "entorno_laboratorio"
         const val EVALUATION = "evaluacion"
         const val QUESTION = "pregunta"
         const val OPTION = "opcion"
