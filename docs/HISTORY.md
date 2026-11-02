@@ -2,6 +2,13 @@
 
 Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este archivo registra lo que se entregó.
 
+## 2026-11-03 — Gravedad en los problemas de importación ([#254](https://github.com/wasichai/elearning-backend/issues/254))
+
+- Cada problema del informe de importación trae `severity` (`GAP`: esa parte del manual no se leyó; `CHECK`: se leyó y queda
+  algo que revisar), decidida por el servidor según su tipo, y el informe trae `problemsBySeverity` con todos los problemas,
+  también los que pasan de los 500 que muestra. La interfaz deja de mantener su propia tabla (ADR-0029). Los informes
+  guardados antes la reciben al leerlos.
+
 ## 2026-11-01 — El laboratorio completo y sus entornos externos validados ([#250](https://github.com/wasichai/elearning-backend/pull/250), [front#106](https://github.com/wasichai/elearning-frontend/pull/106))
 
 - RF-LAB-01 ([ADR-0027](adr/0027-laboratorio-en-la-leccion-y-entornos-por-matricula.md)): `leccion` gana `objetivo`,

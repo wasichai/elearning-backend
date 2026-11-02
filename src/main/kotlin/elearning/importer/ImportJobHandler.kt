@@ -136,6 +136,7 @@ class ImportJobHandler(
             lessons = units.sumOf { it.lessons.size },
             problemCount = problems.size,
             problems = problems.take(MAX_PROBLEMS),
+            problemsBySeverity = ProblemSeverity.count(problems),
         )
     }
 
