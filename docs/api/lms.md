@@ -635,10 +635,14 @@ en borrador.
 - `ImportJob`: `{ "id", "status": "PENDIENTE" | "EN_CURSO" | "HECHO" | "FALLIDO", "error": null, "versionId": null, "report": null }`.
   `error` es el motivo de `FALLIDO` (o el último fallo pasajero mientras se reintenta). Con `HECHO`, `versionId` es la versión
   nueva del curso y `report`: `{ "source", "files", "includes", "sections", "images", "units", "lessons", "problemCount",
-"problems": [{ "kind", "origin": "owner/repo@sha:ruta", "line", "detail" }] }` (a lo sumo 500 problemas; `line` 0 es el archivo
-  entero). `kind`: `MISSING_INCLUDE` · `INCLUDE_OUTSIDE_ROOT` · `INCLUDE_CYCLE` · `INCLUDE_TOO_DEEP` · `UNRESOLVED_ATTRIBUTE` ·
-  `UNSUPPORTED_INCLUDE_OPTION` · `MISSING_IMAGE` · `IMAGE_OUTSIDE_ROOT` · `BROKEN_REFERENCE` · `DUPLICATE_ANCHOR` · `FILE_TOO_LARGE`.
-  Un problema no detiene la importación: queda en el informe.
+"problems": [{ "kind", "origin": "owner/repo@sha:ruta", "line", "detail", "severity" }], "problemsBySeverity": { "GAP": 1, "CHECK": 4 } }`
+  (a lo sumo 500 problemas; `line` 0 es el archivo entero). `kind`: `MISSING_INCLUDE` · `INCLUDE_OUTSIDE_ROOT` · `INCLUDE_CYCLE` ·
+  `INCLUDE_TOO_DEEP` · `UNRESOLVED_ATTRIBUTE` · `UNSUPPORTED_INCLUDE_OPTION` · `MISSING_IMAGE` · `IMAGE_OUTSIDE_ROOT` · `BROKEN_REFERENCE`
+  · `DUPLICATE_ANCHOR` · `FILE_TOO_LARGE`. Un problema no detiene la importación: queda en el informe.
+- `severity` la decide el servidor por `kind`: `GAP` cuando esa parte del manual no se leyó y al temario le pueden faltar unidades o
+  lecciones (`MISSING_INCLUDE`, `INCLUDE_OUTSIDE_ROOT`, `INCLUDE_CYCLE`, `INCLUDE_TOO_DEEP`, `UNRESOLVED_ATTRIBUTE`, `FILE_TOO_LARGE`
+  y cualquier tipo nuevo); `CHECK` cuando se leyó y queda algo que revisar (el resto). `problemsBySeverity` cuenta todos los
+  problemas, también los que la lista no muestra; en un informe guardado antes de que existiera, cuenta los de la lista.
 - El resultado es siempre una versión `BORRADOR` nueva del curso (número siguiente), con `autor_id` de quien la pidió y la
   duración y la modalidad de la última versión: una unidad por capítulo (sección de nivel 1, tras `leveloffset`) y una lección
   `LECTURA` por sección de nivel 2, cada una con su título y su `sourceRef` (`owner/repo@sha:ruta#ancla`, en
