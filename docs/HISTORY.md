@@ -9,6 +9,13 @@ Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este
   pierde de vista la importación en curso (ADR-0029). Nunca lista las de otra persona; los terminados duran lo que la
   retención de la cola. Índice nuevo `trabajo_por_solicitante` (V14).
 
+## 2026-11-03 — Gravedad en los problemas de importación ([#254](https://github.com/wasichai/elearning-backend/issues/254))
+
+- Cada problema del informe de importación trae `severity` (`GAP`: esa parte del manual no se leyó; `CHECK`: se leyó y queda
+  algo que revisar), decidida por el servidor según su tipo, y el informe trae `problemsBySeverity` con todos los problemas,
+  también los que pasan de los 500 que muestra. La interfaz deja de mantener su propia tabla (ADR-0029). Los informes
+  guardados antes la reciben al leerlos.
+
 ## 2026-11-01 — El laboratorio completo y sus entornos externos validados ([#250](https://github.com/wasichai/elearning-backend/pull/250), [front#106](https://github.com/wasichai/elearning-frontend/pull/106))
 
 - RF-LAB-01 ([ADR-0027](adr/0027-laboratorio-en-la-leccion-y-entornos-por-matricula.md)): `leccion` gana `objetivo`,
@@ -32,6 +39,18 @@ Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este
   una clave, `none` y una clave sin cursos; `PrerequisiteKnowledgeGuardApiTest`, el vocabulario y la guarda.
 - La semilla declara cuatro claves (una sin cursos) y las pone en las versiones publicadas de SRTM e IA. Con esto
   RF-CAT-08 queda implementado.
+
+## 2026-11-01 — ADR-0026 (propuesta): sistema de diseño Quipu ([#245](https://github.com/wasichai/elearning-backend/issues/245))
+
+- [ADR-0026](adr/0026-sistema-de-diseno-quipu.md) propone lo que la interfaz ya integró del sistema de diseño Quipu:
+  - un tema de app sobre el contrato de `@wasichai/ui` (`quipu`, `quipu-dark`);
+  - una hoja de controles de 44px por `data-slot` públicos;
+  - el modo lectura como subárbol (`quipu-lectura`);
+  - Figtree y Literata servidas por la app.
+
+  La CSP de la lectura HTML no cambia; incrustar Literata en ella (`font-src data:`) queda para un ADR propio. Pedidos a
+  Wasichai: [wasichai/wasichai-ui#115](https://github.com/wasichai/wasichai-ui/issues/115) y
+  [#116](https://github.com/wasichai/wasichai-ui/issues/116).
 
 ## 2026-11-01 — Wasichai 1.8.0: el servidor comprueba el hash de cada descarga ([#216](https://github.com/wasichai/elearning-backend/issues/216), L6)
 

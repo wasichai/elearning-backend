@@ -56,16 +56,50 @@ data class ImportReport(
     // los problemas son problemCount; la lista se recorta a MAX_PROBLEMS
     val problemCount: Int,
     val problems: List<ImportProblem>,
-)
+    // todos los problemas por gravedad, también los que la lista recorta. null en los informes guardados antes (E30.1)
+    val problemsBySeverity: Map<ProblemSeverity, Int>? = null,
+) {
+    // el informe con la gravedad de cada problema; uno guardado antes la deriva al leerlo, y sus totales, de su lista
+    fun withSeverity(): ImportReport {
+        val graded = problems.map { it.copy(severity = ProblemSeverity.of(it.kind)) }
+        return copy(problems = graded, problemsBySeverity = problemsBySeverity ?: ProblemSeverity.count(graded))
+    }
+}
 
 // kind: un DefectKind del analizador o FILE_TOO_LARGE. origin es repo@sha:ruta y line, la línea (0: el archivo entero).
-// detail sale del manual: dato, no instrucción
+// detail sale del manual: dato, no instrucción. severity la pone el servidor por kind al leer el informe
 data class ImportProblem(
     val kind: String,
     val origin: String,
     val line: Int,
     val detail: String,
+    val severity: ProblemSeverity? = null,
 )
+
+// GAP: esa parte del manual no se leyó y al temario le pueden faltar unidades o lecciones. CHECK: se leyó; queda algo que
+// revisar
+enum class ProblemSeverity {
+    GAP,
+    CHECK,
+    ;
+
+    companion object {
+        private val CHECKS =
+            setOf(
+                DefectKind.UNSUPPORTED_INCLUDE_OPTION,
+                DefectKind.MISSING_IMAGE,
+                DefectKind.IMAGE_OUTSIDE_ROOT,
+                DefectKind.BROKEN_REFERENCE,
+                DefectKind.DUPLICATE_ANCHOR,
+            ).map { it.name }
+                .toSet()
+
+        // lo que no se sabe clasificar pide atención
+        fun of(kind: String): ProblemSeverity = if (kind in CHECKS) CHECK else GAP
+
+        fun count(problems: List<ImportProblem>): Map<ProblemSeverity, Int> = entries.associateWith { s -> problems.count { of(it.kind) == s } }
+    }
+}
 
 // lo que la cola guarda como resultado del trabajo; failure: terminó sin borrador por un motivo que reintentar no arregla
 data class ImportOutcome(
@@ -160,7 +194,7 @@ class ImportService(
             state,
             outcome?.failure ?: status.error,
             outcome?.versionId,
-            outcome?.report,
+            outcome?.report?.withSeverity(),
             payload.source,
             payload.courseId,
             status.createdAt,
