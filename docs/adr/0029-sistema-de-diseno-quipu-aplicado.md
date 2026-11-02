@@ -1,7 +1,6 @@
 # ADR-0029: Sistema de diseño Quipu aplicado: composición y piezas compartidas del frontend
 
-**Estado**: aceptada · 2026-11-03 · parte de la propuesta de ADR-0026
-([#246](https://github.com/wasichai/elearning-backend/pull/246), aún sin fusionar) y mantiene [ADR-0005](0005-lms-en-el-registro-de-wasichai-ui.md)
+**Estado**: aceptada · 2026-11-03 · parte de [ADR-0026](0026-sistema-de-diseno-quipu.md) (propuesta) y mantiene [ADR-0005](0005-lms-en-el-registro-de-wasichai-ui.md)
 
 ## Contexto
 
