@@ -45,11 +45,12 @@ el cuándo, en [`roadmap.md`](roadmap.md).
 - **RF-CAT-07** · F1 · implementado ([#56](https://github.com/wasichai/elearning-backend/pull/56), [#64](https://github.com/wasichai/elearning-backend/pull/64)) — El catálogo solo expone campos públicos (DTO propio, no el registro de Wasichai).
   _Aceptación:_ prueba de contrato que falla si la respuesta incluye identificadores de autor, estado editorial,
   comentarios de revisión u otros campos internos.
-- **RF-CAT-08** · F6 · planificado — Filtros adicionales: duración, conocimientos previos, estado de matrícula y horas
+- **RF-CAT-08** · F6 · implementado ([#201](https://github.com/wasichai/elearning-backend/pull/201), [front#68](https://github.com/wasichai/elearning-frontend/pull/68), [#249](https://github.com/wasichai/elearning-backend/pull/249), [front#105](https://github.com/wasichai/elearning-frontend/pull/105)) — Filtros adicionales: duración, conocimientos previos, estado de matrícula y horas
   por tipo (teoría, práctica/laboratorio, autónomo).
   _Aceptación:_ pruebas de integración por filtro y control de la UI con estado vacío.
-  _Pendiente de F2 (#103):_ duración, estado de matrícula y horas por tipo hechos ([#201](https://github.com/wasichai/elearning-backend/pull/201), [front#68](https://github.com/wasichai/elearning-frontend/pull/68)); falta
-  «conocimientos previos», que exige un campo estructurado nuevo (hoy `curso.conocimientos_previos` es texto libre).
+  _Cómo:_ conocimientos previos son claves del vocabulario `conocimiento_previo` en la versión publicada
+  ([ADR-0028](../adr/0028-conocimientos-previos-como-claves-de-la-version.md)); `CatalogListApiTest` prueba cada filtro
+  (con clave, `none` y resultado vacío) y `PrerequisiteKnowledgeGuardApiTest` el vocabulario.
 - **RF-CAT-09** · F3 · implementado ([#237](https://github.com/wasichai/elearning-backend/pull/237)) — La ficha describe evaluación y requisitos de certificación, y el estado de
   matrícula de cada edición (abierta, cerrada, completa).
   _Aceptación:_ prueba de integración con ediciones en cada estado.

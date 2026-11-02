@@ -1,5 +1,6 @@
 package elearning.catalog
 
+import elearning.course.PrerequisiteKnowledgeGuard
 import org.springframework.stereotype.Component
 import wasichai.core.common.PageRequest
 import wasichai.core.data.RecordQuery
@@ -22,6 +23,7 @@ class CatalogSource(
             offerings = all("edicion_curso"),
             profiles = all("perfil_docente"),
             assignments = all("docente_edicion"),
+            knowledge = all(PrerequisiteKnowledgeGuard.VOCABULARY),
         )
 
     private suspend fun all(

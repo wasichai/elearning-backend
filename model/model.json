@@ -55,6 +55,32 @@
       ]
     },
     {
+      "name": "conocimiento_previo",
+      "label": "Conocimiento previo",
+      "pluralLabel": "Conocimientos previos",
+      "description": "Vocabulario de los conocimientos previos que una versión de curso puede declarar (RF-CAT-08, ADR-0028). La clave no cambia y el registro no se borra: la nombran versiones publicadas, que son inmutables.",
+      "fields": [
+        {
+          "name": "clave",
+          "label": "Clave (minúsculas, dígitos y guiones)",
+          "type": "TEXT",
+          "required": true,
+          "unique": true
+        },
+        {
+          "name": "nombre",
+          "label": "Nombre",
+          "type": "TEXT",
+          "required": true
+        },
+        {
+          "name": "descripcion",
+          "label": "Descripción",
+          "type": "LONG_TEXT"
+        }
+      ]
+    },
+    {
       "name": "curso",
       "label": "Curso",
       "pluralLabel": "Cursos",
@@ -236,6 +262,11 @@
         {
           "name": "cursos_previos",
           "label": "Prerrequisitos: códigos de los cursos que hay que haber aprobado antes (uno por línea)",
+          "type": "LONG_TEXT"
+        },
+        {
+          "name": "conocimientos_previos_claves",
+          "label": "Conocimientos previos: claves de «Conocimientos previos» que el curso supone (una por línea)",
           "type": "LONG_TEXT"
         },
         {

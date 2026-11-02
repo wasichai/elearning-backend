@@ -15,31 +15,35 @@ como el modelo (`INICIAL`, `ASINCRONA`, …).
 
 Parámetros (todos opcionales):
 
-| nombre               | tipo                                                   | regla                                                                          |
-| -------------------- | ------------------------------------------------------ | ------------------------------------------------------------------------------ |
-| `q`                  | texto ≤ 100                                            | búsqueda sin distinguir mayúsculas en título y resumen                         |
-| `category`           | slug                                                   | slug de la categoría                                                           |
-| `level`              | `INICIAL` \| `INTERMEDIO` \| `AVANZADO`                |                                                                                |
-| `modality`           | `ASINCRONA` \| `SINCRONA` \| `HIBRIDA` \| `PRESENCIAL` |                                                                                |
-| `startsFrom`         | `YYYY-MM-DD`                                           | solo cursos con una edición abierta o programada que empieza ese día o después |
-| `minWeeks`           | entero 1–26                                            | duración (`weeks`) mayor o igual                                               |
-| `maxWeeks`           | entero 1–26, ≥ `minWeeks`                              | duración (`weeks`) menor o igual; un curso semestral dura de 12 a 26 semanas   |
-| `enrollmentOpen`     | `true` \| `false`                                      | `true`: con alguna edición con `enrollmentOpen` hoy; `false`: sin ninguna      |
-| `minTheoryHours`     | número 0–10000, ≤ 2 decimales                          | `workload.theoryHours` (horas totales de teoría) mayor o igual                 |
-| `minPracticeHours`   | número 0–10000, ≤ 2 decimales                          | `workload.practiceHours` (práctica o laboratorio) mayor o igual                |
-| `minAutonomousHours` | número 0–10000, ≤ 2 decimales                          | `workload.autonomousHours` (trabajo autónomo) mayor o igual                    |
-| `sort`               | `upcoming` (defecto) \| `title` \| `duration`          | `upcoming`: próxima edición primero, sin edición al final                      |
-| `page`               | entero ≥ 0 (defecto 0)                                 |                                                                                |
-| `size`               | 1–50 (defecto 12)                                      | fuera de rango → **400** con `errors[{field:"size"}]`                          |
+| nombre                  | tipo                                                   | regla                                                              |
+| ----------------------- | ------------------------------------------------------ | ------------------------------------------------------------------ |
+| `q`                     | texto ≤ 100                                            | búsqueda sin distinguir mayúsculas en título y resumen             |
+| `category`              | slug                                                   | slug de la categoría                                               |
+| `level`                 | `INICIAL` \| `INTERMEDIO` \| `AVANZADO`                |                                                                    |
+| `modality`              | `ASINCRONA` \| `SINCRONA` \| `HIBRIDA` \| `PRESENCIAL` |                                                                    |
+| `startsFrom`            | `YYYY-MM-DD`                                           | con una edición abierta o programada que empieza ese día o después |
+| `minWeeks`              | entero 1–26                                            | duración (`weeks`) mayor o igual                                   |
+| `maxWeeks`              | entero 1–26, ≥ `minWeeks`                              | duración (`weeks`) menor o igual; un semestral dura de 12 a 26     |
+| `enrollmentOpen`        | `true` \| `false`                                      | `true`: alguna edición con `enrollmentOpen` hoy; `false`: ninguna  |
+| `minTheoryHours`        | número 0–10000, ≤ 2 decimales                          | `workload.theoryHours` (horas totales de teoría) mayor o igual     |
+| `minPracticeHours`      | número 0–10000, ≤ 2 decimales                          | `workload.practiceHours` (práctica o laboratorio) mayor o igual    |
+| `minAutonomousHours`    | número 0–10000, ≤ 2 decimales                          | `workload.autonomousHours` (trabajo autónomo) mayor o igual        |
+| `prerequisiteKnowledge` | clave (minúsculas, dígitos, guiones) \| `none`         | la clave en `prerequisiteKnowledgeTags`; `none`: ninguna clave     |
+| `sort`                  | `upcoming` (defecto) \| `title` \| `duration`          | `upcoming`: próxima edición primero, sin edición al final          |
+| `page`                  | entero ≥ 0 (defecto 0)                                 |                                                                    |
+| `size`                  | 1–50 (defecto 12)                                      | fuera de rango → **400** con `errors[{field:"size"}]`              |
 
 Los filtros se combinan (intersección). Un valor inválido (enum desconocido, fecha mal formada, `size` fuera de rango,
 `q` > 100, semanas fuera de 1–26 o `minWeeks` > `maxWeeks`, `enrollmentOpen` distinto de `true`/`false`, horas negativas,
-con más de dos decimales o en notación científica) → **400** con `errors`; cada error nombra su parámetro.
+con más de dos decimales o en notación científica, `prerequisiteKnowledge` que no es una clave ni `none`) → **400** con
+`errors`; cada error nombra su parámetro. Una clave bien formada que ningún curso declara no es un error: lista vacía.
 
 Filtros de RF-CAT-08: `enrollmentOpen` usa la misma regla que el campo `enrollmentOpen` de la ficha (ver más abajo), en la
 zona horaria de cada edición; una edición completa (`full`, RF-CAT-09) no cuenta como abierta. Las horas son las totales de la ficha
-(`horas_*_semana × semanas`); las horas supervisadas no tienen filtro. No hay filtro de conocimientos previos:
-`prerequisiteKnowledge` es texto libre y un `null` significa «no declarado», no «ninguno».
+(`horas_*_semana × semanas`); las horas supervisadas no tienen filtro. `prerequisiteKnowledge` filtra por las claves
+estructuradas que declaró la versión publicada (`version_curso.conocimientos_previos_claves`, del vocabulario
+`conocimiento_previo`, [ADR-0028](../adr/0028-conocimientos-previos-como-claves-de-la-version.md)), no por el texto libre
+de la ficha: `none` son los cursos cuya versión publicada no declara ninguna clave.
 
 Respuesta 200:
 
@@ -47,12 +51,16 @@ Respuesta 200:
 {
   "content": [CourseSummary],
   "page": 0, "size": 12, "totalElements": 3, "totalPages": 1,
-  "facets": { "categories": [{ "slug": "gestion-municipal", "name": "Gestión municipal", "count": 2 }] }
+  "facets": {
+    "categories": [{ "slug": "gestion-municipal", "name": "Gestión municipal", "count": 2 }],
+    "prerequisiteKnowledge": [{ "key": "navegador-web", "name": "Manejo de un navegador web", "count": 1 }]
+  }
 }
 ```
 
-`facets.categories` cuenta los cursos publicados por categoría con todos los filtros **salvo** `category` (para pintar
-filtros).
+`facets.categories` cuenta los cursos publicados por categoría con todos los filtros **salvo** `category`, y
+`facets.prerequisiteKnowledge` los cursos por clave con todos los filtros **salvo** `prerequisiteKnowledge` (para pintar
+filtros). Una clave que ningún curso de esa consulta declara no aparece.
 
 `CourseSummary`:
 
@@ -91,7 +99,8 @@ Respuesta 200 `CourseDetail` = todos los campos de `CourseSummary` (salvo `nextO
 
 ```json
 {
-  "prerequisiteKnowledge": "…", // o null
+  "prerequisiteKnowledge": "…", // texto libre o null
+  "prerequisiteKnowledgeTags": [{ "key": "navegador-web", "name": "Manejo de un navegador web" }], // las claves de la versión, [] si ninguna
   "version": { "number": 1, "publishedAt": "2026-10-20T15:00:00Z" }, // publishedAt puede ser null
   "objectives": ["…"],
   "learningOutcomes": ["…"], // líneas no vacías
