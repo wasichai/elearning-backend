@@ -327,8 +327,10 @@ aplicación se conecta con un rol que no es dueño de las tablas, para que nadie
   de las sesiones síncronas llegan por el adaptador de videoconferencia (F3) y solo a los matriculados.
 - **IA**: la canalización editorial no recibe datos de estudiantes; el asistente de Wasichai, si se habilita, filtra
   con `AgentResultFilter` lo que sale al proveedor.
-- **Retención**: plazos por tipo de dato en F6 (cuentas inactivas, intentos, registros IA). Los eventos de aprendizaje se
-  guardan mientras el estudiante acepte los términos y se suprimen al retirarla (ADR-0020).
+- **Retención** ([ADR-0030](../adr/0030-lgpl-definitiva-y-conservacion-segun-los-terminos.md)): los datos personales se
+  conservan el tiempo que la persona aprueba en los términos de uso, sin plazos propios por tipo de dato; al retirar la
+  aceptación o vencer su plazo se suprimen, y lo que deba conservarse se disocia (implementación en
+  [#304](https://github.com/wasichai/elearning-backend/issues/304)). Los eventos de aprendizaje ya seguían esa regla (ADR-0020).
   La purga de `audit_log` solo la hace el rol de purga de Wasichai (`wasichai.audit.purge-role`), nunca la aplicación.
   Los trabajos terminados de `lms.trabajo` (sus datos nombran a quien los pidió y su error puede citar la fuente) los
   borra la propia cola pasado `lms.jobs.retention` (30 días, ADR-0022); la versión y los artefactos que crearon guardan

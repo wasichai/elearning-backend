@@ -1,6 +1,6 @@
 # ADR-0015: Licencia provisional LGPL-3.0-or-later
 
-**Estado**: aceptada · 2026-10-28 · reemplaza a [ADR-0009](0009-licencia-diferida.md)
+**Estado**: reemplazada por [ADR-0030](0030-lgpl-definitiva-y-conservacion-segun-los-terminos.md) · 2026-10-28 · reemplazaba a [ADR-0009](0009-licencia-diferida.md)
 
 ## Contexto
 
