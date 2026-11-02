@@ -43,3 +43,4 @@ secciones Contexto, Decisión, Alternativas consideradas y Consecuencias. El for
 | [0025](0025-alcances-de-lectura-con-subconsultas-sobre-tablas-de-wasichai.md) | Los alcances de lectura se resuelven con subconsultas sobre las tablas de Wasichai             | aceptada (provisional)       | 2026-11-01 |
 | [0027](0027-laboratorio-en-la-leccion-y-entornos-por-matricula.md)            | Laboratorio en campos de la lección; sus entornos, un objeto que solo leen los matriculados    | aceptada                     | 2026-11-01 |
 | [0028](0028-conocimientos-previos-como-claves-de-la-version.md)               | Los conocimientos previos se declaran como claves de un vocabulario en la versión              | aceptada                     | 2026-11-01 |
+| [0029](0029-sistema-de-diseno-quipu-aplicado.md)                              | Sistema de diseño Quipu aplicado: composición y piezas compartidas del frontend                | aceptada                     | 2026-11-03 |
