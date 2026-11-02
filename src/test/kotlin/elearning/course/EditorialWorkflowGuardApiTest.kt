@@ -173,6 +173,9 @@ class EditorialWorkflowGuardApiTest : LmsApiTest() {
             assertEquals(HttpStatus.CONFLICT, patch(admin, "version_curso", version, mapOf("objetivos" to "cambiado")).first)
             assertEquals(HttpStatus.CONFLICT, patch(creator, "unidad", unit, mapOf("titulo" to "cambiada")).first)
             assertEquals(HttpStatus.CONFLICT, patch(creator, "leccion", lesson, mapOf("titulo" to "cambiada")).first)
+            // la traza de origen (RF-IMP-03) es contenido de la versión como cualquier otro: tampoco cambia
+            assertEquals(HttpStatus.CONFLICT, patch(creator, "unidad", unit, mapOf("referencia_fuente" to "otra/fuente@abc:x.adoc")).first)
+            assertEquals(HttpStatus.CONFLICT, patch(creator, "leccion", lesson, mapOf("referencia_fuente" to "otra/fuente@abc:x.adoc")).first)
             val (added, _) =
                 call(
                     "POST",

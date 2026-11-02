@@ -48,6 +48,7 @@ data class StudioUnit(
     val id: String,
     val order: Int,
     val title: String,
+    val sourceRef: String?,
     val lessons: List<StudioLesson>,
 )
 
@@ -118,6 +119,7 @@ class StudioReader(
                     id = unit.id,
                     order = int(unit, ORDER),
                     title = unit.attributes[TITLE].toString(),
+                    sourceRef = unit.attributes[SOURCE]?.toString(),
                     lessons =
                         lessonRecords[unit.id].orEmpty().sortedBy { int(it, ORDER) }.map { lesson ->
                             StudioLesson(
@@ -125,7 +127,7 @@ class StudioReader(
                                 order = int(lesson, ORDER),
                                 title = lesson.attributes[TITLE].toString(),
                                 type = lesson.attributes["tipo"].toString(),
-                                sourceRef = lesson.attributes["referencia_fuente"]?.toString(),
+                                sourceRef = lesson.attributes[SOURCE]?.toString(),
                                 hasAssessment = lesson.id in assessed,
                                 resources = linked[lesson.id] ?: 0,
                             )
@@ -229,6 +231,7 @@ class StudioReader(
         const val STATE = "estado"
         const val ORDER = "orden"
         const val TITLE = "titulo"
+        const val SOURCE = "referencia_fuente"
         const val NOT_FOUND = "Versión no encontrada"
     }
 }

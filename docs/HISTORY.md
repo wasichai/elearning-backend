@@ -2,6 +2,14 @@
 
 Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este archivo registra lo que se entregó.
 
+## 2026-11-03 — Traza de origen en la unidad ([#263](https://github.com/wasichai/elearning-backend/issues/263), RF-IMP-03)
+
+- `unidad` gana `referencia_fuente` (`repo@sha:ruta#ancla`), como la lección: la importación la llena con la traza del
+  capítulo que propuso la unidad. Es contenido de la versión: `EditorialWorkflowGuard` la congela con lo demás, la copia de
+  versión la lleva y las diferencias la comparan.
+- El detalle del estudio devuelve `sourceRef` también en cada unidad. `ImportApiTest` comprueba la traza de cada unidad y
+  que la copia la conserva; `VersionDiffApiTest`, que cambiarla cambia la unidad. Con esto RF-IMP-03 queda implementado.
+
 ## 2026-11-01 — El laboratorio completo y sus entornos externos validados ([#250](https://github.com/wasichai/elearning-backend/pull/250), [front#106](https://github.com/wasichai/elearning-frontend/pull/106))
 
 - RF-LAB-01 ([ADR-0027](adr/0027-laboratorio-en-la-leccion-y-entornos-por-matricula.md)): `leccion` gana `objetivo`,
