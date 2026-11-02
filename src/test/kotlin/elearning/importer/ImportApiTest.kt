@@ -267,6 +267,42 @@ class ImportApiTest : ClassroomApiTestSupport() {
         assertEquals(HttpStatus.UNAUTHORIZED, call(null, path).first)
     }
 
+    // E30.2: al recargar, la interfaz recupera sus importaciones; las de otra persona nunca aparecen
+    @Test
+    fun `who imports lists their own import jobs, the newest first, with source, course and dates`() {
+        val course = courseId()
+        val first = imported(source = "acme/manuales@$SHA:ciclo/raiz.adoc", courseId = course)
+        val (_, waiting) = start(creator, "acme/manuales@$SHA:manual.adoc", course)
+
+        val listed = ok(call(creator, "/api/lms/studio/import")).values().toList()
+
+        val ids = listed.map { it["id"].asString() }
+        assertTrue(ids.indexOf(waiting!!["id"].asString()) < ids.indexOf(first["id"].asString()), ids.toString())
+        val newest = listed.first { it["id"].asString() == waiting["id"].asString() }
+        assertEquals("PENDIENTE", newest["status"].asString())
+        assertEquals("acme/manuales@$SHA:manual.adoc", newest["source"].asString())
+        assertEquals(course, newest["courseId"].asString())
+        assertNotNull(newest["createdAt"].asString())
+        assertTrue(newest.lacks("finishedAt"))
+        val done = listed.first { it["id"].asString() == first["id"].asString() }
+        assertEquals("HECHO", done["status"].asString())
+        assertNotNull(done["finishedAt"].asString())
+        drain()
+    }
+
+    @Test
+    fun `nobody else sees my import jobs in a list, and listing asks for the import permissions`() {
+        val (_, job) = start(creator, "acme/manuales@$SHA:manual.adoc", courseId())
+        drain()
+        val id = job!!["id"].asString()
+
+        val (adminStatus, adminList) = call(admin, "/api/lms/studio/import")
+        assertFalse(adminList.toString().contains(id), "$adminStatus $adminList")
+        assertEquals(HttpStatus.FORBIDDEN, call(newStudent(), "/api/lms/studio/import").first)
+        assertEquals(HttpStatus.FORBIDDEN, call(demoUser("revisor"), "/api/lms/studio/import").first)
+        assertEquals(HttpStatus.UNAUTHORIZED, call(null, "/api/lms/studio/import").first)
+    }
+
     @TestConfiguration(proxyBeanMethods = false)
     class FakeSource {
         @Bean
