@@ -217,6 +217,62 @@ class ImportApiTest : ClassroomApiTestSupport() {
         assertEquals(listOf("INCLUDE_CYCLE"), kinds)
     }
 
+    // E30.1: la gravedad la decide el servidor por el tipo, y los totales cuentan todos los problemas, no solo los mostrados
+    @Test
+    fun `each problem carries its severity and the report counts every problem by severity`() {
+        val report = imported()["report"]
+
+        val severities = report["problems"].values().associate { it["kind"].asString() to it["severity"].asString() }
+        assertEquals("GAP", severities["MISSING_INCLUDE"], severities.toString())
+        assertEquals("CHECK", severities["MISSING_IMAGE"], severities.toString())
+        assertEquals(1, report["problemsBySeverity"]["GAP"].asInt(), report.toString())
+        assertEquals(report["problemCount"].asInt() - 1, report["problemsBySeverity"]["CHECK"].asInt(), report.toString())
+    }
+
+    @Test
+    fun `the counts by severity cover the problems beyond the ones shown`() {
+        val report = imported(source = "acme/manuales@$SHA:referencias/muchas.adoc")["report"]
+
+        assertEquals(MANY_REFERENCES + 1, report["problemCount"].asInt())
+        assertEquals(500, report["problems"].size())
+        assertEquals(MANY_REFERENCES, report["problemsBySeverity"]["CHECK"].asInt())
+        assertEquals(1, report["problemsBySeverity"]["GAP"].asInt())
+    }
+
+    @Test
+    fun `a report stored before the severity is read with it`() {
+        imported()
+        val id = UUID.randomUUID()
+        val old =
+            """{"versionId":null,"failure":null,"report":{"source":"acme/manuales@$SHA:manual.adoc","files":1,"includes":1,"sections":0,""" +
+                """"images":0,"units":0,"lessons":0,"problemCount":2,"problems":[{"kind":"INCLUDE_CYCLE","origin":"o","line":1,"detail":"d"},""" +
+                """{"kind":"BROKEN_REFERENCE","origin":"o","line":2,"detail":"d"}]}}"""
+        val payload = """{"requester":"${userId(creator)}","courseId":"${courseId()}","source":"acme/manuales@$SHA:manual.adoc"}"""
+        runBlocking {
+            db
+                .sql(
+                    """
+                    INSERT INTO lms.trabajo (id, organizacion_id, tipo, solicitante, datos, estado, intentos, max_intentos, resultado,
+                                             disponible_en, creado_en, terminado_en)
+                    SELECT :id, organizacion_id, :type, solicitante, CAST(:payload AS jsonb), 'DONE', 1, 3, CAST(:result AS jsonb), now(), now(), now()
+                    FROM lms.trabajo WHERE tipo = :type LIMIT 1
+                    """.trimIndent(),
+                ).bind("id", id)
+                .bind("type", ImportService.JOB_TYPE)
+                .bind("payload", payload)
+                .bind("result", old)
+                .fetch()
+                .rowsUpdated()
+                .awaitSingle()
+        }
+
+        val report = ok(call(creator, "/api/lms/studio/import/$id"))["report"]
+
+        assertEquals(listOf("GAP", "CHECK"), report["problems"].values().map { it["severity"].asString() })
+        assertEquals(1, report["problemsBySeverity"]["GAP"].asInt())
+        assertEquals(1, report["problemsBySeverity"]["CHECK"].asInt())
+    }
+
     @Test
     fun `a master that does not exist fails without a draft`() {
         val course = courseId()
@@ -285,6 +341,7 @@ class ImportApiTest : ClassroomApiTestSupport() {
     companion object {
         const val SHA = "0123456789abcdef0123456789abcdef01234567"
         const val BODY = "TEXTO-PRIVADO-DEL-MANUAL"
+        const val MANY_REFERENCES = 520
 
         val FILES =
             mapOf(
@@ -327,6 +384,8 @@ class ImportApiTest : ClassroomApiTestSupport() {
                     """.trimIndent(),
                 "ciclo/raiz.adoc" to "= Ciclo\n\n== Uno\n\ninclude::otro.adoc[]\n",
                 "ciclo/otro.adoc" to "== Otro\n\ninclude::raiz.adoc[]\n",
+                "referencias/muchas.adoc" to
+                    "= Referencias\n\n== Una\n\n" + (1..MANY_REFERENCES).joinToString("\n\n") { "Ver <<no-existe-$it>>." } + "\n\ninclude::falta.adoc[]\n",
             )
     }
 }
