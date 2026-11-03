@@ -34,6 +34,23 @@ embabel:
         openai:
           max-attempts: 2
 
+# actuator: ni el entorno, ni las propiedades enlazadas, ni un volcado de memoria, que llevarían las claves de los
+# proveedores (RNF-SEG-09, ADR-0033 §12). exclude gana a cualquier include, también al de Wasichai; y si alguien los
+# expusiera, los valores salen tapados
+management:
+  endpoints:
+    web:
+      exposure:
+        exclude: env,configprops,heapdump
+    jmx:
+      exposure:
+        exclude: env,configprops,heapdump
+  endpoint:
+    env:
+      show-values: never
+    configprops:
+      show-values: never
+
 wasichai:
   security:
     jwt:

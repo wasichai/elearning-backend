@@ -487,8 +487,12 @@ el cuándo, en [`roadmap.md`](roadmap.md).
   redirecciones ([#210](https://github.com/wasichai/elearning-backend/pull/210)); el enlace de una sesión rechaza direcciones privadas ([#193](https://github.com/wasichai/elearning-backend/pull/193)), y el de un entorno de
   laboratorio también, con el mismo `SafeLink` ([#250](https://github.com/wasichai/elearning-backend/pull/250), RF-LAB-03). Ninguno se visita, así que no hay
   redirección que seguir.
-- **RNF-SEG-09** · F5 · planificado — Claves de proveedores de IA protegidas; nunca en registros ni en `AgentRun`.
+- **RNF-SEG-09** · F5 · implementado — Claves de proveedores de IA protegidas; nunca en registros ni en `AgentRun`.
   _Aceptación:_ prueba que busca la clave de prueba en registros y persistencia.
+  _Avance:_ `ProviderKeysApiTest` ([#276](https://github.com/wasichai/elearning-backend/issues/276)): con las claves centinela del doble HTTP y Embabel, Spring AI, OkHttp y los SDK
+  en DEBUG, una ejecución completa y otra con 401 por proveedor pasan por la cola; la clave no está en la salida capturada,
+  en ninguna tabla (`lms`, `audit_log` y el resto), en `lms.trabajo.error` ni en `AgentRun.error`, que solo dice el
+  estado. Actuator no publica `env`, `configprops` ni `heapdump`. Solo el entorno del backend tiene la clave.
 - **RNF-SEG-10** · F6 · planificado — Límites de abuso y spam en endpoints públicos y de valoración.
   _Aceptación:_ superar el límite configurado → `429`. Si Wasichai ofrece limitación de tasa está a verificar.
   _Avance:_ los cambios de valoraciones por persona y día (`lms.reputation.max-edits-per-day`) responden `429` con

@@ -966,7 +966,9 @@ los pasos desde su trabajo; esta API solo la lee.
   añaden al final. Nada se borra ni se purga con los trabajos. Lo hace cumplir un disparador, también frente a SQL directo.
 - **Sin secretos**: ningún campo guarda claves ni cabeceras; `modelSettings` es tipado (no admite parámetros libres) y una clave
   configurada (`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`) que aparezca en el objetivo, las entradas, la salida, el error o una nota
-  se guarda como `[REDACTED]` (RNF-SEG-09).
+  se guarda como `[REDACTED]`, y lo mismo el valor de una cabecera `Authorization`, `x-api-key` o `api-key`, sea cual sea la
+  clave. El `error` de un fallo del proveedor solo dice su estado, p. ej. `the AI provider rejected the request (401)`
+  (RNF-SEG-09).
 
 ## Trabajos de IA (F5, ADR-0033 §5, §6 y §9)
 

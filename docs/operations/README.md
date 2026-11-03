@@ -84,7 +84,9 @@ cliente MCP de Spring AI que trae Embabel está apagado (`spring.ai.mcp.client.e
 | `GET /actuator/health/**` | Actuator de Spring Boot, incluido en el starter de Wasichai | Público |
 
 Grupos `liveness`/`readiness` para k3s y qué indicadores exponen detalle: a verificar al configurar actuator. Ningún
-otro endpoint de actuator se expone sin autenticación.
+otro endpoint de actuator se expone sin autenticación. `env`, `configprops` y `heapdump` no se publican nunca, ni por web
+ni por JMX (`management.endpoints.*.exposure.exclude` en `application.yml`, que gana a cualquier `include`): llevarían las
+claves de los proveedores de IA (RNF-SEG-09); sus valores, además, salen tapados (`show-values: never`).
 
 ## Registros
 

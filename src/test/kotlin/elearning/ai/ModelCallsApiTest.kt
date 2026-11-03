@@ -186,6 +186,26 @@ class ModelCallsApiTest : ProviderDoubleApiTest() {
         }
     }
 
+    // 401: la clave no vale. el mensaje, que acaba en lms.trabajo.error y en AgentRun.error, es solo el estado: ni el cuerpo
+    // del proveedor (el de OpenAI cita parte de la clave), ni cabeceras, ni la clave (RNF-SEG-09)
+    @Test
+    fun `a 401 from either provider is permanent and its message carries neither the response, nor headers, nor the key`() {
+        for (double in Fake.entries) {
+            double.fails(401)
+
+            val failure = runCatching { outline(double) }.exceptionOrNull()
+
+            assertThat(failure).isInstanceOf(PermanentJobFailure::class.java).hasMessage("the AI provider rejected the request (401)")
+            assertThat(failure.toString())
+                .doesNotContain(ProviderDouble.ANTHROPIC_KEY, ProviderDouble.OPENAI_KEY, "sk-doubl")
+                .doesNotContainIgnoringCase("x-api-key")
+                .doesNotContainIgnoringCase("authorization")
+                .doesNotContainIgnoringCase("bearer")
+            assertThat(double.requests()).describedAs(double.id).hasSize(EMBABEL_ATTEMPTS)
+            ProviderDouble.reset()
+        }
+    }
+
     @Test
     fun `a 429 or a 500 from either provider is transient, the queue retries it`() {
         for (double in Fake.entries) {
@@ -193,8 +213,8 @@ class ModelCallsApiTest : ProviderDoubleApiTest() {
                 double.fails(status)
 
                 assertThatThrownBy { outline(double) }
-                    .isNotInstanceOf(PermanentJobFailure::class.java)
-                    .hasMessageContaining("$status")
+                    .isInstanceOf(ProviderUnavailable::class.java)
+                    .hasMessage("the AI provider failed ($status)")
                 assertThat(double.requests()).describedAs("${double.id} $status").hasSize(EMBABEL_ATTEMPTS * SDK_ATTEMPTS)
                 ProviderDouble.reset()
             }

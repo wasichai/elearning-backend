@@ -31,6 +31,26 @@ Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este
   código no nombra `elearning.ai`. `docs/ai/README.md` §7 lo explica; RF-MED-04 sigue `planificado` hasta el e2e de la
   interfaz, [front#171](https://github.com/wasichai/elearning-frontend/issues/171).
 
+## 2026-11-03 — Claves de proveedor fuera de registros y persistencia ([#276](https://github.com/wasichai/elearning-backend/issues/276))
+
+Quinto paso de la épica E32 ([#271](https://github.com/wasichai/elearning-backend/issues/271)): RNF-SEG-09 implementado, según
+[ADR-0033](adr/0033-fase-5-ia.md) §12.
+
+- `ModelCalls`: un fallo del proveedor sale siempre con un mensaje propio que solo dice el estado, también el pasajero
+  (`ProviderUnavailable`, `the AI provider failed (429)`), que la cola sigue reintentando. Es el que guardan
+  `lms.trabajo.error` y `AgentRun.error`; el del SDK repite el cuerpo de la respuesta (el 401 de OpenAI cita parte de la
+  clave) y se queda en la causa.
+- `AgentExecutionLog` tapa también el valor de una cabecera `Authorization`, `x-api-key` o `api-key` en cualquier texto,
+  aunque la clave no sea una de las configuradas.
+- Actuator: `env`, `configprops` y `heapdump` fuera de la exposición web y JMX, y `show-values: never`.
+- `ProviderKeysApiTest`: claves centinela del doble HTTP, Embabel, Spring AI, OkHttp y los SDK en DEBUG y la salida
+  capturada desde el arranque; una ejecución completa y otra con 401 por proveedor pasan por la cola y la clave no está
+  en el registro, en ninguna tabla (`lms`, `audit_log` y las demás), en los errores del trabajo y de `AgentRun`, ni en
+  actuator. `ModelCallsApiTest` suma el 401 de cada proveedor y `AgentExecutionApiTest` la cabecera de una clave ajena.
+- Comprobado aparte, sin Wasichai: con DEBUG, Embabel registra el mensaje del SDK en sus reintentos (el 401 de OpenAI
+  con la clave enmascarada, nunca entera) y ningún registro lleva la clave ni cabeceras. Los SDK solo escriben cabeceras
+  con `ANTHROPIC_LOG`/`OPENAI_LOG=debug`, en `System.err` y con las de credenciales tapadas.
+
 ## 2026-11-03 — Fase 3 sin pendientes de requisitos ([#231](https://github.com/wasichai/elearning-backend/issues/231))
 
 - Todos los requisitos F3 de [requirements.md](product/requirements.md) están `implementado`. El último, RF-AUL-08, se

@@ -51,7 +51,7 @@ puerto dinámico, uno por JVM, que hace de Anthropic (`POST /v1/messages`) y de 
   `@DynamicPropertySource`, que gana a las del entorno de quien corre la suite) y trae una tarifa para cada modelo de
   extracción. Todas las clases que la extienden comparten contexto.
 - **Respuestas** en `src/test/resources/ai/anthropic/` y `ai/openai/`: `messages-outline.json` y `responses-outline.json`
-  (la salida tipada de ejemplo y su `usage`), `*-invalid-json.json` y `error-{400,429,500}.json` con el cuerpo de error de
+  (la salida tipada de ejemplo y su `usage`), `*-invalid-json.json` y `error-{400,401,429,500}.json` con el cuerpo de error de
   cada API. Se preparan con `ProviderDouble.anthropicReplies("…")`, `openAiReplies("…")`, `anthropicFails(429)` u
   `openAiFails(500)`; un caso nuevo es un archivo nuevo.
 - **Lo enviado**: `anthropicRequests()` y `openAiRequests()` devuelven el cuerpo JSON de cada petición, en orden;
@@ -65,9 +65,16 @@ puerto dinámico, uno por JVM, que hace de Anthropic (`POST /v1/messages`) y de 
   veces más dentro de cada uno (`docs/ai` §2). Las respuestas de error llevan `Retry-After-Ms: 1` para que los SDK no
   esperen hasta 8 s; el número de peticiones es el mismo.
 
-`ModelCallsApiTest` es el ejemplo: una salida tipada (`CourseOutline`) por cada proveedor, 400 (fallo permanente), 429 y
-500 (pasajeros) y JSON inválido con su recuento, la petición no emparejada y el registro `AgentRun` con el consumo del
-proveedor y su coste.
+`ModelCallsApiTest` es el ejemplo: una salida tipada (`CourseOutline`) por cada proveedor, 400 y 401 (fallos
+permanentes), 429 y 500 (pasajeros) y JSON inválido con su recuento, la petición no emparejada y el registro `AgentRun`
+con el consumo del proveedor y su coste.
+
+`ProviderKeysApiTest` (RNF-SEG-09) busca las claves ficticias del doble donde no deben estar: con Embabel, Spring AI,
+OkHttp y los SDK en DEBUG y la salida capturada desde antes de crear su contexto (`OutputCaptureExtension`; la prueba
+comprueba que el arranque quedó dentro), un paso de prueba en la cola hace una ejecución completa y otra con 401 por
+proveedor; después recorre la salida, todas las tablas de la base (`lms` y `audit_log` incluidas), los errores del
+trabajo y de `AgentRun` y actuator. Su contexto es propio y se cierra al terminar, y los niveles de registro vuelven a
+los de antes.
 
 **No sustituye al doble determinista** (`docs/ai` §7). El doble HTTP prueba la frontera con el proveedor: Embabel, lo que
 se envía, la deserialización, los errores y el consumo de tokens. La lógica de la canalización (idempotencia, cancelación,
