@@ -141,6 +141,7 @@ flowchart BT
     ai --> course
     ai --> importer
     ai --> jobs
+    ai --> media
     ai --> workload
     media --> authoring
     media --> jobs

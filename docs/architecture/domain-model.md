@@ -142,6 +142,10 @@ LONG_TEXT` · `conocimientos_previos · LONG_TEXT` · `requisitos · LONG_TEXT` 
   `creditos_aprobados · DECIMAL` · `politica_creditos · TEXT · id@versión`. Copia de la aprobación vigente en
   `aprobacion_creditos`; solo los escribe el comando de aprobación, que exige `APROBAR_CREDITOS` [guarda + comando]. Una
   versión nueva no los hereda.
+- Borrador de IA (F5, E33.6, [docs/ai §5](../ai/README.md#5-esquemas-tipados-y-trabajos)): `plantilla_ia · TEXT · id@versión`
+  (`lesson-draft@1`), la plantilla con que el paso de borrador juntó sus lecciones, la misma `version_plantilla` de su
+  ejecución. Lo escribe el paso al crear la versión; la fuente de verdad es `lms.ejecucion_agente`, que no se edita (§13 de
+  docs/ai: la ejecución nombra la versión en `salida.versionId`). Una versión nueva no la hereda.
 - `uniqueConstraints: [[curso, numero]]`.
 
 Invariantes: solo se edita en `BORRADOR`, y con ella sus unidades y lecciones [guarda]; las transiciones son las de §5.1

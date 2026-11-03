@@ -63,6 +63,26 @@ Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este
   trabajo `render-worker` con sus pruebas, un render de verdad con Chrome Headless Shell y el informe de licencias
   (`yarn run licenses`). `docs/legal/licensing.md` documenta el ffmpeg GPL que trae Remotion. Sin migraciones.
 
+## 2026-11-03 — Borrador de lecciones con plantillas versionadas: E33.6 ([#283](https://github.com/wasichai/elearning-backend/issues/283))
+
+- `POST /api/lms/ai/lesson-draft` encola, con la ejecución `SUCCEEDED` de un diseño pedagógico (brief `LISTO` y semanas
+  válidas), el paso `LESSON_DRAFT` (`ai.lesson_draft`): vuelve a leer las fuentes del brief en el mismo commit y deja en
+  `AgentRun` sus fuentes con hash, `briefId` en sus entradas y las versiones `lesson-draft@1` de instrucciones y plantilla.
+- `LessonDrafter` con dos implementaciones: `ModelLessonDrafter` (Embabel, modelo `draft` y `lms.ai.max-tokens.draft`, 16000)
+  y `DeterministicLessonDrafter`, sin claves. El modelo escribe las partes de cada lección y `LessonTemplate` (`lesson-draft@1`)
+  las junta en AsciiDoc con su _Objetivo_ y su _Verificación_.
+- `LessonDraftCheck`: un borrador que no sigue las unidades del diseño o con una lección vacía queda `INVALID_OUTPUT` sin
+  versión; una fuente que no es una sección leída o una duración imposible se descartan; los enlaces que no están en las
+  fuentes o no son https públicos se marcan para revisión (`validations.linksToReview` y `referencias` del recurso).
+- `LessonDraftWriter`: el borrador entra como `version_curso` `BORRADOR` a nombre de quien lo pidió (con `plantilla_ia`, campo
+  nuevo del modelo), con sus unidades y lecciones y, por lección, un recurso HTML con la fuente AsciiDoc y una
+  `version_recurso` `BORRADOR` cuyo HTML se sanea con la lista blanca de ADR-0022. Nada cambia de estado por sí mismo y la
+  versión es generada (no va a revisión sin informe). `ai` pasa a depender de `media`.
+- `AiStepRunner.runWriting` (`AiDraftWriter`): escribir el borrador, cerrar la ejecución `SUCCEEDED` con `output.versionId` y
+  cerrar el trabajo van en una transacción.
+- Pruebas: `LessonDraftTest` (con el `FakeOperationContext` de Embabel), `LessonDraftApiTest` sin claves y
+  `LessonDraftAnthropicApiTest`/`LessonDraftOpenAiApiTest` contra el doble HTTP. Sin migraciones.
+
 ## 2026-11-03 — Diseño pedagógico: E33.5 ([#282](https://github.com/wasichai/elearning-backend/issues/282))
 
 - `POST /api/lms/ai/course-design` encola, con la ejecución `SUCCEEDED` de un análisis de fuentes y su brief `LISTO`, el paso

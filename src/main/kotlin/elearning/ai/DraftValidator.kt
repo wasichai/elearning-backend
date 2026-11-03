@@ -368,11 +368,15 @@ object DraftValidator {
                     MARKDOWN_IMAGE.findAll(line).map { it.groupValues[2] to it.groupValues[1] } +
                     HTML_IMAGE.findAll(line).map { tag -> tag.value to (HTML_ALT.find(tag.value)?.let { it.groupValues[2] + it.groupValues[3] } ?: "") }
             images.filter { (_, alt) -> alt.isBlank() }.forEach { (target, _) -> found.add(ValidationKind.IMAGE_WITHOUT_ALT, origin, field, target, number) }
-            LINK.findAll(line).map { it.value.trimEnd(*TRAILING) }.filterNot(SafeLink::isAllowed).forEach {
+            linksIn(line).filterNot(SafeLink::isAllowed).forEach {
                 found.add(ValidationKind.UNSAFE_LINK, origin, field, it, number)
             }
         }
     }
+
+    // los enlaces de un texto, sin la puntuación que los cierra: los de un borrador generado se comparan además con los de sus
+    // fuentes (LessonDraftCheck)
+    internal fun linksIn(text: String): Sequence<String> = LINK.findAll(text).map { it.value.trimEnd(*TRAILING) }
 
     private fun evaluations(snapshot: DraftSnapshot) = snapshot.units.flatMap { u -> u.lessons.flatMap { it.evaluations } }
 

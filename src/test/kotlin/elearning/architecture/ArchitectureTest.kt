@@ -107,7 +107,8 @@ class ArchitectureTest {
                 // el brief (E33.1) se escribe con las guardas de course y sus fuentes son las permitidas del importador; los
                 // pasos son trabajos de la cola persistente y vuelven a mirar los permisos de quien los pidió (ADR-0033 §5); las
                 // horas y los créditos del diseño pedagógico los calcula workload, no el modelo (E33.5)
-                "ai" to setOf("common", "authoring", "course", "importer", "jobs", "workload"),
+                // E33.6: el borrador guarda el HTML de cada lección con el generador y el saneado de media (ADR-0022)
+                "ai" to setOf("common", "authoring", "course", "importer", "jobs", "media", "workload"),
                 // la generación encola y maneja sus trabajos en la cola persistente (ADR-0018 §7)
                 "media" to setOf("common", "authoring", "jobs"),
                 // las valoraciones (ADR-0038): leen la matrícula y el progreso del aula y sus agregados corren en la cola. nadie
