@@ -16,7 +16,9 @@ que es lógica determinista del módulo `elearning.ai` o de `authoring`; «perso
 
 1. **Brief** — temática, público, objetivos, duración, idioma, nivel, expertos y fuentes autorizadas. _Persona_
    (CREADOR) con formulario validado → `Brief`. Fuentes solo de la lista permitida o de paquetes importados
-   ([importador](../security/README.md#46-importador-asciidoc-f4)).
+   ([importador](../security/README.md#46-importador-asciidoc-f4)). Implementado en E33.1 ([#278](https://github.com/wasichai/elearning-backend/issues/278)):
+   Custom Object `brief` del curso y `BriefGuard` ([modelo](../architecture/domain-model.md)); se guarda a medias en
+   `BORRADOR` y solo pasa a `LISTO` completo, que es lo que consumirán los pasos.
 2. **Análisis de fuentes con procedencia** — _código_ (importador: grafo `include::`, secciones, anclas) + _Embabel_
    (extracción de conceptos y procedimientos) → `SourceAnalysis`, cada elemento ligado a `repo@sha:ruta#ancla`. Lo que
    no tiene procedencia se descarta.

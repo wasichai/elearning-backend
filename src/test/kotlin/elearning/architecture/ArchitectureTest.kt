@@ -80,7 +80,8 @@ class ArchitectureTest {
                 // la aprobación de créditos lee las decisiones de la bandeja para la separación de funciones (ADR-0035)
                 "credits" to setOf("common", "course", "workload", "authoring"),
                 "importer" to setOf("common", "jobs"),
-                "ai" to setOf("common", "authoring"),
+                // el brief (E33.1) se escribe con las guardas de course y sus fuentes son las permitidas del importador
+                "ai" to setOf("common", "authoring", "course", "importer"),
                 // la generación encola y maneja sus trabajos en la cola persistente (ADR-0018 §7)
                 "media" to setOf("common", "authoring", "jobs"),
                 "reputation" to setOf("common", "enrollment"),

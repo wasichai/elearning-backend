@@ -368,6 +368,17 @@ solo en una versión `EN_REVISION` y solo quien la revisa; el creador lo lee en 
 por cada cambio de `estado` de una versión, por cualquier vía; la escribe un `RecordChangeListener` en la transacción de
 quien escribe ([ADR-0032](../adr/0032-historial-de-estados-de-la-version-en-tabla-propia.md)).
 
+**`brief`** (Brief) — F5, RF-IA-01, E33.1 ([docs/ai §1](../ai/README.md)). El encargo de un curso para la canalización
+de IA. `curso · RELATION → curso · requerido` · `tematica · TEXT` · `publico · LONG_TEXT` · `objetivos · LONG_TEXT · uno
+por línea` · `duracion_horas · DECIMAL` · `idioma · TEXT · BCP 47` · `nivel · ENUM nivel` · `expertos · LONG_TEXT · uno
+por línea` · `fuentes · LONG_TEXT · owner/repo@sha:ruta, una por línea` · `estado · ENUM(BORRADOR, LISTO) · por defecto
+BORRADOR`. Un curso puede tener varios.
+Invariantes: se guarda incompleto en borrador; en `LISTO` tiene todos los campos y horas > 0, o `400` con la lista de lo
+que falta [guarda]; cada fuente es de `lms.importer.allowed-sources` o del repositorio y commit de un paquete ya importado
+al curso (las fuentes de sus versiones), también en borrador [guarda]; lo crea, edita y borra quien tiene `CREATE` sobre
+`version_curso`, aunque un rol tenga permisos sobre `brief` [guarda]. Lo leen quienes lo escriben (CREADOR), sin alcance
+por curso: el creador ya ve todas las versiones (`VER_TODAS`).
+
 **`lms.ejecucion_agente`** (AgentRun) — F5, tabla fija del esquema `lms` (`ModuleMigration` orden 200), no un Custom
 Object: sus entradas, salida y validaciones son JSON ([ADR-0033](../adr/0033-fase-5-ia.md) §7, ADR-0004).
 `id` · `organizacion_id` · `trabajo_id` (el de `lms.trabajo`, sin clave foránea: la cola purga sus trabajos) · `paso` ·

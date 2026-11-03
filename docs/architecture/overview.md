@@ -138,6 +138,8 @@ flowchart BT
     credits --> workload
     importer
     ai --> authoring
+    ai --> course
+    ai --> importer
     media --> authoring
     media --> jobs
     reputation --> enrollment

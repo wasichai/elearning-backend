@@ -22,7 +22,8 @@
     "formato_artefacto": ["HTML", "PDF"],
     "tipo_aprobacion_creditos": ["APROBACION", "REVOCACION"],
     "estado_politica_credito": ["BORRADOR", "PUBLICADA", "RETIRADA"],
-    "metodo_credito": ["ECTS_CARGA_TOTAL", "US_SCH_34CFR600_2", "PE_LEY30220_HORAS_LECTIVAS"]
+    "metodo_credito": ["ECTS_CARGA_TOTAL", "US_SCH_34CFR600_2", "PE_LEY30220_HORAS_LECTIVAS"],
+    "estado_brief": ["BORRADOR", "LISTO"]
   },
   "objects": [
     {
@@ -1484,6 +1485,64 @@
           "required": true
         }
       ]
+    },
+    {
+      "name": "brief",
+      "label": "Brief",
+      "pluralLabel": "Briefs",
+      "description": "Encargo estructurado de un curso para la canalización de IA (RF-IA-01, E33.1): temática, público, objetivos, duración, idioma, nivel, expertos y fuentes autorizadas. Se guarda a medias en borrador; pasa a LISTO solo completo y con fuentes de la lista permitida del importador o de paquetes ya importados al curso (BriefGuard).",
+      "fields": [
+        {
+          "name": "tematica",
+          "label": "Temática",
+          "type": "TEXT"
+        },
+        {
+          "name": "publico",
+          "label": "Público destinatario",
+          "type": "LONG_TEXT"
+        },
+        {
+          "name": "objetivos",
+          "label": "Objetivos (uno por línea)",
+          "type": "LONG_TEXT"
+        },
+        {
+          "name": "duracion_horas",
+          "label": "Duración (horas)",
+          "type": "DECIMAL"
+        },
+        {
+          "name": "idioma",
+          "label": "Idioma (BCP 47)",
+          "type": "TEXT"
+        },
+        {
+          "name": "nivel",
+          "label": "Nivel",
+          "type": "ENUM",
+          "enum": "nivel"
+        },
+        {
+          "name": "expertos",
+          "label": "Expertos de la materia (uno por línea)",
+          "type": "LONG_TEXT"
+        },
+        {
+          "name": "fuentes",
+          "label": "Fuentes autorizadas (owner/repo@sha:ruta, una por línea)",
+          "type": "LONG_TEXT"
+        },
+        {
+          "name": "estado",
+          "label": "Estado",
+          "type": "ENUM",
+          "enum": "estado_brief",
+          "required": true,
+          "defaultValue": "BORRADOR",
+          "indexed": true
+        }
+      ]
     }
   ],
   "relationships": [
@@ -1792,6 +1851,16 @@
       "source": "aprobacion_creditos",
       "target": "politica_credito",
       "fieldName": "politica_credito"
+    },
+    {
+      "name": "brief_curso",
+      "label": "Curso",
+      "inverseLabel": "Briefs",
+      "type": "MANY_TO_ONE",
+      "source": "brief",
+      "target": "curso",
+      "fieldName": "curso",
+      "required": true
     }
   ]
 }
