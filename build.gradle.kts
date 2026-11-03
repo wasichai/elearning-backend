@@ -86,7 +86,40 @@ val noServletStack by tasks.registering {
     }
 }
 
-tasks.check { dependsOn(noServletStack) }
+// el render de vídeo es opcional (ADR-0039 §3-4): Remotion es solo una dependencia npm de render-worker/, nunca del backend.
+// falla si algo con «remotion» en su grupo o nombre llega a los classpath de la aplicación o de las pruebas
+val noRemotion by tasks.registering {
+    description = "Falla si Remotion llega al classpath del backend."
+    group = "verification"
+    val artifacts =
+        listOf(configurations.runtimeClasspath, configurations.testRuntimeClasspath).map { configuration ->
+            configuration
+                .get()
+                .incoming.artifacts.resolvedArtifacts
+        }
+    doLast {
+        val forbidden =
+            artifacts
+                .flatMap { it.get() }
+                .map { it.id.componentIdentifier }
+                .filterIsInstance<ModuleComponentIdentifier>()
+                .map { "${it.group}:${it.module}" }
+                .filter { "remotion" in it.lowercase() }
+                .distinct()
+                .sorted()
+        check(forbidden.isEmpty()) { "el classpath del backend trae Remotion, que solo puede ser del trabajador de render: $forbidden" }
+    }
+}
+
+tasks.check { dependsOn(noServletStack, noRemotion) }
+
+// el esquema del guion de vídeo es uno solo, el del trabajador (ADR-0040 §2): ScriptSchema lo lee del classpath
+tasks.processResources {
+    from("render-worker/schema") {
+        include("guion.schema.json")
+        into("render")
+    }
+}
 
 tasks.bootJar { archiveFileName.set("elearning-backend.jar") }
 

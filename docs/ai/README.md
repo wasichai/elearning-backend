@@ -425,6 +425,71 @@ audiencia, `segundos` por escena y trazas `{ doc, ancla }` al manual ([referenci
 - **Previsualización** antes de la revisión, con el propio MP4 del borrador (sin el Player de Remotion); la versión publicada referencia el artefacto por hash y sigue
   funcionando sin el proveedor de IA ni el renderizador.
 
+### 12.1 El guion de vídeo (esquema 1)
+
+Implementado en E37.2 ([#297](https://github.com/wasichai/elearning-backend/issues/297)). El guion de RF-MED-01 es un
+documento JSON con la forma de [`render-worker/schema/guion.schema.json`](../../render-worker/schema/guion.schema.json)
+(JSON Schema 2020-12, `additionalProperties: false` en **todos** los objetos: un campo de más es un error, nunca se
+ignora). Es el contrato de [#293](https://github.com/wasichai/elearning-backend/issues/293): el paso de IA que escriba el
+guion produce exactamente esto y lo valida con `ScriptSchema.validate` antes de guardarlo.
+
+| Campo               | Forma                                                                                    |
+| ------------------- | ---------------------------------------------------------------------------------------- |
+| `version`           | `1` (obligatorio)                                                                        |
+| `idioma`            | `es`, `en`, `es-PE`… (`^[a-z]{2}(-[A-Z]{2})?$`, obligatorio)                             |
+| `titulo`            | texto de 1 a 200 (obligatorio)                                                           |
+| `objetivos`         | hasta 20 textos de 1 a 300                                                               |
+| `tipografia`        | `inter` (por defecto) o `source-serif-4`: fuentes OFL que van en `render-worker/fonts/`  |
+| `salida.resolucion` | `1280x720` (por defecto) o `1920x1080`                                                   |
+| `salida.fps`        | `30` (por defecto) o `25`                                                                |
+| `secciones`         | de 1 a 100 (obligatorio), en orden                                                       |
+| `secciones[].id`    | `^[a-z0-9][a-z0-9-]{0,63}$`, único en el guion                                           |
+| `.titulo`           | texto de 1 a 200                                                                         |
+| `.segundos`         | entero de 1 a 600; la duración del vídeo es la suma                                      |
+| `.diapositiva`      | una de la lista cerrada de abajo, por `tipo`                                             |
+| `.narracion`        | texto (transcripción), hasta 10 000                                                      |
+| `.subtitulos`       | hasta 200 `{ desde, hasta, texto }`: segundos **desde el principio de la sección**       |
+| `.trazas`           | hasta 20 `{ doc, ancla? }` a la fuente (`doc` es texto libre, p. ej. `owner/repo@sha:r`) |
+
+Diapositivas (`diapositiva.tipo`):
+
+| `tipo`    | Campos                                                                                           |
+| --------- | ------------------------------------------------------------------------------------------------ |
+| `portada` | `titulo`, `subtitulo?`                                                                           |
+| `vinetas` | `titulo`, `vinetas` (de 1 a 8 textos de 1 a 300)                                                 |
+| `imagen`  | `imagen` (sha256 en hexadecimal minúsculo), `alt` (obligatorio), `pie?`                          |
+| `codigo`  | `titulo?`, `lenguaje?` (`^[a-z0-9+#-]{1,32}$`), `codigo` (hasta 4000): se **muestra** como texto |
+| `cierre`  | `titulo`, `mensaje?`                                                                             |
+
+Reglas que el esquema no expresa y que aplican los dos lados en código (`ScriptSchema.rules` en el backend, `rules` de
+`render-worker/src/guion.mjs`): ids de sección únicos; cada subtítulo con `desde < hasta`, `hasta` dentro de su sección y en
+orden sin pisar al anterior; la duración total dentro de `lms.render.max-seconds` (900 s).
+
+**Solo datos.** Ningún campo es un componente, una expresión, un `import`, una ruta, una URL ni HTML. Todo texto se pinta
+como nodo de texto de React (escapado) y los subtítulos se escapan en el VTT; una imagen se nombra por su sha256 y viaja
+dentro de la petición al trabajador (`{ guion, recursos: { <sha256>: <base64> } }`, solo PNG, JPEG o WebP por sus bytes,
+20 MB en total), nunca por URL. Hasta que el guion de #293 tome sus imágenes de los archivos del curso, el backend rechaza
+(`400`) un guion con diapositivas `imagen`; el trabajador ya las admite.
+
+Los ejemplos de [`render-worker/schema/ejemplos/`](../../render-worker/schema/ejemplos) (válidos e inválidos; los
+`regla-*` cumplen el esquema y solo los rechazan las reglas) los prueban el trabajador (zod y ajv sobre el mismo esquema) y
+el backend (`ScriptSchemaTest`). `ScriptSchema` interpreta el subconjunto de JSON Schema que usa el archivo y no carga uno
+con otra palabra clave: cambiar el esquema obliga a cambiar los dos lados en el mismo PR.
+
+### 12.2 El trabajador y la cola
+
+- `POST /api/lms/studio/resources/{id}/video-renders` con `{ "guion": … }` encola `VIDEO_RENDER` en `lms.trabajo`
+  ([API](../api/lms.md#render-de-vídeo-f5-rf-med-02)); con el render apagado es `409`.
+- `VideoRenderJobHandler` corre en el dispatcher de la cola, con su propio tiempo límite (`lms.render.timeout`) y como
+  mucho `lms.render.max-concurrent` renders en curso entre todas las réplicas: `JobQueue.claimCapped` no reclama uno más
+  (los demás esperan en `QUEUED` sin gastar intentos). Llama al trabajador con `PUT /renders/{trabajo}` (idempotente),
+  descarga `video.mp4` y `subtitulos.vtt` comprobando sha256 y tamaño contra el informe, y los borra con `DELETE`.
+- En el trabajo quedan el guion (`datos`), el informe (`resultado`: sha256 y tamaños, `ffprobe`, versiones de Remotion y del
+  trabajador) y el error. Un trabajador inexistente o inalcanzable, un secreto que no coincide o un guion rechazado son
+  fallo **permanente** con un mensaje que dice qué mirar; ocupado (`503`) o un corte a mitad, se reintenta.
+- Validar el informe de `ffprobe` contra el guion y guardar el MP4 y el VTT en `wasichai-files` es E37.3
+  ([#298](https://github.com/wasichai/elearning-backend/issues/298)).
+
 ## 13. Informe de validación (RF-IA-05)
 
 Implementado en E34.1 ([#286](https://github.com/wasichai/elearning-backend/issues/286)). `DraftValidator`

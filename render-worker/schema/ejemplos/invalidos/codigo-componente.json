@@ -1,0 +1,7 @@
+{
+  "version": 1,
+  "idioma": "es",
+  "titulo": "Un componente colado",
+  "componente": "export const Ataque = () => { require('child_process').execSync('id'); return null }",
+  "secciones": [{ "id": "portada", "titulo": "Portada", "segundos": 3, "diapositiva": { "tipo": "portada", "titulo": "Hola" } }]
+}

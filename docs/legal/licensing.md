@@ -127,6 +127,35 @@ Decisión del titular ([ADR-0039](../adr/0039-remotion-como-motor-de-render-con-
 - Cómo es el trabajador (paquete `render-worker/` con su propio `package.json`, entrada solo de datos, comunicación con la
   cola, almacenamiento y validación): [ADR-0040](../adr/0040-renderizador-de-video-en-un-trabajador-node.md).
 
+### El trabajador: Remotion, ffmpeg y fuentes
+
+Lo que lleva [`render-worker/`](../../render-worker) (E37.2, [#297](https://github.com/wasichai/elearning-backend/issues/297)),
+comprobado el 2026-11-03 con Remotion 4.0.540:
+
+- **Remotion solo aquí**: `remotion`, `@remotion/bundler`, `@remotion/renderer` y `@remotion/fonts` fijados a 4.0.540 en
+  `render-worker/package.json`; arrastran otros `@remotion/*` (`studio`, `player`, `web-renderer`, `compositor-*`…). Ni el
+  `package.json` raíz (que no tiene _workspaces_) ni el backend lo declaran: CI falla si el `yarn.lock` raíz, su
+  `node_modules` o el classpath del backend (`./gradlew noRemotion`) lo traen.
+- **Informe de licencias** (`yarn run licenses` en `render-worker/`, trabajo `render-worker` de CI, artefacto
+  `render-worker-licencias`): sobre la instalación de producción, lista Remotion aparte (licencia propia) y falla si otro
+  paquete no tiene una licencia libre de la lista (MIT, ISC, Apache-2.0, BSD, MPL-2.0…) o si Remotion no aparece. Al
+  escribir esto: 172 paquetes, 23 de Remotion; el resto MIT, ISC, BSD-2/3, Apache-2.0, MPL-2.0, Unlicense, 0BSD y
+  CC-BY-4.0.
+- **Sin clave ni telemetría**: el trabajador no pasa `licenseKey` a `renderMedia`; en 4.0.540 (`@remotion/renderer`,
+  `render-media.js`) el evento de uso solo se envía con clave. Con la Free License del titular no hay clave que poner.
+- **ffmpeg y ffprobe**: Remotion trae su propia compilación en `@remotion/compositor-<plataforma>` y el trabajador usa ese
+  `ffprobe` para el informe (`FFPROBE` nombra otro). `ffprobe -version` dice `n7.1` con `--enable-gpl`, `--enable-libx264`,
+  `--enable-libx265` y `--enable-libfdk-aac`, sin `--enable-nonfree`. Es decir, es una compilación **GPL**, no LGPL: el
+  H.264 que produce Remotion sale de libx264 (GPL-2.0 o posterior), así que una compilación LGPL no sirve para este motor.
+  Además, la licencia de libfdk-aac se considera incompatible con la GPL (ffmpeg pide `--enable-nonfree` para combinarlas):
+  **a verificar con asesoría** antes de redistribuir una imagen que la incluya. Lo que hace el proyecto: no redistribuye
+  esos binarios (llegan de npm a quien construye la imagen; ADR-0039 §7) y los ejecuta como programas aparte
+  (`execFile`, sin enlazarlos). Quien publique una imagen del trabajador redistribuye un ffmpeg GPL (con sus obligaciones,
+  como ofrecer la fuente) y es quien tiene que resolver lo de libfdk-aac. El backend no lleva ffmpeg.
+- **Fuentes**: Inter, Source Serif 4 y JetBrains Mono (subconjunto latino, de los paquetes `@fontsource` 5.x), con
+  licencia **SIL OFL 1.1**, en `render-worker/fonts/` con su texto de licencia (`OFL-*.txt`). Van en el paquete: nunca se
+  descargan al renderizar.
+
 ## Opciones para este proyecto
 
 Para el **código**:

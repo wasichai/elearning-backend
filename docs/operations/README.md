@@ -226,9 +226,9 @@ Una copia no cuenta hasta haberse restaurado. Procedimiento (manual ahora, autom
 
 El render de vídeo de la Fase 5 usa [Remotion](https://www.remotion.dev) en un **trabajador Node separado**, fuera del
 backend ([ADR-0039](../adr/0039-remotion-como-motor-de-render-con-licencia-por-despliegue.md)). Está **desactivado por
-defecto**: sin activarlo, el backend y el aula funcionan enteros y no hace falta instalar nada de Remotion. Cómo se
-construye, se configura y se conecta el trabajador se documenta con su implementación
-([E37.2, #297](https://github.com/wasichai/elearning-backend/issues/297)).
+defecto**: sin activarlo, el backend y el aula funcionan enteros y no hace falta instalar nada de Remotion (CI comprueba
+que ni el `yarn.lock` raíz ni el classpath del backend lo traen). El trabajador vive en
+[`render-worker/`](../../render-worker) con su propio `package.json`, su `Dockerfile` y sus pruebas.
 
 > **Licencia de Remotion: responsabilidad de quien activa el render.** Remotion no es software libre y su licencia es
 > de cada organización que lo usa, no de este proyecto. Es gratuita (Free License) para particulares, organizaciones con
@@ -244,17 +244,42 @@ construye, se configura y se conecta el trabajador se documenta con su implement
 - El trabajador solo recibe datos (el guion como JSON validado); nunca acepta código de los usuarios, como exigen los
   términos de Remotion.
 
-Lo que pedirá activarlo ([ADR-0040](../adr/0040-renderizador-de-video-en-un-trabajador-node.md); nombres de variables a confirmar en E37.2):
+Para activarlo ([ADR-0040](../adr/0040-renderizador-de-video-en-un-trabajador-node.md)):
 
-- `LMS_RENDER_ENABLED=true`, `LMS_RENDER_WORKER_URL` y `LMS_RENDER_WORKER_TOKEN` (secreto compartido con el trabajador);
-  sin URL o sin secreto el backend no arranca con el render activo.
-- El contenedor del trabajador **en la red interna, sin salida a Internet**: todo lo que renderiza llega en la petición
-  o va en su paquete.
-- `WASICHAI_FILES_MAX_BYTES=256MB` (techo de archivos; los campos que suben personas conservan su tope de 25 MB) y un
-  heap del backend de al menos 1 GB: Wasichai guarda cada archivo leyéndolo entero en memoria.
-- `LMS_RENDER_MAX_CONCURRENT` (1), `LMS_RENDER_TIMEOUT` (30 min, con `lms.jobs.lease` por encima),
-  `LMS_RENDER_MAX_SECONDS` (15 min) y `LMS_RENDER_MAX_BYTES` (256 MB). Un render ocupa una plaza de `lms.jobs.parallelism`
-  mientras dura.
+1. **Construir y arrancar el trabajador**: `docker build -t render-worker render-worker/` (descarga Chrome Headless Shell al
+   construir) y arrancarlo **en la red interna, sin salida a Internet** (todo lo que renderiza llega en la petición o va en
+   su paquete), con:
+
+   | Variable                       | Valor                                                                                    |
+   | ------------------------------ | ---------------------------------------------------------------------------------------- |
+   | `RENDER_WORKER_TOKEN`          | el secreto compartido, 32 caracteres o más (sin él no arranca)                           |
+   | `PORT`                         | `8095`                                                                                   |
+   | `RENDER_WORKER_MAX_CONCURRENT` | `1`: renders a la vez; con más, `503`                                                    |
+   | `RENDER_WORKER_MAX_SECONDS`    | `900`, igual que `LMS_RENDER_MAX_SECONDS`                                                |
+   | `RENDER_WORKER_MAX_BYTES`      | `268435456`, igual que `LMS_RENDER_MAX_BYTES`; el trabajador ajusta la tasa de bits      |
+   | `RENDER_WORKER_DIR`            | dónde quedan los vídeos hasta que el backend los recoge (lo no recogido en 1 h se borra) |
+
+   `GET /health` (sin secreto) dice si está vivo. No necesita base de datos ni credenciales del almacén.
+
+2. **Backend**: `LMS_RENDER_ENABLED=true`, `LMS_RENDER_WORKER_URL` (p. ej. `http://render-worker:8095`) y
+   `LMS_RENDER_WORKER_TOKEN` (el mismo secreto). Sin URL o con un secreto de menos de 32 caracteres el backend no arranca.
+3. **Tiempo límite**: `LMS_RENDER_TIMEOUT` (30 min) tiene que ser menor que `LMS_JOBS_LEASE` (15 min por defecto): con el
+   render activo, **sube `LMS_JOBS_LEASE`** (p. ej. `35m`) o el backend no arranca. Un render ocupa una plaza de
+   `LMS_JOBS_PARALLELISM` mientras dura.
+4. **Archivos**: `WASICHAI_FILES_MAX_BYTES=256MB` (los campos que suben personas conservan su tope de 25 MB) y un heap del
+   backend de al menos 1 GB; con un techo menor que `LMS_RENDER_MAX_BYTES` (256 MB) el backend no arranca.
+5. `LMS_RENDER_MAX_CONCURRENT` (1, entre todas las réplicas: los demás esperan en la cola), `LMS_RENDER_MAX_SECONDS` (900)
+   y `LMS_RENDER_MAX_BYTES` (256 MB).
+
+| Síntoma                                                               | Qué mirar                                                                  |
+| --------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| Render `FALLIDO`: `The render worker at … cannot be reached`          | el contenedor `render-worker` en marcha y `LMS_RENDER_WORKER_URL` hacia él |
+| Render `FALLIDO`: `refused the shared secret`                         | `LMS_RENDER_WORKER_TOKEN` del backend igual a `RENDER_WORKER_TOKEN`        |
+| Render `FALLIDO`: `rejected the video (422): … could not be rendered` | el registro del trabajador (Chrome, memoria, `ffprobe`)                    |
+| Renders `PENDIENTE` mucho tiempo                                      | uno `EN_CURSO` ocupa `LMS_RENDER_MAX_CONCURRENT`; el trabajador está vivo  |
+| `409 Video rendering is not enabled`                                  | `LMS_RENDER_ENABLED=true` en el backend                                    |
+
+Apagar el render con renders en cola los deja `PENDIENTE`: ninguna réplica los reclama hasta que se vuelva a encender.
 
 ## Despliegue objetivo (k3s)
 

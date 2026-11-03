@@ -1,0 +1,6 @@
+{
+  "version": 1,
+  "idioma": "es",
+  "titulo": "Segundos fuera de rango",
+  "secciones": [{ "id": "portada", "titulo": "Portada", "segundos": 0.5, "diapositiva": { "tipo": "portada", "titulo": "Hola" } }]
+}

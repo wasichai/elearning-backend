@@ -10,6 +10,7 @@ import kotlinx.coroutines.withTimeout
 import org.slf4j.LoggerFactory
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Component
+import java.time.Duration
 
 // ejecuta la cola (ADR-0018 §4, RNF-ARQ-09). cada vuelta reclama a lo sumo parallelism trabajos de los tipos que esta
 // réplica sabe ejecutar y los corre en un dispatcher acotado, nunca en el hilo de WebFlux. no hace falta ClusterLock:
@@ -24,10 +25,25 @@ class JobRunner(
     private val handlers: Map<String, JobHandler>
     private val dispatcher = Dispatchers.IO.limitedParallelism(properties.parallelism)
 
+    // los tipos sin límite propio se reclaman juntos; los que lo tienen, cada uno con el suyo (JobQueue.claimCapped)
+    private val unlimited: List<String>
+    private val capped: Map<String, Int>
+
     init {
         val repeated = registered.groupBy { it.type }.filterValues { it.size > 1 }.keys
         require(repeated.isEmpty()) { "more than one JobHandler for the job types $repeated" }
         handlers = registered.associateBy { it.type }
+        for (handler in registered) {
+            handler.timeout?.let {
+                require(it > Duration.ZERO) { "the time limit of ${handler.type} jobs must be positive" }
+                require(
+                    properties.lease > it,
+                ) { "lms.jobs.lease must be longer than the $it time limit of ${handler.type} jobs, or one would be claimed twice" }
+            }
+            handler.maxConcurrent?.let { require(it > 0) { "the concurrency limit of ${handler.type} jobs must be positive" } }
+        }
+        unlimited = registered.filter { it.maxConcurrent == null }.map { it.type }
+        capped = registered.mapNotNull { handler -> handler.maxConcurrent?.let { handler.type to it } }.toMap()
     }
 
     @Scheduled(fixedDelayString = "\${lms.jobs.poll:5s}", initialDelayString = "\${lms.jobs.initial-delay:10s}")
@@ -58,7 +74,12 @@ class JobRunner(
 
     // una vuelta: reclama, ejecuta y espera a que terminen. devuelve cuántos reclamó. para pruebas y operación manual
     suspend fun runOnce(): Int {
-        val claimed = queue.claim(handlers.keys, properties.parallelism)
+        val claimed = queue.claim(unlimited, properties.parallelism).toMutableList()
+        for ((type, max) in capped) {
+            val room = properties.parallelism - claimed.size
+            if (room <= 0) break
+            claimed += queue.claimCapped(type, max, room)
+        }
         supervisorScope {
             claimed.forEach { job ->
                 launch {
@@ -78,6 +99,7 @@ class JobRunner(
 
     private suspend fun run(job: Job) {
         var permanent = false
+        var timeout = properties.timeout
         val error =
             if (job.attempt > job.maxAttempts) {
                 // retomado tras perder su réplica en el último intento: no se ejecuta otra vez
@@ -85,11 +107,12 @@ class JobRunner(
             } else {
                 try {
                     val handler = handlers.getValue(job.type)
-                    val result = withTimeout(properties.timeout.toMillis()) { withContext(dispatcher) { handler.handle(job) } }
+                    timeout = handler.timeout ?: properties.timeout
+                    val result = withTimeout(timeout.toMillis()) { withContext(dispatcher) { handler.handle(job) } }
                     if (!queue.complete(job, result)) log.warn("job {} ({}) finished after losing its claim: result discarded", job.id, job.type)
                     return
                 } catch (e: TimeoutCancellationException) {
-                    "timed out after ${properties.timeout}"
+                    "timed out after $timeout"
                 } catch (e: CancellationException) {
                     // la réplica se apaga: el reclamo caduca y otra lo retoma
                     throw e

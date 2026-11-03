@@ -1,0 +1,6 @@
+{
+  "version": 1,
+  "idioma": "es",
+  "titulo": "Un vídeo mínimo",
+  "secciones": [{ "id": "portada", "titulo": "Portada", "segundos": 3, "diapositiva": { "tipo": "portada", "titulo": "Un vídeo mínimo" } }]
+}

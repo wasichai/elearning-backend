@@ -42,6 +42,27 @@ Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este
   con el `FakeOperationContext` de Embabel y de API contra el doble HTTP de Anthropic y de OpenAI; el borrador de prueba
   pasa a `DraftFixtures`. Sin migraciones.
 
+## 2026-11-03 — Trabajador de render de vídeo: E37.2 ([#297](https://github.com/wasichai/elearning-backend/issues/297)) y lo que quedaba de [#267](https://github.com/wasichai/elearning-backend/issues/267)
+
+- `render-worker/`: el trabajador Node de ADR-0040, aparte (su `package.json`, `yarn.lock`, `.node-version`, `Dockerfile` y
+  pruebas; no es un _workspace_). Remotion 4.0.540 solo aquí. Servidor `node:http` con secreto compartido: `PUT
+/renders/{trabajo}` idempotente (hecho, el mismo informe; en curso, espera al mismo render; otro guion, `409`), descarga
+  del MP4 y del VTT, `DELETE` y limpieza de lo no recogido en una hora. Las composiciones pintan el texto escapado, de una
+  lista cerrada de diapositivas, con fuentes OFL del paquete; el informe lleva sha256 y tamaños, `ffprobe` y versiones.
+- `render-worker/schema/guion.schema.json` (`additionalProperties: false` en todo objeto) con ejemplos válidos e inválidos
+  compartidos: el trabajador lo valida con zod (y comprueba con ajv que dicen lo mismo); el backend con `ScriptSchema`,
+  que lee el mismo archivo del classpath. Esquema documentado en `docs/ai` §12.1 para #293.
+- Backend: `POST /api/lms/studio/resources/{id}/video-renders` y `GET /api/lms/studio/video-renders/{id}`; el trabajo
+  `VIDEO_RENDER` y su `VideoRenderJobHandler`, que llama al trabajador con `WebClient` (`RenderWorkerClient`). Con
+  `lms.render.enabled=false` (lo de por defecto) no hay manejador ni cliente y pedir un render es `409`. Trabajador
+  inexistente o inalcanzable, secreto o guion rechazado: fallo permanente con un mensaje que dice qué mirar.
+- La cola gana límite de concurrencia por tipo al reclamar (`JobHandler.maxConcurrent`, `JobQueue.claimCapped` con un
+  candado de transacción, entre réplicas; lo que espera no gasta intentos) y tiempo límite por manejador
+  (`JobHandler.timeout`; sin `lms.jobs.lease` mayor no arranca).
+- CI: Remotion fuera del `yarn.lock` raíz, de su `node_modules` y del classpath del backend (`./gradlew noRemotion`); un
+  trabajo `render-worker` con sus pruebas, un render de verdad con Chrome Headless Shell y el informe de licencias
+  (`yarn run licenses`). `docs/legal/licensing.md` documenta el ffmpeg GPL que trae Remotion. Sin migraciones.
+
 ## 2026-11-03 — Diseño pedagógico: E33.5 ([#282](https://github.com/wasichai/elearning-backend/issues/282))
 
 - `POST /api/lms/ai/course-design` encola, con la ejecución `SUCCEEDED` de un análisis de fuentes y su brief `LISTO`, el paso

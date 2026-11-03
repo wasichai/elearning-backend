@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "idioma": "es",
+  "titulo": "Dos subtítulos que se pisan",
+  "secciones": [
+    {
+      "id": "portada",
+      "titulo": "Portada",
+      "segundos": 5,
+      "diapositiva": { "tipo": "portada", "titulo": "Hola" },
+      "subtitulos": [
+        { "desde": 0, "hasta": 3, "texto": "Primero" },
+        { "desde": 2, "hasta": 4, "texto": "Segundo, que empieza antes de que acabe el primero" }
+      ]
+    }
+  ]
+}

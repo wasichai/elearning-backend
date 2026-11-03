@@ -29,7 +29,8 @@ jobs:
           distribution: temurin
           java-version: '25'
       - uses: gradle/actions/setup-gradle@0723195856401067f7a2779048b490ace7a47d7c # v5
-      # formato (ktlint), unitarias y arquitectura; después integración con Testcontainers postgres:18
+      # formato (ktlint), unitarias y arquitectura; después integración con Testcontainers postgres:18. check incluye
+      # noRemotion: el render es opcional y Remotion nunca llega al classpath del backend (ADR-0039 §3-4)
       - run: ./gradlew build --no-daemon
         env:
           GITHUB_ACTOR: ${{ github.actor }}
@@ -83,6 +84,48 @@ jobs:
           node-version-file: .node-version
       - run: yarn install --frozen-lockfile --ignore-scripts
       - run: yarn format:check
+      # el render es opcional (ADR-0039 §3-4, criterio de #267): Remotion es solo de render-worker/, que no es un workspace.
+      # ni el yarn.lock raíz ni su node_modules lo traen
+      - name: sin Remotion fuera de render-worker
+        run: |
+          node -e "if (require('./package.json').workspaces) { console.error('el package.json raíz no puede tener workspaces'); process.exit(1) }"
+          if grep -nE '^"?(remotion|@remotion/)' yarn.lock; then echo "yarn.lock raíz trae Remotion" >&2; exit 1; fi
+          if [ -e node_modules/remotion ] || [ -e node_modules/@remotion ]; then echo "node_modules raíz trae Remotion" >&2; exit 1; fi
+          grep -q '"remotion"' render-worker/package.json
+
+  render-worker:
+    name: trabajador de render y licencias
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: render-worker
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version-file: render-worker/.node-version
+      - run: yarn install --frozen-lockfile
+      # el Chrome Headless Shell de Remotion, para el render de verdad (test/render.test.mjs); las demás pruebas usan un
+      # renderizador simulado
+      - run: yarn ensure-browser
+      - run: yarn test
+        env:
+          RENDER_WORKER_TEST_RENDER: required
+      # informe de licencias sobre lo que lleva la imagen (sin dependencias de desarrollo): Remotion aparece aquí y solo aquí
+      - name: informe de licencias
+        run: |
+          rm -rf node_modules
+          yarn install --frozen-lockfile --production --ignore-scripts
+          yarn run licenses --out licencias.md
+      - uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
+        if: always()
+        with:
+          name: render-worker-licencias
+          path: render-worker/licencias.md
+          retention-days: 30
 
   commits:
     name: mensajes de commit

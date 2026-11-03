@@ -40,6 +40,14 @@ data class JobStatus(
 interface JobHandler {
     val type: String
 
+    // su propio tiempo límite (ADR-0040 §3), para lo que puede pasar de lms.jobs.timeout (un render); null: lms.jobs.timeout.
+    // lms.jobs.lease tiene que superarlo, o un trabajo en curso se reclamaría dos veces: sin eso no arranca
+    val timeout: Duration? get() = null
+
+    // trabajos de este tipo en curso a la vez, contando todas las réplicas (ADR-0040 §3): con tantos en RUNNING, los demás
+    // esperan en QUEUED sin gastar intentos. null: sin límite propio, solo lms.jobs.parallelism por réplica
+    val maxConcurrent: Int? get() = null
+
     suspend fun handle(job: Job): String?
 }
 

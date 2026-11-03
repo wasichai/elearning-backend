@@ -1,0 +1,29 @@
+{
+  "name": "elearning-render-worker",
+  "version": "0.1.0",
+  "private": true,
+  "license": "LGPL-3.0-or-later",
+  "description": "Trabajador de render de vídeo (ADR-0039, ADR-0040): renderiza con Remotion el guion que le manda el backend. Paquete aparte: ni el backend ni el package.json raíz lo instalan.",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "node src/main.mjs",
+    "test": "node --test \"test/*.test.mjs\"",
+    "licenses": "node scripts/licenses.mjs",
+    "ensure-browser": "node scripts/ensure-browser.mjs"
+  },
+  "dependencies": {
+    "@remotion/bundler": "4.0.540",
+    "@remotion/fonts": "4.0.540",
+    "@remotion/renderer": "4.0.540",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "remotion": "4.0.540",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "ajv": "8.20.0"
+  }
+}

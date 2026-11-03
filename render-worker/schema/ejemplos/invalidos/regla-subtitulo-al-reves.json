@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "idioma": "es",
+  "titulo": "Un subtítulo que acaba antes de empezar",
+  "secciones": [
+    {
+      "id": "portada",
+      "titulo": "Portada",
+      "segundos": 3,
+      "diapositiva": { "tipo": "portada", "titulo": "Hola" },
+      "subtitulos": [{ "desde": 2, "hasta": 1, "texto": "Al revés" }]
+    }
+  ]
+}

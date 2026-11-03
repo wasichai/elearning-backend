@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "idioma": "es",
+  "titulo": "Dos secciones con el mismo id",
+  "secciones": [
+    { "id": "parte", "titulo": "Una", "segundos": 3, "diapositiva": { "tipo": "portada", "titulo": "Una" } },
+    { "id": "parte", "titulo": "Otra", "segundos": 3, "diapositiva": { "tipo": "cierre", "titulo": "Otra" } }
+  ]
+}

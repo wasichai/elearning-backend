@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "idioma": "es",
+  "titulo": "Una imagen por URL",
+  "secciones": [
+    {
+      "id": "imagen",
+      "titulo": "Imagen",
+      "segundos": 3,
+      "diapositiva": { "tipo": "imagen", "imagen": "https://example.com/imagen.png", "alt": "Una imagen de fuera" }
+    }
+  ]
+}
