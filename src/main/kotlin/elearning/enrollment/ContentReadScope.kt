@@ -17,7 +17,8 @@ import java.util.UUID
 
 // lo que una persona sin VER_TODAS lee del contenido (ADR-0012, ADR-0013): las versiones PUBLICADAS o de sus matrículas
 // no retiradas, y las unidades, lecciones y ediciones de esas versiones. un borrador se lee como inexistente. los recursos
-// (E13.1) y los entornos de laboratorio (ADR-0027) quedan solo para las versiones de sus matrículas. nunca por rol.
+// (E13.1) y los entornos de laboratorio (ADR-0027) quedan solo para las versiones de sus matrículas; de los recursos, solo
+// las versiones PUBLICADAS (#366, ADR-0041). nunca por rol.
 // con subconsultas SQL (M4 de #183, M1 de #104): antes listaba versiones, unidades y lecciones y las ligaba como arreglos de
 // ids que crecían con el catálogo publicado; ahora la base de datos resuelve la cadena en la misma sentencia. cada nivel
 // repite lo que leerlo como quien llama aplicaba: su organización, su VER_TODAS y, sin READ sobre él, nada (falla cerrada)
@@ -58,6 +59,11 @@ class ContentReadScope(
                 else -> ID_COLUMN to chain.linkedResources()
             }
         if (column == null || ids == null) return nothing()
+        // una versión de recurso, solo PUBLICADA aunque una lección la enlace (#366): lo que no pasó por una persona no se sirve
+        if (name == RESOURCE_VERSION) {
+            val state = column(definition, STATE) ?: return nothing()
+            return RecordCriterion { _, bind -> "($column IN (${ids.render(bind)}) AND $state = ${bind(PUBLISHED)})" }
+        }
         return RecordCriterion { _, bind -> "$column IN (${ids.render(bind)})" }
     }
 
@@ -165,8 +171,11 @@ class ContentReadScope(
             val rv = level(RESOURCE_VERSION, "lms_rv") ?: return null
             val resource = rv.column(RESOURCE) ?: return null
             if (rv.seeAll) return Sql { bind -> "SELECT $resource ${rv.from(bind, organization)}" }
+            val state = rv.column(STATE) ?: return null
             val versions = linkedResourceVersions() ?: return null
-            return Sql { bind -> "SELECT $resource ${rv.from(bind, organization)} AND ${rv.id} IN (${versions.render(bind)})" }
+            return Sql { bind ->
+                "SELECT $resource ${rv.from(bind, organization)} AND ${rv.id} IN (${versions.render(bind)}) AND $state = ${bind(PUBLISHED)}"
+            }
         }
     }
 

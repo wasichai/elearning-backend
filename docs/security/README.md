@@ -178,9 +178,17 @@ la barrera contra filtrar borradores es física, y aun así las pruebas negativa
 - **S** Revisor que actúa en una revisión no asignada → alcance por asignación.
 - **T** Modificar una versión publicada o la decisión de un revisor → guard de inmutabilidad; comentarios y decisiones
   `appendOnly`; ETag e `If-Match`.
+- **T** Publicar un curso con material que nadie revisó: una lección enlaza una `version_recurso` sin publicar (la escribió
+  la plataforma, que no pasa por la guarda de `recurso_leccion`, como el borrador de lección de #283) → llevar la
+  `version_curso` a `EN_REVISION`, `APROBADA` o `PUBLICADA` es `409` con las lecciones y versiones que faltan, por el
+  estudio, la bandeja y la API de registros, en una sentencia (`CurriculumResources`); una `version_recurso` enlazada desde
+  una versión de curso fuera de borrador no cambia ni se borra aunque siga en borrador (#366, ADR-0041). Prueba:
+  `UnpublishedResourcesApiTest`.
 - **R** Aprobaciones sin rastro → transiciones en `audit_log`; las decisiones de un curso, solo por la bandeja y en
   `lms.decision_revision`; motivo obligatorio al pedir cambios o rechazar, también en un recurso (ADR-0021).
-- **I** Borradores visibles a estudiantes → visibilidad por estado más alcance.
+- **I** Borradores visibles a estudiantes → visibilidad por estado más alcance. `ContentReadScope` solo sirve al estudiante
+  versiones de recurso `PUBLICADAS` (y sus recursos), aunque una lección de su matrícula enlace otra; el aula las filtra
+  también para quien lee con `VER_TODAS` (#366, defensa en profundidad).
 - **I** Comentarios de revisión de versiones ajenas → `ReviewCommentReadScope`: los lee quien publica, el autor de la
   versión, quien la puede revisar (sin revisor asignado, o siéndolo) y quien escribió el comentario; para los demás no
   existen (`404`), tampoco por la API de registros (L5 de #216).
@@ -245,6 +253,9 @@ Detalle en [`docs/ai/README.md`](../ai/README.md#6-protección-contra-prompt-inj
   dato de estudiantes; claves fuera del prompt; sin herramientas de red; `AgentResultFilter` en el asistente.
 - **D** Coste desbocado o bucles → límites de tokens e iteraciones, presupuesto, trabajos cancelables, idempotencia.
 - **E** El agente hereda los permisos de quien lo lanzó → el trabajo no aprueba ni publica; son acciones humanas.
+  Lo que escribe como la plataforma (el borrador de lección, sus `version_recurso` en `BORRADOR`) no llega a revisión ni a
+  estudiantes hasta que cada recurso pasa su propia revisión y se publica; ni el curso ni sus recursos se publican solos
+  (#366, ADR-0041).
   Encolar exige `GENERAR` o `VALIDAR` y el trabajo lo vuelve a mirar al ejecutar con los roles guardados de quien lo
   pidió (`AiPermissions`, ADR-0022 §4).
 

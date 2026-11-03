@@ -228,7 +228,9 @@ máx. 1 MB`; `uniqueConstraints: [[recurso, numero]]`. La fuente canónica Ascii
   `uniqueConstraints: [[leccion, version_recurso]]`. Objeto y no `MANY_TO_MANY` porque el orden importa.
 
 Invariantes: una lección apunta a una **versión** exacta del recurso, nunca al recurso a secas [modelo]; una
-`version_recurso` publicada no cambia [guarda]; una lección publicada solo usa versiones de recurso publicadas [guarda].
+`version_recurso` publicada no cambia [guarda]; una lección publicada solo usa versiones de recurso publicadas [guarda]: una
+`version_curso` no entra en revisión, ni se aprueba ni se publica si alguna lección enlaza una versión de recurso que no está
+`PUBLICADA`, y una versión de recurso enlazada desde una versión de curso fuera de borrador no cambia (ADR-0041).
 
 ### 4.2 Edición y sesiones
 

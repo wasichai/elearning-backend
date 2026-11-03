@@ -344,7 +344,12 @@ class ClassroomReader(
     // sus recursos en una lectura cada uno, no un get por versión y por recurso. lo que el alcance no deja leer no se muestra
     private suspend fun resources(lessons: Set<String>): Map<String, List<ResourceView>> {
         val links = records.listAllIn(RESOURCE_LINK, LESSON, lessons)
-        val versions = records.listByIds(RESOURCE_VERSION, links.mapNotNull { it.attributes.ref(RESOURCE_VERSION) }).associateBy { it.id }
+        // solo PUBLICADA (#366): también para quien lee con VER_TODAS, que ve los borradores por la API de registros
+        val versions =
+            records
+                .listByIds(RESOURCE_VERSION, links.mapNotNull { it.attributes.ref(RESOURCE_VERSION) })
+                .filter { it.attributes[STATE]?.toString() == PUBLISHED_RESOURCE }
+                .associateBy { it.id }
         val resources = records.listByIds(RESOURCE, versions.values.mapNotNull { it.attributes.ref(RESOURCE) }).associateBy { it.id }
         return links
             .sortedWith(compareBy({ it.int(ORDER) }, { it.id }))
@@ -485,6 +490,7 @@ class ClassroomReader(
         const val ENROLLMENT = "matricula"
         const val STUDENT = "estudiante_id"
         const val WITHDRAWN = "RETIRADA"
+        const val PUBLISHED_RESOURCE = "PUBLICADA"
         const val ACTIVE = "ACTIVA"
         const val RESOURCE = "recurso"
         const val RESOURCE_VERSION = "version_recurso"

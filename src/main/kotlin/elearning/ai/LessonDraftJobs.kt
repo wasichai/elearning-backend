@@ -92,8 +92,10 @@ data class StagedLesson(
 // leccion y su recurso HTML: la fuente canónica AsciiDoc (fuente_recurso, RF-CON-03) y una version_recurso BORRADOR con el HTML
 // que genera DocumentRenderer, saneado con la lista blanca de ADR-0022 (GeneratedHtml) antes de guardarse, enlazada a la
 // lección (recurso_leccion); detrás, por evaluación del diseño, su lección EVALUACION con su evaluacion y sus preguntas. Nada
-// cambia de estado: aprobar y publicar son de personas (EditorialWorkflowGuard). La plantilla queda en plantilla_ia y los
-// enlaces que no están en las fuentes, en referencias de la versión del recurso, además de en el informe de la ejecución.
+// cambia de estado: aprobar y publicar son de personas (EditorialWorkflowGuard). Esas versiones de recurso se envían, revisan y
+// publican una a una antes que el curso: hasta entonces la version_curso no entra en revisión (409, #366, ADR-0041) y el
+// estudiante no las lee. La plantilla queda en plantilla_ia y los enlaces que no están en las fuentes, en referencias de la
+// versión del recurso, además de en el informe de la ejecución.
 //
 // Los archivos se generan y se suben antes (prepare, fuera de la transacción: el render bloquea); lo que quede sin adjuntar lo
 // borra la limpieza de wasichai-files. Todo lo demás va en la transacción que cierra la ejecución y el trabajo

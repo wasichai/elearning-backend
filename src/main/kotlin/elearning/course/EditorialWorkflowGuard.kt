@@ -56,6 +56,9 @@ class CreditApprovalWrite : AbstractCoroutineContextElement(Key) {
 //   la API de registros, ADMIN incluido. antes bastaba APROBAR, la acción editorial (hallazgo de #269)
 // - una versión de curso sin lecciones no entra en revisión, ni se aprueba ni se publica (409, #346). el borrador vacío sí
 //   existe: sin él no se añade la primera unidad. tampoco queda atascada: se devuelve a borrador, se rechaza o se retira
+// - tampoco entra en revisión, ni se aprueba ni se publica si alguna lección enlaza una versión de recurso que no está
+//   PUBLICADA (409 con las lecciones, #366); una versión de recurso enlazada desde una versión de curso fuera de borrador
+//   no cambia ni se borra, aunque siga en borrador
 // - la fecha de publicación solo se pone al publicar
 // - la lección de repaso de una pregunta es de su misma versión (400 si no)
 // - la plataforma (userId nulo) es código de confianza y no pasa por aquí
@@ -66,6 +69,7 @@ class EditorialWorkflowGuard(
     // RecordService recibe la lista de guardas: se pide perezosamente para no formar un ciclo
     private val records: ObjectProvider<RecordService>,
     private val metadata: ObjectProvider<MetadataService>,
+    private val resources: CurriculumResources,
 ) : RecordWriteGuard {
     override suspend fun beforeWrite(change: RecordWrite) {
         if (change.userId == null) return
@@ -123,6 +127,7 @@ class EditorialWorkflowGuard(
             }
             RecordChangeKind.DELETED -> {
                 if (change.before.text(STATE) ?: DRAFT != DRAFT) throw ConflictException("Only a draft version can be deleted")
+                if (change.objectName == RESOURCE_VERSION) notFrozen(change)
             }
             else -> {
                 val before = change.before.orEmpty()
@@ -146,6 +151,7 @@ class EditorialWorkflowGuard(
                     if (change.objectName == VERSION && to in NEEDS_LESSONS && !hasLessons(change.recordId.toString())) {
                         throw ConflictException(NO_LESSONS)
                     }
+                    if (change.objectName == VERSION && to in NEEDS_LESSONS) publishedResources(change)
                 }
                 // los copia solo el comando de aprobación, que ya exigió APROBAR_CREDITOS y la separación de funciones; la
                 // acción se vuelve a exigir por si otro código del proceso pusiera la marca
@@ -164,8 +170,27 @@ class EditorialWorkflowGuard(
                 if (content.isNotEmpty() && before.text(AUTHOR) != user.userId.toString() && !holds(PUBLISH)) {
                     throw ForbiddenException("Only the author edits a draft version")
                 }
+                if (content.isNotEmpty() && change.objectName == RESOURCE_VERSION) notFrozen(change)
             }
         }
+    }
+
+    // lo que revisa una persona y luego ve el estudiante es lo publicado (#366, ADR-0041): una versión de curso entra en
+    // revisión, se aprueba o se publica solo si toda versión de recurso que enlazan sus lecciones está PUBLICADA. la guarda
+    // de recurso_leccion no mira a la plataforma, y el borrador de lección (#283) enlaza sus recursos en BORRADOR: cada uno
+    // se envía, revisa y publica antes que el curso. una sentencia, sea cual sea el temario
+    private suspend fun publishedResources(change: RecordWrite) {
+        val missing = resources.unpublished(change.organizationId, change.recordId ?: return)
+        if (missing.isEmpty()) return
+        val listed = missing.joinToString("; ") { "«${it.lesson}» → ${it.resourceVersion} (${it.state ?: "missing"})" }
+        throw ConflictException("$UNPUBLISHED_RESOURCES: $listed")
+    }
+
+    // una versión de recurso en borrador que ya enlaza una versión de curso fuera de borrador no cambia ni se borra: lo
+    // revisado o publicado no se mueve por debajo (regla 5). datos de antes de #366 o escritos por la plataforma
+    private suspend fun notFrozen(change: RecordWrite) {
+        val id = change.recordId ?: return
+        if (resources.linkedFromFrozenVersion(change.organizationId, id)) throw ConflictException(FROZEN_RESOURCE)
     }
 
     // salir de revisión es decidirla (true), salvo que el autor la retire a borrador. decide quien aprueba y no es el autor;
@@ -387,6 +412,11 @@ class EditorialWorkflowGuard(
 
         const val APPROVED_BY_COMMAND = "Approved credits are written only by POST /api/lms/credits/versions/{id}/approvals"
         const val NO_LESSONS = "A version without lessons cannot be submitted for review, approved or published: add a lesson first"
+        const val UNPUBLISHED_RESOURCES =
+            "A course version is submitted for review, approved or published only when every resource version its lessons link is " +
+                "published: submit, review and publish these first"
+        const val FROZEN_RESOURCE =
+            "This resource version is linked from a course version beyond draft and does not change: create a new resource version"
         const val DECIDED_IN_THE_INBOX = "A course version review is decided in the review inbox: POST /api/lms/review/versions/{id}/decision"
 
         // (desde, hacia) → acciones que la permiten (basta una)
