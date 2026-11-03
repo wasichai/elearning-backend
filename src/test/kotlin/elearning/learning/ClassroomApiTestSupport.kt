@@ -59,8 +59,10 @@ abstract class ClassroomApiTestSupport : LmsApiTest() {
         assessmentLessonType: String = "EVALUACION",
         completionRules: Map<String, Any?> = emptyMap(),
         lab: Boolean = false,
+        // la cuenta autora de la versión del recurso de la lectura; sin ella, el administrador
+        resourceAuthor: String? = null,
     ): Course {
-        val resource = publishedHtml()
+        val resource = publishedHtml(resourceAuthor)
         return runBlocking {
             records.asPlatform(ORG) {
                 val code = uniqueName("PRG-").uppercase()
@@ -195,9 +197,10 @@ abstract class ClassroomApiTestSupport : LmsApiTest() {
         return evaluation to mapOf("SINGLE" to single, "MULTIPLE" to multiple, "TRUE_FALSE" to trueFalse, "SHORT" to short, "OPEN" to open) + file
     }
 
-    // una versión de recurso HTML con su archivo, publicada: la sube su autor (el administrador) y la publica la plataforma
-    protected fun publishedHtml(): String {
-        val author = get("/api/auth/me", admin)["userId"].asString()
+    // una versión de recurso HTML con su archivo, publicada: la sube el administrador (su autor salvo que se diga otro) y la
+    // publica la plataforma
+    protected fun publishedHtml(authorId: String? = null): String {
+        val author = authorId ?: get("/api/auth/me", admin)["userId"].asString()
         val version =
             runBlocking {
                 records.asPlatform(ORG) {

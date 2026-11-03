@@ -179,9 +179,25 @@ class RealModelTest(unittest.TestCase):
         # matricula y progreso_leccion son apiOnly: esas escrituras solo pasan por los comandos del aula
         student = next(r for r in ROLES["roles"] if r["name"] == "ESTUDIANTE")
         writes = {"matricula": {"READ", "CREATE", "UPDATE"}, "progreso_leccion": {"READ", "CREATE", "UPDATE"}, "entrega": {"READ", "CREATE", "UPDATE"}}
+        # valoracion y puntaje_valoracion son apiOnly: solo los escribe el comando de valorar (ADR-0038)
+        writes |= {"valoracion": {"READ", "CREATE", "UPDATE", "DELETE", "VALORAR"}, "puntaje_valoracion": {"READ", "CREATE", "UPDATE", "DELETE"}}
         for grant in student["permissions"]:
             expected = writes.get(grant["object"], {"READ"})
             self.assertEqual(expected, set(grant["actions"]), grant["object"])
+
+    # ADR-0038: el valorado nunca lee quién lo valoró; las valoraciones las escribe solo el LMS y solo ADMIN modera
+    def test_whoever_is_rated_never_reads_the_ratings(self):
+        for name in ("valoracion", "puntaje_valoracion"):
+            self.assertTrue(next(o for o in MODEL["objects"] if o["name"] == name)["apiOnly"], name)
+        for role in ROLES["roles"]:
+            for name in ("valoracion", "puntaje_valoracion"):
+                if role["name"] != "ESTUDIANTE":
+                    self.assertFalse(holds(role["name"], name, "READ"), f"{role['name']} {name}")
+            self.assertFalse(holds(role["name"], "valoracion", "MODERAR"), role["name"])
+        for role in ("DOCENTE", "CREADOR"):
+            self.assertTrue(holds(role, "valoracion", "VER_RESUMEN") and holds(role, "valoracion", "DENUNCIAR"), role)
+            self.assertFalse(holds(role, "valoracion", "VALORAR"), role)
+        self.assertFalse(holds("ESTUDIANTE", "valoracion", "VER_RESUMEN"))
 
     def test_enrollments_are_written_only_by_the_command(self):
         matricula = next(o for o in MODEL["objects"] if o["name"] == "matricula")

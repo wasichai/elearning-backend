@@ -408,13 +408,32 @@ destinos de objetos `appendOnly`).
 
 ### 4.6 Reputación y auditoría
 
-**`valoracion`** (Rating) — F6.
-`matricula · RELATION` · `docente_edicion · RELATION` · `version_recurso · RELATION` · `comentario · LONG_TEXT` ·
-`estado_moderacion · ENUM(PENDIENTE, PUBLICADA, OCULTA)`; puntajes por dimensión configurable en `puntaje_valoracion`
-(`valoracion`, `dimension`, `valor · INTEGER`).
+**`dimension_valoracion`** — F6 ([ADR-0038](../adr/0038-politica-de-valoraciones.md)).
+`clave · TEXT único` · `nombre · TEXT` · `destino · ENUM(DOCENCIA, RECURSO)` · `activa · BOOLEAN` · `orden · INTEGER`.
+Lo que se valora de cada destino, de 1 a 5; la demo trae claridad, utilidad, actualidad y calidad para recursos y tres
+dimensiones para docentes. La clave no cambia: para dejar de pedirla se desactiva.
+
+**`valoracion`** (Rating) — F6, `apiOnly` ([ADR-0038](../adr/0038-politica-de-valoraciones.md)).
+`estudiante_id · UUID` · `matricula · RELATION` · `edicion · RELATION` (desnormalizada) ·
+`destino · ENUM(DOCENCIA, RECURSO)` · `docente_edicion · UUID` · `version_recurso · RELATION` · `comentario · LONG_TEXT` ·
+`estado_moderacion · ENUM(PENDIENTE, PUBLICADA, OCULTA)` (nulo sin comentario). Acciones `VALORAR`, `VER_RESUMEN`,
+`DENUNCIAR` y `MODERAR`.
+`docente_edicion` es el id de la asignación y no un `RELATION`: Wasichai exige que el destino de un `RELATION` sea legible
+por quien escribe, y el estudiante no lee asignaciones (`AssignmentReadScope`). Su campo de cuenta es `usuario_id`.
 `uniqueConstraints: [[matricula, docente_edicion], [matricula, version_recurso]]` (con `NULL` distintos, cada par
 impide su duplicado sin chocar con el otro).
-Invariantes: solo valora quien tiene esa matrícula [guarda]; exactamente un destino [guarda]; nunca un visitante.
+
+**`puntaje_valoracion`** — F6, `apiOnly`. `valoracion · RELATION` · `dimension · RELATION` · `estudiante_id · UUID` ·
+`valor · INTEGER (1–5)`; `uniqueConstraints: [[valoracion, dimension]]`.
+
+Invariantes (`RatingWriteGuard`, para toda escritura, la plataforma incluida): la matrícula es de quien valora, `ACTIVA`
+o `FINALIZADA` y de la misma edición; exactamente un destino y del tipo declarado; el docente es de la edición y el
+recurso, de una lección de la versión de la matrícula; nadie valora lo suyo; una persona escribe solo a su nombre y con
+la ventana abierta (`lms.reputation.window-after-end` tras `fecha_fin`); lo que identifica la valoración no cambia;
+editar el comentario lo devuelve a `PENDIENTE`; solo `MODERAR` publica u oculta, nunca sobre lo propio ni sobre lo que
+lo tiene como destino; un puntaje es de 1 a 5, de una dimensión activa del destino. Alcance (`RatingReadScope`): el
+estudiante lee lo suyo; quien modera, todo menos lo que lo tiene como destino. El valorado no tiene `READ`. Los límites
+diarios se cuentan en la tabla fija `lms.cuota_valoracion` (V19).
 
 **`feedback_contenido`** (Feedback) — F6.
 `autor_id · UUID` · `matricula · RELATION` · `version_curso · RELATION` · `unidad · RELATION` · `leccion · RELATION` ·

@@ -144,6 +144,7 @@ flowchart BT
     media --> authoring
     media --> jobs
     reputation --> enrollment
+    reputation --> learning
     importer --> jobs
 ```
 
