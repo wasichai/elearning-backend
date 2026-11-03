@@ -3,6 +3,7 @@ package elearning.learning
 import elearning.common.instantOf
 import elearning.common.listAll
 import elearning.common.listAllIn
+import elearning.common.listByIds
 import elearning.common.ref
 import org.springframework.stereotype.Component
 import wasichai.core.common.ForbiddenException
@@ -29,10 +30,40 @@ class TeachingReader(
     private val facts: AssessmentFacts,
     private val clock: Clock,
 ) {
-    suspend fun offerings(): List<TeachingOffering> =
-        assigned()
-            .map { offering(records.get(OFFERING, UUID.fromString(it))) }
-            .sortedWith(compareBy({ it.startDate }, { it.code }))
+    suspend fun offerings(): List<TeachingOffering> = offerings(assignedOfferings())
+
+    // las ediciones asignadas, la de inicio más próximo primero y a igualdad por código: el orden de offerings() y del panel
+    suspend fun assignedOfferings(): List<RecordResponse> =
+        records.listByIds(OFFERING, assigned()).sortedWith(compareBy({ it.attributes["fecha_inicio"].toString().take(10) }, { it.attributes[CODE].toString() }))
+
+    // esas ediciones, en su orden, por lotes (#261): sus versiones, sus cursos, sus matrículas y sus intentos por corregir en
+    // una lectura cada uno, no cuatro por edición
+    suspend fun offerings(found: List<RecordResponse>): List<TeachingOffering> {
+        if (found.isEmpty()) return emptyList()
+        val versions = records.listByIds(VERSION, found.map { it.attributes.ref(VERSION)!! }).associateBy { it.id }
+        val courses = records.listByIds(COURSE, versions.values.map { it.attributes.ref(COURSE)!! }).associateBy { it.id }
+        val enrolled =
+            records
+                .listAllIn(ENROLLMENT, ENROLLMENT_OFFERING, found.map { it.id })
+                .filter { it.attributes[STATE]?.toString() != WITHDRAWN }
+                .groupingBy { it.attributes.ref(ENROLLMENT_OFFERING).orEmpty() }
+                .eachCount()
+        val pending = facts.pendingAttempts(currentUser.require().organizationId, found.map { UUID.fromString(it.id) })
+        return found.map { record ->
+            val a = record.attributes
+            val course = courses.getValue(versions.getValue(a.ref(VERSION)!!).attributes.ref(COURSE)!!)
+            TeachingOffering(
+                code = a[CODE].toString(),
+                status = a[STATE].toString(),
+                startDate = LocalDate.parse(a["fecha_inicio"].toString().take(10)),
+                endDate = LocalDate.parse(a["fecha_fin"].toString().take(10)),
+                timeZone = a["zona_horaria"].toString(),
+                course = CourseRef(course.attributes["slug"].toString(), course.attributes["codigo"].toString(), course.attributes["titulo"].toString()),
+                enrolled = enrolled[record.id] ?: 0,
+                pendingAttempts = pending[record.id] ?: 0,
+            )
+        }
+    }
 
     // por lotes, no por estudiante (M4 de #183): las sentencias crecen con el temario y las sesiones, no con el roster. con
     // page, una página en el orden de siempre (el de alta), y su asistencia y su progreso se leen por sus matrículas
@@ -112,22 +143,6 @@ class TeachingReader(
             }
         val query = RecordQuery(page = page, filters = mapOf(ENROLLMENT_OFFERING to offering), criteria = listOf(notWithdrawn), count = false)
         return records.list(ENROLLMENT, query).content
-    }
-
-    private suspend fun offering(record: RecordResponse): TeachingOffering {
-        val a = record.attributes
-        val version = records.get(VERSION, UUID.fromString(a.ref(VERSION)!!))
-        val course = records.get(COURSE, UUID.fromString(version.attributes.ref(COURSE)!!))
-        return TeachingOffering(
-            code = a[CODE].toString(),
-            status = a[STATE].toString(),
-            startDate = LocalDate.parse(a["fecha_inicio"].toString().take(10)),
-            endDate = LocalDate.parse(a["fecha_fin"].toString().take(10)),
-            timeZone = a["zona_horaria"].toString(),
-            course = CourseRef(course.attributes["slug"].toString(), course.attributes["codigo"].toString(), course.attributes["titulo"].toString()),
-            enrolled = enrollmentsOf(record.id).size,
-            pendingAttempts = facts.pendingAttempts(currentUser.require().organizationId, UUID.fromString(record.id)),
-        )
     }
 
     companion object {

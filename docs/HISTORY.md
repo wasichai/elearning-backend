@@ -2,6 +2,17 @@
 
 Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este archivo registra lo que se entregó.
 
+## 2026-11-03 — Paneles del estudiante y del docente en una lectura ([#261](https://github.com/wasichai/elearning-backend/issues/261))
+
+- `GET /api/lms/classroom/panel` y `GET /api/lms/teaching/panel`, paginados con `page` y `size`, devuelven por elemento
+  lo que la interfaz armaba con hasta dos peticiones por matrícula o edición: «Mis cursos» con sus próximas sesiones y sus
+  evaluaciones pendientes; «Mis ediciones» con sus próximas sesiones y los 5 intentos más antiguos de su cola. Sin el
+  tope de 8 ediciones: la interfaz los usará en [front#158](https://github.com/wasichai/elearning-frontend/issues/158).
+- Se leen por lotes: temarios, progreso, intentos, sesiones, asistencia y certificados (estudiante), y versiones, cursos,
+  matrículas, conteo y principio de la cola (docente), en una lectura cada uno. `GET /teaching/offerings` usa el mismo
+  armado y deja de leer cuatro veces por edición. `ClassroomPanelApiTest` y `TeachingPanelApiTest` prueban el contenido,
+  la paginación, el alcance (solo lo propio; solo lo asignado) y que el coste no crece con la página (`StatementCount`).
+
 ## 2026-11-03 — Logros derivados en el aula ([#265](https://github.com/wasichai/elearning-backend/issues/265), RF-AUL-08)
 
 - El aula de una matrícula devuelve `achievements: [{ kind, at, ref }]`: `UNIT_COMPLETED` (unidad con todas sus
