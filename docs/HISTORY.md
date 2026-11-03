@@ -2,6 +2,17 @@
 
 Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este archivo registra lo que se entregó.
 
+## 2026-11-03 — Lo publicado funciona sin el proveedor ([#294](https://github.com/wasichai/elearning-backend/issues/294))
+
+- `ClassroomWithoutAiApiTest`: la aplicación sin ninguna clave de proveedor (sin la plataforma de Embabel, como
+  `NoAiProviderApiTest`) sirve entera desde el aula una versión publicada cuyo temario salió de una ejecución de agente
+  aceptada (`lms.ejecucion_agente`, paso `LESSON_DRAFT`): unidad, lecciones con su resumen, recurso descargable y progreso
+  hasta el 100 %. Recorre además el grafo de beans: ninguno del aula, las evaluaciones, la matrícula, el catálogo o las
+  valoraciones alcanza un bean de `elearning.ai`.
+- `ArchitectureTest`: esas capacidades no alcanzan `ai` en la tabla de dependencias, ni siquiera a través de otra, y su
+  código no nombra `elearning.ai`. `docs/ai/README.md` §7 lo explica; RF-MED-04 sigue `planificado` hasta el e2e de la
+  interfaz, [front#171](https://github.com/wasichai/elearning-frontend/issues/171).
+
 ## 2026-11-03 — Fase 3 sin pendientes de requisitos ([#231](https://github.com/wasichai/elearning-backend/issues/231))
 
 - Todos los requisitos F3 de [requirements.md](product/requirements.md) están `implementado`. El último, RF-AUL-08, se
