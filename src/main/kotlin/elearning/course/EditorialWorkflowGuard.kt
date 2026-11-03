@@ -41,6 +41,7 @@ class ReviewDecisionWrite : AbstractCoroutineContextElement(Key) {
 // - el contenido solo cambia en BORRADOR y solo lo cambia su autor, también su temario; en revisión, aprobada,
 //   publicada o retirada no se mueve (ni su temario)
 // - créditos aprobados y fecha de publicación solo los pone quien tiene la acción correspondiente
+// - la lección de repaso de una pregunta es de su misma versión (400 si no)
 // - la plataforma (userId nulo) es código de confianza y no pasa por aquí
 @Component
 @Order(GUARD_ORDER)
@@ -67,7 +68,10 @@ class EditorialWorkflowGuard(
                 curriculum(change, refs(change, LESSON).mapNotNull { lessonVersion(it) })
                 oneEvaluationPerLesson(change)
             }
-            QUESTION -> curriculum(change, refs(change, EVALUATION).mapNotNull { evaluationVersion(it) })
+            QUESTION -> {
+                curriculum(change, refs(change, EVALUATION).mapNotNull { evaluationVersion(it) })
+                reviewLesson(change)
+            }
             OPTION, RUBRIC -> curriculum(change, refs(change, QUESTION).mapNotNull { questionVersion(it) })
         }
     }
@@ -258,6 +262,17 @@ class EditorialWorkflowGuard(
         if (others.isNotEmpty()) throw ConflictException("This lesson already has an evaluation")
     }
 
+    // la lección de repaso de una pregunta es de su misma versión (#260): así se congela con ella y se re-apunta al copiarla
+    private suspend fun reviewLesson(change: RecordWrite) {
+        if (change.kind == RecordChangeKind.DELETED) return
+        val attributes = change.attributes.orEmpty()
+        val lesson = (if (attributes.containsKey(REVIEW_LESSON)) attributes.ref(REVIEW_LESSON) else change.before.ref(REVIEW_LESSON)) ?: return
+        val evaluation = attributes.ref(EVALUATION) ?: change.before.ref(EVALUATION) ?: return
+        if (lessonVersion(lesson) != evaluationVersion(evaluation)) {
+            throw ValidationException("Invalid review lesson", REVIEW_LESSON, "must be a lesson of the same version as the question")
+        }
+    }
+
     private fun refs(
         change: RecordWrite,
         field: String,
@@ -301,6 +316,7 @@ class EditorialWorkflowGuard(
         const val RESOURCE = "recurso"
         const val EVALUATION = "evaluacion"
         const val QUESTION = "pregunta"
+        const val REVIEW_LESSON = "leccion_repaso"
         const val OPTION = "opcion"
         const val RUBRIC = "criterio_rubrica"
         const val RESOURCE_VERSION = "version_recurso"

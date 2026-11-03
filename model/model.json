@@ -1471,6 +1471,15 @@
       "required": true
     },
     {
+      "name": "pregunta_leccion_repaso",
+      "label": "Lección de repaso",
+      "inverseLabel": "Preguntas que repasa",
+      "type": "MANY_TO_ONE",
+      "source": "pregunta",
+      "target": "leccion",
+      "fieldName": "leccion_repaso"
+    },
+    {
       "name": "opcion_pregunta",
       "label": "Pregunta",
       "inverseLabel": "Opciones",

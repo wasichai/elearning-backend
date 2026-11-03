@@ -27,6 +27,8 @@ data class SnapshotQuestion(
     val options: List<SnapshotOption> = emptyList(),
     val rubric: List<SnapshotCriterion> = emptyList(),
     val acceptedAnswers: List<String> = emptyList(),
+    // la lección de la misma versión que la repasa (#260); las instantáneas anteriores no la traen
+    val reviewLessonId: String? = null,
 )
 
 data class AssessmentSnapshot(
@@ -98,6 +100,7 @@ data class QuestionResultView(
     val correct: Boolean?,
     val comment: String?,
     val solution: SolutionView?,
+    val reviewLessonId: String?,
 )
 
 data class ResultView(
