@@ -124,6 +124,8 @@ Decisión del titular ([ADR-0039](../adr/0039-remotion-como-motor-de-render-con-
 - **Cada despliegue de terceros es responsable de su propia licencia**: una organización de más de 3 personas, una
   universidad o un organismo público que active el render necesita una Company License o un permiso escrito
   ([guía de despliegue](../operations/README.md#render-de-vídeo-opcional)).
+- Cómo es el trabajador (paquete `render-worker/` con su propio `package.json`, entrada solo de datos, comunicación con la
+  cola, almacenamiento y validación): [ADR-0040](../adr/0040-renderizador-de-video-en-un-trabajador-node.md).
 
 ## Opciones para este proyecto
 
@@ -152,4 +154,5 @@ contenido propio; el derivado de los manuales necesita antes el permiso del titu
    una licencia de contenido aparte para los materiales de curso.
 4. **Remotion para el render de vídeo** (2026-11-03, [ADR-0039](../adr/0039-remotion-como-motor-de-render-con-licencia-por-despliegue.md)):
    motor de la Fase 5 con la Free License del titular (3 personas o menos, contratistas incluidos); opcional y desactivado
-   por defecto, en un trabajador separado; cada despliegue responde de su propia licencia ([Remotion](#remotion)).
+   por defecto, en un trabajador separado; cada despliegue responde de su propia licencia ([Remotion](#remotion)). El
+   renderizador técnico (trabajador `render-worker/`, entrada, cola, almacenamiento y validación) es [ADR-0040](../adr/0040-renderizador-de-video-en-un-trabajador-node.md).

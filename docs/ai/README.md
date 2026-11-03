@@ -266,14 +266,20 @@ audiencia, `segundos` por escena y trazas `{ doc, ancla }` al manual ([referenci
   **opcional y desactivado por defecto**, en un trabajador separado, y cada despliegue responde de la suya
   ([ADR-0039](../adr/0039-remotion-como-motor-de-render-con-licencia-por-despliegue.md),
   [licencias](../legal/licensing.md#remotion)).
-- **Entrada del render**: objetivos, guion con secciones y duración, estructura de diapositivas, tipografía (fuentes
-  OFL) y recursos, datos de entrada, subtítulos y transcripción, resolución, duración, fps.
-- **Ejecución**: proceso Node separado (contenedor), invocado por un trabajo (§5) con límite de concurrencia; nunca en
-  el proceso WebFlux. Registro del trabajo con parámetros, salida y errores.
-- **Validación del artefacto**: duración, resolución, pistas y subtítulos comprobados sobre el archivo resultante
-  (p. ej. `ffprobe`); sin validar no es «vídeo terminado».
-- **Almacenamiento**: binarios fuera de PostgreSQL, en almacenamiento de objetos (S3/MinIO). `wasichai-files` lee la
-  subida entera en memoria y su tope por defecto es 10 MB, así que los vídeos necesitan otra vía hacia el `FileStore`
-  (a verificar en F5).
-- **Previsualización** antes de la revisión; la versión publicada referencia el artefacto por hash y sigue
+- **Decisión técnica**: [ADR-0040](../adr/0040-renderizador-de-video-en-un-trabajador-node.md) (E37.1). Resumen:
+- **Entrada del render**: el guion de RF-MED-01 como un documento JSON validado por los dos lados contra
+  `render-worker/schema/guion.schema.json`: objetivos, secciones con duración, diapositiva de una lista cerrada, narración
+  (transcripción), subtítulos y trazas; resolución (720p o 1080p), fps (25 o 30), fuente OFL de una lista cerrada que va
+  en el paquete e imágenes dentro de la petición. Nunca código, URL ni HTML.
+- **Ejecución**: trabajador Node aparte (`render-worker/`, su propio `package.json` y su imagen), al que el `JobHandler`
+  `VIDEO_RENDER` de la cola (§5) llama por HTTP interno con un secreto compartido; la cola limita los renders en curso
+  al reclamar y el render tiene su propio tiempo límite. Nunca en el proceso WebFlux; el trabajador no toca la base ni el
+  almacén.
+- **Validación del artefacto**: `ffprobe` en el trabajador; el backend compara su informe con el guion (contenedor,
+  códec, resolución, fps, duración, pistas, tamaño, sha256) y analiza el VTT. Sin validar no es «vídeo terminado» y no
+  se crea la versión.
+- **Almacenamiento**: en `wasichai-files`, una sola copia, en un campo que solo escribe la plataforma con tope de 256 MB
+  (el techo `wasichai.files.max-bytes` sube a 256 MB y los demás campos conservan su tope explícito). Wasichai junta la
+  subida entera en memoria y no atiende `Range`: se le pide subida en streaming, `Range` y detección de MP4.
+- **Previsualización** antes de la revisión, con el propio MP4 del borrador (sin el Player de Remotion); la versión publicada referencia el artefacto por hash y sigue
   funcionando sin el proveedor de IA ni el renderizador.
