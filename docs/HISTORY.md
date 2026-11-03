@@ -17,6 +17,22 @@ Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este
   con el `FakeOperationContext` de Embabel y de API contra el doble HTTP de Anthropic y de OpenAI; el borrador de prueba
   pasa a `DraftFixtures`. Sin migraciones.
 
+## 2026-11-03 — Diseño pedagógico: E33.5 ([#282](https://github.com/wasichai/elearning-backend/issues/282))
+
+- `POST /api/lms/ai/course-design` encola, con la ejecución `SUCCEEDED` de un análisis de fuentes y su brief `LISTO`, el paso
+  `COURSE_DESIGN` (`ai.course_design`): lee la salida del análisis antes de llamar y deja en `AgentRun` sus fuentes con hash
+  y las versiones `course-design@1` de instrucciones y plantilla.
+- `CourseDesigner` con dos implementaciones: `ModelCourseDesigner` (Embabel, modelo `design` y `lms.ai.max-tokens.design`, 12000) y `DeterministicCourseDesigner`, sin claves. `CourseDesign`: resultados medibles, temario y secuencia (unidades en
+  orden), actividades, evaluaciones alineadas, lecturas y criterios de aprobación.
+- Horas y créditos los calcula `workload`: las horas del brief se reparten por semana (una por unidad) y por tipo de
+  actividad, y los créditos son la propuesta de la política de referencia de cada sistema; lo que el modelo diga de horas o
+  créditos se ignora. `ai` pasa a depender de `workload` (`ArchitectureTest` y `docs/architecture` §2.3).
+- `CourseDesignCheck`: una evaluación que no se alinea con ningún resultado que exista, y un diseño sin resultados, unidades,
+  actividades, evaluaciones o criterios, quedan `INVALID_OUTPUT` sin borrador; una lectura sin procedencia en el análisis o
+  una referencia a un resultado inexistente se descartan con su motivo en `validations`.
+- Pruebas: `CourseDesignTest` (con el `FakeOperationContext` de Embabel), `CourseDesignApiTest` sin claves y
+  `CourseDesignAnthropicApiTest`/`CourseDesignOpenAiApiTest` contra el doble HTTP. Sin migraciones.
+
 ## 2026-11-03 — Análisis de fuentes con procedencia y doble determinista: E33.4 ([#281](https://github.com/wasichai/elearning-backend/issues/281))
 
 - `POST /api/lms/ai/source-analysis` encola, con un brief `LISTO`, el paso `SOURCE_ANALYSIS` (`ai.source_analysis`): lee

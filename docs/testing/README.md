@@ -69,7 +69,9 @@ puerto dinámico, uno por JVM, que hace de Anthropic (`POST /v1/messages`) y de 
 permanentes), 429 y 500 (pasajeros) y JSON inválido con su recuento, la petición no emparejada y el registro `AgentRun`
 con el consumo del proveedor y su coste. `SourceAnalysisAnthropicApiTest` y `SourceAnalysisOpenAiApiTest` recorren un paso
 entero por la API (`SourceAnalysisProviderApiTest`, una subclase por proveedor: la de OpenAI pone `lms.ai.provider=openai`),
-con sus respuestas `messages-source-analysis.json` y `responses-source-analysis.json`.
+con sus respuestas `messages-source-analysis.json` y `responses-source-analysis.json`; `CourseDesignAnthropicApiTest` y
+`CourseDesignOpenAiApiTest` (`CourseDesignProviderApiTest`) encadenan el análisis y el diseño (`*-course-design.json`, y
+`*-course-design-unaligned.json` para `INVALID_OUTPUT`) y comprueban el `AgentRun` entero.
 
 `ProviderKeysApiTest` (RNF-SEG-09) busca las claves ficticias del doble donde no deben estar: con Embabel, Spring AI,
 OkHttp y los SDK en DEBUG y la salida capturada desde antes de crear su contexto (`OutputCaptureExtension`; la prueba
@@ -81,7 +83,7 @@ los de antes.
 **Sin Spring, `FakeOperationContext`.** Para ver qué recibe Embabel en cada llamada sin HTTP: `FakeOperationContext` y
 `FakePromptRunner` vienen en `embabel-agent-api` 1.5.4 (`com.embabel.agent.test.unit`), no hace falta otra dependencia.
 `ModelCalls` acepta un proveedor de contexto en su constructor interno; con el falso, `expectResponse` fija la salida y
-`llmInvocations` guarda los mensajes y las instrucciones (`interaction.promptContributors`). `SourceAnalysisTest` lo usa.
+`llmInvocations` guarda los mensajes y las instrucciones (`interaction.promptContributors`). `SourceAnalysisTest` y `CourseDesignTest` lo usan.
 
 **No sustituye al doble determinista** (`docs/ai` §7). El doble HTTP prueba la frontera con el proveedor: Embabel, lo que
 se envía, la deserialización, los errores y el consumo de tokens. La lógica de la canalización (idempotencia, cancelación,

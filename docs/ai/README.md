@@ -25,7 +25,8 @@ que es lógica determinista del módulo `elearning.ai` o de `authoring`; «perso
    `POST /api/lms/ai/source-analysis` con un brief `LISTO`; es el paso de referencia del patrón de §5.
 3. **Diseño pedagógico** — resultados medibles, temario, secuencia, distribución horaria, actividades, evaluaciones
    alineadas, lecturas y criterios de aprobación. _Embabel_ → `CourseDesign`. Horas y créditos los calcula el dominio
-   `workload` (código), no el modelo.
+   `workload` (código), no el modelo. Implementado en E33.5 ([#282](https://github.com/wasichai/elearning-backend/issues/282)):
+   `POST /api/lms/ai/course-design` con la ejecución `SUCCEEDED` de un análisis; ver §5.
 4. **Borrador con plantillas versionadas** — _Embabel_ → `LessonDraft` en la fuente canónica (AsciiDoc). Plantilla y
    versión quedan en `AgentRun`.
 5. **Multimedia** — guiones, diapositivas, narración, subtítulos y Remotion. _Embabel_ (guion y estructura) + _código_
@@ -232,6 +233,25 @@ no tiene nombre o contenido (`BLANK`), no tiene `source` o `quote` (`NO_PROVENAN
 otro commit incluido (`SOURCE_NOT_READ`), un ancla que no existe en ese archivo (`ANCHOR_NOT_FOUND`) o una cita que no está
 en esa sección (`QUOTE_NOT_IN_SOURCE`). Más de 300 elementos o ninguno que quede es `INVALID_OUTPUT`. El doble hace un
 procedimiento de cada sección con lista ordenada y un concepto de cada sección con prosa, citando su texto.
+
+**Diseño pedagógico** (E33.5, [#282](https://github.com/wasichai/elearning-backend/issues/282)). Parte de la ejecución
+`SUCCEEDED` de un análisis (su `executionId`), cuyo brief sigue `LISTO`: lee su salida antes de llamar y sus fuentes, con su
+hash, son las de la ejecución. `CourseDesigner` tiene dos implementaciones, `ModelCourseDesigner` (modelo `design` y
+`lms.ai.max-tokens.design`) y `DeterministicCourseDesigner`; instrucciones y plantilla `course-design@1`. El brief y el análisis
+(con sus citas, texto no confiable) van delimitados en el mensaje de usuario. `CourseDesign` trae resultados medibles (`id`,
+`statement`, `evidence`), unidades en orden (el temario y su secuencia, cada una una semana) con temas, resultados, actividades
+(`THEORY`, `PRACTICE`, `SUPERVISED`, `AUTONOMOUS`) y lecturas, evaluaciones con los resultados que miden y criterios de
+aprobación. **Horas y créditos no son del modelo**: el tipo no los tiene y lo que traiga de más se ignora; `CourseDesignCheck`
+reparte las horas del brief entre las semanas y, en cada una, entre los tipos de actividad según cuántas tiene el diseño de
+cada tipo (`Workload` de `workload`), y los créditos son la propuesta (`PROPUESTO`) de la política de referencia de cada
+sistema. Se descarta, con su motivo en `validations`, una lectura sin `source` (`NO_PROVENANCE`) o con uno que no es de un
+elemento del análisis ni de un archivo que leyó (`SOURCE_NOT_READ`) y una referencia a un resultado que no existe
+(`UNKNOWN_OUTCOME`). Es `INVALID_OUTPUT` un diseño sin resultados (o con uno sin id, enunciado o evidencia, o repetido), sin
+unidades o con una sin actividades, sin evaluaciones, con **una evaluación que no se alinea con ningún resultado que exista**
+(`ASSESSMENT_NOT_ALIGNED`), sin criterios de aprobación, con más elementos de los que caben (50 resultados, 104 unidades, 50
+evaluaciones) o con más carga por semana de la que tiene una semana. Un resultado que ninguna evaluación mide es un aviso
+(`unassessedOutcomes`). El doble hace un resultado por objetivo del brief, una unidad por concepto (teoría y lectura) y por
+procedimiento (práctica y ejercicio) con la lectura de su sección, y un cuestionario por resultado.
 
 ## 6. Protección contra prompt injection
 

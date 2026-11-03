@@ -328,7 +328,10 @@ el cuándo, en [`roadmap.md`](roadmap.md).
   _Aceptación:_ prueba con una salida malformada del doble determinista.
   _Avance:_ análisis de fuentes (E33.4, [#281](https://github.com/wasichai/elearning-backend/issues/281)): `SourceAnalysis`
   tipado con Embabel y con el doble determinista; lo que no tiene procedencia en la fuente se descarta por código y una
-  salida malformada, o sin nada verificable, queda `INVALID_OUTPUT` sin borrador. Faltan el diseño y el borrador (E33.5, E33.6).
+  salida malformada, o sin nada verificable, queda `INVALID_OUTPUT` sin borrador. Diseño pedagógico (E33.5,
+  [#282](https://github.com/wasichai/elearning-backend/issues/282)): `CourseDesign` desde un análisis `SUCCEEDED`, con horas y
+  créditos de `workload` (lo que diga el modelo se ignora) y `INVALID_OUTPUT` si una evaluación no se alinea con ningún
+  resultado. Falta el borrador (E33.6).
 - **RF-IA-03** · F5 · planificado — Cada ejecución (`AgentRun`) registra usuario, ámbito, objetivo, entradas, fuentes,
   modelo y proveedor (sin secretos), versiones de instrucciones y plantillas, resultados, validaciones, estado,
   errores, consumo, duración e intervenciones humanas.
