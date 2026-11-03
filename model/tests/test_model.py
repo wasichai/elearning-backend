@@ -67,6 +67,14 @@ class RealModelTest(unittest.TestCase):
         self.assertLessEqual({"codigo", "titulo", "descripcion", "tipo", "idioma", "responsable_editorial_id"}, fields("recurso"))
         self.assertLessEqual({"numero", "autor_id", "estado", "archivo"}, fields("version_recurso"))
 
+    def test_units_and_lessons_carry_their_source_trace(self):
+        # RF-IMP-03: la importación deja en cada unidad y cada lección su origen exacto, repo@sha:ruta#ancla
+        for name in ("unidad", "leccion"):
+            obj = next(o for o in MODEL["objects"] if o["name"] == name)
+            trace = next((f for f in obj["fields"] if f["name"] == "referencia_fuente"), None)
+            self.assertIsNotNone(trace, name)
+            self.assertEqual("TEXT", trace["type"], name)
+
     def test_a_lab_lesson_carries_its_lab_fields_and_its_environments(self):
         # RF-LAB-01 (ADR-0027): lo que es texto va en la lección; los enlaces a entornos, en su objeto, que solo leen los matriculados
         def fields(name: str) -> set[str]:
