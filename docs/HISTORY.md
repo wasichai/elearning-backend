@@ -2,6 +2,12 @@
 
 Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este archivo registra lo que se entregó.
 
+## 2026-11-03 — Logros en la interfaz del aula: RF-AUL-08 implementado ([front#166](https://github.com/wasichai/elearning-frontend/pull/166))
+
+- La interfaz muestra `achievements` junto al avance, con su fecha y enlace a su unidad, evaluación o certificado. El
+  recorrido real del frontend comprueba que el estudiante demo ve en `CORTO-101-A` el logro `ASSESSMENT_PASSED` de su intento
+  calificado, sin crear datos. Con eso RF-AUL-08 cumple su aceptación y pasa a `implementado`.
+
 ## 2026-11-02 — Demo poblada para probar la plataforma a mano
 
 - `model/demo/poblada.json` suma a `data.json` 24 estudiantes, 2 docentes con perfil, una categoría y dos cursos publicados
