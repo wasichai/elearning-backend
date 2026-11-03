@@ -390,6 +390,9 @@ el cuándo, en [`roadmap.md`](roadmap.md).
 - **RF-REP-05** · F6 · planificado — Indicadores agregados solo con criterio publicado y muestra mínima configurable;
   cantidad o velocidad no se presentan como calidad.
   _Aceptación:_ por debajo de la muestra mínima el indicador no se muestra.
+  _Avance:_ resúmenes del docente por edición y del autor por recurso con muestra mínima (`lms.reputation.min-sample`, 5,
+  piso 3), liberados tras las notas y congelados en `lms.indicador_valoracion`; criterio público y versionado
+  ([#323](https://github.com/wasichai/elearning-backend/issues/323), ADR-0038, `RatingSummaryApiTest`).
 - **RF-REP-06** · F6 · planificado — Perfiles de estudiante, docente, creador y revisor con su historial; un puntaje
   solo si está definido y es explicable.
   _Aceptación:_ cada cifra del perfil enlaza a su definición.

@@ -2,6 +2,17 @@
 
 Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este archivo registra lo que se entregó.
 
+## 2026-11-03 — Resúmenes de valoraciones con muestra mínima y liberación tras las notas ([#323](https://github.com/wasichai/elearning-backend/issues/323), paso 2 de [#268](https://github.com/wasichai/elearning-backend/issues/268))
+
+- `GET /api/lms/teaching/offerings/{code}/ratings` (el docente asignado) y `GET /api/lms/ratings/resources` (el autor),
+  con `VER_RESUMEN`: media y n por dimensión solo con n ≥ `lms.reputation.min-sample` (5, piso 3), sin nadie dentro;
+  comentarios publicados en orden aleatorio solo con muestra suficiente.
+- El docente ve los de una edición cuando la ventana cerró y todas las matrículas tienen resultado, o pasados
+  `lms.reputation.release-after-end` (60 días) del fin; entonces se congelan en `lms.indicador_valoracion` (V20). Los de
+  recurso los rehace cada día el trabajo `reputation.aggregate`, que también borra la cuota de días pasados.
+- Criterio publicado y versionado en `GET /api/lms/public/ratings/criterion` (`media-simple@1`).
+- Pruebas: `RatingSummaryApiTest`.
+
 ## 2026-11-03 — Valorar docentes y recursos desde la matrícula ([#322](https://github.com/wasichai/elearning-backend/issues/322), paso 1 de [#268](https://github.com/wasichai/elearning-backend/issues/268))
 
 - [ADR-0038](adr/0038-politica-de-valoraciones.md): la política de valoraciones de #268 (quién valora, anonimato para el

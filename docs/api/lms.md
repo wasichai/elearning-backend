@@ -630,6 +630,39 @@ de registros los cierra a todos (`apiOnly`).
 `Rating`: `{ id, enrollmentId, type, targetId, targetName, scores: { clave: valor }, comment, moderation, createdAt,
 updatedAt }`, con `moderation` `PENDIENTE`, `PUBLICADA` u `OCULTA` (`null` sin comentario).
 
+### Resúmenes para el valorado (ADR-0038 §8–§11)
+
+Con sesión y la acción `VER_RESUMEN` (DOCENTE y CREADOR; sin ella, `403`), solo de lo que tiene a la persona como
+destino. Nunca traen estudiante, matrícula, fecha ni ids de valoraciones. Una dimensión con menos de
+`lms.reputation.min-sample` valoraciones (5; configurada por debajo de 3, vale 3) va con `sufficient: false` y sin
+`mean` ni `n`.
+
+- `GET /api/lms/teaching/offerings/{code}/ratings` → `TeacherRatingSummary` del docente en una edición que tiene
+  asignada (otra, `404`). `released: false` (sin cifras ni comentarios) hasta que la ventana cerró y todas las
+  matrículas no retiradas tienen resultado, o pasado `lms.reputation.release-after-end` (60 días) del fin. Al liberarse,
+  sus cifras se **congelan** (la primera lectura o el trabajo diario): un cambio posterior no las mueve. Los comentarios
+  `PUBLICADA` llegan solo con muestra suficiente, sin autor ni fecha y en orden aleatorio.
+- `GET /api/lms/ratings/resources` → `ResourceRatingSummary[]`: las versiones de recurso de las que la persona es
+  autora, con sus cifras de todas las ediciones, recalculadas cada día por el trabajo `reputation.aggregate`
+  (`calculatedAt`).
+- `GET /api/lms/public/ratings/criterion` (sin sesión) → el criterio publicado y versionado (`media-simple@1`): escala,
+  fórmula, muestra mínima y liberación. Cada resumen lo enlaza en `criterion`.
+
+```json
+{
+  "released": true,
+  "windowClosesOn": "2026-12-31",
+  "releasedAtLatestOn": "2027-01-30",
+  "criterion": "/api/lms/public/ratings/criterion",
+  "criterionVersion": "media-simple@1",
+  "dimensions": [
+    { "key": "docente_claridad", "name": "Explica con claridad", "sufficient": true, "mean": 4.2, "n": 6 },
+    { "key": "docente_disponibilidad", "name": "Responde y está disponible", "sufficient": false, "mean": null, "n": null }
+  ],
+  "comments": ["…"]
+}
+```
+
 ## Espacio docente (F3, ADR-0016)
 
 Con sesión, solo sobre las ediciones **asignadas** a la persona (`docente_edicion.usuario_id`); otra edición o un

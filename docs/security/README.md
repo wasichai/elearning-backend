@@ -295,6 +295,7 @@ el único sitio del código que lanza un proceso (`ArchitectureTest`, regla `EXT
 | Valorar sin haber cursado, o a nombre de otro           | Matrícula propia `ACTIVA` o `FINALIZADA`, progreso mínimo, `RatingWriteGuard` para toda escritura                   |
 | Conflicto de interés                                    | Ni el docente de la edición a sus colegas ni el autor su recurso (`403`), comprobado por datos y no por rol         |
 | Manipular el estado de moderación o la API de registros | `apiOnly`; solo `MODERAR` publica u oculta; lo que identifica una valoración no cambia                              |
+| Inferir quién valoró por las cifras                     | Muestra mínima (piso 3), sin fechas ni ids, comentarios en orden aleatorio y solo tras liberarse                    |
 | Inundar de cambios                                      | `429` pasado el límite diario por persona                                                                           |
 
 ## 5. Controles transversales

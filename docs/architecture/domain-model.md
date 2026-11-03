@@ -435,6 +435,11 @@ lo tiene como destino; un puntaje es de 1 a 5, de una dimensión activa del dest
 estudiante lee lo suyo; quien modera, todo menos lo que lo tiene como destino. El valorado no tiene `READ`. Los límites
 diarios se cuentan en la tabla fija `lms.cuota_valoracion` (V19).
 
+**`lms.indicador_valoracion`** y **`lms.liberacion_valoracion`** — tablas fijas (V20, ADR-0004), como la proyección del
+catálogo (ADR-0011): media simple y n por destino, sujeto (la asignación o la versión de recurso), edición y dimensión,
+con la versión del criterio; sin nadie dentro. Los de una edición se congelan al liberarse (una fila en
+`lms.liberacion_valoracion`); los de recurso los rehace cada día el trabajo `reputation.aggregate`.
+
 **`feedback_contenido`** (Feedback) — F6.
 `autor_id · UUID` · `matricula · RELATION` · `version_curso · RELATION` · `unidad · RELATION` · `leccion · RELATION` ·
 `texto · LONG_TEXT` · `estado · ENUM(ABIERTO, EN_REVISION, RESUELTO, DESCARTADO)` · `respuesta · LONG_TEXT`.
