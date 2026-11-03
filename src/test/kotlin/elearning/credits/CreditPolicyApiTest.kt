@@ -179,7 +179,7 @@ class CreditPolicyApiTest : ClassroomApiTestSupport() {
     fun `parameters outside the rule, a method of another system or a bad jurisdiction are a 400`() {
         val authority = account("AUTORIDAD_ACADEMICA")
         assertEquals(HttpStatus.BAD_REQUEST, draftPolicy(authority, uniqueName("p-"), "parametros" to """{"horasPorCredito": "20"}""").first)
-        val peru = arrayOf("sistema" to "PE_CREDITO", "metodo" to "PE_LEY30220_HORAS_LECTIVAS", "jurisdiccion" to "PE")
+        val peru = PERU
         assertEquals(HttpStatus.BAD_REQUEST, draftPolicy(authority, uniqueName("p-"), *peru, "parametros" to """{"horasTeoriaPorCredito": "12"}""").first)
         assertEquals(HttpStatus.BAD_REQUEST, draftPolicy(authority, uniqueName("p-"), "parametros" to """{"factor": "1"}""").first)
         assertEquals(HttpStatus.BAD_REQUEST, draftPolicy(authority, uniqueName("p-"), "parametros" to "no es json").first)
@@ -195,13 +195,14 @@ class CreditPolicyApiTest : ClassroomApiTestSupport() {
     fun `policies are listed by jurisdiction, system, status and program, and another organization's do not exist`() {
         val authority = account("AUTORIDAD_ACADEMICA")
         val program = uniqueName("PRG-")
-        val institution = policy(authority, uniqueName("pe-"), "sistema" to "PE_CREDITO", "metodo" to "PE_LEY30220_HORAS_LECTIVAS", "jurisdiccion" to "PE")
+        val institution = policy(authority, uniqueName("pe-"), *PERU)
         val ofProgram =
             policy(
                 authority,
                 uniqueName("pe-"),
                 "sistema" to "PE_CREDITO",
                 "metodo" to "PE_LEY30220_HORAS_LECTIVAS",
+                "parametros" to null,
                 "jurisdiccion" to "PE",
                 "programa_codigo" to program,
             )
@@ -264,7 +265,7 @@ class CreditPolicyApiTest : ClassroomApiTestSupport() {
         val draft = policy(authority, uniqueName("ects-"))
         assertEquals(HttpStatus.CONFLICT, approve(authority, approvedVersion(draft)).first)
 
-        val peru = policy(authority, uniqueName("pe-"), "sistema" to "PE_CREDITO", "metodo" to "PE_LEY30220_HORAS_LECTIVAS", "jurisdiccion" to "PE")
+        val peru = policy(authority, uniqueName("pe-"), *PERU)
         ok(publish(authority, peru))
         // una versión ECTS ligada a una política peruana no propone: no hay conversión entre sistemas
         val mismatched = approvedVersion(peru)
@@ -276,6 +277,11 @@ class CreditPolicyApiTest : ClassroomApiTestSupport() {
         val approval = created(approve(authority, peruvian))
         assertEquals("PE_CREDITO", approval["system"].asString())
         assertEquals("6.5", approval["proposed"].asString())
+    }
+
+    companion object {
+        // una política peruana sin parámetros: los de la Ley 30220 (16 y 32 h)
+        val PERU = arrayOf("sistema" to "PE_CREDITO", "metodo" to "PE_LEY30220_HORAS_LECTIVAS", "jurisdiccion" to "PE", "parametros" to null)
     }
 
     private fun created(result: Pair<HttpStatus, JsonNode?>): JsonNode {
