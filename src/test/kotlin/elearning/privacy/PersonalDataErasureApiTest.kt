@@ -1,5 +1,11 @@
 package elearning.privacy
 
+import elearning.ai.AgentExecutionLog
+import elearning.ai.AgentStep
+import elearning.ai.Generator
+import elearning.ai.Intervention
+import elearning.ai.InterventionKind
+import elearning.ai.NewAgentExecution
 import elearning.common.listAll
 import elearning.jobs.Job
 import elearning.jobs.JobRunner
@@ -11,10 +17,12 @@ import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNotEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
 import org.springframework.r2dbc.core.DatabaseClient
 import tools.jackson.databind.JsonNode
+import java.time.Instant
 import java.util.UUID
 
 // la supresión de los datos personales de una persona de la demo (ADR-0037, RNF-SEG-11): al retirar su aceptación o vencer
@@ -30,8 +38,12 @@ class PersonalDataErasureApiTest : ClassroomApiTestSupport() {
     @Autowired
     private lateinit var erasure: PersonalDataErasure
 
+    @Autowired
+    private lateinit var agentRuns: AgentExecutionLog
+
     // una estudiante con de todo: un curso terminado con certificado, otro en curso con un intento calificado y otro
-    // abierto, eventos, progreso y un perfil docente propio
+    // abierto, eventos, progreso, un perfil docente propio y una ejecución de agente que pidió, editó y luego aceptó otra
+    // persona
     private inner class Scene {
         val student = newStudent()
         val id: String = userId(student)
@@ -43,6 +55,8 @@ class PersonalDataErasureApiTest : ClassroomApiTestSupport() {
         val graded: String
         val open: String
         val profile: String
+        val agentRun: UUID
+        val otherUser: String = userId(admin)
 
         init {
             ok(event(student, finishedEnrollment, finished.reading, "MARKED_COMPLETE"))
@@ -68,6 +82,30 @@ class PersonalDataErasureApiTest : ClassroomApiTestSupport() {
                     mapOf("attributes" to mapOf("nombre_publico" to "Ana Pérez", "usuario_id" to id, "biografia" to "Vive en Lima", "perfil_publico" to true)),
                 ).second!!["id"]
                     .asString()
+            agentRun =
+                runBlocking {
+                    agentRuns.start(
+                        NewAgentExecution(
+                            organizationId = ORG,
+                            jobId = UUID.randomUUID(),
+                            step = AgentStep.SOURCE_ANALYSIS,
+                            requestedBy = UUID.fromString(id),
+                            courseId = UUID.randomUUID(),
+                            objective = "Analizar las fuentes del curso",
+                            inputs = mapOf("brief" to "Un curso de Kotlin"),
+                            generator = Generator.DETERMINISTIC,
+                            model = null,
+                            promptVersion = "source-analysis@1",
+                            templateVersion = "course-outline@1",
+                            idempotencyKey = "SOURCE_ANALYSIS:${UUID.randomUUID()}",
+                            attempt = 1,
+                        ),
+                    )
+                }
+            runBlocking {
+                agentRuns.intervene(ORG, agentRun, Intervention(UUID.fromString(id), InterventionKind.EDITED, Instant.now(), "corregí la unidad 2"))
+                agentRuns.intervene(ORG, agentRun, Intervention(UUID.fromString(otherUser), InterventionKind.ACCEPTED, Instant.now()))
+            }
         }
 
         private fun attempt(): String =
@@ -127,6 +165,17 @@ class PersonalDataErasureApiTest : ClassroomApiTestSupport() {
                 .awaitSingle()
         }
 
+    // userId y kind de cada intervención, en su orden, y quien pidió la ejecución
+    private fun agentRun(id: UUID): Pair<String, List<Pair<String, String>>> =
+        runBlocking {
+            db
+                .sql("SELECT solicitante_id::text AS solicitante, intervenciones::text AS intervenciones FROM lms.ejecucion_agente WHERE id = :id")
+                .bind("id", id)
+                .map { row, _ -> row.get("solicitante", String::class.java)!! to row.get("intervenciones", String::class.java)!! }
+                .one()
+                .awaitSingle()
+        }.let { (requester, interventions) -> requester to json.readTree(interventions).map { it["userId"].asString() to it["kind"].asString() } }
+
     private fun record(
         objectName: String,
         id: String,
@@ -135,6 +184,8 @@ class PersonalDataErasureApiTest : ClassroomApiTestSupport() {
     @Test
     fun `withdrawing the acceptance erases the student's personal data and dissociates what is kept`() {
         val s = Scene()
+        // fuera de una supresión, quien pidió una ejecución no cambia
+        assertThrows<Exception> { sql("UPDATE lms.ejecucion_agente SET solicitante_id = gen_random_uuid() WHERE id = '${s.agentRun}'") }
 
         val job = s.withdraw()
         drain()
@@ -168,6 +219,12 @@ class PersonalDataErasureApiTest : ClassroomApiTestSupport() {
         val profile = record("perfil_docente", s.profile)
         assertEquals(PersonalDataErasure.ANONYMOUS_TEACHER, profile["nombre_publico"].toString())
         assertEquals(listOf(null, false), listOf(profile["biografia"], profile["perfil_publico"]))
+        // la ejecución de agente se queda, sin quien la pidió ni su intervención; la de la otra persona, igual
+        val (requester, interventions) = agentRun(s.agentRun)
+        assertNotEquals(s.id, requester)
+        assertEquals(listOf("EDITED", "ACCEPTED"), interventions.map { it.second })
+        assertEquals(listOf(requester, s.otherUser), interventions.map { it.first })
+        assertEquals(0, count("ejecucion_agente", "solicitante_id = '${s.id}' OR intervenciones::text LIKE '%${s.id}%'"))
 
         // la constancia lista lo suprimido y lo disociado, sin la persona
         val done = constancy(job)
@@ -175,8 +232,8 @@ class PersonalDataErasureApiTest : ClassroomApiTestSupport() {
         val erased = json.readTree(done["suprimidos"])
         val dissociated = json.readTree(done["disociados"])
         assertEquals(
-            listOf(1, 1, 2, 1),
-            listOf("intento", "certificado", "matricula", "perfil_docente").map { dissociated[it].asInt() },
+            listOf(1, 1, 1, 2, 1),
+            listOf("intento", "certificado", "ejecucion_agente", "matricula", "perfil_docente").map { dissociated[it].asInt() },
             dissociated.toString(),
         )
         assertEquals(1, erased["intento"].asInt())
@@ -195,6 +252,7 @@ class PersonalDataErasureApiTest : ClassroomApiTestSupport() {
         val job = s.withdraw()
         drain()
         val graded = count("intento", "id = '${s.graded}'")
+        val run = agentRun(s.agentRun)
 
         val again =
             runBlocking {
@@ -206,6 +264,7 @@ class PersonalDataErasureApiTest : ClassroomApiTestSupport() {
         assertTrue(result["dissociated"].values().all { it.asInt() == 0 }, again)
         assertEquals(1, count("supresion", "trabajo_id = '$job'"))
         assertEquals(graded, count("intento", "id = '${s.graded}'"))
+        assertEquals(run, agentRun(s.agentRun))
     }
 
     @Test

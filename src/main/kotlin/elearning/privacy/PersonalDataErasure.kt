@@ -34,7 +34,8 @@ enum class ErasureReason { WITHDRAWN, EXPIRED }
 //   borra la limpieza de wasichai-files), intentos sin calificar con sus notas parciales, sus trabajos y su aceptación
 // - se disocia lo que la organización emitió y conserva: la matrícula (con su resultado), los intentos calificados (sin
 //   sus respuestas) y el certificado (sin el nombre del titular: el código sigue verificando el papel). llevan desde ahora
-//   un seudónimo aleatorio que no se guarda en ninguna parte
+//   un seudónimo aleatorio que no se guarda en ninguna parte. también las ejecuciones de agente que pidió o en las que
+//   intervino: quedan como evidencia del proceso editorial, con el seudónimo en su lugar
 // - el perfil docente pierde su contenido y deja de publicarse; lo que la persona hizo en nombre de la organización
 //   (autoría, revisiones, notas que puso) sigue con su id de cuenta, que es de Wasichai, como su auditoría
 //
@@ -130,6 +131,27 @@ class PersonalDataErasure(
                         """
                         UPDATE lms.certificado SET estudiante_id = :pseudonym, datos = jsonb_set(datos, '{holderName}', 'null')
                         WHERE organizacion_id = :org AND estudiante_id = :user
+                        """.trimIndent(),
+                        org,
+                        user,
+                        pseudonym,
+                    )
+                // la ejecución de un agente se queda, es la evidencia del proceso editorial: sin quien la pidió ni quien
+                // intervino (V18), el resto de las intervenciones igual y en su orden
+                dissociated["ejecucion_agente"] =
+                    sql(
+                        """
+                        UPDATE lms.ejecucion_agente SET
+                            solicitante_id = CASE WHEN solicitante_id = :user THEN :pseudonym ELSE solicitante_id END,
+                            intervenciones = (
+                                SELECT coalesce(jsonb_agg(
+                                    CASE WHEN i ->> 'userId' = CAST(:user AS text)
+                                        THEN jsonb_set(i, '{userId}', to_jsonb(CAST(:pseudonym AS text))) ELSE i END
+                                    ORDER BY n), '[]'::jsonb)
+                                FROM jsonb_array_elements(intervenciones) WITH ORDINALITY AS e (i, n)
+                            )
+                        WHERE organizacion_id = :org
+                            AND (solicitante_id = :user OR intervenciones @> jsonb_build_array(jsonb_build_object('userId', CAST(:user AS text))))
                         """.trimIndent(),
                         org,
                         user,
