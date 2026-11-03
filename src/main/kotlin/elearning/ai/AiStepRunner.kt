@@ -41,7 +41,7 @@ class AiStepRunner(
     private val logger = LoggerFactory.getLogger(javaClass)
 
     // draft escribe el borrador con la ejecución que terminó bien, dentro de la transacción que cierra el trabajo. devuelve el
-    // resultado del trabajo: {"executionId", "reused"}
+    // resultado del trabajo: {"executionId", "reused"}. Todo corre con la marca AiWork: el borrador no aprueba ni publica
     suspend fun run(
         job: Job,
         generator: AiModelCall,
@@ -56,6 +56,14 @@ class AiStepRunner(
         generator: AiStepGenerator<M>,
         draft: suspend (AgentExecution) -> Unit = {},
         action: AiAction = AiAction.GENERAR,
+    ): String = withContext(AiWork()) { execute(job, read, generator, draft, action) }
+
+    private suspend fun <M> execute(
+        job: Job,
+        read: suspend (AiStepPayload) -> AiStepInput<M>,
+        generator: AiStepGenerator<M>,
+        draft: suspend (AgentExecution) -> Unit,
+        action: AiAction,
     ): String {
         val request = AiJobs.payloadOf(job.payload)
         val organization = job.organizationId

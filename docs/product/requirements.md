@@ -336,6 +336,9 @@ el cuándo, en [`roadmap.md`](roadmap.md).
   modelo y proveedor (sin secretos), versiones de instrucciones y plantillas, resultados, validaciones, estado,
   errores, consumo, duración e intervenciones humanas.
   _Aceptación:_ prueba que comprueba cada campo y la ausencia de claves.
+  _Avance:_ intervenciones humanas (E34.3, [#288](https://github.com/wasichai/elearning-backend/issues/288)): aprobar,
+  editar o rechazar un borrador generado añade `ACCEPTED`, `EDITED` o `REJECTED` a su ejecución en la transacción del
+  cambio, solo por inserción (docs/ai §14).
 - **RF-IA-04** · F5 · planificado — Trabajos persistentes con reintentos acotados, idempotencia y cancelación.
   _Aceptación:_ reintentar tras un fallo no duplica coste registrado ni artefactos; cancelar detiene el trabajo.
 - **RF-IA-05** · F5 · planificado — Validaciones automáticas de estructura, referencias, alineación objetivos-
@@ -361,7 +364,8 @@ el cuándo, en [`roadmap.md`](roadmap.md).
   no es compatible se documenta y se entrega una alternativa real.
   _Aceptación:_ la suite de pruebas pasa sin claves de proveedor y la UI marca los resultados del doble.
   _Avance:_ el análisis de fuentes (E33.4) corre entero sin claves con su doble y su ejecución dice `generator = DETERMINISTIC`
-  en la API; falta el distintivo de la interfaz.
+  en la API. El estudio y la bandeja exponen `generator` de cada versión (E34.3, [#288](https://github.com/wasichai/elearning-backend/issues/288));
+  falta el distintivo de la interfaz ([wasichai/elearning-frontend#176](https://github.com/wasichai/elearning-frontend/issues/176)).
 - **RF-IA-09** · F5 · planificado — Comparación de modelos por tarea con entradas, criterios, versiones e informes
   conservados.
   _Aceptación:_ un informe reproducible por tarea comparada.

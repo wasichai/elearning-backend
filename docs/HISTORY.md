@@ -2,6 +2,18 @@
 
 Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este archivo registra lo que se entregó.
 
+## 2026-11-03 — Intervenciones humanas y distintivo del doble: E34.3 ([#288](https://github.com/wasichai/elearning-backend/issues/288))
+
+- `DraftInterventionListener` (`elearning.ai`) añade a la ejecución que generó un borrador (`DraftValidationStore.generatingRun`)
+  una intervención por cada decisión de una persona: `ACCEPTED` al aprobarlo en la bandeja, `REJECTED` al rechazarlo (con su
+  motivo, que `ReviewDecisionWrite` lleva ahora) o al borrarlo, y `EDITED` por cada guardado que cambia su contenido o su
+  temario (la nota nombra registro y campos, no el texto). Va en la transacción del cambio; pedir cambios y crear registros (una copia) no dejan nada.
+- Las intervenciones siguen siendo solo de inserción (disparador de V17): ninguna ruta las escribe ni las borra.
+- `StudioVersion` y `StudioVersionDetail` llevan `generator` (`MODEL`, `DETERMINISTIC`, `null` si es manual) en el estudio y
+  la bandeja, por el puerto `DraftGenerators` de authoring. Distintivo de la interfaz: [wasichai/elearning-frontend#176](https://github.com/wasichai/elearning-frontend/issues/176).
+- `AiWork` marca todo trabajo de IA (`AiStepRunner.run`, la validación) y `AiWorkGuard` le niega aprobar o publicar una versión
+  (`403`), aunque corra como la plataforma. Sin migraciones. Docs: `docs/ai` §14, `docs/api`.
+
 ## 2026-11-03 — Opinión de consistencia contenido-evaluación: E34.2 ([#287](https://github.com/wasichai/elearning-backend/issues/287))
 
 - Al terminar su informe, la validación pide la opinión de un modelo barato (clave `consistency` de `lms.ai.models`, por

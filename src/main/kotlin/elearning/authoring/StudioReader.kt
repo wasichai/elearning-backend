@@ -38,6 +38,8 @@ data class StudioVersion(
     val reviewerName: String?,
     val updatedAt: Instant?,
     val openComments: Int,
+    // MODEL o DETERMINISTIC si la generó la IA (docs/ai §13), null si se escribió a mano (#288)
+    val generator: String?,
 )
 
 data class StudioLesson(
@@ -69,6 +71,7 @@ data class StudioVersionDetail(
     val reviewerName: String?,
     val updatedAt: Instant?,
     val openComments: Int,
+    val generator: String?,
     val units: List<StudioUnit>,
     val comments: List<ReviewComment>,
     val decisions: List<ReviewDecision>,
@@ -102,6 +105,7 @@ class StudioReader(
     private val decisions: DecisionStore,
     private val names: DisplayNames,
     private val history: VersionHistory,
+    private val generators: DraftGenerators,
     private val transactions: TransactionalOperator,
 ) {
     suspend fun mine(): List<StudioVersion> {
@@ -157,7 +161,8 @@ class StudioReader(
                 organization,
                 people(version) + notes.map { it.attributes[AUTHOR]?.toString() } + decided.map { it.authorId } + moves.map { it.by },
             )
-        val s = summaryOf(version, course, notes, named)
+        val generator = generators.of(organization, listOf(UUID.fromString(version.id)))[UUID.fromString(version.id)]
+        val s = summaryOf(version, course, notes, named, generator)
         return StudioVersionDetail(
             s.id,
             s.number,
@@ -169,6 +174,7 @@ class StudioReader(
             s.reviewerName,
             s.updatedAt,
             s.openComments,
+            s.generator,
             units,
             notes.map { comment(it, named) },
             decided.map { it.copy(authorName = named[it.authorId]) },
@@ -208,10 +214,12 @@ class StudioReader(
         if (versions.isEmpty()) return emptyList()
         val courses = records.listByIds(COURSE, versions.mapNotNull { it.attributes.ref(COURSE) }).associateBy { it.id }
         val notes = comments(versions.map { it.id })
-        val named = names.of(currentUser.require().organizationId, versions.flatMap { people(it) })
+        val organization = currentUser.require().organizationId
+        val named = names.of(organization, versions.flatMap { people(it) })
+        val generated = generators.of(organization, versions.map { UUID.fromString(it.id) })
         return versions.map { version ->
             val course = courses[version.attributes.ref(COURSE)] ?: records.get(COURSE, UUID.fromString(version.attributes.ref(COURSE)!!))
-            summaryOf(version, course, notes[version.id].orEmpty(), named)
+            summaryOf(version, course, notes[version.id].orEmpty(), named, generated[UUID.fromString(version.id)])
         }
     }
 
@@ -220,6 +228,7 @@ class StudioReader(
         course: RecordResponse,
         notes: List<RecordResponse>,
         named: Map<String, String>,
+        generator: String?,
     ): StudioVersion {
         val author = version.attributes[AUTHOR]?.toString()
         val reviewer = version.attributes[REVIEWER]?.toString()
@@ -234,6 +243,7 @@ class StudioReader(
             reviewerName = reviewer?.let { named[it] },
             updatedAt = version.updatedAt,
             openComments = notes.count { !resolved(it) },
+            generator = generator,
         )
     }
 

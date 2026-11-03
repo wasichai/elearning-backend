@@ -109,7 +109,7 @@ class ReviewService(
                 val state = records.get(VERSION, versionId).attributes[STATE]?.toString()
                 if (state != IN_REVIEW) throw ConflictException("Solo se decide una versión en revisión")
                 val written =
-                    withContext(ReviewDecisionWrite()) {
+                    withContext(ReviewDecisionWrite(reason)) {
                         records.patch(VERSION, versionId, RecordRequest(mapOf(STATE to TARGETS.getValue(decision))), reason, null)
                     }
                 decisions.insert(user.organizationId, versionId, decision, reason, user.userId, Instant.now())

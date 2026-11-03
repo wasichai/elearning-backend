@@ -5,6 +5,7 @@ import elearning.jobs.Job
 import elearning.jobs.JobHandler
 import elearning.jobs.JobQueue
 import elearning.jobs.JobRunner
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.reactor.awaitSingle
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -97,6 +98,7 @@ class AiJobsApiTest : LmsApiTest() {
         script.clear()
         calls.set(0)
         drafts.clear()
+        draftsOutsideAiWork.set(0)
         failDraftOnce.set(false)
         cancelDuringCall.set(null)
     }
@@ -221,6 +223,7 @@ class AiJobsApiTest : LmsApiTest() {
         assertEquals(execution, job(again)["executionId"].asString(), "devuelve la ejecución existente")
         assertEquals(2, runs(course).size, "ni otra ejecución")
         assertEquals(2, drafts.size, "ni otro borrador")
+        assertEquals(0, draftsOutsideAiWork.get(), "cada borrador, dentro de AiWork")
     }
 
     @Test
@@ -486,6 +489,8 @@ class AiJobsApiTest : LmsApiTest() {
                         // un fallo pasajero al escribir el borrador, después de la llamada
                         if (failDraftOnce.getAndSet(false)) error("the draft store is down")
                         drafts.add(run.id)
+                        // el borrador se escribe con la marca de trabajo de IA, que AiWorkGuard usa para no dejarle aprobar (#288)
+                        if (currentCoroutineContext()[AiWork] == null) draftsOutsideAiWork.incrementAndGet()
                     }
             }
     }
@@ -500,6 +505,7 @@ class AiJobsApiTest : LmsApiTest() {
         val script = ConcurrentLinkedQueue<suspend (AiPrompt) -> AiReply>()
         val calls = AtomicInteger()
         val drafts = ConcurrentLinkedQueue<UUID>()
+        val draftsOutsideAiWork = AtomicInteger()
         val failDraftOnce = AtomicBoolean()
         val cancelDuringCall = AtomicReference<(suspend () -> Unit)?>()
 
