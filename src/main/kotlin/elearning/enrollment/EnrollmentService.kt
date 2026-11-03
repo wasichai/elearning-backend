@@ -3,6 +3,7 @@ package elearning.enrollment
 import elearning.common.listAll
 import elearning.common.listByIds
 import elearning.common.ref
+import elearning.privacy.TermsService
 import kotlinx.coroutines.reactor.awaitSingle
 import org.springframework.r2dbc.core.DatabaseClient
 import org.springframework.stereotype.Service
@@ -31,7 +32,8 @@ data class Enrolled(
 // el comando de matrícula (ADR-0012, ADR-0013). todo como la persona que se matricula: sus permisos y sus alcances
 // aplican, así que una edición de una versión no publicada ni siquiera se encuentra. el cupo se cuenta en
 // lms.ocupacion_edicion, bloqueada en la misma transacción que crea la matrícula. los prerrequisitos de la versión
-// (RF-ACA-08) se comprueban antes que el cupo: el motivo del rechazo es el que la persona puede resolver
+// (RF-ACA-08) se comprueban antes que el cupo: el motivo del rechazo es el que la persona puede resolver. antes que todo,
+// la aceptación vigente de los términos de uso (ADR-0037): sin ella, 403, también para repetir una matrícula
 @Service
 class EnrollmentService(
     private val currentUser: CurrentUser,
@@ -39,9 +41,11 @@ class EnrollmentService(
     private val transactions: TransactionalOperator,
     private val db: DatabaseClient,
     private val clock: Clock,
+    private val terms: TermsService,
 ) {
     suspend fun enroll(offeringCode: String): Enrolled {
         val user = currentUser.require()
+        terms.requireAccepted(user, "matricularte")
         val offering = one(OFFERING, mapOf(CODE to offeringCode)) ?: throw NotFoundException(NOT_FOUND)
         own(user, offering.id)?.let { return Enrolled(it, created = false) }
         return transactions.executeAndAwait {

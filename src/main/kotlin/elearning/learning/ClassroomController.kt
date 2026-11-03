@@ -8,7 +8,9 @@ import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
+import wasichai.core.common.PageRequest
 import wasichai.core.common.ValidationException
 import java.util.UUID
 
@@ -37,6 +39,14 @@ class ClassroomController(
     // mis cursos: mis matrículas activas, la de inicio más próximo primero
     @GetMapping("/classroom/enrollments")
     suspend fun mine(): List<EnrollmentView> = reader.mine()
+
+    // el panel (#261): una página de mis cursos, cada uno con sus próximas sesiones y sus evaluaciones pendientes. page y size
+    // como en la API de registros; sin ellos, la primera página
+    @GetMapping("/classroom/panel")
+    suspend fun panel(
+        @RequestParam(required = false) page: Int?,
+        @RequestParam(required = false) size: Int?,
+    ): List<ClassroomPanelItem> = reader.panel(PageRequest.of(page, size))
 
     // el aula de una matrícula propia; ajena o inexistente, 404
     @GetMapping("/classroom/enrollments/{enrollmentId}")

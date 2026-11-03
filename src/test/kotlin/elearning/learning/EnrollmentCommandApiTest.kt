@@ -44,7 +44,7 @@ class EnrollmentCommandApiTest : LmsApiTest() {
             .exchange()
             .expectStatus()
             .isCreated
-        return bearer(email, DEMO_PASSWORD)
+        return acceptTerms(bearer(email, DEMO_PASSWORD))
     }
 
     private fun publishedVersion(code: String = "SRTM-ANU-101"): String {

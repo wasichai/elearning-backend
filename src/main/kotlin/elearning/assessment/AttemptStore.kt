@@ -249,17 +249,67 @@ class AttemptStore(
             .collectList()
             .awaitSingle()
 
+    // los intentos de varias matrículas en una lectura, para el panel del estudiante (#261)
+    suspend fun linesOfEnrollments(
+        organization: UUID,
+        enrollments: Collection<UUID>,
+    ): List<AttemptLine> {
+        if (enrollments.isEmpty()) return emptyList()
+        return db
+            .sql(
+                "SELECT $LINE_COLUMNS FROM lms.intento " +
+                    "WHERE organizacion_id = :org AND matricula_id = ANY(:enrollments) ORDER BY matricula_id, numero",
+            ).bind("org", organization)
+            .bind("enrollments", enrollments.distinct().toTypedArray())
+            .map { row, _ -> line(row) }
+            .all()
+            .collectList()
+            .awaitSingle()
+    }
+
+    // los intentos que esperan corrección, por edición y en una lectura (#261): antes, una por edición. sin la edición, 0
     suspend fun countPending(
         organization: UUID,
-        offering: UUID,
-    ): Int =
-        db
-            .sql("SELECT count(*) AS n FROM lms.intento WHERE organizacion_id = :org AND edicion_id = :offering AND estado = 'SUBMITTED'")
-            .bind("org", organization)
-            .bind("offering", offering)
-            .map { row, _ -> row.get("n", Number::class.java)!!.toInt() }
-            .one()
+        offerings: Collection<UUID>,
+    ): Map<UUID, Int> {
+        if (offerings.isEmpty()) return emptyMap()
+        return db
+            .sql(
+                "SELECT edicion_id, count(*) AS n FROM lms.intento " +
+                    "WHERE organizacion_id = :org AND edicion_id = ANY(:offerings) AND estado = 'SUBMITTED' GROUP BY edicion_id",
+            ).bind("org", organization)
+            .bind("offerings", offerings.distinct().toTypedArray())
+            .map { row, _ -> row.get("edicion_id", UUID::class.java)!! to row.get("n", Number::class.java)!!.toInt() }
+            .all()
+            .collectList()
             .awaitSingle()
+            .toMap()
+    }
+
+    // el principio de la cola de cada edición (los [limit] primeros de queueOfOffering, en su orden), en una lectura para
+    // el panel docente (#261): la ventana corta por edición en la base
+    suspend fun oldestPending(
+        organization: UUID,
+        offerings: Collection<UUID>,
+        viewer: UUID,
+        limit: Int,
+    ): Map<UUID, List<AttemptLine>> {
+        if (offerings.isEmpty()) return emptyMap()
+        return db
+            .sql(
+                "SELECT * FROM (SELECT edicion_id, $LINE_COLUMNS, row_number() OVER (PARTITION BY edicion_id ORDER BY enviado_en, id) AS puesto " +
+                    "FROM lms.intento WHERE organizacion_id = :org AND edicion_id = ANY(:offerings) AND estado = 'SUBMITTED' " +
+                    "AND estudiante_id <> :viewer) cola WHERE puesto <= :limit ORDER BY edicion_id, puesto",
+            ).bind("org", organization)
+            .bind("offerings", offerings.distinct().toTypedArray())
+            .bind("viewer", viewer)
+            .bind("limit", limit)
+            .map { row, _ -> row.get("edicion_id", UUID::class.java)!! to line(row) }
+            .all()
+            .collectList()
+            .awaitSingle()
+            .groupBy({ it.first }) { it.second }
+    }
 
     suspend fun ofEnrollment(
         organization: UUID,
