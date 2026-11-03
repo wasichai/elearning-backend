@@ -65,7 +65,10 @@ class RolesApiTest : LmsApiTest() {
         val creator = permissions(demoUser("creador"))
 
         // exactamente la unión: nada se pierde al sumar un rol y nada aparece que no dé ninguno de los dos
-        val union = (student.keys + creator.keys).associateWith { student[it].orEmpty() + creator[it].orEmpty() }
+        val union = (student.keys + creator.keys).associateWith { student[it].orEmpty() + creator[it].orEmpty() }.toMutableMap()
+        // Wasichai solo lista los objetos que el rol lee: CREADOR tiene VER_RESUMEN y DENUNCIAR sobre valoracion sin READ
+        // (el valorado no la lee, ADR-0038), así que solo aparecen sumados a la lectura del estudiante
+        union["valoracion"] = union.getValue("valoracion") + setOf("VER_RESUMEN", "DENUNCIAR")
         assertEquals(union, both)
         // lo que solo da ESTUDIANTE
         assertTrue("CREATE" in both.getValue("matricula") && "CREATE" in both.getValue("progreso_leccion"), both.toString())

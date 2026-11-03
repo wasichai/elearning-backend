@@ -134,5 +134,7 @@ RNF-SEG-11 · [#268](https://github.com/wasichai/elearning-backend/issues/268) �
 - `RatingApiTest` y las pruebas de cada paso de #268 usan sujetos de un solo rol, nunca ADMIN, y releen los datos tras
   cada negativa.
 - La interfaz del aula ofrece valorar desde la matrícula y la del docente su resumen (elearning-frontend).
+  `/api/auth/me/permissions` de Wasichai solo lista los objetos que el rol lee, así que no muestra `VER_RESUMEN` ni
+  `DENUNCIAR` al valorado: la interfaz pide el resumen y un `403` le dice que no lo tiene.
 - Una dimensión nueva o desactivada no cambia lo congelado; cambiar la fórmula exige una versión nueva del criterio.
 - `PersonalDataErasure` añade su paso y su prueba (ADR-0037, «una capacidad nueva que guarde datos personales»).
