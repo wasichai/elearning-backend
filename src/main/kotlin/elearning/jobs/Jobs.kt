@@ -15,7 +15,8 @@ data class Job(
     val maxAttempts: Int,
 )
 
-enum class JobState { QUEUED, RUNNING, DONE, FAILED }
+// CANCELLED (ADR-0033 §5): alguien lo canceló pendiente o en curso; como DONE y FAILED, está terminado
+enum class JobState { QUEUED, RUNNING, DONE, FAILED, CANCELLED }
 
 // lo que se puede contar de un trabajo: su estado, su último error y su resultado (JSON). payload es el JSON con el que
 // se encoló: quien lo expone decide con él a quién se lo cuenta (el importador, solo a quien lo pidió)
@@ -48,6 +49,12 @@ class PermanentJobFailure(
     message: String,
     cause: Throwable? = null,
 ) : RuntimeException(message, cause)
+
+// el manejador vio que su trabajo fue cancelado (JobQueue.cancelled) y lo deja: la cola no lo cierra otra vez, ya está
+// CANCELLED. lo que hizo antes de verlo (una llamada al modelo, su registro) queda; lo que haría después, no
+class JobCancelled(
+    job: Job,
+) : RuntimeException("job ${job.id} (${job.type}) was cancelled")
 
 // lms.jobs.*
 @ConfigurationProperties("lms.jobs")
