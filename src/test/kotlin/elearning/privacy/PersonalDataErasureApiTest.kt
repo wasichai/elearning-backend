@@ -111,9 +111,10 @@ class PersonalDataErasureApiTest : ClassroomApiTestSupport() {
                 .awaitSingle()
         }
 
-    private fun drain() {
-        while (runner.runOnce() > 0) Unit
-    }
+    private fun drain() =
+        runBlocking {
+            while (runner.runOnce() > 0) Unit
+        }
 
     private fun constancy(job: String): Map<String, String> =
         runBlocking {
