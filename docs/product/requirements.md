@@ -285,11 +285,15 @@ el cuándo, en [`roadmap.md`](roadmap.md).
 - **RF-CON-06** · F4 · implementado ([#208](https://github.com/wasichai/elearning-backend/pull/208)) — Las correcciones no borran versiones anteriores ni alteran las decisiones del
   revisor.
   _Aceptación:_ tras una corrección, comentarios y decisiones previas siguen ligados a su versión.
-- **RF-CON-07** · F4 · planificado — Generación de HTML y PDF desde AsciiDoc como trabajo asíncrono.
-  _Aceptación:_ una lección importada produce ambos artefactos validados sin bloquear peticiones HTTP.
-  _Avance:_ una `fuente_recurso` produce HTML y PDF en la cola, con hash y generador ([#209](https://github.com/wasichai/elearning-backend/pull/209), [#212](https://github.com/wasichai/elearning-backend/pull/212)), probado con un
-  generador doble; el adaptador se prueba con guiones en lugar de Asciidoctor. Falta el binario en la imagen de despliegue
-  (F6) y partir de una lección importada: la importación no copia el texto de los manuales (ADR-0015).
+- **RF-CON-07** · F4 · implementado ([#209](https://github.com/wasichai/elearning-backend/pull/209), [#212](https://github.com/wasichai/elearning-backend/pull/212), [#264](https://github.com/wasichai/elearning-backend/issues/264)) — Generación de HTML y PDF desde AsciiDoc como trabajo
+  asíncrono.
+  _Aceptación_ ([ADR-0031](../adr/0031-aceptacion-de-la-generacion-con-una-fuente-propia.md)): una `fuente_recurso`
+  AsciiDoc propia, con `include::`, una imagen y una tabla, produce en la cola HTML y PDF validados sin bloquear
+  peticiones HTTP. Antes pedía una lección importada, pero la importación no copia el texto de los manuales (ADR-0018 §6).
+  _Nota:_ `RenderApiTest` lo prueba con el doble y con Asciidoctor real, que CI instala en versiones fijas y exige
+  (`LMS_TEST_ASCIIDOCTOR=required`). En modo `secure`, `include::` queda como enlace y la imagen llega al PDF si va
+  incrustada como URI `data:`; en el HTML queda su texto alternativo. El binario en la imagen de despliegue es de F6
+  (RNF-OPS-04).
 
 ### RF-IMP — Importador AsciiDoc (§9; ADR-0010)
 
@@ -458,10 +462,12 @@ el cuándo, en [`roadmap.md`](roadmap.md).
   _Aceptación:_ prueba que busca la clave de prueba en registros y persistencia.
 - **RNF-SEG-10** · F6 · planificado — Límites de abuso y spam en endpoints públicos y de valoración.
   _Aceptación:_ superar el límite configurado → `429`. Si Wasichai ofrece limitación de tasa está a verificar.
-- **RNF-SEG-11** · F6 · planificado — Privacidad por defecto, conservación y eliminación de datos personales.
+- **RNF-SEG-11** · F6 · implementado — Privacidad por defecto, conservación y eliminación de datos personales.
   _Aceptación:_ política escrita y prueba de eliminación de un usuario de demostración.
-  _Avance:_ política escrita en [ADR-0030](../adr/0030-lgpl-definitiva-y-conservacion-segun-los-terminos.md): se conserva lo que aprueban los términos de uso;
-  la aceptación con plazo y la supresión, en [#304](https://github.com/wasichai/elearning-backend/issues/304).
+  _Avance:_ política en [ADR-0030](../adr/0030-lgpl-definitiva-y-conservacion-segun-los-terminos.md) (se conserva lo que aprueban los términos de uso) y
+  [ADR-0037](../adr/0037-terminos-de-uso-y-supresion-de-datos-personales.md) (qué se suprime y qué se disocia). Términos versionados con plazo y aceptación por persona;
+  sin aceptación vigente, `403` al matricularse o registrar progreso; al retirarla o vencer, la supresión corre en la cola
+  ([#304](https://github.com/wasichai/elearning-backend/issues/304)). Pruebas: `TermsApiTest` y `PersonalDataErasureApiTest`.
 - **RNF-SEG-12** · F6 · planificado — Copias de seguridad con restauración verificada.
   _Aceptación:_ ensayo de restauración documentado con fecha y resultado.
 

@@ -66,11 +66,14 @@ class ArchitectureTest {
                 "workload" to emptySet(),
                 // la cola persistente: no sabe de ninguna capacidad; quien encola y quien maneja la usa a ella
                 "jobs" to setOf("common"),
+                // los términos de uso y la supresión de datos personales (ADR-0037): borra y disocia por SQL y por la API
+                // de registros, sin usar ninguna capacidad; la matrícula y el progreso le preguntan si hay aceptación
+                "privacy" to setOf("common", "jobs"),
                 "course" to setOf("common", "workload"),
                 "catalog" to setOf("common", "course", "workload"),
-                "enrollment" to setOf("common", "course"),
+                "enrollment" to setOf("common", "course", "privacy"),
                 // el aviso de publicación de contenido sale de la cola persistente (RF-AUL-09)
-                "learning" to setOf("common", "enrollment", "course", "workload", "jobs"),
+                "learning" to setOf("common", "enrollment", "course", "workload", "jobs", "privacy"),
                 // el barrido de intentos vencidos corre en la cola persistente (L4 de #183)
                 "assessment" to setOf("common", "learning", "enrollment", "jobs"),
                 "authoring" to setOf("common", "course"),

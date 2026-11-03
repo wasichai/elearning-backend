@@ -40,7 +40,8 @@ data class CertificateOffering(
 data class Certificate(
     val code: String,
     val issuedAt: Instant,
-    val holderName: String,
+    // null cuando su titular pidió suprimir sus datos (ADR-0037): el código sigue verificando lo certificado
+    val holderName: String?,
     val course: CertificateCourse,
     val version: Int,
     val offering: CertificateOffering,

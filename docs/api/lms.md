@@ -213,6 +213,9 @@ Cuerpo `{ "offering": "<código de la edición>" }`. Cabecera opcional `Idempote
 - `201` → `Enrollment` (nueva) · `200` → la misma `Enrollment` si ya existía.
 - `404` edición desconocida · `409` (`problem+json`, `detail` legible) inscripción cerrada, sin cupo, edición no
   disponible o prerrequisito sin cumplir · `401` sin sesión · `403` sin permiso de matricularse.
+- Sin aceptación vigente de los términos de uso ([Términos de uso](#términos-de-uso-y-supresión-adr-0037)), `403` antes
+  que nada, también para repetir una matrícula, con `detail` «Para matricularte debes aceptar los términos de uso
+  vigentes (…)».
 - Prerrequisitos (RF-ACA-08): si la versión de la edición declara cursos previos (`cursos_previos`), cada uno exige una
   matrícula propia `FINALIZADA` con resultado `APROBADO` en cualquier versión de ese curso. Si falta alguno, `409` con
   `detail` «Para matricularte en esta edición antes debes aprobar: `<código> (<título>)`; …», que nombra todos los que
@@ -347,6 +350,8 @@ otra matrícula, lección o tipo es `409` y no registra nada.
 - Solo la persona matriculada registra su progreso, sobre su matrícula `ACTIVA` (otra → `409`). Los eventos llegan a la
   vez sin carreras: uno por lección a la vez.
 - `400` si `type` no es uno de los tres o `clientEventId` no es un UUID.
+- `403` sin aceptación vigente de los términos de uso, sobre una matrícula propia y antes que las demás reglas («Para
+  registrar tu progreso debes aceptar los términos de uso vigentes (…)»); una ajena sigue siendo `404`.
 
 - `409` si la regla no se cumple: `MARKED_COMPLETE` en un vídeo o en una lección `NOT_YET`; `VIDEO_ENDED` en una
   lección que no es vídeo. El estado nunca retrocede.
@@ -549,6 +554,36 @@ menos de `size` elementos es la última. Solo las matrículas propias, también 
 
 Congelado al emitirse: no cambia aunque cambien después el curso o la matrícula.
 
+## Términos de uso y supresión (ADR-0037)
+
+Con sesión. Los datos personales se conservan el plazo que la persona aprueba en los términos de uso
+([ADR-0030](../adr/0030-lgpl-definitiva-y-conservacion-segun-los-terminos.md)); sin aceptación vigente no hay matrícula ni
+progreso (`403`). El catálogo público no la pide.
+
+- `GET /api/lms/terms` → `{ "current": TermsVersion | null, "acceptance": TermsAcceptance | null }`: los vigentes (`null`
+  si la organización no publicó ninguno: entonces nadie se matricula) y la aceptación de quien pregunta.
+- `POST /api/lms/terms` `{ "text": "…", "retentionDays": 730 }` → `201` `TermsVersion`, la versión siguiente. Solo con
+  `MANAGE_ORGANIZATION` (`403`); `400` texto vacío o de más de 100 000 caracteres, o plazo fuera de 1–36 500 días. Una
+  versión publicada no cambia y publicar otra no altera ninguna aceptación.
+- `POST /api/lms/terms/acceptance` `{ "version": 3 }` → `200` `TermsAcceptance`. Acepta la versión vigente, que se nombra
+  (otra → `409`; sin términos publicados → `409`). Con una aceptación vigente, la renueva con esta versión y su plazo
+  desde ahora. Con una retirada o vencida, sus datos se están suprimiendo: `409` con `Retry-After` hasta que termine.
+- `DELETE /api/lms/terms/acceptance` → `202` `{ "jobId": "…" }`: retira la aceptación y encola la supresión de los datos
+  personales (repetirlo mientras no termina devuelve el mismo trabajo) · `404` sin aceptación.
+
+```json
+{
+  "current": { "version": 3, "text": "…", "retentionDays": 730, "publishedAt": "…" },
+  "acceptance": { "version": 2, "acceptedAt": "…", "expiresAt": "…", "withdrawnAt": null, "valid": true }
+}
+```
+
+`valid`: sin retirar y antes de `expiresAt`. Al retirarla o vencer, la supresión corre en la cola
+(`lms.privacy.sweep-every`, 1 h, encola las vencidas): suprime eventos, progreso, asistencias, entregas, intentos sin
+calificar y trabajos; deja la matrícula (`RETIRADA` si estaba activa), los intentos calificados y el certificado sin la
+persona (`holderName: null` en su verificación) y vacía su perfil docente. Detalle en
+[seguridad §7](../security/README.md#7-privacidad-y-retención).
+
 ## Espacio docente (F3, ADR-0016)
 
 Con sesión, solo sobre las ediciones **asignadas** a la persona (`docente_edicion.usuario_id`); otra edición o un
@@ -736,6 +771,11 @@ y el resultado es una `version_recurso` **nueva en `BORRADOR`**, a nombre de qui
 recurso como `archivo`. Sigue el flujo editorial como cualquier otra versión; generar otra vez crea otra versión, nunca
 sobrescribe. El HTML se guarda saneado con lista blanca (sin scripts, manejadores de eventos, `iframe`, formularios ni hojas
 externas, [ADR-0022](../adr/0022-limites-y-ciclo-de-vida-de-los-trabajos.md)); su `sha256` es el de lo guardado.
+
+La fuente es un solo archivo autosuficiente ([ADR-0031](../adr/0031-aceptacion-de-la-generacion-con-una-fuente-propia.md)):
+en modo `secure`, `include::` no lee nada y queda como enlace a su destino. Una imagen llega al PDF si va incrustada como
+URI `data:`; una ruta relativa deja su texto alternativo. En el HTML guardado las imágenes quedan por su texto alternativo
+(el saneado solo admite `http` y `https` en `src`).
 
 | Método | Ruta                                  | Resultado                                            |
 | ------ | ------------------------------------- | ---------------------------------------------------- |

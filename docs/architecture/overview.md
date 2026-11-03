@@ -122,10 +122,13 @@ flowchart BT
     catalog --> course
     catalog --> workload
     enrollment --> course
+    enrollment --> privacy
+    privacy --> jobs
     learning --> enrollment
     learning --> course
     learning --> workload
     learning --> jobs
+    learning --> privacy
     assessment --> learning
     assessment --> enrollment
     assessment --> jobs

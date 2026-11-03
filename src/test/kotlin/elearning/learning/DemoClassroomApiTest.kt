@@ -184,6 +184,6 @@ class DemoClassroomApiTest : LmsApiTest() {
             .exchange()
             .expectStatus()
             .isCreated
-        return bearer(email, DEMO_PASSWORD)
+        return acceptTerms(bearer(email, DEMO_PASSWORD))
     }
 }

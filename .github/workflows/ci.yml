@@ -34,10 +34,18 @@ jobs:
         env:
           GITHUB_ACTOR: ${{ github.actor }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # Asciidoctor real para la aceptación de RF-CON-07 (ADR-0031), con versiones fijas; LMS_TEST_ASCIIDOCTOR=required hace
+      # que su falta sea un fallo y no una prueba saltada. la imagen de despliegue lo trae en F6 (RNF-OPS-04)
+      - name: Asciidoctor
+        run: |
+          sudo gem install --no-document asciidoctor:2.0.26 asciidoctor-pdf:2.3.27
+          asciidoctor --version
+          asciidoctor-pdf --version
       - run: ./gradlew integrationTest --no-daemon --max-workers=2
         env:
           GITHUB_ACTOR: ${{ github.actor }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          LMS_TEST_ASCIIDOCTOR: required
       - name: informes de pruebas
         if: failure()
         uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
