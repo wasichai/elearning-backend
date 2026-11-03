@@ -215,6 +215,12 @@ Solo documentación, primer paso de la épica E32 ([#271](https://github.com/was
   el estudiante de la matrícula (`404` a otro y al docente). `AchievementsApiTest` y la semilla (`CORTO-101-A`) lo
   prueban; la interfaz los mostrará en front#154.
 
+## 2026-11-03 — La administración, una sección del menú ([front#157](https://github.com/wasichai/elearning-frontend/pull/157))
+
+- RNF-UX-06: «Datos» y «Administración» solo los ve quien tiene `admin` o `MANAGE_ORGANIZATION`, con `shellNav` de
+  `@wasichai/core`. Una sola aplicación y ninguna URL nueva (ADR-0005). `docs/operations/administracion.md` lo recoge, junto
+  con lo que queda: el mensaje de core ante un `403` y que la interfaz aún no ofrece crear el primer borrador de un curso nuevo sin importar.
+
 ## 2026-11-03 — LGPL definitiva y conservación según los términos ([#303](https://github.com/wasichai/elearning-backend/issues/303))
 
 - [ADR-0030](adr/0030-lgpl-definitiva-y-conservacion-segun-los-terminos.md) reemplaza a ADR-0015: la licencia

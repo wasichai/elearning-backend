@@ -512,7 +512,7 @@ el cuándo, en [`roadmap.md`](roadmap.md).
   _Aceptación:_ pruebas por rol y etiqueta en Testing Library y recorrido por teclado en E2E; auditoría completa en F6.
 - **RNF-UX-05** · F1 · implementado ([#17 web](https://github.com/wasichai/elearning-frontend/pull/17)) — Textos con i18next; español inicial y estructura lista para más idiomas.
   _Aceptación:_ sin textos literales en componentes; claves `es` completas.
-- **RNF-UX-06** · F3 · implementado ([front#50](https://github.com/wasichai/elearning-frontend/pull/50), [front#69](https://github.com/wasichai/elearning-frontend/pull/69), [front#70](https://github.com/wasichai/elearning-frontend/pull/70)) (el menú de administración es de `@wasichai/core` y se muestra sin permisos) — Experiencias separadas por audiencia (catálogo, aula, docente, estudio,
+- **RNF-UX-06** · F3 · implementado ([front#50](https://github.com/wasichai/elearning-frontend/pull/50), [front#69](https://github.com/wasichai/elearning-frontend/pull/69), [front#70](https://github.com/wasichai/elearning-frontend/pull/70), [front#157](https://github.com/wasichai/elearning-frontend/pull/157)) (la administración es una sección del menú que solo ve quien tiene `admin` o `MANAGE_ORGANIZATION`) — Experiencias separadas por audiencia (catálogo, aula, docente, estudio,
   revisor, administración), no una pantalla universal.
   _Aceptación:_ un módulo de frontend por experiencia con su navegación filtrada por permisos.
   _Nota:_ catálogo, aula, docencia, estudio y revisión son módulos propios, y sus menús se muestran por permiso, nunca por
