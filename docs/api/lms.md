@@ -668,8 +668,13 @@ El contenido (unidades, lecciones, evaluaciones) se edita con la API de registro
 en borrador. La lección de repaso de una pregunta (`leccion_repaso`, opcional) es una lección de la misma versión: otra es
 `400` en `leccion_repaso`. Copiar la versión la re-apunta a la lección copiada.
 
-`StudioVersion`: `{ "id", "number", "status", "course": { "id", "code", "title" }, "authorId", "reviewerId": null,
-"updatedAt", "openComments": 2 }`. `status`: `BORRADOR` · `EN_REVISION` · `APROBADA` · `PUBLICADA` · `RETIRADA`.
+`StudioVersion`: `{ "id", "number", "status", "course": { "id", "code", "title" }, "authorId", "authorName", "reviewerId": null,
+"reviewerName": null, "updatedAt", "openComments": 2 }`. `status`: `BORRADOR` · `EN_REVISION` · `APROBADA` · `PUBLICADA` · `RETIRADA`.
+
+**Nombres** (#258, ADR-0034): cada `authorId` y `reviewerId` de `StudioVersion`, `ReviewComment` y `ReviewDecision` va con su
+`authorName` o `reviewerName`, el nombre para mostrar de la persona en Wasichai, nunca su correo ni otro dato. Es `null` si el
+id es `null` o si la persona está deshabilitada o fue borrada; el id se devuelve igual. Solo los recibe quien ya puede leer la
+versión (lo demás sigue siendo `404`/`403`), y se leen de una vez para toda la respuesta.
 
 `StudioVersionDetail` = `StudioVersion` más `units`: `[{ "id", "order", "title", "sourceRef": null, "lessons": [{ "id", "order",
 "title", "type", "sourceRef": null, "hasAssessment": false, "resources": 1 }] }]`, `comments: ReviewComment[]`, `decisions: ReviewDecision[]`.
@@ -700,12 +705,12 @@ en borrador. La lección de repaso de una pregunta (`leccion_repaso`, opcional) 
 - **Solo aquí se decide** (ADR-0021): sacar una versión de curso de `EN_REVISION` con la API de registros es `403` para quien
   decide; el autor sí la retira a borrador. Una `version_recurso` no tiene bandeja: su revisor la decide con la API de
   registros y, salvo al aprobar, con la cabecera `X-Change-Reason` (`400` sin ella), que queda en el `audit_log`.
-- `ReviewComment`: `{ "id", "section", "text", "authorId", "createdAt", "resolved": false }`. `section` es texto libre que
+- `ReviewComment`: `{ "id", "section", "text", "authorId", "authorName", "createdAt", "resolved": false }`. `section` es texto libre que
   identifica la parte (`unidad:1/leccion:2`), hasta 200 caracteres; `text`, hasta 4000. Ambos obligatorios (`400`). Solo se
   comenta una versión `EN_REVISION` (`409`); resolver lo ya resuelto no cambia nada. `comentario_revision` es `apiOnly`: la API
   de registros no lo escribe, y por ella solo lo lee quien publica, el autor de la versión, quien la puede revisar y quien lo
   escribió (lo demás, `404`). `openComments` cuenta los no resueltos.
-- `ReviewDecision`: `{ "decision", "reason", "authorId", "at" }`, la más antigua primero; historial de solo inserción en
+- `ReviewDecision`: `{ "decision", "reason", "authorId", "authorName", "at" }`, la más antigua primero; historial de solo inserción en
   `lms.decision_revision`. Comentarios y decisiones quedan con su versión: una versión nueva a partir de ella empieza sin ellos.
 - `publish`: solo una versión `APROBADA` (`409`); pone `publicada_en` el servidor.
 - `VersionDiff`: `{ "baseVersion": 1, "units": [{ "order", "change": "ADDED" | "REMOVED" | "CHANGED" | "SAME", "title",
