@@ -16,7 +16,7 @@ class AchievementsApiTest : ClassroomApiTestSupport() {
         val student = newStudent()
         val enrollment = enroll(student, course)["id"].asString()
 
-        fun classroom(token: String = student) = call(token, "/api/lms/classroom/enrollments/$enrollment")
+        fun classroom(token: String? = student) = call(token, "/api/lms/classroom/enrollments/$enrollment")
 
         fun achievements(): List<JsonNode> = ok(classroom())["achievements"].values().toList()
     }
