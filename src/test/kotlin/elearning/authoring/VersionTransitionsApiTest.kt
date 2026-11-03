@@ -159,6 +159,8 @@ class VersionTransitionsApiTest : ClassroomApiTestSupport() {
                 "numero" to 1,
                 "modalidad" to "ASINCRONA",
                 "semanas" to 1,
+                "sistema_credito" to stored["sistema_credito"].asString(),
+                "contenido_ilustrativo" to stored["contenido_ilustrativo"].asBoolean(),
                 "estado" to "EN_REVISION",
                 "autor_id" to userId(author),
             )
@@ -227,7 +229,10 @@ class VersionTransitionsApiTest : ClassroomApiTestSupport() {
         report.expect("otro creador, PATCH de recurso BORRADOR a EN_REVISION", 403, patch(other, resource, draft, "EN_REVISION"))
         report.expect("estado del recurso tras ese PATCH", "BORRADOR", state(resource, draft))
         report.expect("otro creador, PATCH de recurso BORRADOR a PUBLICADA", 409, patch(other, resource, draft, "PUBLICADA"))
-        report.expect("otro creador, DELETE de un borrador de recurso ajeno", 403, delete(other, resource, draft))
+
+        val deleted = resourceDraft(author)
+        report.expect("otro creador, DELETE de un borrador de recurso ajeno", 403, delete(other, resource, deleted))
+        report.expect("el borrador de recurso sigue tras ese DELETE", 200, status(admin, "/api/objects/$resource/records/$deleted"))
 
         val inReview = resourceDraft(author)
         assertEquals(200, patch(author, resource, inReview, "EN_REVISION"))
