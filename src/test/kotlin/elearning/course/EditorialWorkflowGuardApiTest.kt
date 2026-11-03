@@ -135,7 +135,10 @@ class EditorialWorkflowGuardApiTest : LmsApiTest() {
         // el autor no aprueba lo suyo, aunque tuviera la acción
         assertEquals(HttpStatus.FORBIDDEN, patch(creator, "version_curso", version, mapOf("estado" to "APROBADA")).first)
         assertEquals(HttpStatus.OK, decide(reviewer, version, "APROBAR").first)
-        assertEquals(HttpStatus.OK, patch(reviewer, "version_curso", version, mapOf("creditos_aprobados" to 2)).first)
+        // APROBAR es la acción editorial: no aprueba créditos. solo los escribe el comando de aprobación (ADR-0035, #269)
+        assertEquals(HttpStatus.FORBIDDEN, patch(reviewer, "version_curso", version, mapOf("creditos_aprobados" to 2)).first)
+        assertEquals(HttpStatus.FORBIDDEN, patch(admin, "version_curso", version, mapOf("creditos_aprobados" to 2)).first)
+        assertEquals(HttpStatus.FORBIDDEN, patch(admin, "version_curso", version, mapOf("politica_creditos" to "ects-carga-total@1")).first)
         // el revisor no publica
         assertEquals(HttpStatus.FORBIDDEN, patch(reviewer, "version_curso", version, mapOf("estado" to "PUBLICADA")).first)
     }
