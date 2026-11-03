@@ -1,0 +1,1639 @@
+{
+  "_comentario": "Demo poblada (model/demo/README.md): se aplica después de data.json, con apply.py --demo-data data.json --demo-data poblada.json, o con model/demo/demo.sh sembrar. Todo es ficticio. No es para el entorno de los e2e: cambia los conteos del catálogo y de las ediciones.",
+  "users": [
+    {
+      "email": "teresa.tutora@demo.wasichai-learning.test",
+      "displayName": "Teresa Tutora (demo)",
+      "roles": ["DOCENTE"]
+    },
+    {
+      "email": "pablo.profesor@demo.wasichai-learning.test",
+      "displayName": "Pablo Profesor (demo)",
+      "roles": ["DOCENTE"]
+    },
+    {
+      "email": "ana.alvarado@demo.wasichai-learning.test",
+      "displayName": "Ana Alvarado (demo)",
+      "roles": ["ESTUDIANTE"]
+    },
+    {
+      "email": "bruno.benites@demo.wasichai-learning.test",
+      "displayName": "Bruno Benites (demo)",
+      "roles": ["ESTUDIANTE"]
+    },
+    {
+      "email": "carla.cardenas@demo.wasichai-learning.test",
+      "displayName": "Carla Cárdenas (demo)",
+      "roles": ["ESTUDIANTE"]
+    },
+    {
+      "email": "dario.davila@demo.wasichai-learning.test",
+      "displayName": "Darío Dávila (demo)",
+      "roles": ["ESTUDIANTE"]
+    },
+    {
+      "email": "elena.espinoza@demo.wasichai-learning.test",
+      "displayName": "Elena Espinoza (demo)",
+      "roles": ["ESTUDIANTE"]
+    },
+    {
+      "email": "fabio.flores@demo.wasichai-learning.test",
+      "displayName": "Fabio Flores (demo)",
+      "roles": ["ESTUDIANTE"]
+    },
+    {
+      "email": "gloria.gamarra@demo.wasichai-learning.test",
+      "displayName": "Gloria Gamarra (demo)",
+      "roles": ["ESTUDIANTE"]
+    },
+    {
+      "email": "hugo.huaman@demo.wasichai-learning.test",
+      "displayName": "Hugo Huamán (demo)",
+      "roles": ["ESTUDIANTE"]
+    },
+    {
+      "email": "irene.ibarra@demo.wasichai-learning.test",
+      "displayName": "Irene Ibarra (demo)",
+      "roles": ["ESTUDIANTE"]
+    },
+    {
+      "email": "julio.jara@demo.wasichai-learning.test",
+      "displayName": "Julio Jara (demo)",
+      "roles": ["ESTUDIANTE"]
+    },
+    {
+      "email": "karen.kong@demo.wasichai-learning.test",
+      "displayName": "Karen Kong (demo)",
+      "roles": ["ESTUDIANTE"]
+    },
+    {
+      "email": "luis.loayza@demo.wasichai-learning.test",
+      "displayName": "Luis Loayza (demo)",
+      "roles": ["ESTUDIANTE"]
+    },
+    {
+      "email": "maria.mendoza@demo.wasichai-learning.test",
+      "displayName": "María Mendoza (demo)",
+      "roles": ["ESTUDIANTE"]
+    },
+    {
+      "email": "nicolas.nunez@demo.wasichai-learning.test",
+      "displayName": "Nicolás Núñez (demo)",
+      "roles": ["ESTUDIANTE"]
+    },
+    {
+      "email": "olga.ortiz@demo.wasichai-learning.test",
+      "displayName": "Olga Ortiz (demo)",
+      "roles": ["ESTUDIANTE"]
+    },
+    {
+      "email": "pedro.paredes@demo.wasichai-learning.test",
+      "displayName": "Pedro Paredes (demo)",
+      "roles": ["ESTUDIANTE"]
+    },
+    {
+      "email": "raquel.rojas@demo.wasichai-learning.test",
+      "displayName": "Raquel Rojas (demo)",
+      "roles": ["ESTUDIANTE"]
+    },
+    {
+      "email": "sofia.salas@demo.wasichai-learning.test",
+      "displayName": "Sofía Salas (demo)",
+      "roles": ["ESTUDIANTE"]
+    },
+    {
+      "email": "tomas.torres@demo.wasichai-learning.test",
+      "displayName": "Tomás Torres (demo)",
+      "roles": ["ESTUDIANTE"]
+    },
+    {
+      "email": "ursula.urbina@demo.wasichai-learning.test",
+      "displayName": "Úrsula Urbina (demo)",
+      "roles": ["ESTUDIANTE"]
+    },
+    {
+      "email": "victor.vargas@demo.wasichai-learning.test",
+      "displayName": "Víctor Vargas (demo)",
+      "roles": ["ESTUDIANTE"]
+    },
+    {
+      "email": "wendy.wong@demo.wasichai-learning.test",
+      "displayName": "Wendy Wong (demo)",
+      "roles": ["ESTUDIANTE"]
+    },
+    {
+      "email": "ximena.yupanqui@demo.wasichai-learning.test",
+      "displayName": "Ximena Yupanqui (demo)",
+      "roles": ["ESTUDIANTE"]
+    },
+    {
+      "email": "zoe.zapata@demo.wasichai-learning.test",
+      "displayName": "Zoe Zapata (demo)",
+      "roles": ["ESTUDIANTE"]
+    }
+  ],
+  "records": [
+    {
+      "ref": "cat-competencias-digitales",
+      "object": "categoria",
+      "key": ["slug"],
+      "attributes": {
+        "nombre": "Competencias digitales para el servicio público",
+        "slug": "competencias-digitales",
+        "orden": 4,
+        "descripcion": "Habilidades del día a día de una oficina pública: cuidar los datos de las personas y convertir registros en reportes."
+      }
+    },
+    {
+      "ref": "perfil-teresa",
+      "object": "perfil_docente",
+      "key": ["usuario_id"],
+      "attributes": {
+        "nombre_publico": "Teresa Tutora (demo)",
+        "titulo_profesional": "Abogada (perfil ficticio)",
+        "especialidades": "Protección de datos personales; atención al público",
+        "perfil_publico": true,
+        "biografia": "Perfil ficticio de demostración. Representa a una docente que acompaña a equipos de atención en el cuidado de los datos de las personas."
+      },
+      "users": {
+        "usuario_id": "teresa.tutora@demo.wasichai-learning.test"
+      }
+    },
+    {
+      "ref": "perfil-pablo",
+      "object": "perfil_docente",
+      "key": ["usuario_id"],
+      "attributes": {
+        "nombre_publico": "Pablo Profesor (demo)",
+        "titulo_profesional": "Economista (perfil ficticio)",
+        "especialidades": "Hojas de cálculo; reportes de gestión",
+        "perfil_publico": true,
+        "biografia": "Perfil ficticio de demostración. Representa a un docente que enseña a pasar de una tabla de registros a un reporte que se entiende."
+      },
+      "users": {
+        "usuario_id": "pablo.profesor@demo.wasichai-learning.test"
+      }
+    },
+    {
+      "ref": "curso-datos",
+      "object": "curso",
+      "key": ["codigo"],
+      "attributes": {
+        "codigo": "DATOS-101",
+        "slug": "datos-personales-en-la-atencion",
+        "titulo": "Datos personales en la atención al público",
+        "resumen": "Qué es un dato personal, qué pedir y qué no, y cómo atender en ventanilla, por correo o por teléfono sin exponer a nadie.",
+        "idioma": "es",
+        "nivel": "INICIAL"
+      },
+      "refs": {
+        "categoria": "cat-competencias-digitales"
+      }
+    },
+    {
+      "ref": "version-datos-1",
+      "object": "version_curso",
+      "key": ["curso", "numero"],
+      "attributes": {
+        "numero": 1,
+        "estado": "PUBLICADA",
+        "horas_supervisadas_semana": 0,
+        "sistema_credito": "NINGUNO",
+        "contenido_ilustrativo": true,
+        "fuentes": "Contenido propio de la demostración de wasichai-learning.",
+        "regla_lecciones": true,
+        "regla_evaluaciones": true,
+        "modalidad": "HIBRIDA",
+        "semanas": 2,
+        "horas_teoria_semana": 2,
+        "horas_practica_semana": 2,
+        "horas_autonomas_semana": 2,
+        "objetivos": "Reconocer los datos personales y los datos sensibles que pasan por una oficina.\nPedir solo los datos que un trámite necesita.\nResponder una solicitud sin entregar datos de otra persona.",
+        "resultados_aprendizaje": "Clasifica los datos de un formulario en personales, sensibles y no personales.\nRedacta la respuesta a una solicitud de datos ajenos con el camino correcto para pedirlos.",
+        "requisitos": "Saber usar un navegador web. Curso ilustrativo de la demostración.",
+        "sistema_evaluacion": "Evaluación de la unidad 1: preguntas que se corrigen solas y un caso que corrige el docente. Nota mínima: 60 sobre 100.\nConsulta en grupo de la unidad 2.",
+        "certificacion": "Constancia de participación al completar las lecciones y aprobar la evaluación. No otorga créditos académicos.",
+        "publicada_en": "2026-10-30T15:00:00Z",
+        "conocimientos_previos_claves": "navegador-web"
+      },
+      "refs": {
+        "curso": "curso-datos"
+      },
+      "users": {
+        "autor_id": "creador@demo.wasichai-learning.test"
+      }
+    },
+    {
+      "ref": "datos-v1-u1",
+      "object": "unidad",
+      "key": ["version_curso", "orden"],
+      "attributes": {
+        "orden": 1,
+        "titulo": "Qué es un dato personal",
+        "descripcion": "Reconocer los datos de una persona y pedir solo los necesarios."
+      },
+      "refs": {
+        "version_curso": "version-datos-1"
+      }
+    },
+    {
+      "ref": "datos-v1-u1-l1",
+      "object": "leccion",
+      "key": ["unidad", "orden"],
+      "attributes": {
+        "orden": 1,
+        "titulo": "Datos personales y datos sensibles",
+        "tipo": "LECTURA",
+        "duracion_minutos": 20,
+        "resumen": "Un dato personal identifica a alguien o permite identificarlo; uno sensible, además, puede dañarlo si se expone."
+      },
+      "refs": {
+        "unidad": "datos-v1-u1"
+      }
+    },
+    {
+      "ref": "datos-v1-u1-l2",
+      "object": "leccion",
+      "key": ["unidad", "orden"],
+      "attributes": {
+        "orden": 2,
+        "titulo": "Pedir solo lo necesario",
+        "tipo": "LECTURA",
+        "duracion_minutos": 15,
+        "resumen": "Cada dato de un formulario tiene que responder a una pregunta: ¿para qué lo necesita este trámite?"
+      },
+      "refs": {
+        "unidad": "datos-v1-u1"
+      }
+    },
+    {
+      "ref": "datos-v1-u1-l3",
+      "object": "leccion",
+      "key": ["unidad", "orden"],
+      "attributes": {
+        "orden": 3,
+        "titulo": "Evaluación: reconocer datos personales",
+        "tipo": "EVALUACION",
+        "duracion_minutos": 20,
+        "resumen": "Tres preguntas que se corrigen solas y un caso que corrige el docente."
+      },
+      "refs": {
+        "unidad": "datos-v1-u1"
+      }
+    },
+    {
+      "ref": "datos-v1-u2",
+      "object": "unidad",
+      "key": ["version_curso", "orden"],
+      "attributes": {
+        "orden": 2,
+        "titulo": "Atender sin exponer",
+        "descripcion": "La ventanilla, el correo y el teléfono, con casos."
+      },
+      "refs": {
+        "version_curso": "version-datos-1"
+      }
+    },
+    {
+      "ref": "datos-v1-u2-l1",
+      "object": "leccion",
+      "key": ["unidad", "orden"],
+      "attributes": {
+        "orden": 1,
+        "titulo": "La ventanilla y la pantalla",
+        "tipo": "LECTURA",
+        "duracion_minutos": 15,
+        "resumen": "Lo que se ve desde el otro lado del mostrador: pantallas, expedientes abiertos y conversaciones en voz alta."
+      },
+      "refs": {
+        "unidad": "datos-v1-u2"
+      }
+    },
+    {
+      "ref": "datos-v1-u2-l2",
+      "object": "leccion",
+      "key": ["unidad", "orden"],
+      "attributes": {
+        "orden": 2,
+        "titulo": "Responder por correo y por teléfono",
+        "tipo": "LECTURA",
+        "duracion_minutos": 15,
+        "resumen": "Cómo confirmar con quién se habla antes de dar un dato, y qué decir cuando no se puede."
+      },
+      "refs": {
+        "unidad": "datos-v1-u2"
+      }
+    },
+    {
+      "ref": "datos-v1-u2-l3",
+      "object": "leccion",
+      "key": ["unidad", "orden"],
+      "attributes": {
+        "orden": 3,
+        "titulo": "Consulta en grupo: casos de la ventanilla",
+        "tipo": "SESION",
+        "duracion_minutos": 60,
+        "resumen": "Se completa al asistir: el docente registra la asistencia."
+      },
+      "refs": {
+        "unidad": "datos-v1-u2"
+      }
+    },
+    {
+      "ref": "eval-datos",
+      "object": "evaluacion",
+      "key": ["codigo"],
+      "attributes": {
+        "codigo": "DEMO-EVAL-DATOS",
+        "titulo": "Evaluación: reconocer datos personales",
+        "intentos_max": 2,
+        "nota_minima": 60,
+        "mostrar_soluciones": "AL_ENVIAR",
+        "instrucciones": "Responde las cuatro preguntas. La última la corrige el docente con su rúbrica."
+      },
+      "refs": {
+        "leccion": "datos-v1-u1-l3"
+      }
+    },
+    {
+      "ref": "datos-q1",
+      "object": "pregunta",
+      "key": ["evaluacion", "orden"],
+      "attributes": {
+        "orden": 1,
+        "tipo": "UNICA",
+        "enunciado": "¿Cuál de estos es un dato personal?",
+        "puntos": 2
+      },
+      "refs": {
+        "evaluacion": "eval-datos"
+      }
+    },
+    {
+      "ref": "datos-q1-a",
+      "object": "opcion",
+      "key": ["pregunta", "orden"],
+      "attributes": {
+        "orden": 1,
+        "texto": "El número de teléfono de un vecino",
+        "correcta": true
+      },
+      "refs": {
+        "pregunta": "datos-q1"
+      }
+    },
+    {
+      "ref": "datos-q1-b",
+      "object": "opcion",
+      "key": ["pregunta", "orden"],
+      "attributes": {
+        "orden": 2,
+        "texto": "El horario de atención de la oficina",
+        "correcta": false
+      },
+      "refs": {
+        "pregunta": "datos-q1"
+      }
+    },
+    {
+      "ref": "datos-q1-c",
+      "object": "opcion",
+      "key": ["pregunta", "orden"],
+      "attributes": {
+        "orden": 3,
+        "texto": "La dirección de la sede central",
+        "correcta": false
+      },
+      "refs": {
+        "pregunta": "datos-q1"
+      }
+    },
+    {
+      "ref": "datos-q2",
+      "object": "pregunta",
+      "key": ["evaluacion", "orden"],
+      "attributes": {
+        "orden": 2,
+        "tipo": "MULTIPLE",
+        "enunciado": "¿Cuáles de estos son datos sensibles?",
+        "puntos": 3
+      },
+      "refs": {
+        "evaluacion": "eval-datos"
+      }
+    },
+    {
+      "ref": "datos-q2-a",
+      "object": "opcion",
+      "key": ["pregunta", "orden"],
+      "attributes": {
+        "orden": 1,
+        "texto": "Un diagnóstico médico",
+        "correcta": true
+      },
+      "refs": {
+        "pregunta": "datos-q2"
+      }
+    },
+    {
+      "ref": "datos-q2-b",
+      "object": "opcion",
+      "key": ["pregunta", "orden"],
+      "attributes": {
+        "orden": 2,
+        "texto": "La afiliación a un sindicato",
+        "correcta": true
+      },
+      "refs": {
+        "pregunta": "datos-q2"
+      }
+    },
+    {
+      "ref": "datos-q2-c",
+      "object": "opcion",
+      "key": ["pregunta", "orden"],
+      "attributes": {
+        "orden": 3,
+        "texto": "El nombre de la calle de la oficina",
+        "correcta": false
+      },
+      "refs": {
+        "pregunta": "datos-q2"
+      }
+    },
+    {
+      "ref": "datos-q3",
+      "object": "pregunta",
+      "key": ["evaluacion", "orden"],
+      "attributes": {
+        "orden": 3,
+        "tipo": "VERDADERO_FALSO",
+        "enunciado": "Para entregar un certificado basta con que lo pida por teléfono cualquier familiar.",
+        "puntos": 1
+      },
+      "refs": {
+        "evaluacion": "eval-datos"
+      }
+    },
+    {
+      "ref": "datos-q3-a",
+      "object": "opcion",
+      "key": ["pregunta", "orden"],
+      "attributes": {
+        "orden": 1,
+        "texto": "Verdadero",
+        "correcta": false
+      },
+      "refs": {
+        "pregunta": "datos-q3"
+      }
+    },
+    {
+      "ref": "datos-q3-b",
+      "object": "opcion",
+      "key": ["pregunta", "orden"],
+      "attributes": {
+        "orden": 2,
+        "texto": "Falso",
+        "correcta": true
+      },
+      "refs": {
+        "pregunta": "datos-q3"
+      }
+    },
+    {
+      "ref": "datos-q4",
+      "object": "pregunta",
+      "key": ["evaluacion", "orden"],
+      "attributes": {
+        "orden": 4,
+        "tipo": "ABIERTA",
+        "enunciado": "Un vecino pide por correo el expediente de otra persona. Escribe la respuesta que le darías.",
+        "puntos": 4
+      },
+      "refs": {
+        "evaluacion": "eval-datos"
+      }
+    },
+    {
+      "ref": "datos-q4-r1",
+      "object": "criterio_rubrica",
+      "key": ["pregunta", "orden"],
+      "attributes": {
+        "orden": 1,
+        "descripcion": "Explica por qué no se le puede entregar",
+        "puntos": 2
+      },
+      "refs": {
+        "pregunta": "datos-q4"
+      }
+    },
+    {
+      "ref": "datos-q4-r2",
+      "object": "criterio_rubrica",
+      "key": ["pregunta", "orden"],
+      "attributes": {
+        "orden": 2,
+        "descripcion": "Indica el camino correcto para pedirlo",
+        "puntos": 2
+      },
+      "refs": {
+        "pregunta": "datos-q4"
+      }
+    },
+    {
+      "ref": "edicion-datos-a",
+      "object": "edicion_curso",
+      "key": ["codigo"],
+      "attributes": {
+        "codigo": "DATOS-101-A",
+        "estado": "INSCRIPCION_ABIERTA",
+        "fecha_inicio": "hoy+10",
+        "fecha_fin": "hoy+24",
+        "zona_horaria": "America/Lima",
+        "inscripcion_desde": "hoy-6",
+        "inscripcion_hasta": "hoy+9",
+        "capacidad": 60,
+        "calendario": "Dos semanas, a su ritmo. Bienvenida el primer día y consulta en grupo el cuarto, a las 18:00 (hora de Lima)."
+      },
+      "refs": {
+        "version_curso": "version-datos-1"
+      }
+    },
+    {
+      "ref": "edicion-datos-a-teresa",
+      "object": "docente_edicion",
+      "key": ["edicion_curso", "perfil_docente"],
+      "attributes": {
+        "rol_docente": "TITULAR"
+      },
+      "refs": {
+        "edicion_curso": "edicion-datos-a",
+        "perfil_docente": "perfil-teresa"
+      },
+      "users": {
+        "usuario_id": "teresa.tutora@demo.wasichai-learning.test"
+      }
+    },
+    {
+      "ref": "edicion-datos-a-pablo",
+      "object": "docente_edicion",
+      "key": ["edicion_curso", "perfil_docente"],
+      "attributes": {
+        "rol_docente": "ASISTENTE"
+      },
+      "refs": {
+        "edicion_curso": "edicion-datos-a",
+        "perfil_docente": "perfil-pablo"
+      },
+      "users": {
+        "usuario_id": "pablo.profesor@demo.wasichai-learning.test"
+      }
+    },
+    {
+      "ref": "edicion-datos-b",
+      "object": "edicion_curso",
+      "key": ["codigo"],
+      "attributes": {
+        "codigo": "DATOS-101-B",
+        "estado": "PROGRAMADA",
+        "fecha_inicio": "hoy+70",
+        "fecha_fin": "hoy+84",
+        "zona_horaria": "America/Lima",
+        "inscripcion_desde": "hoy+40",
+        "inscripcion_hasta": "hoy+65",
+        "capacidad": 60,
+        "calendario": "Dos semanas, a su ritmo, con una consulta en grupo."
+      },
+      "refs": {
+        "version_curso": "version-datos-1"
+      }
+    },
+    {
+      "ref": "edicion-datos-b-teresa",
+      "object": "docente_edicion",
+      "key": ["edicion_curso", "perfil_docente"],
+      "attributes": {
+        "rol_docente": "TITULAR"
+      },
+      "refs": {
+        "edicion_curso": "edicion-datos-b",
+        "perfil_docente": "perfil-teresa"
+      },
+      "users": {
+        "usuario_id": "teresa.tutora@demo.wasichai-learning.test"
+      }
+    },
+    {
+      "ref": "curso-hojas",
+      "object": "curso",
+      "key": ["codigo"],
+      "attributes": {
+        "codigo": "HOJAS-101",
+        "slug": "hojas-de-calculo-para-reportes",
+        "titulo": "Hojas de cálculo para reportes de gestión",
+        "resumen": "De una tabla de atenciones desordenada a un reporte mensual de una página: ordenar, contar, resumir y graficar.",
+        "idioma": "es",
+        "nivel": "INTERMEDIO"
+      },
+      "refs": {
+        "categoria": "cat-competencias-digitales"
+      }
+    },
+    {
+      "ref": "version-hojas-1",
+      "object": "version_curso",
+      "key": ["curso", "numero"],
+      "attributes": {
+        "numero": 1,
+        "estado": "PUBLICADA",
+        "horas_supervisadas_semana": 0,
+        "sistema_credito": "NINGUNO",
+        "contenido_ilustrativo": true,
+        "fuentes": "Contenido propio de la demostración de wasichai-learning.",
+        "regla_lecciones": true,
+        "regla_evaluaciones": true,
+        "modalidad": "HIBRIDA",
+        "semanas": 3,
+        "horas_teoria_semana": 2,
+        "horas_practica_semana": 3,
+        "horas_autonomas_semana": 2,
+        "objetivos": "Ordenar una tabla de registros para poder contarla.\nUsar fórmulas y tablas dinámicas para resumirla.\nPresentar el resultado en un reporte de una página.",
+        "resultados_aprendizaje": "Limpia una tabla con duplicados y formatos mezclados.\nCalcula totales y conteos por categoría.\nEntrega un reporte mensual con un gráfico que se entiende sin explicación.",
+        "requisitos": "Haber usado alguna vez una hoja de cálculo. Curso ilustrativo de la demostración.",
+        "sistema_evaluacion": "Laboratorio de la unidad 1 y evaluación con preguntas automáticas y una abierta. Nota mínima: 60 sobre 100.\nTaller en vivo de la unidad 2.",
+        "certificacion": "Constancia de participación al completar las lecciones y aprobar la evaluación. No otorga créditos académicos.",
+        "publicada_en": "2026-10-31T15:00:00Z",
+        "conocimientos_previos_claves": "hoja-de-calculo"
+      },
+      "refs": {
+        "curso": "curso-hojas"
+      },
+      "users": {
+        "autor_id": "creador@demo.wasichai-learning.test"
+      }
+    },
+    {
+      "ref": "hojas-v1-u1",
+      "object": "unidad",
+      "key": ["version_curso", "orden"],
+      "attributes": {
+        "orden": 1,
+        "titulo": "Datos ordenados",
+        "descripcion": "Una tabla que se puede contar."
+      },
+      "refs": {
+        "version_curso": "version-hojas-1"
+      }
+    },
+    {
+      "ref": "hojas-v1-u1-l1",
+      "object": "leccion",
+      "key": ["unidad", "orden"],
+      "attributes": {
+        "orden": 1,
+        "titulo": "Una fila por caso, una columna por dato",
+        "tipo": "LECTURA",
+        "duracion_minutos": 20,
+        "resumen": "La regla que hace posible todo lo demás, con ejemplos de tablas que la rompen."
+      },
+      "refs": {
+        "unidad": "hojas-v1-u1"
+      }
+    },
+    {
+      "ref": "hojas-v1-u1-l2",
+      "object": "leccion",
+      "key": ["unidad", "orden"],
+      "attributes": {
+        "orden": 2,
+        "titulo": "Laboratorio: limpiar una tabla de atenciones",
+        "tipo": "LABORATORIO",
+        "duracion_minutos": 90,
+        "resumen": "Una tabla sintética de atenciones con duplicados, fechas en tres formatos y celdas combinadas.",
+        "objetivo": "Dejar la tabla lista para contarla sin perder ningún caso.",
+        "requisitos": "Una hoja de cálculo cualquiera.\nLa tabla sintética que entrega el docente.",
+        "hitos": "Quitar las celdas combinadas.\nUnificar el formato de las fechas.\nMarcar y quitar los duplicados.",
+        "criterios_aceptacion": "Cada fila es una atención.\nTodas las fechas tienen el mismo formato.\nEl total de filas cuadra con el conteo inicial menos los duplicados.",
+        "entregables": "La tabla limpia.\nUna nota con cuántos duplicados se quitaron y por qué."
+      },
+      "refs": {
+        "unidad": "hojas-v1-u1"
+      }
+    },
+    {
+      "ref": "hojas-v1-u1-l3",
+      "object": "leccion",
+      "key": ["unidad", "orden"],
+      "attributes": {
+        "orden": 3,
+        "titulo": "Evaluación: fórmulas básicas",
+        "tipo": "EVALUACION",
+        "duracion_minutos": 20,
+        "resumen": "Dos preguntas que se corrigen solas y una abierta que corrige el docente."
+      },
+      "refs": {
+        "unidad": "hojas-v1-u1"
+      }
+    },
+    {
+      "ref": "hojas-v1-u2",
+      "object": "unidad",
+      "key": ["version_curso", "orden"],
+      "attributes": {
+        "orden": 2,
+        "titulo": "Del dato al reporte",
+        "descripcion": "Resumir y mostrar."
+      },
+      "refs": {
+        "version_curso": "version-hojas-1"
+      }
+    },
+    {
+      "ref": "hojas-v1-u2-l1",
+      "object": "leccion",
+      "key": ["unidad", "orden"],
+      "attributes": {
+        "orden": 1,
+        "titulo": "Tablas dinámicas sin misterio",
+        "tipo": "LECTURA",
+        "duracion_minutos": 25,
+        "resumen": "Contar atenciones por mes y por tipo sin escribir una sola fórmula."
+      },
+      "refs": {
+        "unidad": "hojas-v1-u2"
+      }
+    },
+    {
+      "ref": "hojas-v1-u2-l2",
+      "object": "leccion",
+      "key": ["unidad", "orden"],
+      "attributes": {
+        "orden": 2,
+        "titulo": "Gráficos que se entienden",
+        "tipo": "LECTURA",
+        "duracion_minutos": 20,
+        "resumen": "Barras para comparar, líneas para el tiempo y casi nunca tortas."
+      },
+      "refs": {
+        "unidad": "hojas-v1-u2"
+      }
+    },
+    {
+      "ref": "hojas-v1-u2-l3",
+      "object": "leccion",
+      "key": ["unidad", "orden"],
+      "attributes": {
+        "orden": 3,
+        "titulo": "Taller en vivo: el reporte del mes",
+        "tipo": "SESION",
+        "duracion_minutos": 90,
+        "resumen": "Se completa al asistir: el docente registra la asistencia."
+      },
+      "refs": {
+        "unidad": "hojas-v1-u2"
+      }
+    },
+    {
+      "ref": "eval-hojas",
+      "object": "evaluacion",
+      "key": ["codigo"],
+      "attributes": {
+        "codigo": "DEMO-EVAL-HOJAS",
+        "titulo": "Evaluación: fórmulas básicas",
+        "intentos_max": 2,
+        "nota_minima": 60,
+        "mostrar_soluciones": "AL_ENVIAR"
+      },
+      "refs": {
+        "leccion": "hojas-v1-u1-l3"
+      }
+    },
+    {
+      "ref": "hojas-q1",
+      "object": "pregunta",
+      "key": ["evaluacion", "orden"],
+      "attributes": {
+        "orden": 1,
+        "tipo": "UNICA",
+        "enunciado": "¿Qué fórmula suma el rango B2:B10?",
+        "puntos": 3
+      },
+      "refs": {
+        "evaluacion": "eval-hojas"
+      }
+    },
+    {
+      "ref": "hojas-q1-a",
+      "object": "opcion",
+      "key": ["pregunta", "orden"],
+      "attributes": {
+        "orden": 1,
+        "texto": "=SUMA(B2:B10)",
+        "correcta": true
+      },
+      "refs": {
+        "pregunta": "hojas-q1"
+      }
+    },
+    {
+      "ref": "hojas-q1-b",
+      "object": "opcion",
+      "key": ["pregunta", "orden"],
+      "attributes": {
+        "orden": 2,
+        "texto": "=B2+B10",
+        "correcta": false
+      },
+      "refs": {
+        "pregunta": "hojas-q1"
+      }
+    },
+    {
+      "ref": "hojas-q1-c",
+      "object": "opcion",
+      "key": ["pregunta", "orden"],
+      "attributes": {
+        "orden": 3,
+        "texto": "=CONTAR(B2:B10)",
+        "correcta": false
+      },
+      "refs": {
+        "pregunta": "hojas-q1"
+      }
+    },
+    {
+      "ref": "hojas-q2",
+      "object": "pregunta",
+      "key": ["evaluacion", "orden"],
+      "attributes": {
+        "orden": 2,
+        "tipo": "CORTA",
+        "enunciado": "¿Qué función cuenta las celdas que no están vacías? Escribe solo su nombre.",
+        "puntos": 2,
+        "respuestas_aceptadas": "CONTARA\nCOUNTA"
+      },
+      "refs": {
+        "evaluacion": "eval-hojas"
+      }
+    },
+    {
+      "ref": "hojas-q3",
+      "object": "pregunta",
+      "key": ["evaluacion", "orden"],
+      "attributes": {
+        "orden": 3,
+        "tipo": "ABIERTA",
+        "enunciado": "Describe cómo encontrarías las filas duplicadas de una tabla de atenciones.",
+        "puntos": 5
+      },
+      "refs": {
+        "evaluacion": "eval-hojas"
+      }
+    },
+    {
+      "ref": "hojas-q3-r1",
+      "object": "criterio_rubrica",
+      "key": ["pregunta", "orden"],
+      "attributes": {
+        "orden": 1,
+        "descripcion": "Dice qué columnas definen un duplicado",
+        "puntos": 3
+      },
+      "refs": {
+        "pregunta": "hojas-q3"
+      }
+    },
+    {
+      "ref": "hojas-q3-r2",
+      "object": "criterio_rubrica",
+      "key": ["pregunta", "orden"],
+      "attributes": {
+        "orden": 2,
+        "descripcion": "Propone cómo comprobarlo antes de borrar",
+        "puntos": 2
+      },
+      "refs": {
+        "pregunta": "hojas-q3"
+      }
+    },
+    {
+      "ref": "edicion-hojas-a",
+      "object": "edicion_curso",
+      "key": ["codigo"],
+      "attributes": {
+        "codigo": "HOJAS-101-A",
+        "estado": "INSCRIPCION_ABIERTA",
+        "fecha_inicio": "hoy+8",
+        "fecha_fin": "hoy+29",
+        "zona_horaria": "America/Lima",
+        "inscripcion_desde": "hoy-10",
+        "inscripcion_hasta": "hoy+7",
+        "capacidad": 10,
+        "calendario": "Tres semanas. Taller en vivo en la tercera, a las 10:00 (hora de Lima). Grupo pequeño: diez plazas."
+      },
+      "refs": {
+        "version_curso": "version-hojas-1"
+      }
+    },
+    {
+      "ref": "edicion-hojas-a-pablo",
+      "object": "docente_edicion",
+      "key": ["edicion_curso", "perfil_docente"],
+      "attributes": {
+        "rol_docente": "TITULAR"
+      },
+      "refs": {
+        "edicion_curso": "edicion-hojas-a",
+        "perfil_docente": "perfil-pablo"
+      },
+      "users": {
+        "usuario_id": "pablo.profesor@demo.wasichai-learning.test"
+      }
+    },
+    {
+      "ref": "edicion-hojas-a-diego",
+      "object": "docente_edicion",
+      "key": ["edicion_curso", "perfil_docente"],
+      "attributes": {
+        "rol_docente": "ASISTENTE"
+      },
+      "refs": {
+        "edicion_curso": "edicion-hojas-a",
+        "perfil_docente": "perfil-diego"
+      },
+      "users": {
+        "usuario_id": "docente@demo.wasichai-learning.test"
+      }
+    },
+    {
+      "ref": "edicion-hojas-b",
+      "object": "edicion_curso",
+      "key": ["codigo"],
+      "attributes": {
+        "codigo": "HOJAS-101-B",
+        "estado": "PROGRAMADA",
+        "fecha_inicio": "hoy+90",
+        "fecha_fin": "hoy+111",
+        "zona_horaria": "America/Lima",
+        "inscripcion_desde": "hoy+60",
+        "inscripcion_hasta": "hoy+85",
+        "capacidad": 25,
+        "calendario": "Tres semanas, con un taller en vivo."
+      },
+      "refs": {
+        "version_curso": "version-hojas-1"
+      }
+    },
+    {
+      "ref": "edicion-hojas-b-pablo",
+      "object": "docente_edicion",
+      "key": ["edicion_curso", "perfil_docente"],
+      "attributes": {
+        "rol_docente": "TITULAR"
+      },
+      "refs": {
+        "edicion_curso": "edicion-hojas-b",
+        "perfil_docente": "perfil-pablo"
+      },
+      "users": {
+        "usuario_id": "pablo.profesor@demo.wasichai-learning.test"
+      }
+    }
+  ],
+  "enrollments": [
+    {
+      "user": "ana.alvarado@demo.wasichai-learning.test",
+      "offering": "edicion-datos-a"
+    },
+    {
+      "user": "bruno.benites@demo.wasichai-learning.test",
+      "offering": "edicion-datos-a"
+    },
+    {
+      "user": "carla.cardenas@demo.wasichai-learning.test",
+      "offering": "edicion-datos-a"
+    },
+    {
+      "user": "dario.davila@demo.wasichai-learning.test",
+      "offering": "edicion-datos-a"
+    },
+    {
+      "user": "elena.espinoza@demo.wasichai-learning.test",
+      "offering": "edicion-datos-a"
+    },
+    {
+      "user": "fabio.flores@demo.wasichai-learning.test",
+      "offering": "edicion-datos-a"
+    },
+    {
+      "user": "gloria.gamarra@demo.wasichai-learning.test",
+      "offering": "edicion-datos-a"
+    },
+    {
+      "user": "hugo.huaman@demo.wasichai-learning.test",
+      "offering": "edicion-datos-a"
+    },
+    {
+      "user": "irene.ibarra@demo.wasichai-learning.test",
+      "offering": "edicion-datos-a"
+    },
+    {
+      "user": "julio.jara@demo.wasichai-learning.test",
+      "offering": "edicion-datos-a"
+    },
+    {
+      "user": "karen.kong@demo.wasichai-learning.test",
+      "offering": "edicion-datos-a"
+    },
+    {
+      "user": "luis.loayza@demo.wasichai-learning.test",
+      "offering": "edicion-datos-a"
+    },
+    {
+      "user": "maria.mendoza@demo.wasichai-learning.test",
+      "offering": "edicion-datos-a"
+    },
+    {
+      "user": "nicolas.nunez@demo.wasichai-learning.test",
+      "offering": "edicion-datos-a"
+    },
+    {
+      "user": "olga.ortiz@demo.wasichai-learning.test",
+      "offering": "edicion-datos-a"
+    },
+    {
+      "user": "pedro.paredes@demo.wasichai-learning.test",
+      "offering": "edicion-datos-a"
+    },
+    {
+      "user": "raquel.rojas@demo.wasichai-learning.test",
+      "offering": "edicion-datos-a"
+    },
+    {
+      "user": "estudiante@demo.wasichai-learning.test",
+      "offering": "edicion-datos-a"
+    },
+    {
+      "user": "maria.mendoza@demo.wasichai-learning.test",
+      "offering": "edicion-hojas-a"
+    },
+    {
+      "user": "nicolas.nunez@demo.wasichai-learning.test",
+      "offering": "edicion-hojas-a"
+    },
+    {
+      "user": "olga.ortiz@demo.wasichai-learning.test",
+      "offering": "edicion-hojas-a"
+    },
+    {
+      "user": "pedro.paredes@demo.wasichai-learning.test",
+      "offering": "edicion-hojas-a"
+    },
+    {
+      "user": "raquel.rojas@demo.wasichai-learning.test",
+      "offering": "edicion-hojas-a"
+    },
+    {
+      "user": "sofia.salas@demo.wasichai-learning.test",
+      "offering": "edicion-hojas-a"
+    },
+    {
+      "user": "tomas.torres@demo.wasichai-learning.test",
+      "offering": "edicion-hojas-a"
+    },
+    {
+      "user": "ursula.urbina@demo.wasichai-learning.test",
+      "offering": "edicion-hojas-a"
+    },
+    {
+      "user": "victor.vargas@demo.wasichai-learning.test",
+      "offering": "edicion-hojas-a"
+    },
+    {
+      "user": "wendy.wong@demo.wasichai-learning.test",
+      "offering": "edicion-hojas-a"
+    },
+    {
+      "user": "tomas.torres@demo.wasichai-learning.test",
+      "offering": "edicion-corto-a"
+    },
+    {
+      "user": "ursula.urbina@demo.wasichai-learning.test",
+      "offering": "edicion-corto-a"
+    },
+    {
+      "user": "victor.vargas@demo.wasichai-learning.test",
+      "offering": "edicion-corto-a"
+    },
+    {
+      "user": "wendy.wong@demo.wasichai-learning.test",
+      "offering": "edicion-corto-a"
+    },
+    {
+      "user": "ximena.yupanqui@demo.wasichai-learning.test",
+      "offering": "edicion-corto-a"
+    },
+    {
+      "user": "zoe.zapata@demo.wasichai-learning.test",
+      "offering": "edicion-corto-a"
+    }
+  ],
+  "progress": [
+    {
+      "student": "ana.alvarado@demo.wasichai-learning.test",
+      "offering": "edicion-datos-a",
+      "lessons": ["datos-v1-u1-l1", "datos-v1-u1-l2", "datos-v1-u2-l1", "datos-v1-u2-l2"]
+    },
+    {
+      "student": "bruno.benites@demo.wasichai-learning.test",
+      "offering": "edicion-datos-a",
+      "lessons": ["datos-v1-u1-l1", "datos-v1-u1-l2", "datos-v1-u2-l1", "datos-v1-u2-l2"]
+    },
+    {
+      "student": "carla.cardenas@demo.wasichai-learning.test",
+      "offering": "edicion-datos-a",
+      "lessons": ["datos-v1-u1-l1", "datos-v1-u1-l2", "datos-v1-u2-l1", "datos-v1-u2-l2"]
+    },
+    {
+      "student": "dario.davila@demo.wasichai-learning.test",
+      "offering": "edicion-datos-a",
+      "lessons": ["datos-v1-u1-l1", "datos-v1-u1-l2", "datos-v1-u2-l1", "datos-v1-u2-l2"]
+    },
+    {
+      "student": "elena.espinoza@demo.wasichai-learning.test",
+      "offering": "edicion-datos-a",
+      "lessons": ["datos-v1-u1-l1", "datos-v1-u1-l2", "datos-v1-u2-l1", "datos-v1-u2-l2"]
+    },
+    {
+      "student": "fabio.flores@demo.wasichai-learning.test",
+      "offering": "edicion-datos-a",
+      "lessons": ["datos-v1-u1-l1", "datos-v1-u1-l2", "datos-v1-u2-l1", "datos-v1-u2-l2"]
+    },
+    {
+      "student": "gloria.gamarra@demo.wasichai-learning.test",
+      "offering": "edicion-datos-a",
+      "lessons": ["datos-v1-u1-l1", "datos-v1-u1-l2"]
+    },
+    {
+      "student": "hugo.huaman@demo.wasichai-learning.test",
+      "offering": "edicion-datos-a",
+      "lessons": ["datos-v1-u1-l1", "datos-v1-u1-l2"]
+    },
+    {
+      "student": "irene.ibarra@demo.wasichai-learning.test",
+      "offering": "edicion-datos-a",
+      "lessons": ["datos-v1-u1-l1", "datos-v1-u1-l2"]
+    },
+    {
+      "student": "julio.jara@demo.wasichai-learning.test",
+      "offering": "edicion-datos-a",
+      "lessons": ["datos-v1-u1-l1", "datos-v1-u1-l2"]
+    },
+    {
+      "student": "karen.kong@demo.wasichai-learning.test",
+      "offering": "edicion-datos-a",
+      "lessons": ["datos-v1-u1-l1", "datos-v1-u1-l2"]
+    },
+    {
+      "student": "luis.loayza@demo.wasichai-learning.test",
+      "offering": "edicion-datos-a",
+      "lessons": ["datos-v1-u1-l1"]
+    },
+    {
+      "student": "maria.mendoza@demo.wasichai-learning.test",
+      "offering": "edicion-datos-a",
+      "lessons": ["datos-v1-u1-l1"]
+    },
+    {
+      "student": "nicolas.nunez@demo.wasichai-learning.test",
+      "offering": "edicion-datos-a",
+      "lessons": ["datos-v1-u1-l1"]
+    },
+    {
+      "student": "estudiante@demo.wasichai-learning.test",
+      "offering": "edicion-datos-a",
+      "lessons": ["datos-v1-u1-l1"]
+    },
+    {
+      "student": "maria.mendoza@demo.wasichai-learning.test",
+      "offering": "edicion-hojas-a",
+      "lessons": ["hojas-v1-u1-l1", "hojas-v1-u1-l2", "hojas-v1-u2-l1", "hojas-v1-u2-l2"]
+    },
+    {
+      "student": "nicolas.nunez@demo.wasichai-learning.test",
+      "offering": "edicion-hojas-a",
+      "lessons": ["hojas-v1-u1-l1", "hojas-v1-u1-l2", "hojas-v1-u2-l1", "hojas-v1-u2-l2"]
+    },
+    {
+      "student": "olga.ortiz@demo.wasichai-learning.test",
+      "offering": "edicion-hojas-a",
+      "lessons": ["hojas-v1-u1-l1", "hojas-v1-u1-l2", "hojas-v1-u2-l1", "hojas-v1-u2-l2"]
+    },
+    {
+      "student": "pedro.paredes@demo.wasichai-learning.test",
+      "offering": "edicion-hojas-a",
+      "lessons": ["hojas-v1-u1-l1", "hojas-v1-u1-l2", "hojas-v1-u2-l1", "hojas-v1-u2-l2"]
+    },
+    {
+      "student": "raquel.rojas@demo.wasichai-learning.test",
+      "offering": "edicion-hojas-a",
+      "lessons": ["hojas-v1-u1-l1"]
+    },
+    {
+      "student": "sofia.salas@demo.wasichai-learning.test",
+      "offering": "edicion-hojas-a",
+      "lessons": ["hojas-v1-u1-l1"]
+    },
+    {
+      "student": "tomas.torres@demo.wasichai-learning.test",
+      "offering": "edicion-hojas-a",
+      "lessons": ["hojas-v1-u1-l1"]
+    },
+    {
+      "student": "tomas.torres@demo.wasichai-learning.test",
+      "offering": "edicion-corto-a",
+      "lessons": ["corto-v1-u1-l1"]
+    },
+    {
+      "student": "ursula.urbina@demo.wasichai-learning.test",
+      "offering": "edicion-corto-a",
+      "lessons": ["corto-v1-u1-l1"]
+    },
+    {
+      "student": "victor.vargas@demo.wasichai-learning.test",
+      "offering": "edicion-corto-a",
+      "lessons": ["corto-v1-u1-l1"]
+    },
+    {
+      "student": "wendy.wong@demo.wasichai-learning.test",
+      "offering": "edicion-corto-a",
+      "lessons": ["corto-v1-u1-l1"]
+    }
+  ],
+  "sessions": [
+    {
+      "teacher": "teresa.tutora@demo.wasichai-learning.test",
+      "offering": "edicion-datos-a",
+      "lesson": null,
+      "title": "Bienvenida y dudas del curso",
+      "type": "TEORIA",
+      "modality": "VIRTUAL",
+      "durationMinutes": 30,
+      "link": "https://reunion.wasichai-learning.test/datos-bienvenida",
+      "date": "hoy+10",
+      "localTime": "18:00"
+    },
+    {
+      "teacher": "teresa.tutora@demo.wasichai-learning.test",
+      "offering": "edicion-datos-a",
+      "lesson": "datos-v1-u2-l3",
+      "title": "Consulta en grupo: casos de la ventanilla",
+      "type": "CONSULTA",
+      "modality": "VIRTUAL",
+      "durationMinutes": 60,
+      "link": "https://reunion.wasichai-learning.test/datos-consulta",
+      "date": "hoy+13",
+      "localTime": "18:00"
+    },
+    {
+      "teacher": "pablo.profesor@demo.wasichai-learning.test",
+      "offering": "edicion-hojas-a",
+      "lesson": "hojas-v1-u2-l3",
+      "title": "Taller en vivo: el reporte del mes",
+      "type": "LABORATORIO",
+      "modality": "VIRTUAL",
+      "durationMinutes": 90,
+      "link": "https://reunion.wasichai-learning.test/hojas-taller",
+      "date": "hoy+22",
+      "localTime": "10:00"
+    }
+  ],
+  "attempts": [
+    {
+      "_comentario": "Aprueba con todo bien.",
+      "student": "ana.alvarado@demo.wasichai-learning.test",
+      "offering": "edicion-datos-a",
+      "lesson": "datos-v1-u1-l3",
+      "teacher": "teresa.tutora@demo.wasichai-learning.test",
+      "answers": [
+        {
+          "question": "datos-q1",
+          "options": ["datos-q1-a"]
+        },
+        {
+          "question": "datos-q2",
+          "options": ["datos-q2-a", "datos-q2-b"]
+        },
+        {
+          "question": "datos-q3",
+          "options": ["datos-q3-b"]
+        },
+        {
+          "question": "datos-q4",
+          "text": "No puedo enviarle el expediente de otra persona: contiene sus datos personales. Si la persona le autoriza por escrito, o si usted tiene un interés legítimo, puede pedirlo por mesa de partes con su solicitud."
+        }
+      ],
+      "grades": [
+        {
+          "question": "datos-q4",
+          "points": 4,
+          "comment": "Completa: explica el motivo y da el camino."
+        }
+      ]
+    },
+    {
+      "student": "bruno.benites@demo.wasichai-learning.test",
+      "offering": "edicion-datos-a",
+      "lesson": "datos-v1-u1-l3",
+      "teacher": "teresa.tutora@demo.wasichai-learning.test",
+      "answers": [
+        {
+          "question": "datos-q1",
+          "options": ["datos-q1-a"]
+        },
+        {
+          "question": "datos-q2",
+          "options": ["datos-q2-a", "datos-q2-b"]
+        },
+        {
+          "question": "datos-q3",
+          "options": ["datos-q3-b"]
+        },
+        {
+          "question": "datos-q4",
+          "text": "No le puedo enviar ese expediente porque es de otra persona."
+        }
+      ],
+      "grades": [
+        {
+          "question": "datos-q4",
+          "points": 2,
+          "comment": "Explica el motivo, pero no dice cómo pedirlo."
+        }
+      ]
+    },
+    {
+      "_comentario": "Desaprueba: le queda un intento.",
+      "student": "carla.cardenas@demo.wasichai-learning.test",
+      "offering": "edicion-datos-a",
+      "lesson": "datos-v1-u1-l3",
+      "teacher": "teresa.tutora@demo.wasichai-learning.test",
+      "answers": [
+        {
+          "question": "datos-q1",
+          "options": ["datos-q1-b"]
+        },
+        {
+          "question": "datos-q2",
+          "options": ["datos-q2-a"]
+        },
+        {
+          "question": "datos-q3",
+          "options": ["datos-q3-a"]
+        },
+        {
+          "question": "datos-q4",
+          "text": "Se lo envío si me confirma su nombre."
+        }
+      ],
+      "grades": [
+        {
+          "question": "datos-q4",
+          "points": 0,
+          "comment": "Entregaría datos ajenos. Repasa la lección «Responder por correo y por teléfono»."
+        }
+      ]
+    },
+    {
+      "_comentario": "Enviado y sin corregir: queda en la cola de Teresa.",
+      "student": "dario.davila@demo.wasichai-learning.test",
+      "offering": "edicion-datos-a",
+      "lesson": "datos-v1-u1-l3",
+      "teacher": "teresa.tutora@demo.wasichai-learning.test",
+      "answers": [
+        {
+          "question": "datos-q1",
+          "options": ["datos-q1-a"]
+        },
+        {
+          "question": "datos-q2",
+          "options": ["datos-q2-a", "datos-q2-b"]
+        },
+        {
+          "question": "datos-q3",
+          "options": ["datos-q3-b"]
+        },
+        {
+          "question": "datos-q4",
+          "text": "Le explico que no es posible y que lo pida por mesa de partes con la autorización del titular."
+        }
+      ],
+      "grades": []
+    },
+    {
+      "student": "elena.espinoza@demo.wasichai-learning.test",
+      "offering": "edicion-datos-a",
+      "lesson": "datos-v1-u1-l3",
+      "teacher": "teresa.tutora@demo.wasichai-learning.test",
+      "answers": [
+        {
+          "question": "datos-q1",
+          "options": ["datos-q1-a"]
+        },
+        {
+          "question": "datos-q2",
+          "options": ["datos-q2-a", "datos-q2-c"]
+        },
+        {
+          "question": "datos-q3",
+          "options": ["datos-q3-b"]
+        },
+        {
+          "question": "datos-q4",
+          "text": "Le respondo que no puedo y le pido que venga a la oficina."
+        }
+      ],
+      "grades": []
+    },
+    {
+      "student": "fabio.flores@demo.wasichai-learning.test",
+      "offering": "edicion-datos-a",
+      "lesson": "datos-v1-u1-l3",
+      "teacher": "teresa.tutora@demo.wasichai-learning.test",
+      "answers": [
+        {
+          "question": "datos-q1",
+          "options": ["datos-q1-a"]
+        },
+        {
+          "question": "datos-q2",
+          "options": ["datos-q2-a", "datos-q2-b"]
+        },
+        {
+          "question": "datos-q3",
+          "options": ["datos-q3-b"]
+        },
+        {
+          "question": "datos-q4",
+          "text": "Le digo que el expediente es reservado y que el titular puede autorizarlo por escrito."
+        }
+      ],
+      "grades": [
+        {
+          "question": "datos-q4",
+          "points": 3,
+          "comment": "Bien. Falta decir dónde se presenta la autorización."
+        }
+      ]
+    },
+    {
+      "student": "gloria.gamarra@demo.wasichai-learning.test",
+      "offering": "edicion-datos-a",
+      "lesson": "datos-v1-u1-l3",
+      "teacher": "teresa.tutora@demo.wasichai-learning.test",
+      "answers": [
+        {
+          "question": "datos-q1",
+          "options": ["datos-q1-c"]
+        },
+        {
+          "question": "datos-q2",
+          "options": ["datos-q2-b"]
+        },
+        {
+          "question": "datos-q3",
+          "options": ["datos-q3-b"]
+        },
+        {
+          "question": "datos-q4",
+          "text": "Le indico que solo el titular puede pedirlo."
+        }
+      ],
+      "grades": []
+    },
+    {
+      "student": "maria.mendoza@demo.wasichai-learning.test",
+      "offering": "edicion-hojas-a",
+      "lesson": "hojas-v1-u1-l3",
+      "teacher": "pablo.profesor@demo.wasichai-learning.test",
+      "answers": [
+        {
+          "question": "hojas-q1",
+          "options": ["hojas-q1-a"]
+        },
+        {
+          "question": "hojas-q2",
+          "text": "CONTARA"
+        },
+        {
+          "question": "hojas-q3",
+          "text": "Ordeno por fecha, documento y tipo de atención; marco con una fórmula las filas iguales a la anterior y reviso esas antes de borrar."
+        }
+      ],
+      "grades": [
+        {
+          "question": "hojas-q3",
+          "points": 5,
+          "comment": "Muy bien: define el duplicado y lo comprueba."
+        }
+      ]
+    },
+    {
+      "student": "nicolas.nunez@demo.wasichai-learning.test",
+      "offering": "edicion-hojas-a",
+      "lesson": "hojas-v1-u1-l3",
+      "teacher": "pablo.profesor@demo.wasichai-learning.test",
+      "answers": [
+        {
+          "question": "hojas-q1",
+          "options": ["hojas-q1-a"]
+        },
+        {
+          "question": "hojas-q2",
+          "text": "contara"
+        },
+        {
+          "question": "hojas-q3",
+          "text": "Uso la herramienta de quitar duplicados sobre todas las columnas."
+        }
+      ],
+      "grades": []
+    },
+    {
+      "student": "olga.ortiz@demo.wasichai-learning.test",
+      "offering": "edicion-hojas-a",
+      "lesson": "hojas-v1-u1-l3",
+      "teacher": "pablo.profesor@demo.wasichai-learning.test",
+      "answers": [
+        {
+          "question": "hojas-q1",
+          "options": ["hojas-q1-b"]
+        },
+        {
+          "question": "hojas-q2",
+          "text": "SUMA"
+        },
+        {
+          "question": "hojas-q3",
+          "text": "Las busco a ojo."
+        }
+      ],
+      "grades": [
+        {
+          "question": "hojas-q3",
+          "points": 1,
+          "comment": "Hace falta decir qué hace que dos filas sean la misma atención."
+        }
+      ]
+    },
+    {
+      "student": "tomas.torres@demo.wasichai-learning.test",
+      "offering": "edicion-corto-a",
+      "lesson": "corto-v1-u1-l2",
+      "teacher": "docente@demo.wasichai-learning.test",
+      "answers": [
+        {
+          "question": "corto-q1",
+          "options": ["corto-q1-a"]
+        },
+        {
+          "question": "corto-q2",
+          "options": ["corto-q2-b"]
+        },
+        {
+          "question": "corto-q3",
+          "text": "No pudimos guardar el anuncio porque falta la fecha de inicio. Complétala en el paso 2 y vuelve a guardar."
+        }
+      ],
+      "grades": [
+        {
+          "question": "corto-q3",
+          "points": 6,
+          "comment": "Dice qué pasó, dónde y qué hacer."
+        }
+      ]
+    },
+    {
+      "student": "ursula.urbina@demo.wasichai-learning.test",
+      "offering": "edicion-corto-a",
+      "lesson": "corto-v1-u1-l2",
+      "teacher": "docente@demo.wasichai-learning.test",
+      "answers": [
+        {
+          "question": "corto-q1",
+          "options": ["corto-q1-a"]
+        },
+        {
+          "question": "corto-q2",
+          "options": ["corto-q2-a"]
+        },
+        {
+          "question": "corto-q3",
+          "text": "La operación no se pudo hacer."
+        }
+      ],
+      "grades": []
+    }
+  ]
+}

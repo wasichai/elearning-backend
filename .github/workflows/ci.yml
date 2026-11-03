@@ -58,6 +58,7 @@ jobs:
         with:
           python-version: '3.13'
       - run: python3 model/apply.py --validate-only --demo
+      - run: python3 model/apply.py --validate-only --demo --demo-data model/demo/data.json --demo-data model/demo/poblada.json
       - run: python3 -m unittest -v
         working-directory: model
 

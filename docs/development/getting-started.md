@@ -90,6 +90,10 @@ Lo que deja la demo para el aula (F2):
 Si aplicaste una demo anterior a estos cambios, el temario de SRTM ya está publicado y no admite la lección ni los
 recursos nuevos: recrea la base (`docker compose down -v && docker compose up -d`) y vuelve a aplicar.
 
+Para enseñar la plataforma o probarla a mano con más gente (24 estudiantes, docentes, avance, intentos por corregir, una
+edición sin cupo), la **demo poblada** se levanta en su propio entorno, sin tocar esta base:
+`model/demo/demo.sh arriba`, `backend` y `sembrar` ([model/demo/README.md](../../model/demo/README.md#la-demo-poblada)).
+
 Usuarios de demostración (contraseña: la de `WASICHAI_DEMO_PASSWORD`):
 
 | Correo                                        | Roles             |

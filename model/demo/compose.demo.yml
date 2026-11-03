@@ -1,0 +1,35 @@
+# Base y buzón de la demo poblada (model/demo/README.md). Proyecto aparte (elearning-demo): no comparte contenedor,
+# volumen ni puerto con el compose.yaml de desarrollo (5436, 1026/8026). Desechable: demo.sh abajo --borrar y se siembra
+# otra vez.
+#
+#   docker compose -p elearning-demo -f model/demo/compose.demo.yml up -d --wait
+name: elearning-demo
+
+services:
+  postgres:
+    # la misma imagen que compose.yaml
+    image: postgres:18.6
+    environment:
+      POSTGRES_DB: elearning_demo
+      POSTGRES_USER: elearning
+      POSTGRES_PASSWORD: elearning-demo
+    ports:
+      # solo loopback; 5446 para no chocar con el 5436 de desarrollo
+      - '127.0.0.1:${LMS_DEMO_PG_PORT:-5446}:5432'
+    volumes:
+      - demo-data:/var/lib/postgresql
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U elearning -d elearning_demo']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  # los avisos de la demo (reprogramar una sesión, corregir un intento) se leen en http://127.0.0.1:8046
+  mailpit:
+    image: axllent/mailpit:v1.27
+    ports:
+      - '127.0.0.1:1046:1025'
+      - '127.0.0.1:8046:8025'
+
+volumes:
+  demo-data:

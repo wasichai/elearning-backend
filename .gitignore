@@ -17,6 +17,7 @@ node_modules/
 # Entorno local: los secretos nunca se versionan
 .env
 *.local.env
+model/demo/demo.env
 
 # Worktrees y estado local de Claude Code
 .claude/

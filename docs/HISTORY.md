@@ -2,6 +2,19 @@
 
 Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este archivo registra lo que se entregó.
 
+## 2026-11-02 — Demo poblada para probar la plataforma a mano
+
+- `model/demo/poblada.json` suma a `data.json` 24 estudiantes, 2 docentes con perfil, una categoría y dos cursos publicados
+  (`DATOS-101` y `HOJAS-101`) con ediciones abiertas y programadas, una de ellas con el cupo agotado; matrículas, avance de
+  lecciones, doce intentos (aprobados, desaprobados y por corregir) y tres sesiones. Todo ficticio.
+- `model/demo/demo.sh` la levanta en un entorno propio, como la base de demostración de srtm-backend: base `elearning_demo`
+  en 5446 y buzón en 1046/8046 (`compose.demo.yml`), backend en 8096 con `demo.env.example` (que `bootRun` lee por
+  `LMS_ENV_FILE`, nunca el `.env` de desarrollo), y `sembrar`, `cuentas` y `abajo`. Se niega a tocar otra base u otro
+  backend.
+- `apply.py`: `--demo-data` se repite para sumar archivos; la clave `progress` completa lecciones por el evento del aula,
+  como el estudiante, con un identificador de evento estable; las matrículas no se repiten ni superan la capacidad.
+  `test_demo.py` prueba el contenido, la validación y la aplicación contra el Wasichai simulado.
+
 ## 2026-11-01 — El laboratorio completo y sus entornos externos validados ([#250](https://github.com/wasichai/elearning-backend/pull/250), [front#106](https://github.com/wasichai/elearning-frontend/pull/106))
 
 - RF-LAB-01 ([ADR-0027](adr/0027-laboratorio-en-la-leccion-y-entornos-por-matricula.md)): `leccion` gana `objetivo`,

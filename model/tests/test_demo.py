@@ -27,6 +27,8 @@ import apply  # noqa: E402
 MODEL = apply.load(HERE / "model.json")
 ROLES = apply.load(HERE / "roles.json")
 DATA = apply.load(HERE / "demo" / "data.json")
+POBLADA = apply.load(HERE / "demo" / "poblada.json")
+MERGED = apply.merge_demo([DATA, POBLADA])
 
 # Anclas comprobadas a mano en los archivos de cada commit (gh api …/contents/<ruta>?ref=<sha>). Las de
 # 05-compromisos.adoc que no son usr-compromisos no están escritas en el archivo: son los id que genera Asciidoctor con
@@ -368,7 +370,7 @@ class FakeWasichai:
         self.objects, self.actions, self.relationships, self.roles, self.writes = {}, {}, {}, {}, []
         self.users, self.records, self.transitions, self.decisions = {}, {}, [], []
         self.uploads, self.tokens = [], {}
-        self.attempts = {}
+        self.attempts, self.progress, self.events = {}, {}, {}
         # un servidor que no aplicara el filtro por clave natural (#60)
         self.ignore_filters = False
 
@@ -505,15 +507,37 @@ class FakeWasichai:
             enrollment = self.find("matricula", enrollment_id)
             return enrollment if enrollment and enrollment["attributes"]["estudiante_id"] == user["id"] else None
 
+        def lessons_of(enrollment):
+            units = {u["id"] for u in self.records.get("unidad", []) if u["attributes"]["version_curso"] == enrollment["attributes"]["version_curso"]}
+            return {lesson["id"]: lesson for lesson in self.records.get("leccion", []) if lesson["attributes"].get("unidad") in units}
+
         if m := re.fullmatch(r"/api/lms/classroom/enrollments/([\w-]+)", path):
             if not mine(m[1]):
                 return 404, {"detail": "not yours"}
             lessons = []
-            for lesson in evaluations:
-                taken = [a for a in self.attempts.values() if a["enrollmentId"] == m[1] and a["lessonId"] == lesson]
-                opened = next((a["id"] for a in taken if a["status"] == "OPEN"), None)
-                lessons.append({"id": lesson, "assessment": {"attemptsUsed": len(taken), "openAttemptId": opened}})
+            for lesson in lessons_of(mine(m[1])):
+                entry = {"id": lesson, "progress": {"completedAt": self.progress.get((m[1], lesson))}}
+                if lesson in evaluations:
+                    taken = [a for a in self.attempts.values() if a["enrollmentId"] == m[1] and a["lessonId"] == lesson]
+                    opened = next((a["id"] for a in taken if a["status"] == "OPEN"), None)
+                    entry["assessment"] = {"attemptsUsed": len(taken), "openAttemptId": opened}
+                lessons.append(entry)
             return 200, {"units": [{"lessons": lessons}]}
+        if m := re.fullmatch(r"/api/lms/classroom/enrollments/([\w-]+)/lessons/([\w-]+)/events", path):
+            # como LessonProgressService: la lección de su versión, con la evidencia de su tipo; sin evaluación ni sesión
+            enrollment = mine(m[1])
+            lesson = lessons_of(enrollment).get(m[2]) if enrollment else None
+            if lesson is None:
+                return 404, {"detail": "not yours"}
+            if m[2] in evaluations or any(s["attributes"].get("leccion_id") == m[2] for s in self.records.get("sesion", [])):
+                return 409, {"detail": "completed by its assessment or its session"}
+            if body["type"] != apply.COMPLETION_EVENTS.get(lesson["attributes"]["tipo"]):
+                return 409, {"detail": "that event does not complete this lesson"}
+            if body["clientEventId"] in self.events and self.events[body["clientEventId"]] != (m[1], m[2], body["type"]):
+                return 409, {"detail": "clientEventId already used"}
+            self.events[body["clientEventId"]] = (m[1], m[2], body["type"])
+            self.progress.setdefault((m[1], m[2]), "2026-11-02T00:00:00Z")
+            return 200, {"status": "COMPLETADA", "completedAt": self.progress[(m[1], m[2])]}
         if m := re.fullmatch(r"/api/lms/classroom/enrollments/([\w-]+)/lessons/([\w-]+)/attempts", path):
             if not mine(m[1]) or m[2] not in evaluations:
                 return 404, {"detail": "not yours"}
@@ -644,7 +668,9 @@ class WorkflowTest(unittest.TestCase):
             apply.validate_demo(data, MODEL, ROLES)
 
 
-class ApplyDemoTest(unittest.TestCase):
+class FakeServerCase(unittest.TestCase):
+    """apply.py contra un FakeWasichai en un puerto libre de esta máquina."""
+
     def setUp(self):
         self.fake = FakeWasichai()
         fake = self.fake
@@ -685,6 +711,8 @@ class ApplyDemoTest(unittest.TestCase):
             code = apply.main(args or self.args)
         return code, out.getvalue(), err.getvalue()
 
+
+class ApplyDemoTest(FakeServerCase):
     def test_first_run_creates_users_and_records_with_resolved_relations(self):
         code, _, err = self.run_main()
         self.assertEqual(0, code, err)
@@ -824,6 +852,145 @@ class ApplyDemoTest(unittest.TestCase):
         code, _, err = self.run_main()
         self.assertEqual(1, code)
         self.assertIn("misma clave natural", err)
+
+
+class PobladaDataTest(unittest.TestCase):
+    """La demo poblada (model/demo/poblada.json): suma personas, cursos y actividad a data.json sin tocar lo de los e2e."""
+
+    def merged_records(self, obj):
+        return [r for r in MERGED["records"] if r["object"] == obj]
+
+    def test_is_valid_on_top_of_the_base_demo(self):
+        self.assertEqual([], problems(MERGED))
+        # sola no vale: apunta a registros y usuarios de data.json
+        self.assertTrue(problems(apply.merge_demo([POBLADA])))
+
+    def test_has_students_teachers_and_published_courses_with_open_offerings(self):
+        roles = [u["roles"] for u in POBLADA["users"]]
+        self.assertGreaterEqual(roles.count(["ESTUDIANTE"]), 20)
+        self.assertGreaterEqual(roles.count(["DOCENTE"]), 2)
+        refs = {r["ref"]: r for r in MERGED["records"]}
+        new_courses = [r for r in POBLADA["records"] if r["object"] == "curso"]
+        self.assertGreaterEqual(len(new_courses), 2)
+        for course in new_courses:
+            (version,) = [v for v in self.merged_records("version_curso") if v["refs"]["curso"] == course["ref"]]
+            self.assertEqual("PUBLICADA", version["attributes"]["estado"])
+            self.assertIs(True, version["attributes"]["contenido_ilustrativo"])
+            editions = [e for e in self.merged_records("edicion_curso") if e["refs"]["version_curso"] == version["ref"]]
+            self.assertIn("INSCRIPCION_ABIERTA", {e["attributes"]["estado"] for e in editions}, course["ref"])
+            units = {u["ref"] for u in self.merged_records("unidad") if u["refs"]["version_curso"] == version["ref"]}
+            self.assertTrue(any(refs[e["refs"]["leccion"]]["refs"]["unidad"] in units for e in self.merged_records("evaluacion")), f"{course['ref']} sin evaluación")
+        # cada docente nuevo tiene perfil y enseña en alguna edición
+        for teacher in (u["email"] for u in POBLADA["users"] if u["roles"] == ["DOCENTE"]):
+            self.assertTrue([r for r in self.merged_records("perfil_docente") if r["users"]["usuario_id"] == teacher], teacher)
+            self.assertTrue([r for r in self.merged_records("docente_edicion") if r["users"]["usuario_id"] == teacher], teacher)
+
+    def test_every_new_student_is_enrolled_and_one_offering_is_full(self):
+        enrolled = {e["user"] for e in POBLADA["enrollments"]}
+        self.assertEqual({u["email"] for u in POBLADA["users"] if u["roles"] == ["ESTUDIANTE"]}, enrolled - {"estudiante@demo.wasichai-learning.test"})
+        full = [e for e in self.merged_records("edicion_curso")
+                if sum(1 for m in MERGED["enrollments"] if m["offering"] == e["ref"]) == e["attributes"].get("capacidad")]
+        self.assertTrue(full, "una edición con el cupo agotado (ADR-0023)")
+
+    def test_has_progress_pending_and_graded_attempts_passed_and_failed(self):
+        self.assertGreaterEqual(len(POBLADA["progress"]), 10)
+        graded = [a for a in POBLADA["attempts"] if a["grades"]]
+        pending = [a for a in POBLADA["attempts"] if not a["grades"]]
+        self.assertGreaterEqual(len(graded), 3)
+        self.assertGreaterEqual(len(pending), 3, "intentos en la cola de corrección")
+        self.assertIn(0, [g["points"] for a in graded for g in a["grades"]], "alguno desaprueba")
+        self.assertGreaterEqual(len(POBLADA["sessions"]), 2)
+
+    def test_leaves_the_offerings_of_the_e2e_journeys_alone(self):
+        # SRTM-ANU-101-A tiene 40 plazas que gastan los e2e; TRAMITE-101-A es solo del recorrido editorial (#224)
+        used = [e["offering"] for e in POBLADA["enrollments"]] + [s["offering"] for s in POBLADA["sessions"]] + [a["offering"] for a in POBLADA["attempts"]]
+        self.assertNotIn("edicion-srtm-a", used)
+        self.assertNotIn("edicion-tramite-a", used)
+        self.assertNotIn("workflows", POBLADA, "el camino de estados es el de data.json")
+
+    def test_no_real_data(self):
+        text = json.dumps(POBLADA, ensure_ascii=False)
+        for forbidden in ("Perené", "Perene", "Municipalidad Distrital", "wasichai.local", "RUC", "DNI"):
+            self.assertNotIn(forbidden, text)
+        self.assertTrue(all(u["displayName"].endswith("(demo)") for u in POBLADA["users"]))
+
+
+class PobladaValidationTest(unittest.TestCase):
+    def test_a_workflow_is_declared_in_one_file_only(self):
+        with self.assertRaises(apply.ModelError):
+            apply.merge_demo([DATA, {"workflows": {"version_curso": DATA["workflows"]["version_curso"]}}])
+
+    def test_enrollments_are_not_repeated_and_fit_the_capacity(self):
+        data = copy.deepcopy(MERGED)
+        data["enrollments"].append(copy.deepcopy(data["enrollments"][0]))
+        extra = [u for u in data["users"] if u["roles"] == ["ESTUDIANTE"]]
+        data["enrollments"] += [{"user": u["email"], "offering": "edicion-hojas-a"} for u in extra
+                                if {"user": u["email"], "offering": "edicion-hojas-a"} not in data["enrollments"]][:1]
+        found = problems(data)
+        self.assertTrue(any("ya está matriculado" in p for p in found), found)
+        self.assertTrue(any("superan su capacidad de 10" in p for p in found), found)
+
+    def test_progress_is_of_an_enrolled_student_on_lessons_completed_by_marking_them(self):
+        data = copy.deepcopy(MERGED)
+        ana = "ana.alvarado@demo.wasichai-learning.test"
+        data["progress"] = [
+            {"student": "estudiante@demo.wasichai-learning.test", "offering": "edicion-hojas-a", "lessons": ["hojas-v1-u1-l1"]},
+            {"student": ana, "offering": "edicion-datos-a", "lessons": ["datos-v1-u1-l3", "datos-v1-u2-l3"]},
+            {"student": ana, "offering": "edicion-datos-a", "lessons": ["hojas-v1-u1-l1", "datos-v1-u1-l1", "datos-v1-u1-l1"]},
+        ]
+        found = problems(data)
+        self.assertTrue(any("avance #1: 'estudiante@demo.wasichai-learning.test' no está matriculado" in p for p in found), found)
+        self.assertTrue(any("avance #2: 'datos-v1-u1-l3' no se completa marcándola" in p for p in found), found)
+        self.assertTrue(any("avance #2: 'datos-v1-u2-l3' no se completa marcándola" in p for p in found), found)
+        self.assertTrue(any("avance #3: 'hojas-v1-u1-l1' no es una lección de la versión" in p for p in found), found)
+        self.assertTrue(any("avance #3: 'lessons' es una lista de lecciones sin repetir" in p for p in found), found)
+
+
+class ApplyPobladaTest(FakeServerCase):
+    """La demo poblada sobre la base, como la aplica model/demo/demo.sh sembrar."""
+
+    def setUp(self):
+        super().setUp()
+        self.args = self.args + ["--demo-data", str(HERE / "demo" / "data.json"), "--demo-data", str(HERE / "demo" / "poblada.json")]
+
+    def test_everyone_enrolls_completes_lessons_and_takes_attempts_as_themselves(self):
+        code, out, err = self.run_main()
+        self.assertEqual(0, code, err)
+        self.assertIn("31 usuarios", out)
+        self.assertEqual(len(MERGED["enrollments"]), len(self.fake.records["matricula"]))
+        self.assertEqual(sum(len(p["lessons"]) for p in MERGED["progress"]), len(self.fake.progress))
+        # cada avance lo envía el propio estudiante, sobre su matrícula
+        by_id = {u["id"]: u["email"] for u in self.fake.users.values()}
+        enrollments = {e["id"]: e["attributes"]["estudiante_id"] for e in self.fake.records["matricula"]}
+        wanted = {(p["student"], lesson) for p in MERGED["progress"] for lesson in p["lessons"]}
+        lesson_refs = {}
+        for record in MERGED["records"]:
+            if record["object"] == "leccion":
+                stored = next(r for r in self.fake.records["leccion"] if r["attributes"]["titulo"] == record["attributes"]["titulo"]
+                              and r["attributes"]["orden"] == record["attributes"]["orden"])
+                lesson_refs[stored["id"]] = record["ref"]
+        self.assertEqual(wanted, {(by_id[enrollments[e]], lesson_refs[lesson]) for e, lesson in self.fake.progress})
+        self.assertEqual(len(MERGED["attempts"]), len(self.fake.attempts))
+        statuses = sorted(a["status"] for a in self.fake.attempts.values())
+        self.assertEqual(sum(1 for a in MERGED["attempts"] if not a["grades"]), statuses.count("SUBMITTED"))
+        self.assertEqual(len(MERGED["sessions"]), len(self.fake.records["sesion"]))
+
+    def test_second_run_writes_nothing(self):
+        self.assertEqual(0, self.run_main()[0])
+        writes = len(self.fake.writes)
+        code, out, _ = self.run_main()
+        self.assertEqual(0, code)
+        self.assertEqual([], data_writes(self.fake.writes[writes:]))
+        self.assertIn("Sin cambios", out)
+
+    def test_base_already_applied_only_adds_the_poblada(self):
+        # quien ya tenía la demo de siempre suma la poblada sin rehacer nada de la base
+        base_args = [a for a in self.args if a not in ("--demo-data", str(HERE / "demo" / "data.json"), str(HERE / "demo" / "poblada.json"))]
+        self.assertEqual(0, self.run_main(args=base_args)[0])
+        users, courses = len(self.fake.users), len(self.fake.records["curso"])
+        self.assertEqual(0, self.run_main()[0])
+        self.assertEqual(users + len(POBLADA["users"]), len(self.fake.users))
+        self.assertEqual(courses + sum(1 for r in POBLADA["records"] if r["object"] == "curso"), len(self.fake.records["curso"]))
 
 
 if __name__ == "__main__":
