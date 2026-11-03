@@ -241,6 +241,24 @@ class RealModelTest(unittest.TestCase):
         for role in ("ESTUDIANTE", "DOCENTE"):
             self.assertFalse(holds(role, "fuente_recurso", "READ") or holds(role, "artefacto_generado", "READ"), role)
 
+    def test_video_scripts_are_versions_that_never_change(self):
+        # RF-MED-01: el guion es una versión de solo inserción de su version_recurso, con su ejecución de IA y su trabajo.
+        # Solo lo escribe el trabajo del guion (apiOnly); lo lee el personal del estudio, nunca el estudiante ni el docente
+        script = next(o for o in MODEL["objects"] if o["name"] == "guion_video")
+        self.assertTrue(script.get("appendOnly") and script.get("apiOnly"))
+        fields = {f["name"]: f for f in script["fields"]}
+        self.assertLessEqual({"numero", "guion", "sha256", "subtitulos_vtt", "transcripcion", "duracion_segundos", "ejecucion_agente_id"}, set(fields))
+        self.assertTrue(fields["trabajo_id"].get("unique"), "repetir el trabajo no duplica el guion")
+        self.assertIn(["version_recurso", "numero"], script["uniqueConstraints"])
+        links = {r["fieldName"]: (r["target"], r.get("required", False)) for r in MODEL["relationships"] if r["source"] == "guion_video"}
+        self.assertEqual({"version_recurso": ("version_recurso", True)}, links)
+        for role in ROLES["roles"]:
+            for action in ("CREATE", "UPDATE", "DELETE"):
+                self.assertFalse(holds(role["name"], "guion_video", action), f"{role['name']} {action}")
+        self.assertTrue(holds("CREADOR", "guion_video", "READ") and holds("REVISOR", "guion_video", "READ"))
+        for role in ("ESTUDIANTE", "DOCENTE"):
+            self.assertFalse(holds(role, "guion_video", "READ"), role)
+
     def test_versions_start_as_draft_and_illustrative(self):
         version = next(o for o in MODEL["objects"] if o["name"] == "version_curso")
         fields = {f["name"]: f for f in version["fields"]}

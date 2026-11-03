@@ -1106,6 +1106,44 @@ análisis de fuentes, el diseño del curso. Se encola como trabajo de IA (`ai.co
   `BLANK_ASSESSMENT` · `ASSESSMENT_NOT_ALIGNED` · `NO_PASSING_CRITERIA` · `TOO_MANY_ELEMENTS` · `TOO_MUCH_WEEKLY_LOAD`) deja la
   ejecución `INVALID_OUTPUT` sin `output` y el trabajo `FAILED` sin `executionId`.
 
+## Guion de vídeo (F5, E36.1, RF-MED-01)
+
+El paso 5 de la canalización ([docs/ai](../ai/README.md#1-canalización-editorial)): de las fuentes de un brief `LISTO`, el guion por
+secciones de un vídeo, que se guarda como versión de su `version_recurso`. Se encola como trabajo de IA (`ai.script`) y se
+sigue con las rutas de [Trabajos de IA](#trabajos-de-ia-f5-adr-0033-5-6-y-9).
+
+| Método | Ruta                  | Resultado                                                                             |
+| ------ | --------------------- | ------------------------------------------------------------------------------------- |
+| POST   | `/api/lms/ai/scripts` | `{ "briefId", "versionId", "targetSeconds"?, "resolution"?, "fps"? }` → `202` `AiJob` |
+
+- **Entrada**: `versionId` es una `version_recurso` de un recurso `VIDEO`, en `BORRADOR` y de quien llama (`autor_id`).
+  `targetSeconds`, la duración objetivo, de 30 a 900 (180 por defecto); `resolution` `1280x720` (por defecto) o `1920x1080`;
+  `fps` 25 o 30 (por defecto). El idioma es el del brief, una etiqueta BCP 47 corta (`es`, `es-PE`).
+- **Permisos**: `GENERAR` sobre `version_curso` (`403`), ver el brief y la versión como quien llama (`404`) y ser el autor de
+  la versión (`403`). Sin `briefId` o `versionId` o con un valor fuera de su lista, `400`; un brief que no está `LISTO`, una
+  versión que no es de un `VIDEO` o que ya no está en `BORRADOR`, `409`.
+- **Generador**: con proveedor, el modelo `script` de `lms.ai.models` y `lms.ai.max-tokens.script`; sin claves, el doble
+  determinista (portada, una sección por sección de la fuente con texto y cierre).
+- **Comprobación** (`VideoScriptCheck`, igual para los dos): de 1 a 100 secciones con `id` único (`^[a-z0-9][a-z0-9-]{0,63}$`),
+  `seconds` entero de 1 a 600 y la suma a ±10 % del objetivo; título, narración y diapositiva completos (`COVER`, `BULLETS`
+  de 1 a 8 viñetas, `CODE` con su código mostrado como texto, `CLOSING`); subtítulos dentro de su sección, en orden y sin
+  solaparse; ningún texto con HTML ni URL (salvo el código), y **cada sección con al menos una traza** a una sección con
+  ancla que el paso leyó. Cualquier problema invalida el guion entero: `INVALID_OUTPUT`, sin `output`, el trabajo `FAILED`
+  sin `executionId` y ningún guion guardado. `validations`: `{ "sections", "seconds", "targetSeconds", "violations":
+[{ "code", "section", "detail" }] }`, con `code` `NO_SECTIONS` · `TOO_MANY` · `BAD_ID` · `DUPLICATE_ID` · `BLANK` ·
+  `TOO_LONG` · `BAD_SECONDS` · `DURATION_OUT_OF_TARGET` · `NO_TRACE` · `TRACE_NOT_FOUND` · `BAD_CAPTION` · `BAD_SLIDE` ·
+  `MARKUP`.
+- **Resultado**: terminado `DONE`, la ejecución tiene `output` `VideoScript` `{ "title", "objectives": [], "sections":
+[{ "id", "title", "seconds", "slide": { "kind", "title", "subtitle", "bullets", "code", "language", "message" },
+"narration", "captions": [{ "from", "to", "text" }], "traces": ["owner/repo@sha:ruta#ancla"] }] }`, y la versión tiene un
+  `guion_video` nuevo (`GET /api/objects/guion_video/records?version_recurso={id}`, lo leen `CREADOR` y `REVISOR`) con el
+  `numero` siguiente, `guion` (el JSON del render de [ADR-0040](../adr/0040-renderizador-de-video-en-un-trabajador-node.md)
+  §2, del esquema `render-worker/schema/guion.schema.json`), su `sha256`, `subtitulos_vtt` (WebVTT con tiempos absolutos),
+  `transcripcion`, `duracion_segundos`, `ejecucion_agente_id` y `trabajo_id`.
+- **Inmutable**: `guion_video` es de solo inserción y solo lo escribe el trabajo (`VideoScriptGuard`): una persona recibe
+  `403` y cambiarlo o borrarlo es `409`. Solo se añade a una versión en `BORRADOR`; si la versión sale de borrador mientras
+  el trabajo espera, el trabajo falla sin guion. Una versión publicada conserva los suyos (regla 5).
+
 ## Créditos aprobados (RF-CRE-08, ADR-0035)
 
 La plataforma calcula y **propone** créditos ([ADR-0007](../adr/0007-carga-academica-y-creditos-como-politica-versionada.md));

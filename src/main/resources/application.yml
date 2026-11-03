@@ -179,6 +179,7 @@ lms:
       extraction: ${LMS_AI_MAX_TOKENS_EXTRACTION:8000}
       consistency: ${LMS_AI_MAX_TOKENS_CONSISTENCY:2000}
       design: ${LMS_AI_MAX_TOKENS_DESIGN:12000}
+      script: ${LMS_AI_MAX_TOKENS_SCRIPT:16000}
     # límites de los pasos de IA (ADR-0033 §9): pasos pendientes o en curso por organización y presupuesto por curso (la
     # suma del coste de sus ejecuciones en currency, con lms.ai.rates; vacío: sin tope). superarlos al encolar es 429 con
     # Retry-After; agotado el presupuesto, el paso que ya estaba en cola falla sin reintento

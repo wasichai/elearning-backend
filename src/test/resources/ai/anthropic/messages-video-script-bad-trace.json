@@ -1,0 +1,18 @@
+{
+  "id": "msg_double_video_script_bad_trace",
+  "type": "message",
+  "role": "assistant",
+  "model": "claude-sonnet-5-5",
+  "content": [
+    {
+      "type": "text",
+      "text": "{\"title\":\"Administración de anuncios\",\"objectives\":[\"Publicar un anuncio\",\"Retirarlo\"],\"sections\":[{\"id\":\"s01\",\"title\":\"Anuncios\",\"seconds\":10,\"slide\":{\"kind\":\"COVER\",\"title\":\"Administración de anuncios\",\"subtitle\":\"Personal administrativo\"},\"narration\":\"Cómo se publica y se retira un anuncio.\",\"captions\":[{\"from\":0,\"to\":10,\"text\":\"Cómo se publica y se retira un anuncio.\"}],\"traces\":[\"acme/manuales@0123456789abcdef0123456789abcdef01234567:capitulos/anuncios.adoc#_publicar_un_anuncio\"]},{\"id\":\"s02\",\"title\":\"Publicar un anuncio\",\"seconds\":25,\"slide\":{\"kind\":\"BULLETS\",\"title\":\"Publicar un anuncio\",\"bullets\":[\"Abrir el panel de anuncios\",\"Escribir el texto\",\"Pulsar Publicar\"]},\"narration\":\"Un anuncio llega a toda la organización. Se abre el panel, se escribe el texto y se pulsa Publicar.\",\"captions\":[{\"from\":0,\"to\":12.5,\"text\":\"Un anuncio llega a toda la organización.\"},{\"from\":12.5,\"to\":25,\"text\":\"Se abre el panel, se escribe el texto y se pulsa Publicar.\"}],\"traces\":[\"acme/manuales@0123456789abcdef0123456789abcdef01234567:capitulos/anuncios.adoc#_publicar_un_anuncio\"]},{\"id\":\"s03\",\"title\":\"Retirar un anuncio\",\"seconds\":25,\"slide\":{\"kind\":\"CLOSING\",\"title\":\"Retirar un anuncio\",\"message\":\"Un anuncio retirado deja de verse.\"},\"narration\":\"Un anuncio retirado deja de verse en el tablón.\",\"captions\":[{\"from\":0,\"to\":25,\"text\":\"Un anuncio retirado deja de verse en el tablón.\"}],\"traces\":[\"acme/manuales@0123456789abcdef0123456789abcdef01234567:capitulos/anuncios.adoc#_caducidad_de_un_anuncio\"]}]}"
+    }
+  ],
+  "stop_reason": "end_turn",
+  "stop_sequence": null,
+  "usage": {
+    "input_tokens": 2400,
+    "output_tokens": 900
+  }
+}

@@ -254,6 +254,10 @@
           "actions": ["READ"]
         },
         {
+          "object": "guion_video",
+          "actions": ["READ"]
+        },
+        {
           "object": "evaluacion",
           "actions": ["READ", "CREATE", "UPDATE", "DELETE"]
         },
@@ -369,6 +373,10 @@
         },
         {
           "object": "artefacto_generado",
+          "actions": ["READ"]
+        },
+        {
+          "object": "guion_video",
           "actions": ["READ"]
         },
         {
