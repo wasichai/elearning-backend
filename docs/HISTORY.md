@@ -41,6 +41,7 @@ licencia de [ADR-0039](adr/0039-remotion-como-motor-de-render-con-licencia-por-d
   corrige y la guía de operación avisa de la licencia a quien active el render.
 - Los criterios de #267 que piden código (build sin Remotion comprobada en CI, informe de licencias, rechazo de
   peticiones con código, licencia del `ffprobe`) quedan para el trabajador, [#297](https://github.com/wasichai/elearning-backend/issues/297).
+
 ## 2026-11-03 — Trabajos de IA en la cola: idempotencia, reintentos, cancelación y límites ([#279](https://github.com/wasichai/elearning-backend/issues/279))
 
 Segundo paso de la épica E33 ([#277](https://github.com/wasichai/elearning-backend/issues/277)), según

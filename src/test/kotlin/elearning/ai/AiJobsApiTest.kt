@@ -491,6 +491,8 @@ class AiJobsApiTest : LmsApiTest() {
     }
 
     companion object {
+        // la organización de la demo, como en AgentExecutionApiTest
+        val DEMO_ORGANIZATION: UUID = UUID.fromString("00000000-0000-0000-0000-000000000001")
         const val MODEL = "claude-test-model"
         const val ENQUEUE = "/api/test/ai/steps"
 
