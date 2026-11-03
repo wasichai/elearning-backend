@@ -19,6 +19,9 @@ class ImportController(
     @GetMapping("/sources")
     suspend fun sources(): List<ImportSource> = imports.sources()
 
+    @GetMapping
+    suspend fun mine(): List<ImportJob> = imports.mine()
+
     @PostMapping
     @ResponseStatus(HttpStatus.ACCEPTED)
     suspend fun start(

@@ -619,6 +619,7 @@ en borrador.
 | ------ | -------------------------------- | ---------------------------------------------------------------------------------- |
 | GET    | `/api/lms/studio/import/sources` | orígenes permitidos → `[{ "repository": "owner/repo", "sha": null }]`              |
 | POST   | `/api/lms/studio/import`         | `{ "source": "owner/repo@sha:ruta/maestro.adoc", "courseId" }` → `202` `ImportJob` |
+| GET    | `/api/lms/studio/import`         | mis trabajos de importación, el más reciente primero → `[ImportJob]`               |
 | GET    | `/api/lms/studio/import/{id}`    | `ImportJob`                                                                        |
 
 - Importar (y ver los orígenes) exige `CREATE` sobre `version_curso`, `unidad` y `leccion` (`403`). `source` es un archivo de un
@@ -632,7 +633,11 @@ en borrador.
   devuelve ese trabajo (`202`), sin otro borrador; terminado, importar otra vez es otro trabajo. Con
   `lms.jobs.max-active-per-requester` (5) trabajos pendientes o en curso, entre importaciones y generaciones, uno más es `429`
   con `Retry-After` ([ADR-0022](../adr/0022-limites-y-ciclo-de-vida-de-los-trabajos.md)).
-- `ImportJob`: `{ "id", "status": "PENDIENTE" | "EN_CURSO" | "HECHO" | "FALLIDO", "error": null, "versionId": null, "report": null }`.
+- `GET /api/lms/studio/import` lista a lo sumo 50 trabajos de importación de quien llama, pendientes, en curso y terminados aún
+  retenidos, el más reciente primero. Pide los mismos permisos que importar (`403`) y nunca muestra los de otra persona,
+  tampoco al administrador. Sirve para que la interfaz no pierda de vista una importación al recargar.
+- `ImportJob`: `{ "id", "status": "PENDIENTE" | "EN_CURSO" | "HECHO" | "FALLIDO", "error": null, "versionId": null, "report": null,
+"source": "owner/repo@sha:ruta", "courseId", "createdAt", "finishedAt": null }`.
   `error` es el motivo de `FALLIDO` (o el último fallo pasajero mientras se reintenta). Con `HECHO`, `versionId` es la versión
   nueva del curso y `report`: `{ "source", "files", "includes", "sections", "images", "units", "lessons", "problemCount",
 "problems": [{ "kind", "origin": "owner/repo@sha:ruta", "line", "detail", "severity" }], "problemsBySeverity": { "GAP": 1, "CHECK": 4 } }`
