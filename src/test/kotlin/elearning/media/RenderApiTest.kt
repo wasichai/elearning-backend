@@ -6,9 +6,11 @@ import elearning.media.asciidoctor.AsciidoctorProperties
 import elearning.media.asciidoctor.AsciidoctorRenderer
 import kotlinx.coroutines.reactor.awaitSingle
 import kotlinx.coroutines.runBlocking
+import org.jsoup.Jsoup
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Assumptions.assumeTrue
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.TestConfiguration
@@ -26,12 +28,13 @@ import tools.jackson.databind.JsonNode
 import java.security.MessageDigest
 import java.util.HexFormat
 import java.util.UUID
+import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 
-// generación de artefactos desde una fuente (ADR-0018 §7, RF-CON-03/07). En CI no hay Asciidoctor: el generador es un doble
-// que devuelve un HTML y un PDF mínimos, salvo cuando la prueba lo cambia por el adaptador real sin binario. La cola se
-// mueve a mano con runOnce
+// generación de artefactos desde una fuente (ADR-0018 §7, RF-CON-03/07). El generador es un doble que devuelve un HTML y un
+// PDF mínimos, salvo cuando la prueba lo cambia por el adaptador real: sin binario, o con el Asciidoctor del PATH en la
+// aceptación de RF-CON-07 (ADR-0031), que CI instala. La cola se mueve a mano con runOnce
 @Import(RenderApiTest.FakeRenderer::class)
 @TestPropertySource(properties = ["lms.jobs.scheduling=false", "lms.jobs.max-attempts=3", "lms.jobs.backoff=0s"])
 class RenderApiTest : LmsApiTest() {
@@ -47,7 +50,10 @@ class RenderApiTest : LmsApiTest() {
     private val student by lazy { demoUser("estudiante") }
 
     @AfterEach
-    fun binaryBack() = missingBinary.set(false)
+    fun binaryBack() {
+        missingBinary.set(false)
+        realBinary.set(false)
+    }
 
     private fun exchange(
         method: String,
@@ -366,6 +372,76 @@ class RenderApiTest : LmsApiTest() {
         return bearer(email, DEMO_PASSWORD)
     }
 
+    // RF-CON-07 (ADR-0031): una fuente propia con include::, una imagen y una tabla se genera en la cola, no en la petición,
+    // que responde 202 sin haber generado nada. Con el doble; con el Asciidoctor real, la prueba siguiente
+    @Test
+    fun `an own source with include, an image and a table renders in the queue, not in the request`() {
+        val (resource, source) = source("HTML", ACCEPTANCE_SOURCE)
+        renderThreads.clear()
+
+        val job = render(source)["id"].asString()
+
+        assertTrue(renderThreads.isEmpty(), "la petición no genera: $renderThreads")
+        assertEquals(0, get("/api/objects/version_recurso/records?recurso=$resource", creator)["totalElements"].asInt())
+        assertEquals("PENDIENTE", get("/api/lms/studio/renders/$job", creator)["status"].asString())
+        drain()
+        val done = get("/api/lms/studio/renders/$job", creator)
+        assertEquals("HECHO", done["status"].asString(), done.toString())
+        assertEquals(setOf("HTML", "PDF"), done["artifacts"].values().map { it["format"].asString() }.toSet())
+        assertTrue(renderThreads.size == 2 && renderThreads.none { it.startsWith("reactor-http") }, renderThreads.toString())
+    }
+
+    // RF-CON-07 (ADR-0031) con Asciidoctor de verdad: el HTML saneado trae la tabla y la imagen por su texto alternativo,
+    // el include:: queda en un enlace sin leer nada (modo seguro) y el PDF está bien formado y con la imagen incrustada.
+    // sin Asciidoctor en el PATH se salta, salvo con LMS_TEST_ASCIIDOCTOR=required (CI), donde su falta es un fallo
+    @Test
+    fun `with the real asciidoctor an own source becomes a validated html and pdf`() {
+        assumeRealAsciidoctor()
+        realBinary.set(true)
+        val (_, source) = source("HTML", ACCEPTANCE_SOURCE)
+
+        val job = render(source)["id"].asString()
+        drain()
+
+        val done = get("/api/lms/studio/renders/$job", creator)
+        assertEquals("HECHO", done["status"].asString(), done.toString())
+        val records = get("/api/objects/artefacto_generado/records?version_recurso=${done["versionId"].asString()}&size=10", creator)["content"].values()
+        val generators = records.associate { it["attributes"]["formato"].asString() to it["attributes"] }
+        assertEquals("asciidoctor", generators.getValue("HTML")["generador"].asString())
+        assertEquals("asciidoctor-pdf", generators.getValue("PDF")["generador"].asString())
+        assertTrue(generators.values.all { it["version_generador"].asString().startsWith("Asciidoctor") }, generators.toString())
+        val bytes =
+            done["artifacts"].values().associate {
+                it["format"].asString() to
+                    download("/api/objects/artefacto_generado/records/${it["id"].asString()}/files/archivo", creator)
+            }
+
+        val html = Jsoup.parse(String(bytes.getValue("HTML"), Charsets.UTF_8))
+        assertEquals("Lección propia", html.title())
+        assertTrue("Texto propio" in html.text(), html.outerHtml())
+        assertTrue("celda-a1" in html.select("table td").eachText(), html.outerHtml())
+        assertEquals(1, html.select("img").count { it.attr("alt") == "Diagrama propio" }, html.outerHtml())
+        assertTrue("/etc/passwd" in html.select("a").eachText(), "el include:: es un enlace: ${html.outerHtml()}")
+        assertTrue("root:" !in html.outerHtml() && html.select("script").isEmpty(), html.outerHtml())
+
+        val pdf = String(bytes.getValue("PDF"), Charsets.ISO_8859_1)
+        assertTrue(pdf.startsWith("%PDF-") && pdf.trimEnd().endsWith("%%EOF"), pdf.take(200))
+        assertTrue("/Type /Page" in pdf, "al menos una página")
+        assertTrue("/Subtype /Image" in pdf, "la imagen va incrustada")
+        assertTrue("root:" !in pdf)
+    }
+
+    private fun assumeRealAsciidoctor() {
+        val missing = ArtifactFormat.entries.filter { unavailable(it) }
+        if (System.getenv(REQUIRE_ASCIIDOCTOR) == "required") assertTrue(missing.isEmpty(), "$REQUIRE_ASCIIDOCTOR=required y falta Asciidoctor para $missing")
+        assumeTrue(missing.isEmpty(), "sin Asciidoctor en el PATH para $missing")
+    }
+
+    private fun unavailable(format: ArtifactFormat): Boolean =
+        runCatching {
+            real.render("= Prueba".toByteArray(), format)
+        }.exceptionOrNull() is RendererUnavailableException
+
     @Test
     fun `only html and pdf resources are generated`() {
         val (_, source) = source("VIDEO")
@@ -404,7 +480,7 @@ class RenderApiTest : LmsApiTest() {
         assertEquals(HttpStatus.FORBIDDEN, exchange("GET", "/api/objects/artefacto_generado/records", student).first)
     }
 
-    // el doble del generador: HTML y PDF mínimos con la fuente dentro, o el adaptador real sin binario
+    // el doble del generador: HTML y PDF mínimos con la fuente dentro, o el adaptador real, sin binario o con el del PATH
     @TestConfiguration
     class FakeRenderer {
         @Bean
@@ -416,7 +492,9 @@ class RenderApiTest : LmsApiTest() {
                     source: ByteArray,
                     format: ArtifactFormat,
                 ): RenderedDocument {
+                    renderThreads.add(Thread.currentThread().name)
                     if (missingBinary.get()) return missing.render(source, format)
+                    if (realBinary.get()) return real.render(source, format)
                     val text = String(source)
                     if (BROKEN in text) throw RenderException("asciidoctor failed with exit code 1: $BROKEN")
                     if (FLAKY in text && flakyCalls.incrementAndGet() == 1) throw RenderException("interrupted", permanent = false)
@@ -435,6 +513,36 @@ class RenderApiTest : LmsApiTest() {
         private const val FAKE = "fake-renderer"
         private const val SOURCE_TEXT = "= Lección generada\n\nTexto propio de la prueba."
         private val missingBinary = AtomicBoolean(false)
+        private val realBinary = AtomicBoolean(false)
+
+        // el adaptador real con los ejecutables del PATH, y dónde corrió cada generación
+        private val real = AsciidoctorRenderer(AsciidoctorProperties())
+        private val renderThreads = ConcurrentLinkedQueue<String>()
+        private const val REQUIRE_ASCIIDOCTOR = "LMS_TEST_ASCIIDOCTOR"
+
+        // la aceptación de RF-CON-07 (ADR-0031): un include:: (de un fragmento y de un archivo del servidor), una imagen
+        // incrustada como URI data: (un PNG de 1×1), otra que no existe y una tabla
+        private const val PIXEL = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg=="
+        private val ACCEPTANCE_SOURCE =
+            """
+            = Lección propia
+
+            Texto propio de la prueba.
+
+            include::fragmento.adoc[]
+
+            include::/etc/passwd[]
+
+            image::data:image/png;base64,$PIXEL[Diagrama propio]
+
+            image::diagrama.png[Diagrama ausente]
+
+            .Tabla propia
+            |===
+            | Columna A | Columna B
+            | celda-a1 | celda-b1
+            |===
+            """.trimIndent()
 
         // una fuente que el generador siempre rechaza, y otra cuyo primer intento sufre un fallo pasajero
         private const val BROKEN = "FUENTE-ROTA"
