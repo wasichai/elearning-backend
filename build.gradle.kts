@@ -88,9 +88,10 @@ tasks.check { dependsOn(noServletStack) }
 
 tasks.bootJar { archiveFileName.set("elearning-backend.jar") }
 
-// desarrollo local: bootRun toma .env (ignorado por git) como variables de entorno reales, que es como las lee Wasichai
+// desarrollo local: bootRun toma .env (ignorado por git) como variables de entorno reales, que es como las lee Wasichai.
+// LMS_ENV_FILE nombra otro archivo: la demo poblada (model/demo/demo.sh) usa el suyo y nunca lee el .env de desarrollo
 tasks.bootRun {
-    val env = file(".env")
+    val env = file(System.getenv("LMS_ENV_FILE")?.takeIf { it.isNotBlank() } ?: ".env")
     if (env.exists()) {
         env
             .readLines()

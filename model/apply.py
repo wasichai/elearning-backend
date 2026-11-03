@@ -11,12 +11,14 @@ Fases (cada una necesita la anterior):
   3. relaciones (crean los campos RELATION), su obligatoriedad y las restricciones/índices que las nombran;
   4. roles y sus permisos (el PUT de permisos reemplaza el conjunto completo del rol);
   5. con --demo, los usuarios y registros sintéticos de model/demo/data.json (ver model/demo/README.md): cada uno se
-     busca por su clave natural y solo se crea lo que falta; lo que ya existe no se modifica. Matrículas, sesiones,
-     intentos y notas van por los comandos del LMS, como cada persona.
+     busca por su clave natural y solo se crea lo que falta; lo que ya existe no se modifica. Matrículas, avance,
+     sesiones, intentos y notas van por los comandos del LMS, como cada persona. --demo-data se repite para sumar otro
+     archivo a los anteriores (la demo poblada: model/demo/poblada.json).
 
 Uso:
   python3 model/apply.py --validate-only [--demo]
   python3 model/apply.py --url http://localhost:8090 [--email … --password …] [--demo]
+  python3 model/apply.py --demo --demo-data model/demo/data.json --demo-data model/demo/poblada.json
 Credenciales también por WASICHAI_URL, WASICHAI_EMAIL, WASICHAI_PASSWORD; la contraseña de los usuarios de demostración,
 solo por WASICHAI_DEMO_PASSWORD. Nunca se escriben en disco.
 """
@@ -34,6 +36,7 @@ import sys
 import urllib.error
 import urllib.parse
 import urllib.request
+import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -59,6 +62,9 @@ RELATIVE_DATE = re.compile(r"^hoy(?:([+-]\d{1,4}))?$")
 UUID = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
 # las que corrige una persona (GradingService); las demás las califica el servidor al enviar
 MANUAL_QUESTIONS = {"ABIERTA", "ARCHIVO"}
+# el evento del aula que completa cada tipo de lección (LessonProgressService); evaluación y sesión se completan de otro modo
+COMPLETION_EVENTS = {"LECTURA": "MARKED_COMPLETE", "PRESENTACION": "MARKED_COMPLETE", "LABORATORIO": "MARKED_COMPLETE", "VIDEO": "VIDEO_ENDED"}
+DEMO_LISTS = ("users", "records", "enrollments", "progress", "sessions", "attempts")
 
 
 class ModelError(Exception):
@@ -278,7 +284,7 @@ def validate_demo(data: dict, model: dict, roles: dict | None = None, base: Path
     known_roles = {"ADMIN"} | {r["name"] for r in (roles or {}).get("roles", [])}
 
     for key in data:
-        if key not in ("users", "records", "workflows", "enrollments", "sessions", "attempts", "terms") and not key.startswith("_"):
+        if key not in ("workflows", "terms", *DEMO_LISTS) and not key.startswith("_"):
             problems.append(f"clave desconocida '{key}' en los datos de demostración")
 
     # workflows: el camino de estados que un registro recorre hasta su estado final, como lo haría una persona
@@ -412,8 +418,12 @@ def validate_demo(data: dict, model: dict, roles: dict | None = None, base: Path
 
     # matrículas: por el comando, como el estudiante; solo en ediciones abiertas hoy
     records_by_ref = {r.get("ref"): r for r in data.get("records", [])}
+    seats: dict[str, int] = {}
     for i, enrollment in enumerate(data.get("enrollments", [])):
         where = f"matrícula #{i + 1}"
+        if (enrollment.get("user"), enrollment.get("offering")) in {(e.get("user"), e.get("offering")) for e in data["enrollments"][:i]}:
+            problems.append(f"{where}: {enrollment.get('user')!r} ya está matriculado en {enrollment.get('offering')!r}")
+        seats[enrollment.get("offering")] = seats.get(enrollment.get("offering"), 0) + 1
         if enrollment.get("user") not in emails:
             problems.append(f"{where}: el usuario {enrollment.get('user')!r} no está en 'users'")
         if enrollment.get("user") not in accepted:
@@ -427,6 +437,11 @@ def validate_demo(data: dict, model: dict, roles: dict | None = None, base: Path
         open_today = all(isinstance(d, str) and RELATIVE_DATE.match(d) for d in window) and _days(window[0]) <= 0 <= _days(window[1])
         if a.get("estado") != "INSCRIPCION_ABIERTA" or not open_today:
             problems.append(f"{where}: la edición {enrollment['offering']!r} debe tener la inscripción abierta hoy (fechas relativas)")
+    # el cupo lo comprueba el servidor al matricular: una demo que lo supera se quedaría a medias
+    for offering, taken in seats.items():
+        capacity = (records_by_ref.get(offering) or {}).get("attributes", {}).get("capacidad")
+        if isinstance(capacity, int) and taken > capacity:
+            problems.append(f"edición {offering!r}: {taken} matrículas superan su capacidad de {capacity}")
     # sesiones: por el comando, como el docente asignado a esa edición
     assigned = {(r.get("refs", {}).get("edicion_curso"), r.get("users", {}).get("usuario_id")) for r in data.get("records", []) if r.get("object") == "docente_edicion"}
     for i, session in enumerate(data.get("sessions", [])):
@@ -438,9 +453,69 @@ def validate_demo(data: dict, model: dict, roles: dict | None = None, base: Path
             problems.append(f"{where}: {session.get('lesson')!r} no es una leccion del archivo")
         if not (isinstance(session.get("date"), str) and RELATIVE_DATE.match(session["date"])):
             problems.append(f"{where}: la fecha debe ser relativa (hoy±N)")
+    problems += _progress_problems(data, records_by_ref)
     problems += _attempt_problems(data, records_by_ref, assigned)
     if problems:
         raise ModelError(problems)
+
+
+def merge_demo(parts: list[dict]) -> dict:
+    """Une varios archivos de demostración en uno, en orden: las listas se suman y un registro puede apuntar a otro de un
+    archivo anterior. El camino de estados de un objeto se declara en un solo archivo."""
+    merged: dict = {"workflows": {}}
+    for part in parts:
+        for key, value in part.items():
+            if key == "workflows":
+                for obj, flow in (value or {}).items():
+                    if obj in merged["workflows"]:
+                        raise ModelError([f"workflow de '{obj}': declarado en dos archivos de demostración"])
+                    merged["workflows"][obj] = flow
+            elif key in DEMO_LISTS:
+                merged.setdefault(key, []).extend(value or [])
+            elif key == "terms":
+                # los términos se declaran una vez; cada archivo suma quién los acepta
+                terms = merged.setdefault("terms", {})
+                for name, item in (value or {}).items():
+                    if name == "acceptedBy":
+                        terms.setdefault("acceptedBy", []).extend(item or [])
+                    elif name in terms and terms[name] != item:
+                        raise ModelError([f"terms.{name}: declarado distinto en dos archivos de demostración"])
+                    else:
+                        terms[name] = item
+            elif not key.startswith("_"):
+                merged[key] = value  # validate_demo la rechaza como clave desconocida
+    return merged
+
+
+def _lesson_version(records_by_ref: dict, lesson_ref: object) -> object:
+    unit = records_by_ref.get((records_by_ref.get(lesson_ref) or {}).get("refs", {}).get("unidad")) or {}
+    return unit.get("refs", {}).get("version_curso")
+
+
+def _progress_problems(data: dict, records_by_ref: dict) -> list[str]:
+    """Avance: lecciones que el estudiante matriculado completa él mismo (leer, terminar un vídeo), de la versión de la
+    edición. Las que se completan aprobando su evaluación o asistiendo a su sesión no van aquí."""
+    problems: list[str] = []
+    enrolled = {(e.get("user"), e.get("offering")) for e in data.get("enrollments", [])}
+    evaluated = {r.get("refs", {}).get("leccion") for r in data.get("records", []) if r.get("object") == "evaluacion"}
+    with_session = {s.get("lesson") for s in data.get("sessions", [])}
+    for i, entry in enumerate(data.get("progress", [])):
+        where = f"avance #{i + 1}"
+        student, offering = entry.get("student"), entry.get("offering")
+        if (student, offering) not in enrolled:
+            problems.append(f"{where}: {student!r} no está matriculado en {offering!r} (falta en 'enrollments')")
+        version = (records_by_ref.get(offering) or {}).get("refs", {}).get("version_curso")
+        lessons = entry.get("lessons") or []
+        if not lessons or len(set(lessons)) != len(lessons):
+            problems.append(f"{where}: 'lessons' es una lista de lecciones sin repetir")
+        for lesson in lessons:
+            record = records_by_ref.get(lesson) or {}
+            kind = record.get("attributes", {}).get("tipo")
+            if record.get("object") != "leccion" or _lesson_version(records_by_ref, lesson) != version:
+                problems.append(f"{where}: {lesson!r} no es una lección de la versión de {offering!r}")
+            elif kind not in COMPLETION_EVENTS or lesson in evaluated or lesson in with_session:
+                problems.append(f"{where}: {lesson!r} no se completa marcándola: se aprueba su evaluación o se asiste a su sesión")
+    return problems
 
 
 def _attempt_problems(data: dict, records_by_ref: dict, assigned: set) -> list[str]:
@@ -825,6 +900,7 @@ def apply_demo(client: Client, data: dict, password: str, report: Report, base: 
         _walk(client, record, record_id, workflows[record["object"]], final, report)
     _terms(client, data, password, report)
     _enroll(client, data, ids, user_ids, password, report)
+    _progress(client, data, ids, user_ids, password, report)
     _sessions(client, data, ids, password, today, report)
     _attempts(client, data, ids, user_ids, password, report)
 
@@ -882,6 +958,30 @@ def _enroll(client: Client, data: dict, ids: dict, user_ids: dict, password: str
         student.login(email, password)
         student.call("POST", "/api/lms/enrollments", {"offering": codes[offering]})
         report.add(f"matrícula de {email} en {codes[offering]}")
+
+
+def _progress(client: Client, data: dict, ids: dict, user_ids: dict, password: str, report: Report) -> None:
+    """Avance por el aula, iniciando sesión como cada estudiante: el mismo evento que envía la interfaz al marcar una
+    lectura o terminar un vídeo. Lo ya completado no se vuelve a enviar, y el identificador del evento sale de quién, dónde
+    y qué lección, así que repetirlo tampoco duplicaría nada."""
+    codes = {r["ref"]: r["attributes"]["codigo"] for r in data.get("records", []) if r["object"] == "edicion_curso"}
+    kinds = {r["ref"]: r["attributes"]["tipo"] for r in data.get("records", []) if r["object"] == "leccion"}
+    for entry in data.get("progress", []):
+        email, offering = entry["student"], entry["offering"]
+        enrollment = _find_record(client, "matricula", {"estudiante_id": user_ids[email], "edicion": ids[offering]})
+        if enrollment is None:
+            raise DemoError(f"avance de {email}: no tiene matrícula en {codes[offering]}")
+        student = Client(client.base)
+        student.login(email, password)
+        classroom = student.call("GET", f"/api/lms/classroom/enrollments/{enrollment['id']}") or {}
+        lessons = [lesson for unit in classroom.get("units", []) for lesson in unit.get("lessons", [])]
+        done = {lesson.get("id") for lesson in lessons if (lesson.get("progress") or {}).get("completedAt")}
+        for lesson in entry["lessons"]:
+            if ids[lesson] in done:
+                continue
+            event = {"type": COMPLETION_EVENTS[kinds[lesson]], "clientEventId": str(uuid.uuid5(uuid.NAMESPACE_URL, f"demo:{email}:{codes[offering]}:{lesson}"))}
+            student.call("POST", f"/api/lms/classroom/enrollments/{enrollment['id']}/lessons/{ids[lesson]}/events", event)
+            report.add(f"avance de {email} en {codes[offering]}: {lesson}")
 
 
 def _sessions(client: Client, data: dict, ids: dict, password: str, today: datetime.date, report: Report) -> None:
@@ -954,7 +1054,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--email", default=os.environ.get("WASICHAI_EMAIL"))
     parser.add_argument("--password", default=os.environ.get("WASICHAI_PASSWORD"))
     parser.add_argument("--demo", action="store_true", help="valida y aplica también los datos de demostración")
-    parser.add_argument("--demo-data", type=Path, default=HERE / "demo" / "data.json")
+    parser.add_argument("--demo-data", type=Path, action="append",
+                        help="archivo de datos de demostración (por omisión model/demo/data.json); se repite para sumar otros")
     args = parser.parse_args(argv)
     if args.password is not None and args.password != os.environ.get("WASICHAI_PASSWORD"):
         print("Aviso: --password queda en el historial del shell y en la lista de procesos; usa WASICHAI_PASSWORD.", file=sys.stderr)
@@ -969,10 +1070,11 @@ def main(argv: list[str] | None = None) -> int:
     print(f"Modelo válido: {len(model.get('objects', []))} objetos, {len(model.get('relationships', []))} relaciones, "
           f"{len((roles or {}).get('roles', []))} roles.")
     demo = None
+    demo_files = args.demo_data or [HERE / "demo" / "data.json"]
     if args.demo:
-        demo = load(args.demo_data)
         try:
-            validate_demo(demo, model, roles, args.demo_data.parent)
+            demo = merge_demo([load(path) for path in demo_files])
+            validate_demo(demo, model, roles, demo_files[0].parent)
         except ModelError as error:
             print("Datos de demostración inválidos:", *(f"  - {p}" for p in error.problems), sep="\n", file=sys.stderr)
             return 2
@@ -999,7 +1101,7 @@ def main(argv: list[str] | None = None) -> int:
         if roles is not None:
             apply_roles(client, roles, report)
         if demo is not None:
-            apply_demo(client, demo, demo_password, report, base=args.demo_data.parent)
+            apply_demo(client, demo, demo_password, report, base=demo_files[0].parent)
     except (ApiError, DemoError, urllib.error.URLError, TimeoutError, ConnectionError) as error:
         print(f"Error: {error}", file=sys.stderr)
         return 1

@@ -1,7 +1,8 @@
 # Datos de demostración
 
-`data.json` contiene usuarios y registros **sintéticos** para probar el LMS de punta a punta (issue #19). Todo es
-ficticio e ilustrativo: las versiones llevan `contenido_ilustrativo: true` y ningún contenido ha sido validado por un
+`data.json` contiene usuarios y registros **sintéticos** para probar el LMS de punta a punta (issue #19), y
+`poblada.json` le suma más gente y actividad para enseñar y probar la plataforma a mano en un entorno propio
+([la demo poblada](#la-demo-poblada)). Todo es ficticio e ilustrativo: las versiones llevan `contenido_ilustrativo: true` y ningún contenido ha sido validado por un
 experto. Solo para entornos de desarrollo y demostración: **nunca en producción**.
 
 ## Cómo se aplican
@@ -57,7 +58,10 @@ servidor tiene dos registros con la misma clave natural, el script se detiene co
 Los registros van ordenados por dependencias. `apply.py --validate-only --demo` comprueba todo lo anterior, además de
 los campos y relaciones obligatorios y que ninguna clave natural se repita.
 
-### Lo que hace una persona: matrículas, sesiones, intentos y notas
+Con `--demo-data` repetido, los archivos se suman en orden: un registro, un avance o un intento puede nombrar `ref` y
+usuarios de un archivo anterior, y el camino de estados (`workflows`) se declara en uno solo. Se validan juntos.
+
+### Lo que hace una persona: matrículas, avance, sesiones, intentos y notas
 
 Lo que en el producto es un comando del LMS, la demo lo hace por ese comando e iniciando sesión como quien lo haría, así
 que pasa por las mismas reglas (ventana de inscripción, asignación del docente, plazos, motivo al cambiar una nota):
@@ -67,8 +71,13 @@ que pasa por las mismas reglas (ventana de inscripción, asignación del docente
 | `workflows`   | El camino de estados de cada objeto; `commands` da un paso por una ruta `/api/lms/` (aprobar por la bandeja).                           |
 | `terms`       | `{ text, retentionDays, acceptedBy }`: si faltan, el administrador publica los términos de uso; cada correo de `acceptedBy` los acepta. |
 | `enrollments` | `{ user, offering }`: el estudiante se matricula con `POST /api/lms/enrollments`, en una edición abierta hoy.                           |
+| `progress`    | `{ student, offering, lessons }`: el estudiante completa esas lecciones con el evento del aula (marcar o terminar el vídeo).            |
 | `sessions`    | Las crea el docente asignado a la edición con el comando de sesiones.                                                                   |
 | `attempts`    | `{ student, offering, lesson, teacher, answers, grades }`: el estudiante responde y envía; el docente asignado califica.                |
+
+Las matrículas de una edición no se repiten ni superan su `capacidad`. En `progress` van solo lecturas, presentaciones,
+laboratorios y vídeos de la versión de esa edición: una lección con evaluación se completa aprobándola y una con sesión,
+asistiendo. El identificador de cada evento sale del estudiante, la edición y la lección, y lo ya completado no se envía.
 
 Sin aceptación vigente de los términos nadie se matricula (ADR-0037): quien aparece en `enrollments` debe estar en
 `terms.acceptedBy`. Unos términos ya publicados no se tocan y una aceptación vigente no se renueva.
@@ -128,3 +137,55 @@ REVISOR), todos en `demo.wasichai-learning.test`, con nombres ficticios evidente
 `docente@`, su docente asignado, corrigió la pregunta abierta: 8 de 10 puntos, aprobada con el 80 %. El intento queda en la
 cola de lo corregido (`?status=GRADED`) y con su nota en el historial; la sesión y la asistencia quedan por hacer. Los
 recorridos e2e crean sus propios estudiantes, así que este intento no cambia sus conteos.
+
+## La demo poblada
+
+`poblada.json` se aplica **después** de `data.json` y en un entorno propio, como la base de demostración de los manuales
+de srtm-backend: otra base (`elearning_demo`, en 5446), otro buzón (1046/8046) y otro backend (8096), así que nunca toca
+la base de desarrollo ni cambia los conteos que esperan los e2e reales del frontend.
+
+### De cero a la demo
+
+Desde la raíz del repositorio, con Docker, JDK 25 y el token de GitHub Packages de [la puesta en
+marcha](../../docs/development/getting-started.md):
+
+```bash
+cp model/demo/demo.env.example model/demo/demo.env   # opcional: sin él se usa el ejemplo
+model/demo/demo.sh arriba                            # base y buzón de la demo
+model/demo/demo.sh backend                           # en otra terminal: http://localhost:8096, perfil dev
+model/demo/demo.sh sembrar                           # modelo, roles, data.json y poblada.json
+model/demo/demo.sh cuentas                           # quién es quién y la clave
+```
+
+`sembrar` es idempotente: una segunda vez responde «Sin cambios». Las fechas son relativas al día en que se siembra; si
+pasan semanas, las ediciones abiertas se cierran solas: `demo.sh abajo --borrar` y se empieza de nuevo. El frontend se
+apunta a esta demo con `WASICHAI_API_URL=http://localhost:8096 yarn dev`. El catálogo tarda hasta 30 s en mostrar lo
+sembrado.
+
+Los scripts se niegan a correr contra otra base que `elearning_demo*` en el puerto de la demo o contra otro backend que
+el de `localhost` en el puerto de la demo, y `backend` no lee el `.env` de desarrollo (`LMS_ENV_FILE`). Las claves de la
+demo (`admin`, `Demo-2026`) son conocidas: solo sirven en esta máquina.
+
+### Qué suma
+
+- **Cuentas**: 24 estudiantes y 2 docentes nuevos (`teresa.tutora@` y `pablo.profesor@`, con perfil público), además de
+  las 5 de `data.json`. Una categoría nueva, «Competencias digitales para el servicio público», con dos cursos.
+- **`DATOS-101`**, datos personales en la atención al público: v1 publicada con dos unidades de lecturas, una evaluación
+  con preguntas de opción única, múltiple, verdadero o falso y abierta, y una sesión. `DATOS-101-A` con la inscripción
+  abierta y 18 matriculados (`estudiante@` entre ellos); `DATOS-101-B`, programada.
+- **`HOJAS-101`**, hojas de cálculo para reportes de gestión: v1 publicada con un laboratorio, una evaluación con
+  respuesta corta y un taller en vivo. `HOJAS-101-A` con el **cupo agotado** (10 de 10); `HOJAS-101-B`, programada.
+- **`CORTO-101-A`**: seis estudiantes más.
+- **Avance**: en `DATOS-101-A`, seis estudiantes con todas las lecturas, cinco con la mitad y cuatro con una; en
+  `HOJAS-101-A`, cuatro con todo y tres con la primera; en `CORTO-101-A`, cuatro con la lectura.
+- **Intentos**: doce. Cinco aprobados, dos desaprobados con un intento por delante y cinco enviados sin corregir, en las
+  colas de Teresa, Pablo y Diego.
+- **Sesiones**: la bienvenida y la consulta de `DATOS-101-A` (Teresa) y el taller de `HOJAS-101-A` (Pablo), virtuales y
+  por venir.
+
+Para recorrerla: Teresa ve sus dos ediciones, el roster con el avance y la cola de corrección; un estudiante sin
+matrícula ve `HOJAS-101-A` sin cupo en el catálogo; `estudiante@` encuentra `DATOS-101` en «Mis cursos» con una lectura
+hecha; `revisor@` y `creador@` siguen con el flujo editorial de `data.json`.
+
+No se siembran asistencias ni certificados: las sesiones son futuras, y el certificado lo pide el estudiante cuando cumple
+las reglas de su versión.
