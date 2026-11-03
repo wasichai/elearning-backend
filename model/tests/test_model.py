@@ -100,6 +100,11 @@ class RealModelTest(unittest.TestCase):
             self.assertFalse(holds("DOCENTE", obj, "READ"), obj)
             self.assertTrue(holds("CREADOR", obj, "CREATE"), obj)
 
+    def test_a_question_may_point_to_the_lesson_that_reviews_it(self):
+        # E30.6 (#260): opcional, a una lección; que sea de la misma versión lo exige el servidor (EditorialWorkflowGuard)
+        links = {r["fieldName"]: (r["target"], r.get("required", False)) for r in MODEL["relationships"] if r["source"] == "pregunta"}
+        self.assertEqual(("leccion", False), links["leccion_repaso"])
+
     def test_course_versions_have_every_modality_and_a_kind_of_duration(self):
         # RF-ACA-05: presencial, virtual síncrona, asíncrona o híbrida; por semanas o semestral (el rango, en CourseDurationGuard)
         self.assertEqual({"PRESENCIAL", "SINCRONA", "ASINCRONA", "HIBRIDA"}, set(MODEL["enums"]["modalidad"]))

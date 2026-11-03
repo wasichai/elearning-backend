@@ -13,6 +13,15 @@ Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este
   armado y deja de leer cuatro veces por edición. `ClassroomPanelApiTest` y `TeachingPanelApiTest` prueban el contenido,
   la paginación, el alcance (solo lo propio; solo lo asignado) y que el coste no crece con la página (`StatementCount`).
 
+## 2026-11-03 — Lección de repaso de una pregunta ([#260](https://github.com/wasichai/elearning-backend/issues/260))
+
+- `pregunta` gana `leccion_repaso`, una relación opcional a la lección que la repasa. `EditorialWorkflowGuard` exige que sea
+  de la misma versión (`400` si no) y la congela con lo publicado; la copia de versión la re-apunta a la lección copiada.
+- La copia de las evaluaciones (`lms.contenido_evaluacion`) y la instantánea del intento la guardan: el resultado trae
+  `reviewLessonId` por pregunta, una vez enviado y sin depender de las soluciones (ADR-0019); el intento abierto no la trae.
+  Las instantáneas anteriores la dan como `null`. Las diferencias de versión no comparan evaluaciones: no aplica.
+- `ReviewLessonApiTest` (guarda, inmutabilidad y copia) y `AttemptApiTest` lo comprueban; `test_model`, el campo.
+
 ## 2026-11-03 — Logros derivados en el aula ([#265](https://github.com/wasichai/elearning-backend/issues/265), RF-AUL-08)
 
 - El aula de una matrícula devuelve `achievements: [{ kind, at, ref }]`: `UNIT_COMPLETED` (unidad con todas sus

@@ -435,13 +435,18 @@ intento ya enviado, lección sin evaluación o matrícula no activa. `400`: resp
   "percent": 70,
   "passed": true,
   "pending": false,
-  "questions": [{ "questionId": "…", "points": 2, "maxPoints": 2, "correct": true, "comment": null, "solution": null }]
+  "questions": [{ "questionId": "…", "points": 2, "maxPoints": 2, "correct": true, "comment": null, "solution": null, "reviewLessonId": "…" }]
 }
 ```
 
 `percent` y `passed` son `null` mientras `pending`. `solution` (`{ "optionIds": [...], "acceptedAnswers": [...] }`) solo si la
 evaluación muestra las soluciones al enviar (`mostrar_soluciones: AL_ENVIAR`) **y la persona ya aprobó o agotó sus intentos**:
 antes servirían para aprobar el siguiente. Con `NUNCA`, siempre `null`.
+
+`reviewLessonId` es la lección que repasa la pregunta (`leccion_repaso` de `pregunta`, #260), o `null` si no tiene. Sale
+con el resultado, una vez enviado el intento, sea cual sea `mostrar_soluciones`: no es una solución, solo dice dónde repasar,
+y es una lección de la misma versión que el estudiante ya puede abrir. Viene de la instantánea: no cambia aunque cambie el
+temario. Nunca está en `questions[]` del intento abierto.
 
 En `answers[]`, `submission` es `null` o `{ "id", "file": null | { "name", "contentType", "size", "url" } }`, tanto para el
 estudiante como para el docente. `deadline` es `null` sin tiempo límite. En `result`, una pregunta pendiente trae `points` y
@@ -625,7 +630,8 @@ inexistente o que no puedo leer, `404`. El número es único por curso: dos peti
 mismo número, y la que pierde responde `409`.
 
 El contenido (unidades, lecciones, evaluaciones) se edita con la API de registros de Wasichai, que la guarda deja solo al autor y
-en borrador.
+en borrador. La lección de repaso de una pregunta (`leccion_repaso`, opcional) es una lección de la misma versión: otra es
+`400` en `leccion_repaso`. Copiar la versión la re-apunta a la lección copiada.
 
 `StudioVersion`: `{ "id", "number", "status", "course": { "id", "code", "title" }, "authorId", "reviewerId": null,
 "updatedAt", "openComments": 2 }`. `status`: `BORRADOR` · `EN_REVISION` · `APROBADA` · `PUBLICADA` · `RETIRADA`.
