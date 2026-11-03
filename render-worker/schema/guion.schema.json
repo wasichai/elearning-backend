@@ -1,0 +1,123 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://wasichai-learning.dev/schemas/guion/1",
+  "title": "Guion de vídeo (RF-MED-01)",
+  "description": "Lo único que recibe el trabajador de render (ADR-0040 §2): datos, nunca código. Lo validan el backend (elearning.media.video.ScriptSchema) y el trabajador (src/guion.mjs). Las reglas que JSON Schema no expresa (subtítulos dentro de su sección, duración total, ids únicos, imágenes presentes en los recursos) las comprueban los dos lados en código.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "idioma", "titulo", "secciones"],
+  "properties": {
+    "version": { "const": 1 },
+    "idioma": { "type": "string", "pattern": "^[a-z]{2}(-[A-Z]{2})?$" },
+    "titulo": { "$ref": "#/$defs/titulo" },
+    "objetivos": { "type": "array", "maxItems": 20, "items": { "$ref": "#/$defs/linea" } },
+    "tipografia": { "enum": ["inter", "source-serif-4"] },
+    "salida": { "$ref": "#/$defs/salida" },
+    "secciones": { "type": "array", "minItems": 1, "maxItems": 100, "items": { "$ref": "#/$defs/seccion" } }
+  },
+  "$defs": {
+    "titulo": { "type": "string", "minLength": 1, "maxLength": 200 },
+    "linea": { "type": "string", "minLength": 1, "maxLength": 300 },
+    "salida": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "resolucion": { "enum": ["1280x720", "1920x1080"] },
+        "fps": { "enum": [25, 30] }
+      }
+    },
+    "seccion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "titulo", "segundos", "diapositiva"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,63}$" },
+        "titulo": { "$ref": "#/$defs/titulo" },
+        "segundos": { "type": "integer", "minimum": 1, "maximum": 600 },
+        "diapositiva": {
+          "oneOf": [
+            { "$ref": "#/$defs/portada" },
+            { "$ref": "#/$defs/vinetas" },
+            { "$ref": "#/$defs/imagen" },
+            { "$ref": "#/$defs/codigo" },
+            { "$ref": "#/$defs/cierre" }
+          ]
+        },
+        "narracion": { "type": "string", "maxLength": 10000 },
+        "subtitulos": { "type": "array", "maxItems": 200, "items": { "$ref": "#/$defs/subtitulo" } },
+        "trazas": { "type": "array", "maxItems": 20, "items": { "$ref": "#/$defs/traza" } }
+      }
+    },
+    "portada": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tipo", "titulo"],
+      "properties": {
+        "tipo": { "const": "portada" },
+        "titulo": { "$ref": "#/$defs/titulo" },
+        "subtitulo": { "$ref": "#/$defs/linea" }
+      }
+    },
+    "vinetas": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tipo", "titulo", "vinetas"],
+      "properties": {
+        "tipo": { "const": "vinetas" },
+        "titulo": { "$ref": "#/$defs/titulo" },
+        "vinetas": { "type": "array", "minItems": 1, "maxItems": 8, "items": { "$ref": "#/$defs/linea" } }
+      }
+    },
+    "imagen": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tipo", "imagen", "alt"],
+      "properties": {
+        "tipo": { "const": "imagen" },
+        "imagen": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "alt": { "$ref": "#/$defs/linea" },
+        "pie": { "$ref": "#/$defs/linea" }
+      }
+    },
+    "codigo": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tipo", "codigo"],
+      "properties": {
+        "tipo": { "const": "codigo" },
+        "titulo": { "$ref": "#/$defs/titulo" },
+        "lenguaje": { "type": "string", "pattern": "^[a-z0-9+#-]{1,32}$" },
+        "codigo": { "type": "string", "minLength": 1, "maxLength": 4000 }
+      }
+    },
+    "cierre": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tipo", "titulo"],
+      "properties": {
+        "tipo": { "const": "cierre" },
+        "titulo": { "$ref": "#/$defs/titulo" },
+        "mensaje": { "$ref": "#/$defs/linea" }
+      }
+    },
+    "subtitulo": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["desde", "hasta", "texto"],
+      "properties": {
+        "desde": { "type": "number", "minimum": 0, "maximum": 600 },
+        "hasta": { "type": "number", "minimum": 0, "maximum": 600 },
+        "texto": { "type": "string", "minLength": 1, "maxLength": 500 }
+      }
+    },
+    "traza": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["doc"],
+      "properties": {
+        "doc": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "ancla": { "type": "string", "maxLength": 200 }
+      }
+    }
+  }
+}

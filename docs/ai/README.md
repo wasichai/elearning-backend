@@ -30,7 +30,10 @@ que es lógica determinista del módulo `elearning.ai` o de `authoring`; «perso
 4. **Borrador con plantillas versionadas** — _Embabel_ → `LessonDraft` en la fuente canónica (AsciiDoc). Plantilla y
    versión quedan en `AgentRun`.
 5. **Multimedia** — guiones, diapositivas, narración, subtítulos y Remotion. _Embabel_ (guion y estructura) + _código_
-   (render) → `VideoScript`, `SlideDeck`. Un vídeo solo está «terminado» si se renderizó y validó (§12).
+   (render) → `VideoScript`, `SlideDeck`. Un vídeo solo está «terminado» si se renderizó y validó (§12). El guion está
+   implementado en E36.1 ([#293](https://github.com/wasichai/elearning-backend/issues/293)): `POST /api/lms/ai/scripts` con un
+   brief `LISTO` y una versión de recurso `VIDEO` en borrador; se guarda como versión inmutable (`guion_video`) con el guion
+   del render de ADR-0040, sus subtítulos WebVTT y su transcripción, y cada sección traza a las secciones de la fuente.
 6. **Validaciones automáticas** — _código_: estructura, referencias, enlaces, recursos, duplicidad (hashes),
    accesibilidad y metadatos → `ValidationReport`. _Embabel_ solo aporta una **opinión** sobre la coherencia
    contenido-evaluación, que nunca aprueba ni bloquea por sí sola. La parte de código está implementada en E34.1

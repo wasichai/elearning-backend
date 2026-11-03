@@ -407,6 +407,17 @@ artefacto nunca se sobrescribe y regenerar crea otra versión [`appendOnly`, ser
 [`unique`]. Mientras un artefacto apunte a una `version_recurso`, esa versión no se puede borrar (regla de Wasichai para
 destinos de objetos `appendOnly`).
 
+**`guion_video`** (VideoScript) — F5 (E36.1, RF-MED-01). `appendOnly` y `apiOnly`. `version_recurso · RELATION →
+version_recurso · requerido` · `numero · INTEGER` · `guion · LONG_TEXT` (el JSON del render de
+[ADR-0040](../adr/0040-renderizador-de-video-en-un-trabajador-node.md) §2: secciones con duración, diapositiva, narración,
+subtítulos y trazas `{ doc, ancla }`) · `sha256 · TEXT` (del guion) · `subtitulos_vtt · LONG_TEXT` (WebVTT) ·
+`transcripcion · LONG_TEXT` · `duracion_segundos · INTEGER` · `ejecucion_agente_id · UUID` · `trabajo_id · UUID · unique`;
+`uniqueConstraints: [[version_recurso, numero]]`. Lo escribe solo el trabajo de IA del guion (`ai.script`), como la
+plataforma; lo leen `CREADOR` y `REVISOR`. Invariantes: cada sección traza a una sección leída de la fuente
+[`VideoScriptCheck`]; un guion no se cambia ni se borra y escribir otro es el `numero` siguiente [`appendOnly`, servicio];
+solo se añade a una versión de un recurso `VIDEO` en `BORRADOR`, así que una publicada conserva los suyos
+[`VideoScriptGuard`]; repetir el trabajo no duplica [`unique`].
+
 ### 4.6 Reputación y auditoría
 
 **`dimension_valoracion`** — F6 ([ADR-0038](../adr/0038-politica-de-valoraciones.md)).
@@ -601,7 +612,7 @@ No hay conversión entre ECTS y SCH.
   finalización en `version_curso`.
 - **F4 — estudio editorial**: `revision_contenido`, `comentario_revision`, `artefacto_generado` (HTML/PDF); ciclo
   completo de §5.1.
-- **F5 — IA y multimedia**: `ejecucion_agente`, `artefacto_generado` (vídeo, subtítulos).
+- **F5 — IA y multimedia**: `ejecucion_agente`, `guion_video`, `artefacto_generado` (vídeo, subtítulos).
 - **F6 — calidad y reputación**: `valoracion`, `puntaje_valoracion`, `feedback_contenido`, aprobación humana de
   créditos, perfil público del docente.
 

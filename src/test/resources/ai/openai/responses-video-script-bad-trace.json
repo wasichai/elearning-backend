@@ -1,0 +1,33 @@
+{
+  "id": "resp_double_video_script_bad_trace",
+  "object": "response",
+  "created_at": 1793700000,
+  "status": "completed",
+  "model": "gpt-6.1-sol",
+  "output": [
+    {
+      "type": "message",
+      "id": "msg_double_video_script_bad_trace",
+      "status": "completed",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "output_text",
+          "text": "{\"title\":\"Administración de anuncios\",\"objectives\":[\"Publicar un anuncio\",\"Retirarlo\"],\"sections\":[{\"id\":\"s01\",\"title\":\"Anuncios\",\"seconds\":10,\"slide\":{\"kind\":\"COVER\",\"title\":\"Administración de anuncios\",\"subtitle\":\"Personal administrativo\"},\"narration\":\"Cómo se publica y se retira un anuncio.\",\"captions\":[{\"from\":0,\"to\":10,\"text\":\"Cómo se publica y se retira un anuncio.\"}],\"traces\":[\"acme/manuales@0123456789abcdef0123456789abcdef01234567:capitulos/anuncios.adoc#_publicar_un_anuncio\"]},{\"id\":\"s02\",\"title\":\"Publicar un anuncio\",\"seconds\":25,\"slide\":{\"kind\":\"BULLETS\",\"title\":\"Publicar un anuncio\",\"bullets\":[\"Abrir el panel de anuncios\",\"Escribir el texto\",\"Pulsar Publicar\"]},\"narration\":\"Un anuncio llega a toda la organización. Se abre el panel, se escribe el texto y se pulsa Publicar.\",\"captions\":[{\"from\":0,\"to\":12.5,\"text\":\"Un anuncio llega a toda la organización.\"},{\"from\":12.5,\"to\":25,\"text\":\"Se abre el panel, se escribe el texto y se pulsa Publicar.\"}],\"traces\":[\"acme/manuales@0123456789abcdef0123456789abcdef01234567:capitulos/anuncios.adoc#_publicar_un_anuncio\"]},{\"id\":\"s03\",\"title\":\"Retirar un anuncio\",\"seconds\":25,\"slide\":{\"kind\":\"CLOSING\",\"title\":\"Retirar un anuncio\",\"message\":\"Un anuncio retirado deja de verse.\"},\"narration\":\"Un anuncio retirado deja de verse en el tablón.\",\"captions\":[{\"from\":0,\"to\":25,\"text\":\"Un anuncio retirado deja de verse en el tablón.\"}],\"traces\":[\"acme/manuales@0123456789abcdef0123456789abcdef01234567:capitulos/anuncios.adoc#_caducidad_de_un_anuncio\"]}]}",
+          "annotations": []
+        }
+      ]
+    }
+  ],
+  "usage": {
+    "input_tokens": 2300,
+    "input_tokens_details": {
+      "cached_tokens": 0
+    },
+    "output_tokens": 850,
+    "output_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "total_tokens": 3150
+  }
+}

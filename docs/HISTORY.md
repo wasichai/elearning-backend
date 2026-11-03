@@ -33,6 +33,24 @@ Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este
 - Pruebas: `CourseDesignTest` (con el `FakeOperationContext` de Embabel), `CourseDesignApiTest` sin claves y
   `CourseDesignAnthropicApiTest`/`CourseDesignOpenAiApiTest` contra el doble HTTP. Sin migraciones.
 
+## 2026-11-03 — Guion por secciones: E36.1 ([#293](https://github.com/wasichai/elearning-backend/issues/293))
+
+- `POST /api/lms/ai/scripts` encola, con un brief `LISTO` y una `version_recurso` `VIDEO` en `BORRADOR` de quien llama, el
+  paso `SCRIPT` (`ai.script`, RF-MED-01): lee las fuentes del brief como el análisis y escribe un `VideoScript` con secciones
+  de duración entera, diapositiva de una lista cerrada (`COVER`, `BULLETS`, `CODE`, `CLOSING`), narración, subtítulos y
+  trazas `owner/repo@sha:ruta#ancla`, con la duración objetivo (30–900 s), la resolución y los fps de ADR-0040.
+- `ScriptWriter` con dos implementaciones, como el patrón de `docs/ai` §5: `ModelScriptWriter` (Embabel, modelo `script` y
+  `lms.ai.max-tokens.script`, 16000) y `DeterministicScriptWriter`. `VideoScriptCheck` valida igual las dos salidas
+  (duraciones de 1 a 600 s, suma a ±10 % del objetivo, cada sección con una traza a una sección leída, subtítulos dentro de
+  su sección y ordenados, diapositivas completas, sin HTML ni URL) y cualquier problema deja la ejecución `INVALID_OUTPUT`.
+- El guion se guarda como versión en el Custom Object nuevo `guion_video` (`appendOnly`, `apiOnly`, lectura de `CREADOR` y
+  `REVISOR`): el JSON del render de ADR-0040 §2 (`VideoScriptDocuments`, probado contra
+  `render-worker/schema/guion.schema.json`), su SHA-256, los subtítulos en WebVTT y la transcripción. `VideoScriptGuard` solo
+  deja a la plataforma añadirlo a una versión `VIDEO` en `BORRADOR`: lo publicado no cambia (regla 5).
+- Pruebas: `VideoScriptTest` (comprobación, doble, esquema, WebVTT y la llamada con el `FakeOperationContext`),
+  `VideoScriptApiTest` (doble sin claves, versiones, inmutabilidad, permisos) y `VideoScriptAnthropicApiTest` y
+  `VideoScriptOpenAiApiTest` contra el doble HTTP. Sin migraciones.
+
 ## 2026-11-03 — Análisis de fuentes con procedencia y doble determinista: E33.4 ([#281](https://github.com/wasichai/elearning-backend/issues/281))
 
 - `POST /api/lms/ai/source-analysis` encola, con un brief `LISTO`, el paso `SOURCE_ANALYSIS` (`ai.source_analysis`): lee

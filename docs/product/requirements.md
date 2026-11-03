@@ -374,6 +374,9 @@ el cuándo, en [`roadmap.md`](roadmap.md).
 - **RF-MED-01** · F5 · planificado — Guion por secciones con duración, diapositivas, subtítulos y transcripción como
   datos versionados.
   _Aceptación:_ validación de esquema del guion y trazas a la fuente.
+  _Avance:_ guion por secciones (E36.1, [#293](https://github.com/wasichai/elearning-backend/issues/293)): `ScriptWriter`
+  (Embabel y doble determinista) → `VideoScript`, comprobado por `VideoScriptCheck` (duraciones, suma dentro del objetivo,
+  una traza existente por sección) y guardado como versión inmutable en `guion_video`, del esquema del render de ADR-0040.
 - **RF-MED-02** · F5 · planificado — Renderizado Remotion asíncrono, fuera de WebFlux, con límite de concurrencia y
   registro de trabajo y errores.
   _Aceptación:_ lanzar más renders que el límite los encola sin degradar la API.

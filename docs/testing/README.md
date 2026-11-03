@@ -71,7 +71,9 @@ con el consumo del proveedor y su coste. `SourceAnalysisAnthropicApiTest` y `Sou
 entero por la API (`SourceAnalysisProviderApiTest`, una subclase por proveedor: la de OpenAI pone `lms.ai.provider=openai`),
 con sus respuestas `messages-source-analysis.json` y `responses-source-analysis.json`; `CourseDesignAnthropicApiTest` y
 `CourseDesignOpenAiApiTest` (`CourseDesignProviderApiTest`) encadenan el análisis y el diseño (`*-course-design.json`, y
-`*-course-design-unaligned.json` para `INVALID_OUTPUT`) y comprueban el `AgentRun` entero.
+`*-course-design-unaligned.json` para `INVALID_OUTPUT`) y comprueban el `AgentRun` entero. `VideoScriptAnthropicApiTest` y
+`VideoScriptOpenAiApiTest` hacen lo mismo con el guion (`VideoScriptProviderApiTest`): `messages-video-script.json` y
+`responses-video-script.json` traen un guion válido y las variantes `-bad-trace` uno con una traza a una sección inexistente.
 
 `ProviderKeysApiTest` (RNF-SEG-09) busca las claves ficticias del doble donde no deben estar: con Embabel, Spring AI,
 OkHttp y los SDK en DEBUG y la salida capturada desde antes de crear su contexto (`OutputCaptureExtension`; la prueba

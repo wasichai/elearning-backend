@@ -917,6 +917,67 @@
       "uniqueConstraints": [["trabajo_id", "formato"]]
     },
     {
+      "name": "guion_video",
+      "label": "Guion de vídeo",
+      "pluralLabel": "Guiones de vídeo",
+      "appendOnly": true,
+      "apiOnly": true,
+      "description": "Guion por secciones de una versión de recurso VIDEO (RF-MED-01, ADR-0040 §2): duración, diapositivas, subtítulos WebVTT, transcripción y trazas a la fuente. Lo escribe solo el trabajo de IA del guion; cambiarlo es otra versión del guion de un borrador, y el de una versión publicada no cambia.",
+      "fields": [
+        {
+          "name": "numero",
+          "label": "Número de versión del guion",
+          "type": "INTEGER",
+          "required": true
+        },
+        {
+          "name": "guion",
+          "label": "Guion del render (JSON de render-worker/schema/guion.schema.json)",
+          "type": "LONG_TEXT",
+          "required": true
+        },
+        {
+          "name": "sha256",
+          "label": "SHA-256 del guion",
+          "type": "TEXT",
+          "required": true
+        },
+        {
+          "name": "subtitulos_vtt",
+          "label": "Subtítulos (WebVTT)",
+          "type": "LONG_TEXT",
+          "required": true
+        },
+        {
+          "name": "transcripcion",
+          "label": "Transcripción",
+          "type": "LONG_TEXT",
+          "required": true
+        },
+        {
+          "name": "duracion_segundos",
+          "label": "Duración (segundos)",
+          "type": "INTEGER",
+          "required": true
+        },
+        {
+          "name": "ejecucion_agente_id",
+          "label": "Ejecución de IA (lms.ejecucion_agente)",
+          "type": "UUID",
+          "required": true,
+          "indexed": true
+        },
+        {
+          "name": "trabajo_id",
+          "label": "Trabajo del guion (lms.trabajo)",
+          "type": "UUID",
+          "required": true,
+          "unique": true
+        }
+      ],
+      "uniqueConstraints": [["version_recurso", "numero"]]
+    },
+    {
       "name": "progreso_leccion",
       "label": "Progreso de la lección",
       "pluralLabel": "Progreso de las lecciones",
@@ -1932,6 +1993,16 @@
       "source": "artefacto_generado",
       "target": "fuente_recurso",
       "fieldName": "fuente_recurso",
+      "required": true
+    },
+    {
+      "name": "guion_video_version",
+      "label": "Versión del recurso",
+      "inverseLabel": "Guiones de vídeo",
+      "type": "MANY_TO_ONE",
+      "source": "guion_video",
+      "target": "version_recurso",
+      "fieldName": "version_recurso",
       "required": true
     },
     {
