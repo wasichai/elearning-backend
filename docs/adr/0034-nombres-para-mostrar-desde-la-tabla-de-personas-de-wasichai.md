@@ -1,4 +1,4 @@
-# ADR-0031: Los nombres para mostrar se leen de la tabla de personas de Wasichai
+# ADR-0034: Los nombres para mostrar se leen de la tabla de personas de Wasichai
 
 **Estado**: aceptada · 2026-11-03 · provisional hasta que `UserDirectory` de Wasichai dé nombres por id ·
 [#258](https://github.com/wasichai/elearning-backend/issues/258)

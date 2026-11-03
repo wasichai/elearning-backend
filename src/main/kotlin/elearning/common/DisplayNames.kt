@@ -6,7 +6,7 @@ import org.springframework.stereotype.Component
 import wasichai.core.platform.WasichaiSchemas
 import java.util.UUID
 
-// el nombre para mostrar de las personas de la organización, en una sentencia para todas (#258, ADR-0031). nunca el correo
+// el nombre para mostrar de las personas de la organización, en una sentencia para todas (#258, ADR-0034). nunca el correo
 // ni otro dato. Wasichai 1.8.0 no lo ofrece en UserDirectory, así que se lee su tabla de personas con las mismas condiciones
 // que UserDirectory.existing: de la organización y habilitada (una cuenta de servicio no lo está). quien está deshabilitado,
 // fue borrado o no es de la organización no aparece en el mapa. provisional hasta que UserDirectory lo dé

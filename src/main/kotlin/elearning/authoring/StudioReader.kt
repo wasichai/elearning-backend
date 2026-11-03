@@ -17,7 +17,7 @@ import java.time.Instant
 import java.util.UUID
 
 // el contrato del estudio (docs/api/lms.md, ADR-0018). cada id de una persona va con su nombre para mostrar, null si está
-// deshabilitada o se borró (#258, ADR-0031); nunca su correo
+// deshabilitada o se borró (#258, ADR-0034); nunca su correo
 
 data class StudioCourse(
     val id: String,

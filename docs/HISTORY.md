@@ -8,7 +8,7 @@ Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este
   el nombre para mostrar de la persona, nunca su correo; `null` si está deshabilitada o fue borrada. Solo van donde ya iba el
   id y a quien ya puede leer la versión.
 - Wasichai 1.8.0 no da nombres en `UserDirectory`: `DisplayNames` los lee de su tabla de personas en una sentencia por
-  respuesta, con las condiciones de `UserDirectory.existing` ([ADR-0031](adr/0031-nombres-para-mostrar-desde-la-tabla-de-personas-de-wasichai.md),
+  respuesta, con las condiciones de `UserDirectory.existing` ([ADR-0034](adr/0034-nombres-para-mostrar-desde-la-tabla-de-personas-de-wasichai.md),
   provisional). `AuthoringNamesApiTest` prueba los nombres, el `null` de quien se deshabilita y que lo ajeno sigue siendo
   `404`/`403`; `AuthoringCostApiTest`, que la bandeja y el detalle no suman sentencias por persona.
 

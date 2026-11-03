@@ -572,7 +572,7 @@ en borrador.
 `StudioVersion`: `{ "id", "number", "status", "course": { "id", "code", "title" }, "authorId", "authorName", "reviewerId": null,
 "reviewerName": null, "updatedAt", "openComments": 2 }`. `status`: `BORRADOR` · `EN_REVISION` · `APROBADA` · `PUBLICADA` · `RETIRADA`.
 
-**Nombres** (#258, ADR-0031): cada `authorId` y `reviewerId` de `StudioVersion`, `ReviewComment` y `ReviewDecision` va con su
+**Nombres** (#258, ADR-0034): cada `authorId` y `reviewerId` de `StudioVersion`, `ReviewComment` y `ReviewDecision` va con su
 `authorName` o `reviewerName`, el nombre para mostrar de la persona en Wasichai, nunca su correo ni otro dato. Es `null` si el
 id es `null` o si la persona está deshabilitada o fue borrada; el id se devuelve igual. Solo los recibe quien ya puede leer la
 versión (lo demás sigue siendo `404`/`403`), y se leen de una vez para toda la respuesta.
