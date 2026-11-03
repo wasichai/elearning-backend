@@ -310,12 +310,13 @@ usen `elearning.ai`, ni directamente ni a través de otra capacidad. El e2e de l
 
 Generar, validar, aprobar y publicar son permisos distintos (acciones declaradas de Wasichai, ADR-042):
 
-| Acción                                              | Quién                                     | Objeto                          | Estado                        |
-| --------------------------------------------------- | ----------------------------------------- | ------------------------------- | ----------------------------- |
-| Generar (encolar un paso)                           | CREADOR con acceso al curso               | `GENERAR` sobre `version_curso` | Implementado (E33.3)          |
-| Validar (lanzar y aceptar el informe de validación) | REVISOR, nunca quien genera               | `VALIDAR` sobre `version_curso` | Implementado (E33.3)          |
-| Aprobar                                             | Persona con `APROBAR`, distinta del autor | `version_curso`                 | Planificado (F1 en el modelo) |
-| Publicar                                            | Persona con `PUBLICAR`                    | `version_curso`                 | Planificado (F1 en el modelo) |
+| Acción                                              | Quién                                     | Objeto                                     | Estado                        |
+| --------------------------------------------------- | ----------------------------------------- | ------------------------------------------ | ----------------------------- |
+| Generar (encolar un paso)                           | CREADOR con acceso al curso               | `GENERAR` sobre `version_curso`            | Implementado (E33.3)          |
+| Validar (lanzar y aceptar el informe de validación) | REVISOR, nunca quien genera               | `VALIDAR` sobre `version_curso`            | Implementado (E33.3)          |
+| Aprobar                                             | Persona con `APROBAR`, distinta del autor | `version_curso`                            | Planificado (F1 en el modelo) |
+| Publicar                                            | Persona con `PUBLICAR`                    | `version_curso`                            | Planificado (F1 en el modelo) |
+| Ver los indicadores de proceso (§10)                | Solo ADMIN (ningún rol del LMS)           | `VER_INDICADORES_IA` sobre `version_curso` | Implementado (E35.2)          |
 
 Los trabajos IA no tienen ninguna de las dos últimas.
 
@@ -359,6 +360,32 @@ indicadores 1–8 miden el proceso; solo el 9 y la revisión humana dicen algo d
 | 9   | Calidad percibida                              | Valoración de recursos (claridad, utilidad, actualidad, calidad) de estudiantes matriculados, con muestra mínima publicada (F6) |
 
 Cambio estructural: alta, baja o reordenación de unidades, lecciones o evaluaciones respecto del borrador.
+
+**Cálculo** (E35.2, [#291](https://github.com/wasichai/elearning-backend/issues/291)). `GET /api/lms/ai/indicators`
+([docs/api](../api/lms.md#indicadores-de-la-canalización-f5-rf-ia-10)) calcula a petición los indicadores 1–8 desde
+`lms.ejecucion_agente` (con sus intervenciones, §14), `lms.transicion_version` (el historial de estados de
+[ADR-0032](../adr/0032-historial-de-estados-de-la-version-en-tabla-propia.md)) y `lms.decision_revision`, con una consulta por indicador
+(`PipelineIndicatorStore`, `elearning.ai`). Son **indicadores de proceso**: la respuesta y cada indicador lo dicen
+(`kind = PROCESS`, y no existe otro tipo) y ninguno se presenta ni se resume como calidad pedagógica. El 9 es de las
+valoraciones (F6) y no se sirve aquí.
+
+- **Qué es MODEL.** Una versión cuenta como **generada** solo si la nombra una ejecución `generator = MODEL` de un paso que
+  crea borradores (`DraftValidationStore.GENERATING_STEPS`, en `version_curso_id` o en `output.versionId`, §13): lo que hizo
+  el doble determinista no cuenta en ningún indicador. Los informes de validación (`VALIDATION`) son siempre `DETERMINISTIC`,
+  porque son código: son la medida de esas versiones, no una generación.
+- **Permiso.** `VER_INDICADORES_IA` sobre `version_curso`, una acción declarada que no tiene ningún rol del LMS (solo ADMIN,
+  que tiene todas): los indicadores son de toda la organización y llevan el gasto. Con `courseId`, de ese curso, que se lee
+  como quien llama (`404` si no lo ve).
+
+| #   | Cálculo exacto                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| --- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Revisadas: versiones generadas con alguna fila en `lms.decision_revision`. Aceptadas: las revisadas cuya última decisión es `APROBAR` y sin cambio estructural. Cambio estructural: una intervención `EDITED` en una ejecución que la generó cuya nota (§14) da de baja una `unidad`, `leccion` o `evaluacion` o cambia su `orden` o su padre (`STRUCTURAL_CHANGE`), o un número distinto de unidades, lecciones o evaluaciones entre el primer informe de validación de la versión y el último (las altas no dejan intervención, §14) |
+| 2   | Mediana, en segundos, entre la creación del brief (`createdAt` del registro de Wasichai, leído como quien llama) que nombra en `inputs.briefId` la ejecución generadora más antigua de la versión y el fin del primer informe `SUCCEEDED` con `blocking = false`. Quedan fuera (`excluded`) las validadas cuya ejecución no nombra un brief, o cuyo brief ya no existe o quien llama no ve. El paso que cree borradores ([#283](https://github.com/wasichai/elearning-backend/issues/283)) tiene que llevar `briefId` en sus entradas  |
+| 3   | En los análisis de fuentes `MODEL` cerrados con informe (`SUCCEEDED` o `INVALID_OUTPUT`): verificadas = conceptos + procedimientos que quedaron (cita comprobada en la sección y el commit indicados, §5); generadas = verificadas + descartadas por su procedencia (`NO_PROVENANCE`, `SOURCE_NOT_READ`, `ANCHOR_NOT_FOUND`, `QUOTE_NOT_IN_SOURCE`). `BLANK` no es una referencia y no cuenta                                                                                                                                          |
+| 4   | Por versión generada que entró en revisión, el último informe terminado antes de su **primera** transición a `EN_REVISION`: `problemCount` y sus totales `BLOCKING` y `WARNING`. `perDraft` = problemas ÷ borradores con informe; `withoutReport`, los que entraron sin ninguno. Con `GeneratedDraftGuard`, `blocking` es 0: lo que llega son avisos                                                                                                                                                                                   |
+| 5   | Mediana (`percentile_cont(0.5)`), en segundos, entre cada decisión de `lms.decision_revision` sobre una versión generada y la última transición a `EN_REVISION` anterior a ella. Una decisión sin esa transición (historial anterior a V16) queda fuera (`excluded`)                                                                                                                                                                                                                                                                   |
+| 6   | Suma de `cost` de las ejecuciones `MODEL`, todos los intentos y estados, por curso y por unidad (`unit_id`) y moneda, con las tarifas usadas y su fecha (`rates`). Las ejecuciones sin tarifa van en su línea con `currency` y `amount` nulos: el importe no se inventa                                                                                                                                                                                                                                                                |
+| 7–8 | `UNAVAILABLE`: necesitan el feedback contextual resuelto como error de contenido (RF-REP-03, F6), que aún no existe. Se calcularán cuando exista; hasta entonces no se rellenan con un valor que parecería bueno                                                                                                                                                                                                                                                                                                                       |
 
 ## 11. Configuración prevista
 

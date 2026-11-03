@@ -372,6 +372,9 @@ el cuándo, en [`roadmap.md`](roadmap.md).
 - **RF-IA-10** · F5 · planificado — Indicadores de la canalización (§10) calculados desde `AgentRun` y revisiones.
   _Aceptación:_ cada indicador tiene definición escrita y prueba de cálculo; ninguno se presenta como calidad
   pedagógica.
+  _Avance:_ indicadores 1–6 en `GET /api/lms/ai/indicators` (E35.2, [#291](https://github.com/wasichai/elearning-backend/issues/291)),
+  solo de ejecuciones `MODEL`, con `VER_INDICADORES_IA` y marcados `kind = PROCESS`; el 7 y el 8 esperan el feedback
+  contextual (RF-REP-03, F6) y el 9 es de las valoraciones.
 
 ### RF-MED — Multimedia (§12)
 

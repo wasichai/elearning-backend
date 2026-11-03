@@ -14,6 +14,19 @@ Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este
 - `AiWork` marca todo trabajo de IA (`AiStepRunner.run`, la validación) y `AiWorkGuard` le niega aprobar o publicar una versión
   (`403`), aunque corra como la plataforma. Sin migraciones. Docs: `docs/ai` §14, `docs/api`.
 
+## 2026-11-03 — Indicadores de proceso de la canalización: E35.2 ([#291](https://github.com/wasichai/elearning-backend/issues/291))
+
+- `GET /api/lms/ai/indicators` (`?courseId=` opcional) calcula a petición los indicadores 1–6 de docs/ai §10 desde
+  `lms.ejecucion_agente` (con sus intervenciones), `lms.transicion_version` y `lms.decision_revision`, con una consulta por
+  indicador (`PipelineIndicatorStore`): aceptados sin cambio estructural, tiempo brief → borrador validado, referencias
+  verificadas, incidencias antes de revisión, tiempo de revisión humana y coste por curso y por unidad con sus tarifas.
+- Solo cuentan las versiones generadas por una ejecución `generator = MODEL` y el gasto de ejecuciones `MODEL`; el doble
+  determinista no entra. Los indicadores 7 y 8 salen `UNAVAILABLE` hasta que exista el feedback contextual (F6).
+- Son indicadores de proceso y lo dicen: `kind = PROCESS` en la respuesta y en cada indicador, con su aviso; ninguno se
+  presenta como calidad pedagógica. Definición exacta de cada uno en docs/ai §10.
+- Acción declarada nueva `VER_INDICADORES_IA` sobre `version_curso`, que ningún rol del LMS tiene (solo ADMIN); la exige
+  `AiPermissions`. Pruebas de cálculo con datos sembrados y de autorización negativa. Sin migraciones.
+
 ## 2026-11-03 — Opinión de consistencia contenido-evaluación: E34.2 ([#287](https://github.com/wasichai/elearning-backend/issues/287))
 
 - Al terminar su informe, la validación pide la opinión de un modelo barato (clave `consistency` de `lms.ai.models`, por

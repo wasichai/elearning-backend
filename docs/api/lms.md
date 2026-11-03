@@ -1210,3 +1210,27 @@ CreditApproval | null }`.
   contenido). Propone con ella si es de su sistema; sin ella, con la de referencia (`pe-ley30220-horas-lectivas@1` para
   `PE_CREDITO`); ligada a otro sistema, `proposal` es `null`. `VersionCredits.policyId` es la ligada. Aprobar exige la
   ligada `PUBLICADA` y de su sistema (`409`); la aprobación guarda `policyId` = `clave` y `policyVersion` = `numero`.
+
+## Indicadores de la canalización (F5, RF-IA-10)
+
+Los indicadores de **proceso** de la canalización de IA ([docs/ai §10](../ai/README.md#10-indicadores-sección-10)),
+calculados a petición. No miden la calidad pedagógica, y la respuesta lo dice.
+
+| Método | Ruta                                   | Resultado                                              |
+| ------ | -------------------------------------- | ------------------------------------------------------ |
+| GET    | `/api/lms/ai/indicators`               | los de toda la organización → `PipelineIndicatorsView` |
+| GET    | `/api/lms/ai/indicators?courseId={id}` | los de un curso → `PipelineIndicatorsView`             |
+
+- **Permisos**: `VER_INDICADORES_IA` sobre `version_curso` (solo ADMIN en `roles.json`; `403` para CREADOR, REVISOR, DOCENTE,
+  AUTORIDAD_ACADEMICA y ESTUDIANTE). Con `courseId`, el curso se lee como quien llama: `404` si no existe o no lo ve.
+- **Solo `MODEL`**: una versión cuenta si la generó una ejecución `generator = MODEL`; el coste, solo de ejecuciones `MODEL`.
+- `PipelineIndicatorsView`: `{ "kind": "PROCESS", "notice", "generator": "MODEL", "courseId": null, "computedAt",
+"acceptedWithoutStructuralChange", "briefToValidatedDraft", "verifiedReferences", "issuesBeforeReview", "humanReviewTime",
+"cost", "publishedWithoutGenerationErrors", "issuesAfterPublishing" }`. Cada indicador lleva `number` (1–8 de docs/ai §10),
+  `"kind": "PROCESS"` y `"status": "AVAILABLE" | "UNAVAILABLE"`.
+- Cociente (1, 3): `{ "numerator", "denominator", "value": null }`; `value` es `null` sin denominador. Duración (2, 5):
+  `{ "sample", "excluded", "medianSeconds": null }`. Incidencias (4): `{ "drafts", "withoutReport", "problems", "blocking",
+"warnings", "perDraft": null }`. Coste (6): `{ "perCourse": [CostLine], "perUnit": [CostLine] }` con `CostLine`
+  `{ "courseId", "unitId": null, "currency": null, "amount": null, "runs", "rates": [{ "provider", "model", "inputPerMillion",
+"outputPerMillion", "since" }] }`; `currency` nulo es la línea de las ejecuciones sin tarifa. 7 y 8: `{ "status":
+"UNAVAILABLE", "reason" }` hasta que exista el feedback contextual (F6).

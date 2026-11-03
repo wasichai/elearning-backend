@@ -324,6 +324,14 @@ class RealModelTest(unittest.TestCase):
                 for action in ("VALIDAR", "APROBAR", "PUBLICAR"):
                     self.assertFalse(holds(name, "version_curso", action), f"{name} genera y no debe {action}")
 
+    # RF-IA-10: los indicadores de proceso de la canalización son de toda la organización y llevan su coste: una acción
+    # declarada propia que ningún rol del LMS tiene (solo ADMIN, que tiene todas)
+    def test_pipeline_indicators_are_a_declared_action_no_lms_role_holds(self):
+        version = next(o for o in MODEL["objects"] if o["name"] == "version_curso")
+        self.assertIn("VER_INDICADORES_IA", {a["name"] for a in version["actions"]})
+        for role in ROLES["roles"]:
+            self.assertFalse(holds(role["name"], "version_curso", "VER_INDICADORES_IA"), role["name"])
+
     def test_curriculum_is_separate_from_offering_and_schedule(self):
         # el temario (curso/versión) no tiene fechas; la edición sí, con su zona horaria
         course = {f["name"] for o in MODEL["objects"] if o["name"] in ("curso", "version_curso") for f in o["fields"]}
