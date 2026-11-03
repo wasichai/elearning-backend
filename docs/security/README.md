@@ -367,6 +367,10 @@ aplicación se conecta con un rol que no es dueño de las tablas, para que nadie
   | Ejecuciones de agente que pidió o en las que intervino                  | Se disocian: seudónimo como solicitante y en sus intervenciones; la ejecución queda |
   | Autoría, revisiones, notas puestas, sesiones y asistencias que registró | Se conservan con el id de cuenta: son actos de la organización                      |
 
+  Las intervenciones en una ejecución de agente son, como las revisiones, actos de la organización, pero se disocian:
+  la ejecución guarda qué pidió y qué aceptó o editó la persona sobre material generado, y la decisión editorial que
+  importa ya queda, con su autor, en la versión y en `lms.decision_revision` (#326).
+
   Queda en Wasichai: la cuenta (nombre, correo, roles), que deshabilita o elimina el administrador; las notificaciones;
   y `audit_log`, con el antes de cada registro suprimido o disociado, hasta que lo borre el rol de purga de Wasichai
   (`wasichai.audit.purge-role`), nunca la aplicación. Los trabajos terminados de `lms.trabajo` los borra la propia cola
