@@ -3,9 +3,12 @@ package elearning.ai
 import com.embabel.common.ai.autoconfig.ProviderInitialization
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.ObjectProvider
+import org.springframework.boot.context.properties.bind.Binder
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.core.env.Environment
+import java.time.LocalDate
+import java.time.ZoneOffset
 
 // lo que la canalización sabe del proveedor al arrancar. provider null: sin proveedor, cada paso usará su doble
 // determinista (docs/ai §7). models: el modelo por defecto y el de cada paso del proveedor activo
@@ -26,16 +29,19 @@ data class AiStatus(
 
         // comprobado al arrancar y no en la primera ejecución: un modelo que el proveedor no registró, el modelo por defecto
         // de Embabel incluido, o más de MAX_ATTEMPTS intentos impiden arrancar con todos los problemas a la vez.
-        // registered: los modelos que registró cada proveedor, por su nombre en Embabel
+        // registered: los modelos que registró cada proveedor, por su nombre en Embabel. on: el día de las tarifas (hoy, en UTC,
+        // como el de AgentExecutionLog)
         fun verified(
             environment: Environment,
             registered: Map<String, Set<String>>,
+            on: LocalDate = LocalDate.now(ZoneOffset.UTC),
         ): AiStatus {
             val provider = AiProvider.active(environment) ?: return AiStatus(null, emptyMap())
             val problems =
                 AiProvider.keyed(environment).flatMap { problems(it, environment, registered[it.embabelName].orEmpty()) } +
                     defaultModelProblem(environment, registered.values.flatten().toSet()) +
-                    dataBindingProblem(environment)
+                    dataBindingProblem(environment) +
+                    budgetProblems(environment, provider, on)
             check(problems.isEmpty()) { "the AI configuration does not start:\n" + problems.joinToString("\n") { "- $it" } }
             return AiStatus(provider, provider.models(environment))
         }
@@ -70,6 +76,32 @@ data class AiStatus(
             } else {
                 listOf("$DATA_BINDING_ATTEMPTS is $attempts: it must be between 1 and $MAX_ATTEMPTS, the job queue retries")
             }
+        }
+
+        // con presupuesto por curso (lms.ai.limits.course-budget), el modelo de cada paso del proveedor activo (el de su clave
+        // de lms.ai.max-tokens, o el por defecto, como AiStepModels) necesita una tarifa vigente en la moneda del presupuesto:
+        // sin ella su coste queda null, no suma en AgentExecutionStore.spent y el presupuesto no se cumpliría nunca (revisión de
+        // seguridad de la F5, #302)
+        private fun budgetProblems(
+            environment: Environment,
+            provider: AiProvider,
+            on: LocalDate,
+        ): List<String> {
+            val binder = Binder.get(environment)
+            val limits = binder.bindOrCreate("lms.ai.limits", AiLimits::class.java)
+            if (limits.courseBudget == null) return emptyList()
+            val rates = binder.bindOrCreate("lms.ai", AiRates::class.java)
+            val models = provider.models(environment)
+            val steps = binder.bindOrCreate("lms.ai", AiStepSettings::class.java).maxTokens.keys
+            return steps
+                .mapNotNull { models[it] ?: models[AiProvider.DEFAULT_MODEL] }
+                .distinct()
+                .sorted()
+                .filter { rates.rateFor(provider.id, it, on)?.currency != limits.currency }
+                .map { model ->
+                    "lms.ai.limits.course-budget is set, but ${provider.id} '$model' has no rate in ${limits.currency} on $on in lms.ai.rates: " +
+                        "its cost would not count and the budget would never be spent"
+                }
         }
 
         private fun defaultModelProblem(

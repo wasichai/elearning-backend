@@ -142,6 +142,10 @@ class AiJobs(
         return store.spent(organization, course, limits.currency) >= budget
     }
 
+    // la organización ya tiene lms.ai.limits.max-active-per-organization pasos de IA pendientes o en curso. Lo mira también
+    // quien encola un paso sin pasar por enqueue, como la opinión de consistencia (ConsistencyReviews)
+    suspend fun concurrencyFull(organization: UUID): Boolean = queue.activeCount(organization, TYPES) >= limits.maxActivePerOrganization
+
     // un tope blando, como el de la cola por persona: dos peticiones a la vez pueden pasarlo por uno
     private suspend fun requireConcurrency(organization: UUID) {
         val active = queue.activeCount(organization, TYPES)

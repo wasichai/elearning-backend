@@ -9,7 +9,8 @@
 //
 // PUT es idempotente por id de trabajo: hecho, devuelve el mismo informe sin renderizar otra vez; en curso, espera al mismo
 // render. 400 (no cumple el esquema), 409 (el mismo id con otro guion), 413 (demasiado grande) y 422 (render imposible) son
-// permanentes; 503 (lleno), pasajero. Lo que lleva más de una hora sin recoger se borra solo
+// permanentes; 503 (lleno), pasajero; 415, un cuerpo que no se declara JSON. Lo que lleva más de una hora sin recoger se
+// borra solo. El secreto no se escribe nunca en el registro: solo se compara su hash
 import { createHash, timingSafeEqual } from 'node:crypto'
 import { createReadStream } from 'node:fs'
 import { mkdir, rm, stat, writeFile } from 'node:fs/promises'
@@ -64,6 +65,8 @@ export function createWorker({
     )
 
   async function put(id, req) {
+    // solo JSON (revisión de seguridad de la F5, #302): ni formularios, ni texto, ni multipart, aunque su cuerpo se lea como JSON
+    if (!isJson(req.headers['content-type'])) throw new HttpError(415, 'the request must be application/json')
     const body = await readJson(req, maxBodyBytes)
     const parsed = parsePeticion(body, { maxSeconds })
     if (parsed.issues) throw new HttpError(400, 'the request does not follow the script schema', parsed.issues)
@@ -190,6 +193,11 @@ async function describe(file) {
     bytes += chunk.length
   }
   return { archivo: path.basename(file), sha256: hash.digest('hex'), bytes }
+}
+
+// application/json, con o sin parámetros (charset)
+function isJson(contentType) {
+  return (contentType ?? '').split(';')[0].trim().toLowerCase() === 'application/json'
 }
 
 // el cuerpo entero en memoria, con tope: uno declarado mayor se rechaza sin leerlo; uno sin longitud que se pasa se lee

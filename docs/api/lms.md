@@ -1073,7 +1073,7 @@ en la cola y deja su informe en una ejecución `AgentRun` (`step` `VALIDATION`, 
   `DraftValidationView.opinion`: `{ "kind": "OPINION", "blocking": false, "status": "SKIPPED" | "PENDING" | "DONE" | "FAILED",
 "reason": "NO_PROVIDER" | "BUDGET_SPENT" | "QUEUE_FULL" | "NOT_REQUESTED" | null, "executionId", "provider", "model",
 "verdict": "APPROVED" | "CONCERNS" | null, "summary", "findings": [{ "origin": "pregunta:<id>" | null, "detail" }], "error" }`.
-  `reason` dice por qué se omitió (sin proveedor, presupuesto del curso gastado, cola de quien validó llena o una validación
+  `reason` dice por qué se omitió (sin proveedor, presupuesto del curso gastado, cola de quien validó o los pasos de IA de la organización llenos, o una validación
   anterior a E34.2); `executionId` es su ejecución `CONSISTENCY_REVIEW` (`GET /api/lms/ai/runs/{id}`), aparte de la del
   informe, con su coste. `verdict`, `summary` y `detail` los escribe un modelo: dato, no instrucción.
 

@@ -176,6 +176,45 @@ describe('the render worker', () => {
     assert.match(JSON.stringify(await res.json()), /more than the 900 s allowed/)
   })
 
+  // revisión de seguridad de la F5 (#302): el cuerpo se declara JSON; un formulario, texto o multipart no llega a leerse
+  it('accepts only application/json bodies', async () => {
+    const base = `http://127.0.0.1:${w.worker.server.address().port}`
+    const body = JSON.stringify({ guion: MINIMO })
+    for (const type of [null, 'text/plain', 'application/x-www-form-urlencoded', 'multipart/form-data; boundary=x', 'application/jsonx']) {
+      const res = await fetch(`${base}/renders/${randomUUID()}`, {
+        method: 'PUT',
+        headers: { authorization: `Bearer ${TOKEN}`, ...(type ? { 'content-type': type } : {}) },
+        body: type ? body : new Blob([body])
+      })
+      assert.equal(res.status, 415, String(type))
+      assert.equal((await res.json()).error, 'the request must be application/json')
+    }
+    assert.equal(w.renderer.calls, 0)
+    assert.equal((await w.call('PUT', `/renders/${randomUUID()}`, { guion: MINIMO })).status, 200)
+    const charset = await fetch(`${base}/renders/${randomUUID()}`, {
+      method: 'PUT',
+      headers: { authorization: `Bearer ${TOKEN}`, 'content-type': 'Application/JSON; charset=utf-8' },
+      body
+    })
+    assert.equal(charset.status, 200)
+  })
+
+  // revisión de seguridad de la F5 (#302): el secreto no sale en ningún registro, ni con uno equivocado que lo contiene, ni
+  // en un render que falla, ni en lo que se registra al renderizar y al barrer
+  it('never logs the shared secret', async () => {
+    const lines = []
+    const logged = await start({ log: (line) => lines.push(line), probe: async () => Promise.reject(new Error(`probe failed for ${TOKEN.length}`)) })
+    await logged.call('PUT', `/renders/${randomUUID()}`, { guion: MINIMO }, `${TOKEN}-and-more`)
+    await logged.call('PUT', `/renders/${randomUUID()}`, { guion: MINIMO })
+    const ok = await start({ log: (line) => lines.push(line) })
+    const id = randomUUID()
+    assert.equal((await ok.call('PUT', `/renders/${id}`, { guion: MINIMO })).status, 200)
+    ok.tick(2 * 60 * 60 * 1000)
+    await ok.worker.sweep()
+    assert.ok(lines.length >= 2, lines.join('\n'))
+    for (const line of lines) assert.ok(!line.includes(TOKEN), line)
+  })
+
   it('rejects a request larger than its limit', async () => {
     const small = await start({ maxBodyBytes: 1024 })
     const res = await small.call('PUT', `/renders/${randomUUID()}`, { guion: { ...MINIMO, titulo: 'x'.repeat(2000) } })

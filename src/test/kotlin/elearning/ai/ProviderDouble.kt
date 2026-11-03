@@ -75,6 +75,16 @@ object ProviderDouble {
     // todas las que llegaron, emparejadas o no
     fun requestCount(): Int = server.allServeEvents.size
 
+    // cada petición que llegó, emparejada o no, como texto: método, URL, cabeceras y cuerpo, tal cual y, si es JSON, releído
+    // (sin los escapes \uXXXX que pueda traer). Para buscar en ella lo que nunca debe llegar al proveedor
+    fun servedRequests(): List<String> =
+        server.allServeEvents.map { event ->
+            val request = event.request
+            val body = request.bodyAsString
+            val parsed = runCatching { mapper.readTree(body).toString() }.getOrDefault("")
+            "${request.method} ${request.url}\n${request.headers}\n$body\n$parsed"
+        }
+
     fun unmatchedRequests(): List<LoggedRequest> = server.findAllUnmatchedRequests()
 
     fun assertNoUnmatchedRequests() {

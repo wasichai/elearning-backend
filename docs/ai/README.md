@@ -186,7 +186,9 @@ no una tabla nueva:
   creciente y tope; 400, 401, esquema inválido y presupuesto agotado son fallo permanente (`PermanentJobFailure`).
 - **Cancelación**: la cola gana el estado `CANCELLED`, comprobado entre llamadas al modelo; no deja borrador.
 - **Límites**: `max_tokens` por paso, concurrencia por organización y presupuesto por curso; superar los dos últimos al
-  encolar es `429` con `Retry-After`. Un paso es una llamada, más los reintentos de corrección acotados.
+  encolar es `429` con `Retry-After`. Un paso es una llamada, más los reintentos de corrección acotados. Con presupuesto,
+  el modelo de cada paso necesita su tarifa vigente en la moneda del presupuesto (`lms.ai.rates`) o la aplicación no
+  arranca: sin tarifa su coste sería `null` y no sumaría (#302).
 - Corre en un dispatcher acotado, nunca en el event loop de WebFlux.
 
 Implementado en E33.2 ([#279](https://github.com/wasichai/elearning-backend/issues/279)): `AiStepRunner` (`elearning.ai`) es la
@@ -638,7 +640,8 @@ sobre `AiStepRunner`), con el patrón de §5:
   no cambian el informe. La pide quien validó: `AiStepRunner` recomprueba `VALIDAR`, no `GENERAR`.
 - **Se omite y el informe lo dice** (`opinion.status = SKIPPED` con su `reason`): sin proveedor (`NO_PROVIDER`; no hay doble
   determinista, una opinión sin modelo no aporta nada), con el presupuesto del curso gastado (`BUDGET_SPENT`) o con la cola
-  de quien validó llena (`QUEUE_FULL`). Lo que pidió la validación queda en `output.consistencyReview` de su ejecución.
+  de quien validó llena o la organización en su tope de pasos de IA a la vez (`QUEUE_FULL`, #302: validar no elude
+  `lms.ai.limits.max-active-per-organization`). Lo que pidió la validación queda en `output.consistencyReview` de su ejecución.
 - **Idempotente por contenido**: la clave lleva el `contentHash` del informe; validar otra vez lo mismo reutiliza la opinión
   sin llamar al proveedor. El trabajo lee el borrador como la plataforma y, si cambió desde que se validó (otro hash), falla
   sin llamar.

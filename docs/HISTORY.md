@@ -15,6 +15,21 @@ Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este
   herramientas al modelo. La prueba encontró que `AiStepRunner.runWriting` (el borrador de lecciones, #283) no llevaba la
   marca `AiWork` de #288: ahora sí, y `AiWorkGuard` también le niega aprobar o publicar. Docs: `docs/security` §4.5 (qué prueba cubre qué amenaza), `docs/ai` §6. Sin migraciones.
 
+## 2026-11-03 — Revisión de seguridad de la Fase 5: E38.2 ([#302](https://github.com/wasichai/elearning-backend/issues/302))
+
+- **Revisión de seguridad** del cierre de la F5 contra docs/security §4.5 (resultado en su tabla): ningún dato personal de
+  estudiantes llega al modelo (`StudentData{Anthropic,OpenAi}ApiTest`: marcadores en nombres, correos, respuestas y
+  comentarios, todos los pasos de IA contra el doble, ninguno en lo que recibe ni en `AgentRun`), y cada ruta de
+  `/api/lms/ai/**` tiene su autorización negativa (`AiRoutesAuthorizationApiTest`, que falla con una ruta nueva sin caso).
+- Corregido: la opinión de consistencia se encolaba sin el tope de pasos de IA de la organización (ahora se omite con
+  `QUEUE_FULL`); con `lms.ai.limits.course-budget`, un modelo sin tarifa en esa moneda costaba `null` y el presupuesto no se
+  agotaba nunca (ahora la aplicación no arranca y lo dice); el trabajador de render solo acepta `application/json` (`415`,
+  permanente para el backend) y una prueba vigila que su secreto no sale en el registro; `OutboundHttpTest` fija los dos
+  únicos clientes HTTP salientes (SSRF).
+- Quedan: [#366](https://github.com/wasichai/elearning-backend/issues/366) (alto, curso publicado con recursos sin publicar),
+  [#367](https://github.com/wasichai/elearning-backend/issues/367), [#368](https://github.com/wasichai/elearning-backend/issues/368)
+  (medio, presupuesto por organización) y [#369](https://github.com/wasichai/elearning-backend/issues/369) (bajos). Sin migraciones.
+
 ## 2026-11-03 — Intervenciones humanas y distintivo del doble: E34.3 ([#288](https://github.com/wasichai/elearning-backend/issues/288))
 
 - `DraftInterventionListener` (`elearning.ai`) añade a la ejecución que generó un borrador (`DraftValidationStore.generatingRun`)

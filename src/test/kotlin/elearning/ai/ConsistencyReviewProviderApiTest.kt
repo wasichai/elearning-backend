@@ -230,9 +230,60 @@ abstract class ConsistencyReviewProviderApiTest(
         assertEquals("EN_REVISION", ok(submit(author, draft.version))["status"].asString())
     }
 
+    // revisión de seguridad de la F5 (#302): la opinión cuenta para el tope de pasos de IA de la organización como cualquier
+    // otro paso (AiJobs.enqueue); con la organización llena se omite sin llamar al proveedor, y la validación termina igual
+    @Test
+    fun `with the organization at its limit of AI steps the opinion is skipped without calling the provider`() {
+        replies(approved)
+        val author = account("CREADOR")
+        val reviewer = account("REVISOR")
+        val draft = draft(author, defective = false)
+        val other = UUID.fromString(userId(account("CREADOR")))
+        // los pasos de otra persona que llenan la organización, en curso y recién reclamados: nadie los vuelve a reclamar
+        runBlocking {
+            repeat(ORGANIZATION_LIMIT) {
+                db
+                    .sql(
+                        "INSERT INTO lms.trabajo (id, organizacion_id, tipo, solicitante, datos, estado, intentos, max_intentos, disponible_en, creado_en, " +
+                            "reclamado_en) VALUES (:id, :org, :type, :requester, CAST('{}' AS jsonb), 'RUNNING', 1, 3, now(), now(), now())",
+                    ).bind("id", UUID.randomUUID())
+                    .bind("org", ClassroomApiTestSupport.ORG)
+                    .bind("type", AiJobs.typeOf(AgentStep.ASSISTANT))
+                    .bind("requester", other)
+                    .fetch()
+                    .rowsUpdated()
+                    .awaitSingle()
+            }
+        }
+        try {
+            val view = validated(reviewer, draft.version)
+
+            assertFalse(view["report"]["blocking"].asBoolean(), view.toString())
+            assertEquals("SKIPPED", view["opinion"]["status"].asString(), view.toString())
+            assertEquals("QUEUE_FULL", view["opinion"]["reason"].asString())
+            assertEquals(0, requests().size)
+            val steps = ok(call(reviewer, "/api/lms/ai/runs?courseId=${draft.course}")).values().map { it["step"].asString() }
+            assertFalse("CONSISTENCY_REVIEW" in steps, steps.toString())
+            // la validación terminó: el borrador limpio entra en revisión
+            assertEquals("EN_REVISION", ok(submit(author, draft.version))["status"].asString())
+        } finally {
+            runBlocking {
+                db
+                    .sql("UPDATE lms.trabajo SET estado = 'CANCELLED', reclamado_en = NULL, terminado_en = now() WHERE solicitante = :requester")
+                    .bind("requester", other)
+                    .fetch()
+                    .rowsUpdated()
+                    .awaitSingle()
+            }
+        }
+    }
+
     companion object {
         // lms.ai.max-tokens.consistency de application.yml
         const val CONSISTENCY_MAX_TOKENS = 2000
+
+        // lms.ai.limits.max-active-per-organization de application.yml
+        const val ORGANIZATION_LIMIT = 4
     }
 }
 

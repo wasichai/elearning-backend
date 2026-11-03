@@ -63,7 +63,7 @@ class RenderWorkerClientTest {
 
     @Test
     fun `what the worker rejects is permanent and says why`() {
-        for (status in listOf(400, 409, 413, 422)) {
+        for (status in listOf(400, 409, 413, 415, 422)) {
             worker.stubFor(
                 put(urlPathEqualTo("/renders/$job")).willReturn(
                     aResponse().withStatus(status).withBody("""{"error": "nope", "issues": [{"path": "guion.componente", "message": "Unrecognized key"}]}"""),

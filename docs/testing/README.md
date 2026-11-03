@@ -56,7 +56,8 @@ puerto dinámico, uno por JVM, que hace de Anthropic (`POST /v1/messages`) y de 
   `openAiFails(500)`; un caso nuevo es un archivo nuevo.
 - **Lo enviado**: `anthropicRequests()` y `openAiRequests()` devuelven el cuerpo JSON de cada petición, en orden;
   `requestCount()`, todas las que llegaron. Así se comprueban el modelo, `max_tokens` y el prompt, y cuántas veces se
-  reintentó.
+  reintentó. `servedRequests()` da cada una como texto (método, URL, cabeceras y cuerpo) para buscar lo que nunca debe
+  llegar al proveedor, como en `StudentData{Anthropic,OpenAi}ApiTest` (#302).
 - **Nada sin emparejar**: una respuesta solo empareja con la ruta, la clave ficticia de su proveedor (y
   `anthropic-version`); lo demás recibe el 404 de WireMock. Antes de cada prueba el doble se vacía y después
   `assertNoUnmatchedRequests()` la hace fallar si quedó una petición sin emparejar. Como las URL base apuntan al doble,
@@ -105,7 +106,8 @@ Embabel.
   ejemplos en `ScriptSchemaTest`.
 - **Servidor**, con un renderizador y un `ffprobe` simulados: secreto, rechazo de una petición con código, HTML o una URL
   (nunca llega al renderizador), imágenes que no son PNG/JPEG/WebP o no coinciden con su sha256, `PUT` idempotente por
-  trabajo (también a la vez), `409` con otro guion, `503` lleno, `413`, `422`, descarga y borrado.
+  trabajo (también a la vez), `409` con otro guion, `503` lleno, `413`, `415` (no es `application/json`), `422`, descarga y
+  borrado, y que el secreto no sale en el registro.
 - **Diapositivas**: el texto que parece HTML o código se pinta escapado (`react-dom/server`).
 - **Render de verdad** (`test/render.test.mjs`) con Remotion y su `ffprobe`: solo con `RENDER_WORKER_TEST_RENDER=required`
   (CI, tras `yarn ensure-browser`) o `RENDER_WORKER_BROWSER=<Chrome del sistema>`; si no, se salta.
