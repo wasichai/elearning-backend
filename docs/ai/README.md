@@ -257,9 +257,15 @@ concurrencia por organización, presupuesto por curso y tarifas para estimar cos
 **Precedente**: SRTM ya tiene guiones Remotion (`srtm-backend/docs/presentaciones/src/videos/*.ts`) con `objetivo`,
 audiencia, `segundos` por escena y trazas `{ doc, ancla }` al manual ([referencias](../research/reference-repositories.md#5-manuales-srtm-y-sgspe)).
 
-- **Licencia**: Remotion no es software libre OSI; usa su propia licencia (gratuita para particulares, organizaciones
-  con ánimo de lucro de hasta 3 empleados y sin ánimo de lucro; licencia de empresa en los demás casos). Por eso el
-  render es un componente **opcional**; ver [licencias](../legal/licensing.md#dependencias-con-condiciones-especiales).
+- **Licencia**: Remotion no es software libre OSI; usa su propia licencia. Con 4.x es gratuita para particulares,
+  organizaciones con ánimo de lucro de **hasta 3 empleados**, organizaciones sin ánimo de lucro y evaluación; con 5.0
+  (anunciado) el umbral es de **3 personas contando contratistas**, y centros educativos y organismos públicos necesitan
+  permiso escrito. En los demás casos, Company License (para un trabajador como el nuestro, «Automators»: desde 100 USD/mes).
+  El usuario puede cambiar parámetros o datos de nuestras composiciones (el guion lo puede escribir la IA), **nunca aportar
+  código Remotion**. La licencia es de quien despliega: el titular usa la Free License; el render es un componente
+  **opcional y desactivado por defecto**, en un trabajador separado, y cada despliegue responde de la suya
+  ([ADR-0039](../adr/0039-remotion-como-motor-de-render-con-licencia-por-despliegue.md),
+  [licencias](../legal/licensing.md#remotion)).
 - **Entrada del render**: objetivos, guion con secciones y duración, estructura de diapositivas, tipografía (fuentes
   OFL) y recursos, datos de entrada, subtítulos y transcripción, resolución, duración, fps.
 - **Ejecución**: proceso Node separado (contenedor), invocado por un trabajo (§5) con límite de concurrencia; nunca en

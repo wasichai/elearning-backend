@@ -219,6 +219,28 @@ Una copia no cuenta hasta haberse restaurado. Procedimiento (manual ahora, autom
 | Una descarga es `500` o se corta; `admin:stored-file` en `/api/audit`           | El objeto cambió en el almacén: restaurarlo desde la copia; nunca editar `stored_files.sha256`      |
 | Seguir una petición concreta                                                    | Tomar `X-Correlation-Id` de la respuesta y buscarlo en el registro y en `/api/audit?correlationId=` |
 
+## Render de vídeo (opcional)
+
+El render de vídeo de la Fase 5 usa [Remotion](https://www.remotion.dev) en un **trabajador Node separado**, fuera del
+backend ([ADR-0039](../adr/0039-remotion-como-motor-de-render-con-licencia-por-despliegue.md)). Está **desactivado por
+defecto**: sin activarlo, el backend y el aula funcionan enteros y no hace falta instalar nada de Remotion. Cómo se
+construye, se configura y se conecta el trabajador se documenta con su implementación
+([E37.2, #297](https://github.com/wasichai/elearning-backend/issues/297)).
+
+> **Licencia de Remotion: responsabilidad de quien activa el render.** Remotion no es software libre y su licencia es
+> de cada organización que lo usa, no de este proyecto. Es gratuita (Free License) para particulares, organizaciones con
+> ánimo de lucro de hasta 3 personas y organizaciones sin ánimo de lucro; con Remotion 5.0 cuentan también los
+> contratistas, y **universidades, centros educativos y organismos públicos** necesitan una **Company License** o un
+> **permiso escrito** de Remotion (hi@remotion.dev). Una empresa de más de 3 personas necesita Company License
+> («Automators» para un trabajador como este, desde 100 USD/mes). Antes de activar el render, lee
+> [remotion.dev/license](https://www.remotion.dev/license) y contrata en [remotion.pro/license](https://www.remotion.pro/license)
+> si te corresponde. Resumen de términos y precios (no es asesoría legal): [licencias](../legal/licensing.md#remotion).
+
+- El proyecto **no redistribuye Remotion**: quien despliega instala el trabajador desde su `package.json`, que lo trae de
+  npm. No se publica ninguna imagen que lo incluya.
+- El trabajador solo recibe datos (el guion como JSON validado); nunca acepta código de los usuarios, como exigen los
+  términos de Remotion.
+
 ## Despliegue objetivo (k3s)
 
 Posterior (F6); nada de esto existe aún.
@@ -239,6 +261,8 @@ Posterior (F6); nada de esto existe aún.
   (`gem install asciidoctor:2.0.26 asciidoctor-pdf:2.3.27`, [ADR-0031](../adr/0031-aceptacion-de-la-generacion-con-una-fuente-propia.md));
   la imagen se comprueba a mano: `asciidoctor --version`, `asciidoctor-pdf --version` y generar una fuente de prueba
   desde el estudio.
+- **Render de vídeo**, solo si se activa: el trabajador en su propio contenedor y la licencia de Remotion del despliegue
+  ([render de vídeo](#render-de-vídeo-opcional)).
 
 ## Correo
 
