@@ -2,6 +2,18 @@
 
 Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este archivo registra lo que se entregó.
 
+## 2026-11-03 — Historial de estados de una versión ([#259](https://github.com/wasichai/elearning-backend/issues/259))
+
+- [ADR-0032](adr/0032-historial-de-estados-de-la-version-en-tabla-propia.md): cada cambio de `estado` de una
+  `version_curso`, y su creación, deja una fila en la tabla nueva `lms.transicion_version` (V15) con el estado anterior,
+  el nuevo, quién y cuándo. Es de solo inserción (un disparador impide cambiarla o borrarla) y la escribe un
+  `RecordChangeListener` en la transacción de quien escribe, sea por el estudio, la bandeja, la API de registros o la
+  plataforma. No se lee el `audit_log` de Wasichai.
+- El detalle del estudio y de la bandeja (`StudioVersionDetail`) gana `history: [{ from, to, by, byName, at }]`, con las
+  mismas reglas de lectura. Enviar a revisión y crear la primera versión vacía pasan a escribir en una transacción.
+  `VersionHistoryApiTest` recorre BORRADOR → EN_REVISION → BORRADOR → EN_REVISION → APROBADA → PUBLICADA, la API de
+  registros, la plataforma y el disparador.
+
 ## 2026-11-03 — LGPL definitiva y conservación según los términos ([#303](https://github.com/wasichai/elearning-backend/issues/303))
 
 - [ADR-0030](adr/0030-lgpl-definitiva-y-conservacion-segun-los-terminos.md) reemplaza a ADR-0015: la licencia

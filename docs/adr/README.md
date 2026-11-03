@@ -46,3 +46,4 @@ secciones Contexto, Decisión, Alternativas consideradas y Consecuencias. El for
 | [0028](0028-conocimientos-previos-como-claves-de-la-version.md)               | Los conocimientos previos se declaran como claves de un vocabulario en la versión              | aceptada                     | 2026-11-01 |
 | [0029](0029-sistema-de-diseno-quipu-aplicado.md)                              | Sistema de diseño Quipu aplicado: composición y piezas compartidas del frontend                | aceptada                     | 2026-11-03 |
 | [0030](0030-lgpl-definitiva-y-conservacion-segun-los-terminos.md)             | LGPL definitiva; los datos personales se conservan lo que aprueban los términos de uso         | aceptada                     | 2026-11-03 |
+| [0032](0032-historial-de-estados-de-la-version-en-tabla-propia.md)            | El historial de estados de una versión es una tabla propia de solo inserción                   | aceptada                     | 2026-11-03 |

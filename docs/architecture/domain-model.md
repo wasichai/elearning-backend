@@ -87,6 +87,7 @@ administración y API genérica sin código. **Tabla fija** en el esquema `lms` 
 | Eventos de aprendizaje (vídeo, lectura, navegación)                       | `lms.evento_aprendizaje` (solo `INSERT`)               | 2                                             |
 | Proyección del catálogo público (solo con la opción B)                    | `lms.catalogo_publicado`                               | [overview §5.1][ov51]                         |
 | Decisiones de revisión de una versión                                     | `lms.decision_revision` (solo `INSERT`)                | historial que nadie edita (ADR-0018)          |
+| Historial de estados de una versión                                       | `lms.transicion_version` (solo `INSERT`)               | historial que nadie edita (ADR-0032)          |
 
 Toda tabla `lms` lleva `organization_id NOT NULL` y cada consulta filtra por él: Wasichai no tiene RLS, así que el
 aislamiento es responsabilidad del repositorio y de sus pruebas. El primer incremento no crea ninguna (salvo que se elija
@@ -326,6 +327,11 @@ solo en una versión `EN_REVISION` y solo quien la revisa; el creador lo lee en 
 `version_curso_id` · `decision · APROBAR | PEDIR_CAMBIOS | RECHAZAR` · `motivo · obligatorio salvo al aprobar` · `autor_id` ·
 `decidida_en`. Se escribe en la misma transacción que la transición de la versión. La revisión asignada es
 `version_curso.revisor_id` (ADR-0018 §2); `revision_contenido` queda sin implementar mientras no haga falta más.
+
+**`lms.transicion_version`** (VersionTransition) — tabla fija de solo inserción (un disparador impide cambiarla o borrarla).
+`version_curso_id` · `desde · nulo en la creación` · `hacia` · `autor_id · nulo si es la plataforma` · `ocurrida_en`. Una fila
+por cada cambio de `estado` de una versión, por cualquier vía; la escribe un `RecordChangeListener` en la transacción de
+quien escribe ([ADR-0032](../adr/0032-historial-de-estados-de-la-version-en-tabla-propia.md)).
 
 **`ejecucion_agente`** (AgentRun) — F5. `apiOnly`.
 `usuario_id · UUID` · `version_curso · RELATION` · `unidad · RELATION` · `objetivo · TEXT` · `entradas · LONG_TEXT` ·

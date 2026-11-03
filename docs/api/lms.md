@@ -573,7 +573,13 @@ en borrador.
 "updatedAt", "openComments": 2 }`. `status`: `BORRADOR` · `EN_REVISION` · `APROBADA` · `PUBLICADA` · `RETIRADA`.
 
 `StudioVersionDetail` = `StudioVersion` más `units`: `[{ "id", "order", "title", "sourceRef": null, "lessons": [{ "id", "order",
-"title", "type", "sourceRef": null, "hasAssessment": false, "resources": 1 }] }]`, `comments: ReviewComment[]`, `decisions: ReviewDecision[]`.
+"title", "type", "sourceRef": null, "hasAssessment": false, "resources": 1 }] }]`, `comments: ReviewComment[]`, `decisions: ReviewDecision[]`,
+`history: VersionTransition[]`.
+
+`VersionTransition`: `{ "from": "BORRADOR", "to": "EN_REVISION", "by", "byName", "at" }`, la más antigua primero: cada cambio de
+`status` de la versión, por cualquier vía (estudio, bandeja, API de registros o plataforma), y su creación (`from: null`).
+`by` es quien la movió y `byName` su nombre para mostrar (null si está deshabilitada o se borró); los dos son null si la movió
+la plataforma. Historial de solo inserción en `lms.transicion_version` (ADR-0032); escribir otros campos no deja fila.
 
 ### Bandeja del revisor
 
