@@ -659,6 +659,11 @@ recurso como `archivo`. Sigue el flujo editorial como cualquier otra versión; g
 sobrescribe. El HTML se guarda saneado con lista blanca (sin scripts, manejadores de eventos, `iframe`, formularios ni hojas
 externas, [ADR-0022](../adr/0022-limites-y-ciclo-de-vida-de-los-trabajos.md)); su `sha256` es el de lo guardado.
 
+La fuente es un solo archivo autosuficiente ([ADR-0031](../adr/0031-aceptacion-de-la-generacion-con-una-fuente-propia.md)):
+en modo `secure`, `include::` no lee nada y queda como enlace a su destino. Una imagen llega al PDF si va incrustada como
+URI `data:`; una ruta relativa deja su texto alternativo. En el HTML guardado las imágenes quedan por su texto alternativo
+(el saneado solo admite `http` y `https` en `src`).
+
 | Método | Ruta                                  | Resultado                                            |
 | ------ | ------------------------------------- | ---------------------------------------------------- |
 | POST   | `/api/lms/studio/sources/{id}/render` | sin cuerpo → `202` `RenderJob` (`status: PENDIENTE`) |
