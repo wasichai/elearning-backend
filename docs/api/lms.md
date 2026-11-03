@@ -1030,6 +1030,33 @@ en la cola y deja su informe en una ejecución `AgentRun` (`step` `VALIDATION`, 
   corresponde al contenido o con problemas bloqueantes es `409`, por `POST /api/lms/studio/versions/{id}/submit` y por la API
   de registros. Un borrador escrito a mano no lo necesita.
 
+## Análisis de fuentes (F5, E33.4)
+
+El paso 2 de la canalización ([docs/ai](../ai/README.md#5-esquemas-tipados-y-trabajos)): de las fuentes de un brief `LISTO`,
+los conceptos y procedimientos con su procedencia. Se encola como trabajo de IA (`ai.source_analysis`) y se sigue con las
+rutas de [Trabajos de IA](#trabajos-de-ia-f5-adr-0033-5-6-y-9).
+
+| Método | Ruta                          | Resultado                       |
+| ------ | ----------------------------- | ------------------------------- |
+| POST   | `/api/lms/ai/source-analysis` | `{ "briefId" }` → `202` `AiJob` |
+
+- **Permisos**: `GENERAR` sobre `version_curso` (`403`) y ver el brief y su curso como quien llama (`404`). Sin `briefId`,
+  `400`; un brief que no está `LISTO`, `409`. Los límites y la idempotencia son los de los trabajos de IA: pedir otra vez el
+  mismo análisis devuelve su ejecución sin llamar al proveedor.
+- **Generador**: con proveedor, el modelo `extraction` de `lms.ai.models` y `lms.ai.max-tokens.extraction`; sin claves, el
+  doble determinista. La ejecución dice cuál en `generator` (`MODEL` · `DETERMINISTIC`).
+- **Resultado**: terminado `DONE`, el `executionId` del trabajo es la ejecución (`GET /api/lms/ai/runs/{id}`) con
+  `inputs` `{ "briefId", "topic", "audience", "objectives", "language", "level", "sources": ["owner/repo@sha:ruta"] }`,
+  `sources` (cada archivo leído, con el SHA-256 de su texto), `output` `SourceAnalysis` y `validations`
+  `{ "concepts", "procedures", "discarded": [{ "kind": "CONCEPT" | "PROCEDURE", "name", "source", "reason" }] }`.
+- `SourceAnalysis`: `{ "concepts": [{ "name", "summary", "source", "quote" }], "procedures": [{ "name", "steps": [],
+"source", "quote" }] }`. `source` es `owner/repo@sha:ruta#ancla` de una sección leída y `quote`, un fragmento literal de ella.
+  `reason`: `BLANK` · `NO_PROVENANCE` · `SOURCE_NOT_READ` · `ANCHOR_NOT_FOUND` · `QUOTE_NOT_IN_SOURCE`.
+- **Fallos**: una salida que no es el JSON del tipo, o sin ningún elemento con procedencia, deja la ejecución
+  `INVALID_OUTPUT` sin `output` y el trabajo `FAILED` sin `executionId`. Una fuente que no existe, fuera de
+  `lms.importer.allowed-sources` o demasiado grande hace `FAILED` el trabajo sin ejecución; un fallo pasajero de GitHub se
+  reintenta.
+
 ## Créditos aprobados (RF-CRE-08, ADR-0035)
 
 La plataforma calcula y **propone** créditos ([ADR-0007](../adr/0007-carga-academica-y-creditos-como-politica-versionada.md));

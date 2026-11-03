@@ -3,10 +3,12 @@ package elearning.importer
 import elearning.importer.SourceFetchException.Reason
 import kotlinx.coroutines.reactor.awaitSingleOrNull
 
-// lo que una importación leyó: el análisis del grafo y los archivos que no se leyeron por pasar de lms.importer.max-bytes
+// lo que una importación leyó: el análisis del grafo, los archivos que no se leyeron por pasar de lms.importer.max-bytes y
+// el texto de los que sí, por ruta (el análisis de fuentes de la IA verifica en él cada cita)
 data class CollectedSource(
     val analysis: IncludeAnalysis,
     val oversized: List<String>,
+    val texts: Map<String, String> = emptyMap(),
 )
 
 // la importación no termina bien, y reintentar no lo arregla: el trabajo acaba con este motivo en vez de fallar
@@ -43,7 +45,9 @@ class SourceCollector(
                     },
                 ).analyze(root.path)
             wantedFiles -= wantedTexts
-            if (wantedTexts.isEmpty() && wantedFiles.isEmpty()) return CollectedSource(analysis, oversized.toList())
+            if (wantedTexts.isEmpty() && wantedFiles.isEmpty()) {
+                return CollectedSource(analysis, oversized.toList(), texts.filterValues { it != null }.mapValues { it.value!! })
+            }
             if (texts.size + present.size + wantedTexts.size + wantedFiles.size > maxFiles) {
                 throw ImportFailure("$root needs more than $maxFiles files")
             }

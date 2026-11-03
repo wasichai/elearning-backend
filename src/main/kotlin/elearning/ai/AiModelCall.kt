@@ -8,6 +8,21 @@ fun interface AiModelCall {
     suspend fun call(prompt: AiPrompt): AiReply
 }
 
+// lo que un paso lee antes de llamar a su generador (AiStepRunner.run con read): el material que recibe el generador y las
+// fuentes que leyó, con el hash de su contenido, que quedan en la ejecución
+data class AiStepInput<M>(
+    val material: M,
+    val sources: List<SourceDigest>,
+)
+
+// el generador de un paso que lee antes de llamar: una llamada por intento, con su material
+fun interface AiStepGenerator<M> {
+    suspend fun generate(
+        prompt: AiPrompt,
+        material: M,
+    ): AiReply
+}
+
 // lo que recibe el generador: solo las entradas de su ejecución (docs/ai §6). model null: el doble determinista
 data class AiPrompt(
     val step: AgentStep,
@@ -33,7 +48,11 @@ class AiProviderFailure(
     message: String,
     cause: Throwable? = null,
 ) : RuntimeException(message, cause) {
-    val transient: Boolean get() = status == 408 || status == 429 || status >= 500
+    val transient: Boolean get() = isTransient(status)
+
+    companion object {
+        fun isTransient(status: Int): Boolean = status == 408 || status == 429 || status >= 500
+    }
 }
 
 // la salida no cumple el esquema del paso o sus reglas: INVALID_OUTPUT, sin borrador y sin reintento de la cola (docs/ai §5).

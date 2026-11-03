@@ -21,7 +21,8 @@ que es lógica determinista del módulo `elearning.ai` o de `authoring`; «perso
    `BORRADOR` y solo pasa a `LISTO` completo, que es lo que consumirán los pasos.
 2. **Análisis de fuentes con procedencia** — _código_ (importador: grafo `include::`, secciones, anclas) + _Embabel_
    (extracción de conceptos y procedimientos) → `SourceAnalysis`, cada elemento ligado a `repo@sha:ruta#ancla`. Lo que
-   no tiene procedencia se descarta.
+   no tiene procedencia se descarta. Implementado en E33.4 ([#281](https://github.com/wasichai/elearning-backend/issues/281)):
+   `POST /api/lms/ai/source-analysis` con un brief `LISTO`; es el paso de referencia del patrón de §5.
 3. **Diseño pedagógico** — resultados medibles, temario, secuencia, distribución horaria, actividades, evaluaciones
    alineadas, lecturas y criterios de aprobación. _Embabel_ → `CourseDesign`. Horas y créditos los calcula el dominio
    `workload` (código), no el modelo.
@@ -73,7 +74,9 @@ Decisión en [ADR-0033](../adr/0033-fase-5-ia.md) §1–§4.
   sobre un `ExecutingOperationContext` propio por llamada (un bean prototipo de Embabel), cuyo `agentProcess.usage()` da
   los tokens que informó el proveedor; esos van a `AgentRun`. OpenAI va por la Responses API (`gpt-6-*` se declara así en
   el catálogo de 1.5.4) y recibe `max_output_tokens` y `text.format` `json_schema`; Anthropic recibe `max_tokens` y el
-  esquema JSON en `system`. Sin abstracción multi-proveedor propia: una interfaz interna pequeña por paso
+  esquema JSON en `system`. Desde E33.4, `ModelCalls.createObject` recibe aparte las instrucciones de sistema
+  (`withSystemPrompt`, que Embabel junta con el esquema en `system` de Anthropic y en `instructions` de la Responses API) y
+  el mensaje de usuario, donde va el texto no confiable (§6). Sin abstracción multi-proveedor propia: una interfaz interna pequeña por paso
   (`SourceAnalyzer`, `CourseDesigner`, `LessonDrafter`, `ScriptWriter`) que tiene dos implementaciones, Embabel y el
   doble determinista (§7). Sirve para probar y para comparar modelos (§9). Si algo no fuera compatible, se documenta
   aquí y se entrega la alternativa con Spring AI `ChatClient` directo.
@@ -86,8 +89,10 @@ Decisión en [ADR-0033](../adr/0033-fase-5-ia.md) §1–§4.
   cuenta en el camino Chat Completions de OpenAI, que la canalización no usa. Los dos quedan en 2 y `AiStatus` impide
   arrancar con más. Debajo, `anthropic-java` y `openai-java` repiten 408, 409, 429 y 5xx dos veces dentro de cada intento
   (respetan `Retry-After`) y Embabel 1.5.4 no deja configurarlo para Anthropic: un 429 son 2 × 3 = 6 peticiones antes de
-  volver a la cola. `ModelCalls` entrega a la cola 400, 401, 403, 404, 422 y la salida inválida como `PermanentJobFailure`;
-  lo demás, tal cual, para que la reintente.
+  volver a la cola. `ModelCalls` traduce a lo que espera `AiStepRunner` (§5): un estado HTTP del proveedor es
+  `AiProviderFailure` (408, 429 y 5xx pasajeros, que la cola reintenta; 400, 401, 403, 404, 409, 422… permanentes) y la
+  salida que no se deserializa tras la corrección es `AiInvalidOutput`, con el consumo de los dos intentos
+  (`INVALID_OUTPUT`); un fallo de red sale tal cual y la cola lo reintenta.
 - **Perfiles**: `wasichai-test` advierte que un perfil llamado `test` puede desactivar los agentes de Embabel; las
   pruebas no lo usan.
 - **Catálogo de modelos**: 1.5.4 conoce `claude-opus-5-5`, `claude-sonnet-5-5`, `claude-haiku-5-5` y `gpt-6-*`. El
@@ -184,10 +189,58 @@ política común que llama el `JobHandler` de cada paso con su generador (`AiMod
 (`V21`). Con una sola llamada por intento, «entre llamadas» es antes de llamar y al volver; los reintentos de corrección
 acotados llegarán con los pasos que los usen.
 
+**El patrón de un paso tipado** (E33.4, [#281](https://github.com/wasichai/elearning-backend/issues/281); lo siguen
+`CourseDesigner` en E33.5, `LessonDrafter` en E33.6 y `ScriptWriter` en E36.1). El análisis de fuentes es la referencia, todo
+en `elearning.ai`:
+
+1. **Tipos.** La salida es una `data class` Kotlin (`SourceAnalysis`): Embabel saca de ella el esquema JSON. Lo que el
+   código debe poder descartar uno a uno (la procedencia) es opcional en el tipo; lo que la hace inservible, no, y entonces
+   Embabel no la deserializa. Las entradas del paso también son un tipo (`SourceAnalysisInputs`), que guardan el trabajo y
+   la ejecución tal cual.
+2. **Una interfaz pequeña con dos implementaciones** (`SourceAnalyzer`): la de Embabel (`ModelSourceAnalyzer`) es una
+   llamada a `ModelCalls.createObject` con el modelo y `max_tokens` del trabajo, las instrucciones fijas como sistema
+   (`SourceAnalysisPrompt.SYSTEM`) y el texto no confiable delimitado en el mensaje de usuario; la determinista
+   (`DeterministicSourceAnalyzer`) saca una salida válida de las mismas entradas, sin red. Ninguna valida.
+3. **Versiones.** Instrucciones y plantilla llevan versión (`source-analysis@1`); cambiar su texto es subirla, y entra en
+   `AgentRun` y en la clave de idempotencia.
+4. **Lectura antes de llamar.** El `JobHandler` del paso (`SourceAnalysisJobHandler`, tipo `ai.source_analysis`) llama a
+   `AiStepRunner.run(job, read, generator)`: `read` corre tras la recomprobación de `GENERAR`, la idempotencia, la
+   cancelación y el presupuesto, y devuelve el material del generador y las fuentes leídas con su hash (`AiStepInput`), que
+   son las `sources` de la ejecución. Un fallo al leer no abre ejecución (no se llamó a nada): pasajero, la cola reintenta;
+   si no, `PermanentJobFailure`.
+5. **Comprobación por código, igual para los dos generadores** (`SourceAnalysisCheck`): un elemento que no la pasa se
+   descarta y queda en `validations` con su motivo; si la salida entera no sirve, `AiInvalidOutput`, que el runner deja en
+   `INVALID_OUTPUT`, sin salida, sin `executionId` en el trabajo y sin borrador.
+6. **Generador.** Al encolar, `AiStepModels.choice(<clave>)` da el modelo del proveedor activo para la clave del paso en
+   `lms.ai.models` y su `max_tokens` de `lms.ai.max-tokens`; sin proveedor, `null`, y el handler usa el doble. `generator`
+   (`MODEL` o `DETERMINISTIC`) queda en `AgentRun` y se lee en `GET /api/lms/ai/runs`.
+7. **Borrador.** Un paso que escribe registros los escribe en el `draft` del runner, en la transacción que cierra el
+   trabajo. El análisis no escribe ninguno: su borrador es la salida de su ejecución `SUCCEEDED`, que el paso siguiente lee
+   por el `executionId` del trabajo.
+8. **Pruebas.** Unitarias sin Spring con el `FakeOperationContext` de Embabel (§6); de API sin claves con el doble
+   determinista y contra el doble HTTP de Anthropic y de OpenAI (`SourceAnalysisApiTest`, `SourceAnalysisAnthropicApiTest`,
+   `SourceAnalysisOpenAiApiTest`).
+
+**Análisis de fuentes.** Lee cada fuente del brief (`owner/repo@sha:ruta`) y su grafo `include::` con el puerto del
+importador, que solo lee la lista permitida en un commit exacto (`SourceMaterialReader`); cada sección con ancla es
+`owner/repo@sha:ruta#ancla` (la traza del importador) con su texto, de la línea tras su título a la anterior al siguiente.
+Una fuente de un paquete importado que no está en `lms.importer.allowed-sources` no se puede leer y el paso falla. Cada
+concepto (`name`, `summary`) y procedimiento (`name`, `steps`) lleva `source`, la referencia de su sección, y `quote`, un
+fragmento literal de ella (12 a 500 caracteres; los espacios no cuentan). Se descarta, con su motivo en `validations`, lo que
+no tiene nombre o contenido (`BLANK`), no tiene `source` o `quote` (`NO_PROVENANCE`), cita un archivo que el paso no leyó,
+otro commit incluido (`SOURCE_NOT_READ`), un ancla que no existe en ese archivo (`ANCHOR_NOT_FOUND`) o una cita que no está
+en esa sección (`QUOTE_NOT_IN_SOURCE`). Más de 300 elementos o ninguno que quede es `INVALID_OUTPUT`. El doble hace un
+procedimiento de cada sección con lista ordenada y un concepto de cada sección con prosa, citando su texto.
+
 ## 6. Protección contra prompt injection
 
 - El texto de manuales, fuentes y borradores es **dato no confiable**: va delimitado en el mensaje de usuario, nunca en
-  las instrucciones de sistema, y las instrucciones dicen explícitamente que el contenido no da órdenes.
+  las instrucciones de sistema, y las instrucciones dicen explícitamente que el contenido no da órdenes. El marcador de
+  cada bloque sale del hash de su contenido, así que una fuente no puede cerrar el suyo ni abrir otro. Lo prueba
+  `SourceAnalysisTest` con el `FakeOperationContext`/`FakePromptRunner` de Embabel 1.5.4: están en el propio
+  `embabel-agent-api` (`com.embabel.agent.test.unit`), no en `embabel-agent-test` (que en 1.5.4 solo trae
+  `EmbabelMockitoIntegrationTest`), y guardan los mensajes y las instrucciones de cada llamada; y las pruebas contra el doble
+  HTTP miran `system` (Anthropic) e `instructions` (OpenAI).
 - Los agentes **no** tienen acceso arbitrario a archivos, red ni ejecución de código; solo reciben las entradas de su
   ejecución. Las herramientas, si alguna, son de solo lectura y acotadas a esas entradas.
 - Los agentes **no** publican, no aprueban y no escriben registros: devuelven un objeto tipado que el código valida y

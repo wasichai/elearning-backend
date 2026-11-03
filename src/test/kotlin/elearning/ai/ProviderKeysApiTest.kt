@@ -5,6 +5,7 @@ import elearning.jobs.JobHandler
 import elearning.jobs.JobQueue
 import elearning.jobs.JobRunner
 import elearning.jobs.JobState
+import elearning.jobs.PermanentJobFailure
 import kotlinx.coroutines.reactor.awaitSingle
 import kotlinx.coroutines.runBlocking
 import org.assertj.core.api.Assertions.assertThat
@@ -227,6 +228,8 @@ class ProviderKeysApiTest : ProviderDoubleApiTest() {
                         log.finish(job.organizationId, id, AgentExecutionOutcome(AgentExecutionStatus.SUCCEEDED, output = reply.value, usage = reply.usage))
                     } catch (e: Exception) {
                         log.finish(job.organizationId, id, AgentExecutionOutcome(AgentExecutionStatus.FAILED, error = e.message))
+                        // como AiStepRunner: un fallo del proveedor que reintentar no arregla termina el trabajo
+                        if (e is AiProviderFailure && !e.transient) throw PermanentJobFailure(e.message!!, e)
                         throw e
                     }
                     return null

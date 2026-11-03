@@ -2,7 +2,6 @@ package elearning.ai
 
 import com.embabel.agent.config.models.anthropic.AnthropicProperties
 import com.embabel.agent.config.models.openai.OpenAiProperties
-import elearning.jobs.PermanentJobFailure
 import kotlinx.coroutines.runBlocking
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
@@ -25,7 +24,7 @@ data class OutlineLesson(
 )
 
 // una llamada tipada por Embabel 1.5.4 contra el doble HTTP de cada proveedor (ADR-0033 §4, §6 y §11): lo que se envía, lo
-// que se deserializa, el consumo que llega al registro AgentRun y cómo sale cada error para la cola. Los recuentos de
+// que se deserializa, el consumo que llega al registro AgentRun y cómo sale cada error para AiStepRunner. Los recuentos de
 // peticiones fijan los reintentos reales: Embabel hace 2 intentos por llamada (llm-operations.data-binding) y el SDK del
 // proveedor repite 429 y 5xx dos veces dentro de cada uno, así que un 429 son 2 × 3 peticiones (docs/ai §2)
 class ModelCallsApiTest : ProviderDoubleApiTest() {
@@ -174,12 +173,13 @@ class ModelCallsApiTest : ProviderDoubleApiTest() {
 
     // 400: reintentar no lo arregla. Embabel lo repite una vez (su reintento no distingue) y el SDK no
     @Test
-    fun `a 400 from either provider is a permanent failure for the job queue`() {
+    fun `a 400 from either provider is a permanent provider failure`() {
         for (double in Fake.entries) {
             double.fails(400)
 
             assertThatThrownBy { outline(double) }
-                .isInstanceOf(PermanentJobFailure::class.java)
+                .isInstanceOfSatisfying(AiProviderFailure::class.java) { assertThat(it.status).isEqualTo(400) }
+                .matches { !(it as AiProviderFailure).transient }
                 .hasMessageContaining("rejected the request (400)")
             assertThat(double.requests()).describedAs(double.id).hasSize(EMBABEL_ATTEMPTS)
             ProviderDouble.reset()
@@ -195,7 +195,9 @@ class ModelCallsApiTest : ProviderDoubleApiTest() {
 
             val failure = runCatching { outline(double) }.exceptionOrNull()
 
-            assertThat(failure).isInstanceOf(PermanentJobFailure::class.java).hasMessage("the AI provider rejected the request (401)")
+            assertThat(failure)
+                .isInstanceOfSatisfying(AiProviderFailure::class.java) { assertThat(it.transient).isFalse() }
+                .hasMessage("the AI provider rejected the request (401)")
             assertThat(failure.toString())
                 .doesNotContain(ProviderDouble.ANTHROPIC_KEY, ProviderDouble.OPENAI_KEY, "sk-doubl")
                 .doesNotContainIgnoringCase("x-api-key")
@@ -213,7 +215,8 @@ class ModelCallsApiTest : ProviderDoubleApiTest() {
                 double.fails(status)
 
                 assertThatThrownBy { outline(double) }
-                    .isInstanceOf(ProviderUnavailable::class.java)
+                    .isInstanceOfSatisfying(AiProviderFailure::class.java) { assertThat(it.status).isEqualTo(status) }
+                    .matches { (it as AiProviderFailure).transient }
                     .hasMessage("the AI provider failed ($status)")
                 assertThat(double.requests()).describedAs("${double.id} $status").hasSize(EMBABEL_ATTEMPTS * SDK_ATTEMPTS)
                 ProviderDouble.reset()
@@ -222,14 +225,14 @@ class ModelCallsApiTest : ProviderDoubleApiTest() {
     }
 
     // la salida del modelo no es el JSON del tipo: Embabel lo intenta una segunda vez (la corrección acotada de docs/ai §5)
-    // y después es un fallo permanente, que el paso registrará como INVALID_OUTPUT
+    // y después es AiInvalidOutput, que AiStepRunner registra como INVALID_OUTPUT con lo que costaron los dos intentos
     @Test
-    fun `invalid json from either provider is a permanent failure after one correction attempt`() {
+    fun `invalid json from either provider is an invalid output after one correction attempt`() {
         for (double in Fake.entries) {
             double.replies(double.invalid)
 
             assertThatThrownBy { outline(double) }
-                .isInstanceOf(PermanentJobFailure::class.java)
+                .isInstanceOf(AiInvalidOutput::class.java)
                 .hasMessageContaining("does not match the expected type")
             assertThat(double.requests()).describedAs(double.id).hasSize(EMBABEL_ATTEMPTS)
             ProviderDouble.reset()
@@ -242,7 +245,7 @@ class ModelCallsApiTest : ProviderDoubleApiTest() {
     fun `a request the double does not match fails the test`() {
         ProviderDouble.anthropicReplies("messages-outline.json")
 
-        assertThatThrownBy { outline(Fake.OPENAI) }.isInstanceOf(PermanentJobFailure::class.java).hasMessageContaining("(404)")
+        assertThatThrownBy { outline(Fake.OPENAI) }.isInstanceOf(AiProviderFailure::class.java).hasMessageContaining("(404)")
 
         assertThat(ProviderDouble.unmatchedRequests()).isNotEmpty().allMatch { it.url == ProviderDouble.OPENAI_RESPONSES }
         assertThatThrownBy { ProviderDouble.assertNoUnmatchedRequests() }
