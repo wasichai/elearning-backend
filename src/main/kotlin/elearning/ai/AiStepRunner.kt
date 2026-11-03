@@ -82,8 +82,16 @@ class AiStepRunner(
     // el trabajo van en una transacción: una ejecución SUCCEEDED siempre tiene su borrador, y uno que no llegó a confirmarse no
     // deja ni registros ni ejecución cerrada. Por eso, si la clave ya está resuelta (por este trabajo o por otro), no se
     // escribe otra vez. Si preparar o escribir falla, la ejecución se cierra FAILED (CANCELLED si se canceló entre medias) con
-    // lo que costó la llamada, y el error sigue a la cola como en run
+    // lo que costó la llamada, y el error sigue a la cola como en run. También con la marca AiWork: el borrador se escribe como
+    // la plataforma y AiWorkGuard no le deja aprobar ni publicar (#288; lo comprueba PromptInjectionProviderApiTest)
     suspend fun <M, P : Any> runWriting(
+        job: Job,
+        read: suspend (AiStepPayload) -> AiStepInput<M>,
+        generator: AiStepGenerator<M>,
+        writer: AiDraftWriter<P>,
+    ): String = withContext(AiWork()) { executeWriting(job, read, generator, writer) }
+
+    private suspend fun <M, P : Any> executeWriting(
         job: Job,
         read: suspend (AiStepPayload) -> AiStepInput<M>,
         generator: AiStepGenerator<M>,
