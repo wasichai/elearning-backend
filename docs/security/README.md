@@ -61,15 +61,17 @@ ADMIN de Wasichai.
 
 Acciones declaradas:
 
-| Objeto          | Acción                                   | Quién la recibe                                              | Estado                  |
-| --------------- | ---------------------------------------- | ------------------------------------------------------------ | ----------------------- |
-| `version_curso` | `APROBAR`                                | REVISOR (o el rol que fije la política), nunca el autor (§3) | En el modelo F1, uso F4 |
-| `version_curso` | `PUBLICAR`                               | ADMIN o un rol editorial designado                           | En el modelo F1, uso F4 |
-| `version_curso` | `APROBAR_CREDITOS`                       | AUTORIDAD_ACADEMICA, con separación de funciones (§3)        | F6 (ADR-0035)           |
-| `valoracion`    | `VALORAR`                                | ESTUDIANTE, desde su matrícula (§4.8)                        | F6 (ADR-0038)           |
-| `valoracion`    | `VER_RESUMEN`, `DENUNCIAR`               | DOCENTE y CREADOR, sobre lo que los tiene como destino       | F6 (ADR-0038)           |
-| `valoracion`    | `MODERAR`                                | ADMIN; nunca sobre lo propio ni lo que lo tiene como destino | F6 (ADR-0038)           |
-| A decidir       | p. ej. `CALIFICAR`, `GENERAR`, `VALIDAR` | Ver [IA §8](../ai/README.md#8-permisos-separados)            | F3/F5                   |
+| Objeto          | Acción                     | Quién la recibe                                                                | Estado                   |
+| --------------- | -------------------------- | ------------------------------------------------------------------------------ | ------------------------ |
+| `version_curso` | `APROBAR`                  | REVISOR (o el rol que fije la política), nunca el autor (§3)                   | En el modelo F1, uso F4  |
+| `version_curso` | `PUBLICAR`                 | ADMIN o un rol editorial designado                                             | En el modelo F1, uso F4  |
+| `version_curso` | `APROBAR_CREDITOS`         | AUTORIDAD_ACADEMICA, con separación de funciones (§3)                          | F6 (ADR-0035)            |
+| `version_curso` | `GENERAR`                  | CREADOR; encolar un paso de IA ([IA §8](../ai/README.md#8-permisos-separados)) | F5 (ADR-0033 §10, E33.3) |
+| `version_curso` | `VALIDAR`                  | REVISOR, nunca quien genera ([IA §8](../ai/README.md#8-permisos-separados))    | F5 (ADR-0033 §10, E33.3) |
+| `valoracion`    | `VALORAR`                  | ESTUDIANTE, desde su matrícula (§4.8)                                          | F6 (ADR-0038)            |
+| `valoracion`    | `VER_RESUMEN`, `DENUNCIAR` | DOCENTE y CREADOR, sobre lo que los tiene como destino                         | F6 (ADR-0038)            |
+| `valoracion`    | `MODERAR`                  | ADMIN; nunca sobre lo propio ni lo que lo tiene como destino                   | F6 (ADR-0038)            |
+| A decidir       | p. ej. `CALIFICAR`         | —                                                                              | F3                       |
 
 `GET /api/auth/me/permissions` informa al frontend de lo que el usuario puede hacer, acciones declaradas incluidas.
 
@@ -234,6 +236,8 @@ Detalle en [`docs/ai/README.md`](../ai/README.md#6-protección-contra-prompt-inj
   dato de estudiantes; claves fuera del prompt; sin herramientas de red; `AgentResultFilter` en el asistente.
 - **D** Coste desbocado o bucles → límites de tokens e iteraciones, presupuesto, trabajos cancelables, idempotencia.
 - **E** El agente hereda los permisos de quien lo lanzó → el trabajo no aprueba ni publica; son acciones humanas.
+  Encolar exige `GENERAR` o `VALIDAR` y el trabajo lo vuelve a mirar al ejecutar con los roles guardados de quien lo
+  pidió (`AiPermissions`, ADR-0022 §4).
 
 ### 4.6 Importador AsciiDoc (F4)
 

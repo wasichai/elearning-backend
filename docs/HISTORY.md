@@ -15,6 +15,17 @@ Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este
   e `RatingReadScope` para toda escritura y lectura; `lms.reputation.*`. `ArchitectureTest`: nadie usa `reputation`.
 - Pruebas: `RatingApiTest` (sujetos de un solo rol, releyendo tras cada negativa), `RatingWindowTest`, `test_model.py`.
 
+## 2026-11-03 — Permisos para generar y validar con IA ([#280](https://github.com/wasichai/elearning-backend/issues/280), RF-IA-07)
+
+- Acciones declaradas `GENERAR` y `VALIDAR` sobre `version_curso` ([ADR-0033](adr/0033-fase-5-ia.md) §10): genera CREADOR
+  y valida REVISOR; quien genera no valida, aprueba ni publica. `APROBAR` y `PUBLICAR` siguen siendo las de F4.
+- `AiPermissions` (`elearning.ai`): `requireToEnqueue` exige la acción a quien llama con `CurrentUser.requirePermission`
+  (`403`) y `requireStillAllowed` la vuelve a mirar al ejecutar con los roles guardados de quien lo pidió (`Requesters`,
+  ADR-0022 §4). Aún no hay pasos que encolar: los de E33.4–E33.6 llamarán a las dos. Ningún código mira nombres de rol.
+- `ai` puede usar `jobs` ([overview §2.3](architecture/overview.md#23-dependencias-permitidas-y-prohibidas)): sus pasos son
+  trabajos de la cola (ADR-0033 §5).
+- `AiPermissionsApiTest` llama al servicio con el token real de cada persona de la demo; `test_model.py` fija el reparto.
+
 ## 2026-11-03 — Brief estructurado del curso ([#278](https://github.com/wasichai/elearning-backend/issues/278), RF-IA-01)
 
 - Custom Object `brief` (relación `brief_curso`): temática, público, objetivos, duración en horas, idioma, nivel, expertos y

@@ -12,7 +12,7 @@ import java.util.UUID
 // la lectura del registro AgentRun (docs/api/lms.md, ADR-0033 §7), con el mismo alcance que el curso: el curso se lee
 // como quien llama, así que un curso que no ve (o que no existe) es 404 y sus ejecuciones también. Además pide UPDATE
 // sobre version_curso, lo que tienen quienes trabajan el contenido (CREADOR y REVISOR, docs/ai §8): el resto es 403, sin
-// mirar roles. GENERAR y VALIDAR llegan en E33.3
+// mirar roles. GENERAR y VALIDAR (AiPermissions) protegen encolar y validar un paso, no esta lectura
 @Service
 class AgentExecutionReader(
     private val currentUser: CurrentUser,
