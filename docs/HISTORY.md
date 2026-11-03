@@ -2,6 +2,17 @@
 
 Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este archivo registra lo que se entregó.
 
+## 2026-11-03 — Valoraciones en la supresión de datos personales y en la ficha pública del docente ([#325](https://github.com/wasichai/elearning-backend/issues/325), paso 4 de [#268](https://github.com/wasichai/elearning-backend/issues/268))
+
+- `PersonalDataErasure` (ADR-0037) suprime las valoraciones de la persona con sus puntajes, comentarios y apelaciones, y
+  su cuota diaria; borra sus denuncias resueltas y deja las abiertas sin ella; encola `reputation.aggregate` para que los
+  indicadores de recurso se recalculen. Lo congelado, anónimo y con n ≥ k, se conserva.
+- `perfil_docente.valoraciones_publicas` (falso por omisión): con él y `perfil_publico`, la ficha pública del docente en
+  el catálogo trae el agregado de sus ediciones liberadas (cifras con n ≥ k, media ponderada por n) con el enlace a su
+  criterio. El catálogo lo lee de `lms.indicador_valoracion` sin usar `reputation`. Vaciar un perfil al suprimirlo
+  retira también ese consentimiento.
+- Pruebas: `RatingErasureApiTest` y `CatalogBuilderTest`.
+
 ## 2026-11-03 — Moderación, denuncias y apelación de las valoraciones ([#324](https://github.com/wasichai/elearning-backend/issues/324), paso 3 de [#268](https://github.com/wasichai/elearning-backend/issues/268))
 
 - Cola y decisión de moderación con `MODERAR`: publicar u ocultar con un motivo tasado (`400` sin él); nadie modera lo

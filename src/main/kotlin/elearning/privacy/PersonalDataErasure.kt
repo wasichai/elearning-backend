@@ -31,11 +31,13 @@ enum class ErasureReason { WITHDRAWN, EXPIRED }
 // disocia, y por qué, está en ADR-0037; en corto:
 //
 // - se suprime lo que solo sirve a la persona: eventos de aprendizaje, progreso, asistencias, entregas (su archivo lo
-//   borra la limpieza de wasichai-files), intentos sin calificar con sus notas parciales, sus trabajos y su aceptación
+//   borra la limpieza de wasichai-files), intentos sin calificar con sus notas parciales, sus valoraciones con sus puntajes,
+//   comentarios y apelaciones, sus denuncias resueltas, su cuota, sus trabajos y su aceptación (ADR-0038 §21)
 // - se disocia lo que la organización emitió y conserva: la matrícula (con su resultado), los intentos calificados (sin
 //   sus respuestas) y el certificado (sin el nombre del titular: el código sigue verificando el papel). llevan desde ahora
 //   un seudónimo aleatorio que no se guarda en ninguna parte. también las ejecuciones de agente que pidió o en las que
-//   intervino: quedan como evidencia del proceso editorial, con el seudónimo en su lugar
+//   intervino: quedan como evidencia del proceso editorial, con el seudónimo en su lugar. sus denuncias abiertas quedan
+//   sin la persona, para quien modera
 // - el perfil docente pierde su contenido y deja de publicarse; lo que la persona hizo en nombre de la organización
 //   (autoría, revisiones, notas que puso) sigue con su id de cuenta, que es de Wasichai, como su auditoría
 //
@@ -104,6 +106,18 @@ class PersonalDataErasure(
 
                 erased["evento_aprendizaje"] = sql("DELETE FROM lms.evento_aprendizaje WHERE organizacion_id = :org AND estudiante_id = :user", org, user)
                 for (name in listOf(PROGRESS, ATTENDANCE, SUBMISSION)) erased[name] = deleteRecords(name, user)
+                // las valoraciones (ADR-0038 §21): sus puntajes y luego ellas, con su comentario y su apelación; sus denuncias
+                // abiertas quedan sin la persona y las resueltas se borran; su cuota diaria también. lo congelado (anónimo, n ≥ k)
+                // se queda; los indicadores de recurso los rehace el trabajo de agregados, que se encola aquí
+                erased[SCORE] = deleteRecords(SCORE, user)
+                erased[RATING] = deleteRecords(RATING, user)
+                val (resolved, open) = records.listAll(REPORT, mapOf(REPORTER to user.toString())).partition { it.attributes[STATE]?.toString() == RESOLVED }
+                resolved.forEach { records.delete(REPORT, UUID.fromString(it.id), AUDIT_REASON) }
+                open.forEach { records.patch(REPORT, UUID.fromString(it.id), RecordRequest(mapOf(REPORTER to null)), AUDIT_REASON) }
+                erased[REPORT] = resolved.size.toLong()
+                dissociated[REPORT] = open.size.toLong()
+                erased["cuota_valoracion"] = sql("DELETE FROM lms.cuota_valoracion WHERE organizacion_id = :org AND usuario_id = :user", org, user)
+                if (erased.getValue(SCORE) > 0) queue.enqueue(org, RATING_AGGREGATE, key = RATING_AGGREGATE)
                 // las notas parciales de un intento sin calificar caen con él; las de uno calificado se quedan con él
                 erased["calificacion"] =
                     sql(
@@ -253,6 +267,14 @@ class PersonalDataErasure(
         const val ATTENDANCE = "asistencia"
         const val SUBMISSION = "entrega"
         const val PROFILE = "perfil_docente"
+        const val RATING = "valoracion"
+        const val SCORE = "puntaje_valoracion"
+        const val REPORT = "denuncia_valoracion"
+        private const val REPORTER = "denunciante_id"
+        private const val RESOLVED = "RESUELTA"
+
+        // el trabajo de agregados de las valoraciones (reputation, que privacy no usa): por su tipo y su clave
+        const val RATING_AGGREGATE = "reputation.aggregate"
         private const val STUDENT = "estudiante_id"
         private const val STUDENT_EMAIL = "estudiante_correo"
         private const val STATE = "estado"
@@ -268,6 +290,7 @@ class PersonalDataErasure(
                 "biografia" to null,
                 "especialidades" to null,
                 "perfil_publico" to false,
+                "valoraciones_publicas" to false,
             )
 
         private val MAPPER: JsonMapper = JsonMapper.builder().findAndAddModules().build()

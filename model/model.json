@@ -572,6 +572,13 @@
           "type": "BOOLEAN",
           "required": true,
           "defaultValue": "false"
+        },
+        {
+          "name": "valoraciones_publicas",
+          "label": "Consiente publicar en el catálogo el agregado de sus valoraciones (con muestra suficiente)",
+          "type": "BOOLEAN",
+          "required": true,
+          "defaultValue": "false"
         }
       ]
     },

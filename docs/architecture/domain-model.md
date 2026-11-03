@@ -448,6 +448,10 @@ catálogo (ADR-0011): media simple y n por destino, sujeto (la asignación o la 
 con la versión del criterio; sin nadie dentro. Los de una edición se congelan al liberarse (una fila en
 `lms.liberacion_valoracion`); los de recurso los rehace cada día el trabajo `reputation.aggregate`.
 
+`perfil_docente.valoraciones_publicas · BOOLEAN` (falso por omisión): el consentimiento para que la ficha pública del
+docente traiga el agregado de sus ediciones liberadas, además de `perfil_publico` (#325). La supresión de datos
+personales borra las valoraciones de la persona y conserva lo congelado (ADR-0038 §21).
+
 **`feedback_contenido`** (Feedback) — F6.
 `autor_id · UUID` · `matricula · RELATION` · `version_curso · RELATION` · `unidad · RELATION` · `leccion · RELATION` ·
 `texto · LONG_TEXT` · `estado · ENUM(ABIERTO, EN_REVISION, RESUELTO, DESCARTADO)` · `respuesta · LONG_TEXT`.

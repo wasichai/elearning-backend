@@ -364,7 +364,8 @@ aplicación se conecta con un rol que no es dueño de las tablas, para que nadie
   exigen muestra suficiente y consentimiento explícito (F6). Ningún visitante publica valoraciones académicas verificadas.
 - **Valoraciones** ([ADR-0038](../adr/0038-politica-de-valoraciones.md)): el valorado nunca ve quién lo valoró (sin
   `READ` sobre `valoracion` ni `puntaje_valoracion`, su historial ni su auditoría); se conservan mientras quien valora
-  mantenga aceptados los términos de uso, y su supresión entra en la de ADR-0037 (paso 4 de #268).
+  mantenga aceptados los términos de uso, y su supresión entra en la de ADR-0037 (tabla de abajo). El agregado público
+  de un docente exige su consentimiento `valoraciones_publicas` (falso por omisión) además de `perfil_publico`.
 - **`calendario` de una edición** es texto público: sin enlaces de reunión ni datos de contacto personales. Los enlaces
   de las sesiones síncronas llegan por el adaptador de videoconferencia (F3) y solo a los matriculados.
 - **IA**: la canalización editorial no recibe datos de estudiantes; el asistente de Wasichai, si se habilita, filtra
@@ -388,6 +389,8 @@ aplicación se conecta con un rol que no es dueño de las tablas, para que nadie
   | Matrículas                                                              | Se disocian: seudónimo, sin correo, `RETIRADA` si estaba activa; queda el resultado |
   | Certificados                                                            | Se disocian: seudónimo y sin nombre; el código sigue verificando el impreso         |
   | Perfil docente                                                          | Se vacía y deja de publicarse; sigue enlazado a la cuenta por sus asignaciones      |
+  | Valoraciones, sus puntajes, comentarios y apelaciones; su cuota diaria  | Se suprimen; lo congelado (anónimo, n ≥ k) se queda y lo de recurso se recalcula    |
+  | Denuncias de valoraciones                                               | Las resueltas se suprimen; las abiertas quedan sin la persona                       |
   | Trabajos que pidió y la aceptación misma                                | Se suprimen                                                                         |
   | Ejecuciones de agente que pidió o en las que intervino                  | Se disocian: seudónimo como solicitante y en sus intervenciones; la ejecución queda |
   | Autoría, revisiones, notas puestas, sesiones y asistencias que registró | Se conservan con el id de cuenta: son actos de la organización                      |

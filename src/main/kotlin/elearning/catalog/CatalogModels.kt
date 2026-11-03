@@ -138,6 +138,22 @@ data class TeacherView(
     val professionalTitle: String?,
     val bio: String?,
     val specialties: String?,
+    // el agregado de sus valoraciones, solo si lo consiente y con muestra suficiente (ADR-0038 §12); si no, null
+    val ratings: TeacherRatings? = null,
+)
+
+// el agregado público de un docente: media y n por dimensión, con el criterio que lo explica (RF-REP-06)
+data class TeacherRatings(
+    val criterion: String,
+    val criterionVersion: String,
+    val dimensions: List<PublicRating>,
+)
+
+data class PublicRating(
+    val key: String,
+    val name: String?,
+    val mean: BigDecimal,
+    val n: Int,
 )
 
 data class CourseDetail(
