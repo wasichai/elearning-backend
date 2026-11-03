@@ -174,7 +174,7 @@ class PersonalDataErasureApiTest : ClassroomApiTestSupport() {
                 .map { row, _ -> row.get("solicitante", String::class.java)!! to row.get("intervenciones", String::class.java)!! }
                 .one()
                 .awaitSingle()
-        }.let { (requester, interventions) -> requester to json.readTree(interventions).map { it["userId"].asString() to it["kind"].asString() } }
+        }.let { (requester, interventions) -> requester to json.readTree(interventions).values().map { it["userId"].asString() to it["kind"].asString() } }
 
     private fun record(
         objectName: String,
