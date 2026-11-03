@@ -255,7 +255,8 @@ abstract class ClassroomApiTestSupport : LmsApiTest() {
         return bearer(email, DEMO_PASSWORD)
     }
 
-    // la asignación que da al docente el alcance sobre la edición (ADR-0016): su perfil y su cuenta
+    // la asignación que da al docente el alcance sobre la edición (ADR-0016): su perfil y su cuenta. el perfil es uno por
+    // cuenta: la segunda asignación reutiliza el de la primera
     protected fun assign(
         teacher: String,
         course: Course,
@@ -263,12 +264,13 @@ abstract class ClassroomApiTestSupport : LmsApiTest() {
         val account = userId(teacher)
         val offering = get("/api/objects/edicion_curso/records?codigo=${course.offering}", admin)["content"][0]["id"].asString()
         val profile =
-            call(
-                admin,
-                "/api/objects/perfil_docente/records",
-                mapOf("attributes" to mapOf("nombre_publico" to "Docente", "usuario_id" to account, "perfil_publico" to false)),
-            ).second!!["id"]
-                .asString()
+            get("/api/objects/perfil_docente/records?usuario_id=$account", admin)["content"].firstOrNull()?.get("id")?.asString()
+                ?: call(
+                    admin,
+                    "/api/objects/perfil_docente/records",
+                    mapOf("attributes" to mapOf("nombre_publico" to "Docente", "usuario_id" to account, "perfil_publico" to false)),
+                ).second!!["id"]
+                    .asString()
         val (status, body) =
             call(
                 admin,
