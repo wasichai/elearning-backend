@@ -1,0 +1,15 @@
+{
+  "id": "msg_double_outline",
+  "type": "message",
+  "role": "assistant",
+  "model": "claude-haiku-5-5",
+  "content": [
+    {
+      "type": "text",
+      "text": "{\"title\":\"Introducción a Kotlin\",\"lessons\":[{\"title\":\"Variables y tipos\",\"minutes\":30},{\"title\":\"Funciones\",\"minutes\":45}]}"
+    }
+  ],
+  "stop_reason": "end_turn",
+  "stop_sequence": null,
+  "usage": { "input_tokens": 1200, "output_tokens": 300 }
+}

@@ -22,6 +22,8 @@ data class AiStatus(
         // el reintento interno de Embabel cuando no se configura
         private const val EMBABEL_DEFAULT_ATTEMPTS = 10
 
+        const val DATA_BINDING_ATTEMPTS = "embabel.agent.platform.llm-operations.data-binding.max-attempts"
+
         // comprobado al arrancar y no en la primera ejecución: un modelo que el proveedor no registró, el modelo por defecto
         // de Embabel incluido, o más de MAX_ATTEMPTS intentos impiden arrancar con todos los problemas a la vez.
         // registered: los modelos que registró cada proveedor, por su nombre en Embabel
@@ -32,7 +34,8 @@ data class AiStatus(
             val provider = AiProvider.active(environment) ?: return AiStatus(null, emptyMap())
             val problems =
                 AiProvider.keyed(environment).flatMap { problems(it, environment, registered[it.embabelName].orEmpty()) } +
-                    defaultModelProblem(environment, registered.values.flatten().toSet())
+                    defaultModelProblem(environment, registered.values.flatten().toSet()) +
+                    dataBindingProblem(environment)
             check(problems.isEmpty()) { "the AI configuration does not start:\n" + problems.joinToString("\n") { "- $it" } }
             return AiStatus(provider, provider.models(environment))
         }
@@ -55,6 +58,18 @@ data class AiStatus(
                     listOf("${provider.embabelPrefix}.max-attempts is $attempts: it must be between 1 and $MAX_ATTEMPTS, the job queue retries")
                 }
             return unknown + retries
+        }
+
+        // el reintento de Embabel que de verdad envuelve cada llamada tipada, para los dos proveedores: repite cualquier fallo,
+        // un 400 o una salida que no se deserializa incluidos (la segunda vez con el error de validación). con 10, su valor por
+        // defecto, un 400 serían 10 peticiones
+        private fun dataBindingProblem(environment: Environment): List<String> {
+            val attempts = environment.getProperty(DATA_BINDING_ATTEMPTS, Int::class.javaObjectType) ?: EMBABEL_DEFAULT_ATTEMPTS
+            return if (attempts in 1..MAX_ATTEMPTS) {
+                emptyList()
+            } else {
+                listOf("$DATA_BINDING_ATTEMPTS is $attempts: it must be between 1 and $MAX_ATTEMPTS, the job queue retries")
+            }
         }
 
         private fun defaultModelProblem(

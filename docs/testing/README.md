@@ -38,6 +38,42 @@ Como en Wasichai, no se usan MockK, Kotest ni ArchUnit; la prueba de arquitectur
 - Cobertura del primer incremento: borrador invisible por slug (`404`), filtros y orden, otra organización invisible,
   `/api/lms/**` privado → `401`, escritura anónima en la ruta pública rechazada.
 
+### Doble HTTP de los proveedores de IA
+
+Para probar la canalización con Embabel sin claves reales ni red ([ADR-0033](../adr/0033-fase-5-ia.md) §11). Es un
+WireMock (`org.wiremock:wiremock-standalone`, la variante que sombrea su Jetty: la aplicación es Netty) en `127.0.0.1` y
+puerto dinámico, uno por JVM, que hace de Anthropic (`POST /v1/messages`) y de OpenAI (Responses API,
+`POST /v1/responses`). Vive en `src/test/kotlin/elearning/ai/ProviderDouble.kt`:
+
+- **`ProviderDoubleApiTest`** es la base: extiende `LmsApiTest`, arranca la aplicación con los dos proveedores (claves
+  ficticias por `@TestPropertySource`, porque `AiProviderGate` las mira antes de que Spring aplique
+  `@DynamicPropertySource`; `ANTHROPIC_BASE_URL`, `OPENAI_BASE_URL` y las `base-url` de Embabel por
+  `@DynamicPropertySource`, que gana a las del entorno de quien corre la suite) y trae una tarifa para cada modelo de
+  extracción. Todas las clases que la extienden comparten contexto.
+- **Respuestas** en `src/test/resources/ai/anthropic/` y `ai/openai/`: `messages-outline.json` y `responses-outline.json`
+  (la salida tipada de ejemplo y su `usage`), `*-invalid-json.json` y `error-{400,429,500}.json` con el cuerpo de error de
+  cada API. Se preparan con `ProviderDouble.anthropicReplies("…")`, `openAiReplies("…")`, `anthropicFails(429)` u
+  `openAiFails(500)`; un caso nuevo es un archivo nuevo.
+- **Lo enviado**: `anthropicRequests()` y `openAiRequests()` devuelven el cuerpo JSON de cada petición, en orden;
+  `requestCount()`, todas las que llegaron. Así se comprueban el modelo, `max_tokens` y el prompt, y cuántas veces se
+  reintentó.
+- **Nada sin emparejar**: una respuesta solo empareja con la ruta, la clave ficticia de su proveedor (y
+  `anthropic-version`); lo demás recibe el 404 de WireMock. Antes de cada prueba el doble se vacía y después
+  `assertNoUnmatchedRequests()` la hace fallar si quedó una petición sin emparejar. Como las URL base apuntan al doble,
+  ninguna prueba llega a `api.anthropic.com` ni a `api.openai.com`.
+- **Reintentos reales**: Embabel hace 2 intentos por llamada y el SDK de cada proveedor repite 408, 409, 429 y 5xx dos
+  veces más dentro de cada uno (`docs/ai` §2). Las respuestas de error llevan `Retry-After-Ms: 1` para que los SDK no
+  esperen hasta 8 s; el número de peticiones es el mismo.
+
+`ModelCallsApiTest` es el ejemplo: una salida tipada (`CourseOutline`) por cada proveedor, 400 (fallo permanente), 429 y
+500 (pasajeros) y JSON inválido con su recuento, la petición no emparejada y el registro `AgentRun` con el consumo del
+proveedor y su coste.
+
+**No sustituye al doble determinista** (`docs/ai` §7). El doble HTTP prueba la frontera con el proveedor: Embabel, lo que
+se envía, la deserialización, los errores y el consumo de tokens. La lógica de la canalización (idempotencia, cancelación,
+rechazo de salida inválida, permisos) y el desarrollo sin claves usan el determinista, que no habla HTTP ni pasa por
+Embabel.
+
 ### Arquitectura
 
 Prueba de escaneo de fuentes en `src/test` que falla si en `src/main`:

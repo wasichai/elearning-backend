@@ -18,10 +18,16 @@ spring:
 # Embabel (ADR-0033): cada proveedor existe solo con su clave, ANTHROPIC_API_KEY u OPENAI_API_KEY, que Embabel lee del
 # entorno; elearning.ai.AiProviderGate deja fuera al que no la tiene. ANTHROPIC_BASE_URL y OPENAI_BASE_URL tienen
 # precedencia sobre base-url. un solo nivel de reintento: Embabel hace como mucho 2 intentos por llamada y los reintentos
-# son de la cola (§6); con más, la aplicación no arranca
+# son de la cola (§6); con más, la aplicación no arranca. En 1.5.4 el que envuelve cada llamada tipada es el de
+# llm-operations.data-binding (repite cualquier fallo; el segundo intento corrige una salida inválida); el de cada proveedor
+# solo cuenta en el camino Chat Completions de OpenAI. El SDK del proveedor repite además 408, 409, 429 y 5xx dos veces
+# dentro de cada intento (docs/ai §2, comprobado con el doble HTTP)
 embabel:
   agent:
     platform:
+      llm-operations:
+        data-binding:
+          max-attempts: 2
       models:
         anthropic:
           max-attempts: 2

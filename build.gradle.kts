@@ -36,6 +36,8 @@ dependencies {
     testImplementation(libs.wasichai.test)
     // S3ResourceFilesApiTest crea el bucket y lee el objeto directamente en MinIO
     testImplementation(libs.aws.sdk.s3)
+    // doble HTTP de los proveedores de IA (elearning.ai.ProviderDouble, ADR-0033 §11)
+    testImplementation(libs.wiremock.standalone)
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
