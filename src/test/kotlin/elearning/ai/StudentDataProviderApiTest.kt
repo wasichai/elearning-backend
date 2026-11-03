@@ -23,14 +23,14 @@ import java.util.UUID
 // §4.5 I, docs/ai §6). En un curso publicado con su edición, dos estudiantes con marcadores únicos en el nombre y el correo se
 // matriculan, responden su evaluación (con otro marcador en la respuesta abierta) y valoran el recurso de la lectura (otro en
 // el comentario). Sobre ese mismo curso corren, con Embabel de verdad contra el doble HTTP de cada proveedor, todos los pasos
-// de IA que hay: análisis de fuentes, diseño, guion de vídeo y, al validar un borrador nuevo del curso, la opinión de
-// consistencia. Ninguna petición que recibe el doble (URL, cabeceras ni cuerpo) ni ninguna ejecución AgentRun del curso
+// de IA que hay: análisis de fuentes, diseño, guion de vídeo, borrador de lección y, al validar un borrador nuevo del curso,
+// la opinión de consistencia. Ninguna petición que recibe el doble (URL, cabeceras ni cuerpo) ni ninguna ejecución AgentRun del curso
 // contiene un marcador, ni el id de una persona, de su matrícula o de su intento; y la prueba no es vacía: lo sembrado está
-// guardado y el contenido del curso sí llega al modelo. El borrador de lección (#283) entra aquí cuando esté en main
+// guardado y el contenido del curso sí llega al modelo
 //
 // Extiende el soporte del aula para sembrar como lo hace el aula; las claves ficticias y la URL del doble son las de
 // ProviderDoubleApiTest, que no puede ser su base
-@Import(SourceAnalysisFixtures.FakeSource::class)
+@Import(SourceAnalysisFixtures.FakeSource::class, LessonDraftFixtures.FakeRenderer::class)
 @TestPropertySource(
     properties = [
         "lms.jobs.scheduling=false",
@@ -271,7 +271,7 @@ abstract class StudentDataProviderApiTest(
         // todos los pasos de IA sobre el mismo curso
         val brief = created("brief", SourceAnalysisFixtures.brief(courseId))
         val analysis = done(step(creator, "/api/lms/ai/source-analysis", mapOf("briefId" to brief), "source-analysis.json"))
-        done(step(creator, "/api/lms/ai/course-design", mapOf("executionId" to analysis), "course-design.json"))
+        val design = done(step(creator, "/api/lms/ai/course-design", mapOf("executionId" to analysis), "course-design.json"))
         val resource = created("recurso", mapOf("titulo" to "Vídeo de anuncios", "tipo" to "VIDEO", "idioma" to "es"))
         val video = created("version_recurso", mapOf("recurso" to resource, "numero" to 1, "autor_id" to userId(creator)))
         done(
@@ -283,6 +283,8 @@ abstract class StudentDataProviderApiTest(
             ),
         )
         val version = draft(courseId)
+        // el borrador de lección (#283, con sus evaluaciones desde #367), después del borrador a mano: toma el número siguiente
+        done(step(creator, "/api/lms/ai/lesson-draft", mapOf("executionId" to design), "lesson-draft.json"))
         val reviewer = account("${uniqueName("revisor").lowercase()}@demo.wasichai-learning.test", "Revisora", "REVISOR")
         step(reviewer, "/api/lms/ai/validations", mapOf("versionId" to version), "consistency-approved.json")
         val opinion = ok(call(reviewer, "/api/lms/ai/validations?versionId=$version"))["opinion"]
@@ -308,8 +310,8 @@ abstract class StudentDataProviderApiTest(
     companion object {
         private const val TAG = 16
 
-        // análisis, diseño, guion y opinión de consistencia: una llamada cada uno
-        private const val STEPS = 4
+        // análisis, diseño, guion, borrador de lección y opinión de consistencia: una llamada cada uno
+        private const val STEPS = 5
         private const val STATEMENT = "¿Qué es el padrón?"
 
         @JvmStatic
