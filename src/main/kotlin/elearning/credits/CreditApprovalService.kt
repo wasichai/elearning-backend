@@ -124,6 +124,15 @@ class CreditApprovalService(
                                 AT to Instant.now(clock).toString(),
                             ),
                         ),
+                        summary(
+                            APPROVAL_TYPE,
+                            evidence,
+                            request.documentDate,
+                            "${proposal.policyId}@${proposal.policyVersion} ${proposal.parameters}",
+                            "${proposal.totalHours.plain().toPlainString()} h → ${approved.plain().toPlainString()} créditos " +
+                                "(propuestos ${proposal.proposed.plain().toPlainString()})",
+                            reason,
+                        ),
                     )
                 copy(versionId, approved, "${proposal.policyId}@${proposal.policyVersion}")
                 row
@@ -163,12 +172,27 @@ class CreditApprovalService(
                                 AT to Instant.now(clock).toString(),
                             ),
                         ),
+                        summary(REVOCATION_TYPE, evidence, request.documentDate, "revoca ${approval.id}", null, reason),
                     )
                 copy(versionId, null, null)
                 row
             }
         return approvalView(written)
     }
+
+    // el motivo de la fila en el audit_log de Wasichai (ADR-041): /api/audit muestra de un alta quién y cuándo, no sus
+    // valores, así que el acto se resume aquí, dentro del tope de 500 caracteres de Wasichai
+    private fun summary(
+        type: String,
+        evidence: Pair<String, String>,
+        date: LocalDate?,
+        policy: String,
+        result: String?,
+        reason: String?,
+    ): String =
+        listOfNotNull(type, evidence.first, evidence.second + (date?.let { " ($it)" } ?: ""), policy, result, reason?.let { "motivo: $it" })
+            .joinToString(" · ")
+            .take(MAX_AUDIT_REASON)
 
     private suspend fun approver(): AuthenticatedUser {
         val user = currentUser.require()
@@ -314,6 +338,7 @@ class CreditApprovalService(
         const val MAX_TEXT = 200
         const val MAX_REASON = 4000
         const val MAX_SCALE = 2
+        const val MAX_AUDIT_REASON = 500
         const val VERSION_NOT_FOUND = "Versión no encontrada"
         const val APPROVAL_NOT_FOUND = "Aprobación no encontrada"
 

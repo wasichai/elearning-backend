@@ -801,7 +801,7 @@ reconocerlos es un acto de la institución que una persona con `APROBAR_CREDITOS
 - `VersionCredits`: `{ "versionId", "versionStatus", "system", "proposal": { …como la del catálogo… }, "current":
 CreditApproval | null }`.
 - Las filas son `aprobacion_creditos` (`appendOnly`, `apiOnly`): la API de registros las lee pero no las crea, cambia ni
-  borra; quedan en `/api/audit?objectName=aprobacion_creditos&recordId=…` con la persona y la hora. El comando copia lo
+  borra; quedan en `/api/audit?objectName=aprobacion_creditos&recordId=…` con la persona, la hora y, en `reason`, un resumen del acto (tipo, órgano, documento, política con sus parámetros, horas y créditos, motivo; hasta 500 caracteres). El comando copia lo
   aprobado a `version_curso.creditos_aprobados` y `politica_creditos` (`id@versión`) y lo borra al revocar; esos dos campos
   no se escriben por la API de registros (`403` para todos). Una versión nueva no los hereda.
 - En el catálogo, `credits.approved` y `credits.approval` (`{ "credits", "policyId", "policyVersion", "approvingBody",

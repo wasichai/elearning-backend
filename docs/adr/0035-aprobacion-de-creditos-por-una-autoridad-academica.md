@@ -31,7 +31,8 @@
    `REVOCACION`; la versión; la **instantánea** de la política aplicada (id, versión, sistema, método, parámetros en JSON,
    fuente) y del cálculo (horas totales, créditos calculados y propuestos); los créditos aprobados; el motivo (obligatorio
    si difiere de lo propuesto y al revocar); el órgano y el documento que lo respaldan (obligatorios), su fecha; quién y
-   cuándo. Nada se cambia ni se borra: revocar inserta otra fila que nombra la aprobación revocada (`sustituye`).
+   cuándo. El alta queda en el `audit_log` de Wasichai con la persona y la hora, y con un resumen del acto como motivo
+   (ADR-041 de Wasichai), porque `/api/audit` no muestra los valores de un alta. Nada se cambia ni se borra: revocar inserta otra fila que nombra la aprobación revocada (`sustituye`).
 3. **Comandos** en `elearning.credits` (`/api/lms/credits/**`): ver la propuesta y la aprobación vigente, el historial,
    aprobar y revocar. Aprobar exige una versión `APROBADA` o `PUBLICADA` con sistema de crédito (`409` si no), sin otra
    aprobación vigente (`409`: se revoca antes), y **recalcula en el servidor** con la política; el número enviado, si

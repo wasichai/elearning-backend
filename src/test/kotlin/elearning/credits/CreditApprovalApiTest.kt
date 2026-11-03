@@ -303,9 +303,10 @@ class CreditApprovalApiTest : ClassroomApiTestSupport() {
             val audit = get("/api/audit?objectName=aprobacion_creditos&recordId=$approvalId", admin).values().toList()
             val entry = audit.single { it["operation"].asString() == "CREATE" }
             assertEquals(authority.email, entry["userEmail"].asString())
-            val text = entry.toString()
-            for (expected in listOf("ects-carga-total", "horasPorCredito", "216", BODY, DOCUMENT, "aprobada_en", userId(authority.token))) {
-                assertTrue(expected in text, "$expected no está en $entry")
+            assertFalse(entry["occurredAt"].isNull)
+            val reason = entry["reason"].asString()
+            for (expected in listOf("APROBACION", "ects-carga-total@1", "horasPorCredito=27", "216 h", "8 créditos", BODY, DOCUMENT, "2026-10-30")) {
+                assertTrue(expected in reason, "$expected no está en $reason")
             }
 
             val slug = course.offering.lowercase()
