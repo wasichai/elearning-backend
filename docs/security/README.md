@@ -327,16 +327,34 @@ aplicación se conecta con un rol que no es dueño de las tablas, para que nadie
   de las sesiones síncronas llegan por el adaptador de videoconferencia (F3) y solo a los matriculados.
 - **IA**: la canalización editorial no recibe datos de estudiantes; el asistente de Wasichai, si se habilita, filtra
   con `AgentResultFilter` lo que sale al proveedor.
-- **Retención** ([ADR-0030](../adr/0030-lgpl-definitiva-y-conservacion-segun-los-terminos.md)): los datos personales se
-  conservan el tiempo que la persona aprueba en los términos de uso, sin plazos propios por tipo de dato; al retirar la
-  aceptación o vencer su plazo se suprimen, y lo que deba conservarse se disocia (implementación en
-  [#304](https://github.com/wasichai/elearning-backend/issues/304)). Los eventos de aprendizaje ya seguían esa regla (ADR-0020).
-  La purga de `audit_log` solo la hace el rol de purga de Wasichai (`wasichai.audit.purge-role`), nunca la aplicación.
-  Los trabajos terminados de `lms.trabajo` (sus datos nombran a quien los pidió y su error puede citar la fuente) los
-  borra la propia cola pasado `lms.jobs.retention` (30 días, ADR-0022); la versión y los artefactos que crearon guardan
-  autor, fuente y trabajo.
-- **Eliminación de cuenta**: a diseñar en F6, conservando lo que deba conservarse (calificaciones emitidas,
-  certificados, auditoría). Plazos legales: a verificar con la organización; este documento no fija ninguno.
+- **Retención** ([ADR-0030](../adr/0030-lgpl-definitiva-y-conservacion-segun-los-terminos.md),
+  [ADR-0037](../adr/0037-terminos-de-uso-y-supresion-de-datos-personales.md), RNF-SEG-11): los datos personales se
+  conservan el tiempo que la persona aprueba en los términos de uso, sin plazos propios por tipo de dato. Los publica
+  quien tiene `MANAGE_ORGANIZATION` (`lms.terminos_uso`, inmutables); cada persona acepta la versión vigente y su plazo
+  (`lms.aceptacion_terminos`: persona, versión, fecha, vencimiento y retirada; nada más). **Sin aceptación vigente no hay
+  matrícula ni progreso** (`403` con el motivo; sin términos publicados, tampoco); el catálogo público sigue abierto.
+- **Supresión**: al retirar la aceptación (`DELETE /api/lms/terms/acceptance`) o vencer su plazo (barrido cada
+  `lms.privacy.sweep-every`), el trabajo `privacy.erase` de la cola, como la plataforma y en una transacción, suprime y
+  disocia; es idempotente y deja una constancia en `lms.supresion` (motivo y cuántos de cada clase) sin la persona:
+
+  | Dato                                                                    | Destino                                                                             |
+  | ----------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+  | Eventos de aprendizaje, progreso, asistencias                           | Se suprimen                                                                         |
+  | Entregas                                                                | Se suprimen; el archivo, por la limpieza de huérfanos de wasichai-files             |
+  | Intentos sin calificar (y sus notas parciales)                          | Se suprimen                                                                         |
+  | Intentos calificados y sus notas                                        | Se disocian: seudónimo aleatorio y sin respuestas                                   |
+  | Matrículas                                                              | Se disocian: seudónimo, sin correo, `RETIRADA` si estaba activa; queda el resultado |
+  | Certificados                                                            | Se disocian: seudónimo y sin nombre; el código sigue verificando el impreso         |
+  | Perfil docente                                                          | Se vacía y deja de publicarse; sigue enlazado a la cuenta por sus asignaciones      |
+  | Trabajos que pidió y la aceptación misma                                | Se suprimen                                                                         |
+  | Autoría, revisiones, notas puestas, sesiones y asistencias que registró | Se conservan con el id de cuenta: son actos de la organización                      |
+
+  Queda en Wasichai: la cuenta (nombre, correo, roles), que deshabilita o elimina el administrador; las notificaciones;
+  y `audit_log`, con el antes de cada registro suprimido o disociado, hasta que lo borre el rol de purga de Wasichai
+  (`wasichai.audit.purge-role`), nunca la aplicación. Los trabajos terminados de `lms.trabajo` los borra la propia cola
+  pasado `lms.jobs.retention` (30 días, ADR-0022), también el de la supresión, que lleva el id de la persona en su clave.
+
+- **Plazos legales**: los decide cada organización en sus términos; este documento no fija ninguno.
 - **Datos de demostración y pruebas**: siempre sintéticos ([pruebas](../testing/README.md#datos-sintéticos)).
 
 ## 8. Gestión de secretos
@@ -358,20 +376,21 @@ Obligatorias para cada recurso nuevo, como pruebas de integración contra la apl
 ver [pruebas](../testing/README.md)). Sujetos: usuarios de prueba con un solo rol, nunca `ADMIN`. Cada prueba
 comprueba también que **nada cambió**, releyendo como propietario.
 
-| Caso                          | Cómo                                                                                    | Esperado                             |
-| ----------------------------- | --------------------------------------------------------------------------------------- | ------------------------------------ |
-| Anónimo en ruta privada       | Sin `Authorization` a `/api/lms/**` no público y a `/api/objects/**`                    | `401`                                |
-| Anónimo escribe en lo público | `POST`, `PUT`, `DELETE` a `/api/lms/public/**`                                          | `401` o `403`                        |
-| Borrador por URL pública      | Slug de una versión en borrador o en revisión                                           | `404`                                |
-| IDOR: id ajeno en la URL      | Cambiar el id de matrícula, intento, entrega, lección, versión o revisión por uno ajeno | `404`, cuerpo sin datos              |
-| IDOR en relaciones            | Crear o actualizar con un `RELATION` a un registro fuera de alcance                     | `400` en el campo                    |
-| Otra organización             | Token de la organización B con ids de la A                                              | `404`                                |
-| Rol sin permiso               | ESTUDIANTE llama a un comando de DOCENTE, CREADOR o REVISOR; DOCENTE intenta `PUBLICAR` | `403`                                |
-| Docente fuera de su edición   | DOCENTE de la edición X lee o califica en la Y                                          | `404`                                |
-| Autoaprobación                | El autor, aun con `APROBAR`, aprueba su versión                                         | Rechazo del guard                    |
-| Publicada inmutable           | Editar o borrar una versión `PUBLICADA`                                                 | Rechazo del guard                    |
-| Nota sin motivo               | `PATCH` de calificación sin motivo                                                      | `400`                                |
-| Listados                      | Filtros que incluirían recursos ajenos                                                  | Solo los propios, conteos coherentes |
+| Caso                          | Cómo                                                                                                  | Esperado                             |
+| ----------------------------- | ----------------------------------------------------------------------------------------------------- | ------------------------------------ |
+| Anónimo en ruta privada       | Sin `Authorization` a `/api/lms/**` no público y a `/api/objects/**`                                  | `401`                                |
+| Anónimo escribe en lo público | `POST`, `PUT`, `DELETE` a `/api/lms/public/**`                                                        | `401` o `403`                        |
+| Borrador por URL pública      | Slug de una versión en borrador o en revisión                                                         | `404`                                |
+| IDOR: id ajeno en la URL      | Cambiar el id de matrícula, intento, entrega, lección, versión o revisión por uno ajeno               | `404`, cuerpo sin datos              |
+| IDOR en relaciones            | Crear o actualizar con un `RELATION` a un registro fuera de alcance                                   | `400` en el campo                    |
+| Otra organización             | Token de la organización B con ids de la A                                                            | `404`                                |
+| Rol sin permiso               | ESTUDIANTE llama a un comando de DOCENTE, CREADOR o REVISOR; DOCENTE intenta `PUBLICAR`               | `403`                                |
+| Docente fuera de su edición   | DOCENTE de la edición X lee o califica en la Y                                                        | `404`                                |
+| Autoaprobación                | El autor, aun con `APROBAR`, aprueba su versión                                                       | Rechazo del guard                    |
+| Publicada inmutable           | Editar o borrar una versión `PUBLICADA`                                                               | Rechazo del guard                    |
+| Nota sin motivo               | `PATCH` de calificación sin motivo                                                                    | `400`                                |
+| Sin términos aceptados        | Matricularse o registrar progreso sin aceptación vigente; publicar términos sin `MANAGE_ORGANIZATION` | `403`                                |
+| Listados                      | Filtros que incluirían recursos ajenos                                                                | Solo los propios, conteos coherentes |
 
 Rechazos de `EditorialWorkflowGuard`: `403` falta la acción o es autoaprobación o borrador ajeno; `409` transición
 inexistente o contenido congelado; `400` versión a nombre de otro. Pruebas: `EditorialWorkflowGuardApiTest`.
