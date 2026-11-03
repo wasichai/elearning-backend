@@ -20,6 +20,6 @@ instalan. Diseño: [ADR-0039](../docs/adr/0039-remotion-como-motor-de-render-con
 yarn install --frozen-lockfile
 yarn test                                   # renderizador simulado
 RENDER_WORKER_BROWSER=/usr/bin/google-chrome yarn test   # también un render de verdad
-yarn licenses                               # informe de licencias
+yarn run licenses                           # informe de licencias
 docker build -t render-worker .
 ```

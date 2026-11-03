@@ -136,7 +136,7 @@ comprobado el 2026-11-03 con Remotion 4.0.540:
   `render-worker/package.json`; arrastran otros `@remotion/*` (`studio`, `player`, `web-renderer`, `compositor-*`…). Ni el
   `package.json` raíz (que no tiene _workspaces_) ni el backend lo declaran: CI falla si el `yarn.lock` raíz, su
   `node_modules` o el classpath del backend (`./gradlew noRemotion`) lo traen.
-- **Informe de licencias** (`yarn licenses` en `render-worker/`, trabajo `render-worker` de CI, artefacto
+- **Informe de licencias** (`yarn run licenses` en `render-worker/`, trabajo `render-worker` de CI, artefacto
   `render-worker-licencias`): sobre la instalación de producción, lista Remotion aparte (licencia propia) y falla si otro
   paquete no tiene una licencia libre de la lista (MIT, ISC, Apache-2.0, BSD, MPL-2.0…) o si Remotion no aparece. Al
   escribir esto: 172 paquetes, 23 de Remotion; el resto MIT, ISC, BSD-2/3, Apache-2.0, MPL-2.0, Unlicense, 0BSD y

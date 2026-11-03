@@ -28,6 +28,7 @@ Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este
 - `AiStepRunner.run` acepta la acción a recomprobar (`VALIDAR` para este paso; `GENERAR` por defecto). Pruebas unitarias
   con el `FakeOperationContext` de Embabel y de API contra el doble HTTP de Anthropic y de OpenAI; el borrador de prueba
   pasa a `DraftFixtures`. Sin migraciones.
+
 ## 2026-11-03 — Trabajador de render de vídeo: E37.2 ([#297](https://github.com/wasichai/elearning-backend/issues/297)) y lo que quedaba de [#267](https://github.com/wasichai/elearning-backend/issues/267)
 
 - `render-worker/`: el trabajador Node de ADR-0040, aparte (su `package.json`, `yarn.lock`, `.node-version`, `Dockerfile` y
@@ -47,7 +48,7 @@ Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este
   (`JobHandler.timeout`; sin `lms.jobs.lease` mayor no arranca).
 - CI: Remotion fuera del `yarn.lock` raíz, de su `node_modules` y del classpath del backend (`./gradlew noRemotion`); un
   trabajo `render-worker` con sus pruebas, un render de verdad con Chrome Headless Shell y el informe de licencias
-  (`yarn licenses`). `docs/legal/licensing.md` documenta el ffmpeg GPL que trae Remotion. Sin migraciones.
+  (`yarn run licenses`). `docs/legal/licensing.md` documenta el ffmpeg GPL que trae Remotion. Sin migraciones.
 
 ## 2026-11-03 — Diseño pedagógico: E33.5 ([#282](https://github.com/wasichai/elearning-backend/issues/282))
 
