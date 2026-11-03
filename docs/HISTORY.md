@@ -15,7 +15,7 @@ Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este
 
 - RNF-UX-06: «Datos» y «Administración» solo los ve quien tiene `admin` o `MANAGE_ORGANIZATION`, con `shellNav` de
   `@wasichai/core`. Una sola aplicación y ninguna URL nueva (ADR-0005). `docs/operations/administracion.md` lo recoge, junto
-  con lo que queda: el mensaje de core ante un `403` y que la primera versión de un curso nuevo solo llega importando.
+  con lo que queda: el mensaje de core ante un `403` y que la interfaz aún no ofrece crear el primer borrador de un curso nuevo sin importar.
 
 ## 2026-11-03 — LGPL definitiva y conservación según los términos ([#303](https://github.com/wasichai/elearning-backend/issues/303))
 

@@ -80,7 +80,7 @@ Una cuenta sin `MANAGE_ORGANIZATION` que escriba `/admin/users` a mano ve el for
 la lista no le ha llegado porque el servidor la rechaza. No hay fuga ni escalada: la API responde `403`, pero el mensaje
 induce a error. La pantalla es de `@wasichai/core`.
 
-La primera versión de un curso nuevo solo llega importando. `POST /api/lms/studio/courses/{courseId}/versions` responde `400`
-porque no hay de dónde copiar, y el formulario de `version_curso` exige en «Autor» el UUID de quien crea, que ninguna pantalla le
-muestra (sin él, `400`; lo exige `EditorialWorkflowGuard`). Por eso el estudio no enlaza a ese formulario
-([front#157](https://github.com/wasichai/elearning-frontend/pull/157)).
+En la interfaz, la primera versión de un curso nuevo solo llega importando. La API ya crea ese primer borrador vacío
+(`POST /api/lms/studio/courses/{courseId}/versions`, #270), pero el estudio aún no lo ofrece
+([front#161](https://github.com/wasichai/elearning-frontend/issues/161)). El formulario de `version_curso` no sirve para esto:
+exige en «Autor» el UUID de quien crea, que ninguna pantalla le muestra.
