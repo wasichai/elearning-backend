@@ -337,10 +337,56 @@ consistencia, guiones, transformación de formato.
   referencia, sin copiar texto mientras no haya licencia, ver [licencias](../legal/licensing.md)).
 - **Criterios** escritos antes de ejecutar: comprobaciones automáticas (esquema, procedencia, alineación) y rúbrica
   humana para lo pedagógico.
-- **Ejecución** con una tarea de Gradle o prueba etiquetada fuera de `build` (cuesta dinero y necesita clave): misma
-  entrada, mismas instrucciones, varios modelos, temperatura y semilla registradas cuando el proveedor las admita.
+- **Ejecución** con una tarea de Gradle fuera de `build` (cuesta dinero y necesita clave): misma entrada, mismas
+  instrucciones, varios modelos y los parámetros efectivos registrados.
 - **Se conserva**: entradas, versiones de instrucciones y plantillas, modelo y parámetros, salidas, puntuaciones e
-  informe (ubicación prevista `docs/ai/evaluations/`). Sin cifras hasta que existan ejecuciones reales.
+  informe. Sin cifras hasta que existan ejecuciones reales.
+
+Implementado en E35.1 ([#290](https://github.com/wasichai/elearning-backend/issues/290)) para los pasos que hay en `main`:
+el análisis de fuentes (E33.4) y la opinión de consistencia (E34.2); el diseño (E33.5), el borrador (E33.6) y los guiones
+(E36.1) se suman con su carpeta cuando lleguen.
+
+- **Conjuntos y criterios** en [`docs/ai/evaluations/<tarea>/`](evaluations/README.md): `set.json` (casos y lo esperado de
+  cada uno) y `criteria.md` (su versión, `source-analysis-criteria@1`…, las puntuaciones y la rúbrica humana). Contra
+  proveedores reales la tarea se niega a correr si esa carpeta tiene cambios sin confirmar, y guarda el commit y el sha256
+  de los dos archivos. Una prueba unitaria comprueba que lo esperado de cada caso existe en el caso y que cada puntuación
+  está escrita en los criterios.
+- **Participantes**: por cada proveedor con clave, el modelo del paso (`extraction`, `consistency`) y el de referencia
+  (`reference`: `claude-opus-5-5`, `gpt-6-astra`; ADR-0033 §3), sin repetir, todos con el `max_tokens` del paso. El doble
+  determinista del análisis corre como línea base y **nunca entra en la comparación** (sale en «Fuera de la comparación»);
+  la opinión no tiene doble.
+- **Mismos pasos que producción**: cada caso pasa por el generador del paso (`ModelSourceAnalyzer`, `ConsistencyReviewer`),
+  con sus instrucciones y su objetivo (`SourceAnalysisPrompt.objective`, `ConsistencyReviewPrompt.objective`), y por su
+  comprobación por código (`SourceAnalysisCheck`, `ConsistencyReviewCheck`).
+- **Puntuaciones por código, nunca por un modelo**: `schema_valid` (se deserializó), `accepted` (la comprobación la
+  aceptó), `provenance_valid` u `origins_valid` (lo que quedó entre lo devuelto), `coverage` (elementos esperados con
+  procedencia en su sección), `verdict` y `origin_recall` (registros esperados señalados). Un fallo del proveedor (`FAILED`)
+  no puntúa. La rúbrica humana queda fuera del informe automático.
+- **Parámetros efectivos**: Claude 5 no admite temperatura (Embabel 1.5.4 no la envía y lo avisa en el registro), así que
+  lo que se fija y se registra es el **esfuerzo de razonamiento** (`ModelSettings.effort`: `LOW`, `MEDIUM`, `HIGH`).
+  `ModelCalls` lo pasa a Embabel como presupuesto de pensamiento, que en Claude ≥ 4.7 es pensamiento adaptativo con
+  `output_config.effort`, y como `reasoning.effort` de la Responses API de OpenAI; cada convertidor lee solo el suyo. Sin
+  esfuerzo no se envía nada y vale el del proveedor: así siguen los pasos de producción, cuya clave de idempotencia no
+  cambia. La comparación pide `medium` si no se dice otra cosa; la temperatura queda `null`.
+- **Resultados** en `build/ai-eval/<inicio>/`: `run.json` (modo, commit, conjuntos con su versión de criterios y sus
+  hashes, participantes con proveedor, modelo, papel y parámetros, y la comparación con las versiones de instrucciones y
+  plantilla), `<tarea>/<participante>/<caso>.json` (salida, informe de validación, puntuaciones, tokens, duración, fuentes
+  con su hash y error) y `report.md` (una tabla por tarea con la media de cada puntuación, aceptados, fallidos y tokens, y
+  el estado de cada caso). Nada lleva claves.
+- **A mano, contra los proveedores reales** (con Docker, como `integrationTest`):
+
+  ```bash
+  export GITHUB_ACTOR=$(gh api user -q .login) GITHUB_TOKEN=$(gh auth token)
+  ANTHROPIC_API_KEY=… OPENAI_API_KEY=… ./gradlew aiEval
+  # opcional: LMS_AI_EVAL_EFFORTS=low,high (o default, el del proveedor) y LMS_AI_EVAL_TASKS=source-analysis
+  ```
+
+  `aiEval` no depende de `build` ni de `check` y su prueba (`ModelEvaluationProvidersTest`, etiqueta `ai-eval`) queda
+  fuera de `test` e `integrationTest`. Con una sola clave compara los modelos de ese proveedor.
+
+- **En CI**, `ModelEvaluationSmokeTest` (en `integrationTest`) corre lo mismo contra el doble HTTP: los cuatro modelos de
+  `application.yml`, el esfuerzo en el cuerpo de cada petición, sin temperatura, y todo lo que se guarda. Es una prueba de
+  humo: las respuestas son fijas y su informe no lleva cifras.
 
 ## 10. Indicadores (sección 10)
 

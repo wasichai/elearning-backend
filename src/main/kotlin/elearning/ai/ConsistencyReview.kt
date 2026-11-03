@@ -71,6 +71,9 @@ object ConsistencyReviewPrompt {
     const val VERSION = "consistency-review@1"
     const val TEMPLATE = "consistency-review@1"
 
+    // el objetivo declarado del paso (queda en AgentRun y en la clave); la comparación de modelos usa el mismo
+    fun objective(version: String) = "Give an opinion on the consistency between the content and the evaluations of the draft course version $version"
+
     // las de sistema: fijas, sin nada del borrador
     val SYSTEM =
         """

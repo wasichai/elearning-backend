@@ -5,7 +5,9 @@ import com.embabel.agent.api.common.ExecutingOperationContext
 import com.embabel.agent.api.common.OperationContext
 import com.embabel.agent.core.support.InvalidLlmReturnFormatException
 import com.embabel.agent.core.support.InvalidLlmReturnTypeException
+import com.embabel.agent.openai.withOpenAiReasoningEffort
 import com.embabel.common.ai.model.LlmOptions
+import com.embabel.common.ai.model.Thinking
 import com.openai.errors.OpenAIServiceException
 import org.springframework.beans.factory.ObjectProvider
 import org.springframework.beans.factory.annotation.Autowired
@@ -54,7 +56,7 @@ class ModelCalls internal constructor(
         // sin proveedor, cada paso usa su doble determinista (docs/ai §7): llegar aquí es un error del programa
         check(status.available) { "no AI provider: the step must use its deterministic double" }
         val context = contexts()
-        val options = LlmOptions.withModel(model).withMaxTokens(settings.maxTokens).withTemperature(settings.temperature)
+        val options = options(model, settings)
         val value =
             try {
                 val runner = context.ai().withLlm(options)
@@ -63,6 +65,17 @@ class ModelCalls internal constructor(
                 throw classified(e, usage(context))
             }
         return ModelReply(value, usage(context))
+    }
+
+    // el esfuerzo va a los dos sitios: el convertidor de Anthropic solo lee el pensamiento y el de OpenAI solo su extensión, así
+    // que cada proveedor recibe el suyo y no el del otro (lo comprueba ModelEvaluationSmokeTest en el cuerpo de las peticiones)
+    private fun options(
+        model: String,
+        settings: ModelSettings,
+    ): LlmOptions {
+        val options = LlmOptions.withModel(model).withMaxTokens(settings.maxTokens).withTemperature(settings.temperature)
+        val effort = settings.effort ?: return options
+        return options.withThinking(Thinking.withTokenBudget(effort.anthropicBudget)).withOpenAiReasoningEffort(effort.wire)
     }
 
     private fun usage(context: OperationContext): TokenUsage? {

@@ -111,6 +111,22 @@ En el backend, `VideoRenderApiTest` usa un WireMock con retardo en lugar del tra
 cola mientras la API responde) y `RenderWorkerClientTest` los errores de la frontera (trabajador inexistente, secreto,
 `4xx`, `503`, tiempo límite).
 
+### Comparación de modelos (`aiEval`)
+
+`./gradlew aiEval` compara los modelos configurados sobre los conjuntos fijos de `docs/ai/evaluations/`
+([docs/ai §9](../ai/README.md#9-comparación-reproducible-de-modelos)). Llama a los proveedores **reales**: solo a mano,
+con sus claves y Docker, y fuera de `build`, `check` e `integrationTest` (etiqueta `ai-eval`):
+
+```bash
+ANTHROPIC_API_KEY=… OPENAI_API_KEY=… ./gradlew aiEval --console=plain
+# LMS_AI_EVAL_EFFORTS=low,medium,high|default · LMS_AI_EVAL_TASKS=source-analysis,consistency-review
+```
+
+Deja `run.json`, un JSON por caso y `report.md` en `build/ai-eval/<inicio>/`. Se niega a correr si
+`docs/ai/evaluations` tiene cambios sin confirmar. En CI no llama a nadie: `ModelEvaluationTest` (unitaria: puntuaciones,
+doble determinista fuera de la comparación, lo que se guarda, el esfuerzo que llega a Embabel) y
+`ModelEvaluationSmokeTest` (integración contra el doble HTTP, sin cifras).
+
 ### Arquitectura
 
 Prueba de escaneo de fuentes en `src/test` que falla si en `src/main`:

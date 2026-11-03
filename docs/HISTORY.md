@@ -26,6 +26,21 @@ Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este
   presenta como calidad pedagógica. Definición exacta de cada uno en docs/ai §10.
 - Acción declarada nueva `VER_INDICADORES_IA` sobre `version_curso`, que ningún rol del LMS tiene (solo ADMIN); la exige
   `AiPermissions`. Pruebas de cálculo con datos sembrados y de autorización negativa. Sin migraciones.
+## 2026-11-03 — Comparación reproducible de modelos: E35.1 ([#290](https://github.com/wasichai/elearning-backend/issues/290))
+
+- `./gradlew aiEval`, fuera de `build`, `check` e `integrationTest` (etiqueta `ai-eval`), compara los modelos configurados
+  (el del paso y el de referencia de cada proveedor con clave) en el análisis de fuentes y la opinión de consistencia sobre
+  los conjuntos fijos y sus criterios versionados en `docs/ai/evaluations/<tarea>/`. Contra proveedores reales se niega a
+  correr con esos archivos sin confirmar.
+- Cada caso pasa por el generador y la comprobación por código de producción; las puntuaciones (`schema_valid`,
+  `accepted`, `provenance_valid`, `coverage`, `origins_valid`, `verdict`, `origin_recall`) las calcula código. El doble
+  determinista corre como línea base y nunca entra en la comparación.
+- Cada ejecución deja en `build/ai-eval/<inicio>/` el commit, los hashes de los conjuntos, cada modelo con sus parámetros
+  efectivos, las versiones de instrucciones y plantilla, cada salida con su informe y sus puntuaciones, y `report.md`.
+- `ModelSettings.effort` (`LOW`, `MEDIUM`, `HIGH`): Claude 5 no admite temperatura, así que se fija el esfuerzo de
+  razonamiento, que `ModelCalls` envía como `output_config.effort` (pensamiento adaptativo) a Anthropic y como
+  `reasoning.effort` a OpenAI. Sin él no se envía nada y la clave de idempotencia de los pasos no cambia.
+- En CI, `ModelEvaluationSmokeTest` corre contra el doble HTTP como prueba de humo, sin cifras. Sin migraciones.
 
 ## 2026-11-03 — Opinión de consistencia contenido-evaluación: E34.2 ([#287](https://github.com/wasichai/elearning-backend/issues/287))
 

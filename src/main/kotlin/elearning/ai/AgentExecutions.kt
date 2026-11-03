@@ -27,14 +27,28 @@ data class SourceDigest(
 )
 
 // los parámetros efectivos enviados al proveedor. Tipados a propósito: un mapa libre podría llevar una clave o una
-// cabecera (RNF-SEG-09); un parámetro nuevo entra aquí
+// cabecera (RNF-SEG-09); un parámetro nuevo entra aquí. effort null: no se envía y vale el del proveedor
 data class ModelSettings(
     val maxTokens: Int,
     val temperature: Double? = null,
+    val effort: ReasoningEffort? = null,
 ) {
     init {
         require(maxTokens > 0) { "maxTokens must be positive" }
     }
+}
+
+// el esfuerzo de razonamiento que se pide al modelo (docs/ai §9). Claude 5 no admite temperatura (Embabel 1.5.4 no la envía
+// y lo avisa en el registro): lo que cambia cuánto razona es esto. Anthropic lo recibe como output_config.effort con el
+// pensamiento adaptativo, que Embabel saca del presupuesto de pensamiento (anthropicBudget cae en su tramo: < 1024 low,
+// < 4096 medium, < 16384 high); OpenAI, como reasoning.effort de la Responses API
+enum class ReasoningEffort(
+    val wire: String,
+    val anthropicBudget: Int,
+) {
+    LOW("low", 512),
+    MEDIUM("medium", 2048),
+    HIGH("high", 8192),
 }
 
 data class ModelChoice(

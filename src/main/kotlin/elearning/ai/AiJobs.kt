@@ -206,6 +206,7 @@ class AiJobs(
                     "sources" to request.sources.sortedWith(compareBy<SourceDigest>({ it.ref }, { it.sha256 })).map { listOf(it.ref, it.sha256) },
                     "prompt" to request.promptVersion,
                     "template" to request.templateVersion,
+                    // effort solo si se pide: sin él, la clave de un paso es la misma que antes de E35.1
                     "model" to
                         request.model?.let {
                             mapOf(
@@ -213,7 +214,7 @@ class AiJobs(
                                 "model" to it.model,
                                 "maxTokens" to it.settings.maxTokens,
                                 "temperature" to it.settings.temperature,
-                            )
+                            ) + listOfNotNull(it.settings.effort?.let { effort -> "effort" to effort.name })
                         },
                 )
             return request.step.name + ":" + sha256(canonical(key))

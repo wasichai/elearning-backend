@@ -47,7 +47,7 @@ tasks.withType<Test>().configureEach {
 }
 
 // unitarias y de arquitectura: sin base de datos
-tasks.test { useJUnitPlatform { excludeTags("integration") } }
+tasks.test { useJUnitPlatform { excludeTags("integration", "ai-eval") } }
 
 // integración: PostgreSQL 18 (y MinIO para el almacén S3) en Testcontainers, nunca el 5432 de la máquina, y el modelo
 // aplicado con model/apply.py
@@ -59,8 +59,35 @@ val integrationTest by tasks.registering(Test::class) {
             .get()
             .output.classesDirs
     classpath = sourceSets.test.get().runtimeClasspath
-    useJUnitPlatform { includeTags("integration") }
+    // la comparación de modelos contra los proveedores reales es aiEval, nunca esta
+    useJUnitPlatform {
+        includeTags("integration")
+        excludeTags("ai-eval")
+    }
     shouldRunAfter(tasks.test)
+}
+
+// comparación reproducible de modelos (RF-IA-09, docs/ai §9): fuera de build, check e integrationTest, porque llama a los
+// proveedores reales, necesita sus claves (ANTHROPIC_API_KEY, OPENAI_API_KEY) y cuesta dinero. Solo a mano; necesita Docker
+// como integrationTest. Deja run.json, cada caso y report.md en build/ai-eval/<inicio>/. En CI corre su prueba de humo contra
+// el doble HTTP (ModelEvaluationSmokeTest, dentro de integrationTest)
+val aiEval by tasks.registering(Test::class) {
+    description = "Compara los modelos configurados sobre los conjuntos fijos de docs/ai/evaluations (proveedores reales)."
+    group = "verification"
+    testClassesDirs =
+        sourceSets.test
+            .get()
+            .output.classesDirs
+    classpath = sourceSets.test.get().runtimeClasspath
+    useJUnitPlatform { includeTags("ai-eval") }
+    systemProperty("lms.ai.eval.sets", file("docs/ai/evaluations").absolutePath)
+    systemProperty("lms.ai.eval.out", layout.buildDirectory.dir("ai-eval").get().asFile.absolutePath)
+    // cada ejecución es una medición nueva: nunca al día
+    outputs.upToDateWhen { false }
+    testLogging {
+        events("passed", "failed")
+        showStandardStreams = true
+    }
 }
 
 // reactivo de verdad (CLAUDE.md, regla 2): ninguna dependencia, Embabel incluido, puede colar Spring MVC ni Tomcat en la

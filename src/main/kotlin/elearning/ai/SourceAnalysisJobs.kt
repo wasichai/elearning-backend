@@ -82,7 +82,7 @@ class SourceAnalysisService(
                 AiStepRequest(
                     step = AgentStep.SOURCE_ANALYSIS,
                     courseId = course,
-                    objective = "Extract the concepts and procedures, with their provenance, of the sources of the brief «${topic.take(MAX_TOPIC)}»",
+                    objective = SourceAnalysisPrompt.objective(topic.take(MAX_TOPIC)),
                     inputs = inputs,
                     model = models.choice(MODEL_KEY),
                     promptVersion = SourceAnalysisPrompt.VERSION,
