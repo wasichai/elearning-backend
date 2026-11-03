@@ -4,7 +4,7 @@ Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este
 
 ## 2026-11-03 — Registro `AgentRun` de las ejecuciones de IA ([#275](https://github.com/wasichai/elearning-backend/issues/275), RF-IA-03)
 
-- `lms.ejecucion_agente` (`V16__ejecucion_agente.sql`, [ADR-0033](adr/0033-fase-5-ia.md) §7) con los campos de `docs/ai` §4:
+- `lms.ejecucion_agente` (`V17__ejecucion_agente.sql`, [ADR-0033](adr/0033-fase-5-ia.md) §7) con los campos de `docs/ai` §4:
   quién lo pidió, curso, unidad y versión, objetivo, entradas, fuentes con hash, proveedor, modelo y parámetros efectivos,
   versiones de instrucciones y plantilla, salida, validaciones, estado, error, tokens, coste con su tarifa y fecha, inicio y
   fin, intervenciones, clave, intento y `generator`. Un disparador impide editar lo pedido, cerrar dos veces, borrar y tocar
@@ -15,6 +15,18 @@ Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este
 - `GET /api/lms/ai/runs?courseId=` y `GET /api/lms/ai/runs/{id}` con `UPDATE` sobre `version_curso` y el alcance del curso
   (`403`/`404`). `AgentExecutionApiTest` y `AiRatesTest` lo prueban con ejecuciones construidas en la prueba; la de un paso
   contra el doble WireMock queda para [#274](https://github.com/wasichai/elearning-backend/issues/274).
+
+## 2026-11-03 — Historial de estados de una versión ([#259](https://github.com/wasichai/elearning-backend/issues/259))
+
+- [ADR-0032](adr/0032-historial-de-estados-de-la-version-en-tabla-propia.md): cada cambio de `estado` de una
+  `version_curso`, y su creación, deja una fila en la tabla nueva `lms.transicion_version` (V16) con el estado anterior,
+  el nuevo, quién y cuándo. Es de solo inserción (un disparador impide cambiarla o borrarla) y la escribe un
+  `RecordChangeListener` en la transacción de quien escribe, sea por el estudio, la bandeja, la API de registros o la
+  plataforma. No se lee el `audit_log` de Wasichai.
+- El detalle del estudio y de la bandeja (`StudioVersionDetail`) gana `history: [{ from, to, by, byName, at }]`, con las
+  mismas reglas de lectura; `byName` se lee junto con los demás nombres de la versión (ADR-0034). Enviar a revisión y
+  crear la primera versión vacía pasan a escribir en una transacción. `VersionHistoryApiTest` recorre BORRADOR →
+  EN_REVISION → BORRADOR → EN_REVISION → APROBADA → PUBLICADA, la API de registros, la plataforma y el disparador.
 
 ## 2026-11-03 — Aprobación de créditos por una autoridad académica ([#315](https://github.com/wasichai/elearning-backend/issues/315), RF-CRE-08)
 

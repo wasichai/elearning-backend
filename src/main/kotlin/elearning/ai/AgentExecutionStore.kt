@@ -15,7 +15,7 @@ import java.time.ZoneOffset
 import java.util.UUID
 
 // lms.ejecucion_agente (ADR-0033 §7), siempre acotada a la organización. Solo inserción, el cierre de la ejecución y las
-// intervenciones añadidas: el disparador de V16 rechaza lo demás. El JSON llega ya serializado (y sin claves) de
+// intervenciones añadidas: el disparador de V17 rechaza lo demás. El JSON llega ya serializado (y sin claves) de
 // AgentExecutionLog
 @Repository
 class AgentExecutionStore(

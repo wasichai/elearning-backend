@@ -87,6 +87,7 @@ administración y API genérica sin código. **Tabla fija** en el esquema `lms` 
 | Eventos de aprendizaje (vídeo, lectura, navegación)                       | `lms.evento_aprendizaje` (solo `INSERT`)               | 2                                             |
 | Proyección del catálogo público (solo con la opción B)                    | `lms.catalogo_publicado`                               | [overview §5.1][ov51]                         |
 | Decisiones de revisión de una versión                                     | `lms.decision_revision` (solo `INSERT`)                | historial que nadie edita (ADR-0018)          |
+| Historial de estados de una versión                                       | `lms.transicion_version` (solo `INSERT`)               | historial que nadie edita (ADR-0032)          |
 
 Toda tabla `lms` lleva `organization_id NOT NULL` y cada consulta filtra por él: Wasichai no tiene RLS, así que el
 aislamiento es responsabilidad del repositorio y de sus pruebas. El primer incremento no crea ninguna (salvo que se elija
@@ -350,6 +351,11 @@ solo en una versión `EN_REVISION` y solo quien la revisa; el creador lo lee en 
 `decidida_en`. Se escribe en la misma transacción que la transición de la versión. La revisión asignada es
 `version_curso.revisor_id` (ADR-0018 §2); `revision_contenido` queda sin implementar mientras no haga falta más.
 
+**`lms.transicion_version`** (VersionTransition) — tabla fija de solo inserción (un disparador impide cambiarla o borrarla).
+`version_curso_id` · `desde · nulo en la creación` · `hacia` · `autor_id · nulo si es la plataforma` · `ocurrida_en`. Una fila
+por cada cambio de `estado` de una versión, por cualquier vía; la escribe un `RecordChangeListener` en la transacción de
+quien escribe ([ADR-0032](../adr/0032-historial-de-estados-de-la-version-en-tabla-propia.md)).
+
 **`lms.ejecucion_agente`** (AgentRun) — F5, tabla fija del esquema `lms` (`ModuleMigration` orden 200), no un Custom
 Object: sus entradas, salida y validaciones son JSON ([ADR-0033](../adr/0033-fase-5-ia.md) §7, ADR-0004).
 `id` · `organizacion_id` · `trabajo_id` (el de `lms.trabajo`, sin clave foránea: la cola purga sus trabajos) · `paso` ·
@@ -359,7 +365,7 @@ jsonb` (los tres solo con `MODEL`) · `version_instrucciones` · `version_planti
 `estado · PENDING | RUNNING | SUCCEEDED | INVALID_OUTPUT | FAILED | CANCELLED` · `salida · jsonb` · `validaciones · jsonb` ·
 `error` · `tokens_entrada` · `tokens_salida` · `coste`, `moneda`, `tarifa_entrada`, `tarifa_salida`, `tarifa_desde`
 (por millón de tokens) · `terminada_en` · `intervenciones · jsonb · [{userId, kind, at, note}]`
-(`V16__ejecucion_agente.sql`, E32.4); los campos son los de [docs/ai §4](../ai/README.md#4-registro-agentrun).
+(`V17__ejecucion_agente.sql`, E32.4); los campos son los de [docs/ai §4](../ai/README.md#4-registro-agentrun).
 Invariantes: sin secretos en ningún campo [servicio]; repetir con la misma clave no crea otra ejecución [cola]; una
 ejecución nunca publica [diseño]; no se edita salvo su cierre, una vez, y las intervenciones, que se añaden, y no se borra
 [disparador]; no se purga con los trabajos [servicio]. Se lee por `/api/lms/ai/**` con el alcance del curso.
