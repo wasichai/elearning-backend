@@ -23,12 +23,13 @@ class DraftFixtures(
     )
 
     // un borrador de un curso nuevo (code: su código, único) escrito por authorId, como lo dejaría la plataforma. defective: un
-    // defecto por categoría; generated: con el vínculo de un paso de borrador
+    // defecto por categoría; generated: con el vínculo de un paso de borrador, hecho por generator
     fun draft(
         code: String,
         authorId: String,
         defective: Boolean = false,
         generated: Boolean = true,
+        generator: Generator = Generator.DETERMINISTIC,
     ): Draft {
         val draft =
             runBlocking {
@@ -151,33 +152,37 @@ class DraftFixtures(
                     Draft(course.id, version.id, lesson.id)
                 }
             }
-        if (generated) seedGenerated(draft, UUID.fromString(authorId))
+        if (generated) seedGenerated(draft, UUID.fromString(authorId), generator)
         return draft
     }
 
-    // el vínculo que dejará el paso de borrador (#283): una ejecución LESSON_DRAFT que nombra la versión en su salida
-    private fun seedGenerated(
+    // el vínculo que dejará el paso de borrador (#283): una ejecución LESSON_DRAFT que nombra la versión en su salida. Devuelve
+    // la ejecución, a la que van las intervenciones de las personas (E34.3)
+    fun seedGenerated(
         draft: Draft,
         author: UUID,
-    ) = runBlocking {
-        val run =
-            log.start(
-                NewAgentExecution(
-                    organizationId = ClassroomApiTestSupport.ORG,
-                    jobId = UUID.randomUUID(),
-                    step = AgentStep.LESSON_DRAFT,
-                    requestedBy = author,
-                    courseId = UUID.fromString(draft.course),
-                    objective = "Redactar el borrador",
-                    inputs = mapOf("brief" to "padrón"),
-                    generator = Generator.DETERMINISTIC,
-                    model = null,
-                    promptVersion = "test",
-                    templateVersion = "test",
-                    idempotencyKey = UUID.randomUUID().toString(),
-                    attempt = 1,
-                ),
-            )
-        log.finish(ClassroomApiTestSupport.ORG, run, AgentExecutionOutcome(AgentExecutionStatus.SUCCEEDED, output = mapOf("versionId" to draft.version)))
-    }
+        generator: Generator = Generator.DETERMINISTIC,
+    ): UUID =
+        runBlocking {
+            val run =
+                log.start(
+                    NewAgentExecution(
+                        organizationId = ClassroomApiTestSupport.ORG,
+                        jobId = UUID.randomUUID(),
+                        step = AgentStep.LESSON_DRAFT,
+                        requestedBy = author,
+                        courseId = UUID.fromString(draft.course),
+                        objective = "Redactar el borrador",
+                        inputs = mapOf("brief" to "padrón"),
+                        generator = generator,
+                        model = if (generator == Generator.MODEL) ModelChoice("anthropic", "claude-test-model", ModelSettings(maxTokens = 1000)) else null,
+                        promptVersion = "test",
+                        templateVersion = "test",
+                        idempotencyKey = UUID.randomUUID().toString(),
+                        attempt = 1,
+                    ),
+                )
+            log.finish(ClassroomApiTestSupport.ORG, run, AgentExecutionOutcome(AgentExecutionStatus.SUCCEEDED, output = mapOf("versionId" to draft.version)))
+            run
+        }
 }

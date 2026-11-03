@@ -446,3 +446,33 @@ sobre `AiStepRunner`), con el patrón de §5:
   nunca en las instrucciones de sistema. Cada registro lleva su `origin` (`objeto:id`); `ConsistencyReviewCheck` descarta,
   con su motivo en `validations`, el hallazgo vacío (`BLANK`) o que cita un registro que no está en el borrador
   (`UNKNOWN_ORIGIN`). Sin resumen o con más de 50 hallazgos, `INVALID_OUTPUT`.
+
+## 14. Intervenciones humanas (RF-IA-03)
+
+Implementado en E34.3 ([#288](https://github.com/wasichai/elearning-backend/issues/288)). Cada decisión de una persona
+sobre un borrador **generado** (§13) se añade a `intervenciones` de la ejecución que lo generó; si varias lo nombran, a la más
+reciente. Lo hace `DraftInterventionListener` (`elearning.ai`, un `RecordChangeListener`: authoring no puede usar ai), que
+Wasichai llama justo después de escribir y en la transacción de quien escribe:
+
+| Intervención | Cuándo                                                                                                    | Nota                                  |
+| ------------ | --------------------------------------------------------------------------------------------------------- | ------------------------------------- |
+| `ACCEPTED`   | el revisor aprueba en la bandeja (`EN_REVISION` → `APROBADA`)                                             | la decisión y su motivo, si lo dio    |
+| `REJECTED`   | el revisor la rechaza (`EN_REVISION` → `RETIRADA`), o una persona borra el borrador                       | la decisión y su motivo               |
+| `EDITED`     | una persona guarda un cambio en el contenido de la versión o de su temario (unidad, lección, evaluación…) | el registro y los campos, no su texto |
+
+- **Misma transacción.** La decisión de la bandeja, su fila de `lms.decision_revision`, el cambio de estado y la intervención
+  se confirman o se deshacen juntos (lo prueba un disparador que hace fallar la intervención). La API de registros de
+  Wasichai no abre transacción (ADR-0032): una edición por ella y su intervención se escriben en la misma llamada, cada
+  sentencia con su propia confirmación, como su `audit_log`.
+- **No intervienen**: validar, enviar a revisión, pedir cambios (lo que venga después lo dejan las ediciones), asignar el
+  revisor ni publicar; tampoco la plataforma ni un trabajo de IA. Un borrador escrito a mano no tiene ejecución y no deja nada.
+- **Solo se añaden**: ninguna ruta las escribe ni las borra (la API de `AgentRun` es de lectura y la tabla no es un objeto de
+  Wasichai) y el disparador de V17 rechaza cambiarlas o quitarlas, también con SQL directo. La supresión de datos personales
+  solo cambia su `userId` (V18).
+- **El doble, a la vista.** `StudioVersion` lleva `generator` (`MODEL`, `DETERMINISTIC` o `null` si es manual) en el estudio y
+  la bandeja, por el puerto `DraftGenerators` de authoring que implementa `DraftValidationStore`; la interfaz marca
+  `DETERMINISTIC` como «generado sin IA, ilustrativo» ([wasichai/elearning-frontend#176](https://github.com/wasichai/elearning-frontend/issues/176)).
+- **La IA no aprueba ni publica.** Aprobar sigue siendo de la bandeja, con una persona distinta del autor
+  (`EditorialWorkflowGuard`). Un trabajo de IA corre como la plataforma, que esa guarda deja pasar: `AiStepRunner.run` y la
+  validación corren con la marca `AiWork`, y con ella `AiWorkGuard` responde `403` a crear o llevar una versión de curso o de
+  recurso a `APROBADA` o `PUBLICADA`, o a ponerle `publicada_en`.

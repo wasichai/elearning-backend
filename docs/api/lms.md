@@ -787,7 +787,12 @@ en borrador. La lección de repaso de una pregunta (`leccion_repaso`, opcional) 
 `400` en `leccion_repaso`. Copiar la versión la re-apunta a la lección copiada.
 
 `StudioVersion`: `{ "id", "number", "status", "course": { "id", "code", "title" }, "authorId", "authorName", "reviewerId": null,
-"reviewerName": null, "updatedAt", "openComments": 2 }`. `status`: `BORRADOR` · `EN_REVISION` · `APROBADA` · `PUBLICADA` · `RETIRADA`.
+"reviewerName": null, "updatedAt", "openComments": 2, "generator": null }`. `status`: `BORRADOR` · `EN_REVISION` · `APROBADA` · `PUBLICADA` · `RETIRADA`.
+
+**Origen** (#288, RF-IA-08): `generator` es `MODEL` si la versión la generó un proveedor de IA, `DETERMINISTIC` si la generó el
+doble determinista (la interfaz la marca «generado sin IA, ilustrativo», [wasichai/elearning-frontend#176](https://github.com/wasichai/elearning-frontend/issues/176)) y `null` si se escribió a
+mano. Sale de la ejecución más reciente de un paso que crea borradores que la nombra (docs/ai §13); lo dan el estudio y la
+bandeja, en la lista y en el detalle.
 
 **Nombres** (#258, ADR-0034): cada `authorId` y `reviewerId` de `StudioVersion`, `ReviewComment` y `ReviewDecision` va con su
 `authorName` o `reviewerName`, el nombre para mostrar de la persona en Wasichai, nunca su correo ni otro dato. Es `null` si el
@@ -957,7 +962,8 @@ los pasos desde su trabajo; esta API solo la lee.
 - `step`: `SOURCE_ANALYSIS` · `COURSE_DESIGN` · `LESSON_DRAFT` · `SCRIPT` · `CONSISTENCY_REVIEW` · `ASSISTANT` · `VALIDATION`. `status`:
   `PENDING` · `RUNNING` · `SUCCEEDED` · `INVALID_OUTPUT` · `FAILED` · `CANCELLED`. `generator`: `MODEL` · `DETERMINISTIC`; con
   `DETERMINISTIC`, `provider`, `model` y `modelSettings` son `null`. `provider`: `anthropic` · `openai`. `kind`: `ACCEPTED` ·
-  `EDITED` · `REJECTED`.
+  `EDITED` · `REJECTED`. Las intervenciones las escribe la plataforma con cada decisión de una persona sobre un borrador
+  generado ([docs/ai §14](../ai/README.md#14-intervenciones-humanas-rf-ia-03)); ninguna ruta las escribe, cambia ni borra.
 - `cost`: `{ "amount", "currency", "inputPerMillion", "outputPerMillion", "rateSince" }`, calculado al cerrar con la tarifa de
   `lms.ai.rates` que regía el día en que empezó, y guardado con ella: cambiar la tarifa no reescribe lo gastado. `null`
   mientras corre, sin consumo informado, con el doble determinista o si el modelo no tiene tarifa configurada. Cada tarifa de la lista lleva `provider`, `model`, `input-per-million`, `output-per-million`, `currency` y `since` (por entorno, `LMS_AI_RATES_0_PROVIDER`…).

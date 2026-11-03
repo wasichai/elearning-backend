@@ -24,8 +24,11 @@ import kotlin.coroutines.AbstractCoroutineContextElement
 import kotlin.coroutines.CoroutineContext
 
 // la escritura con la que la bandeja del revisor decide una revisión: el estado de la versión y su fila en
-// lms.decision_revision, en la misma transacción (ADR-0021). la API genérica de registros no la lleva (ADR-040 de Wasichai)
-class ReviewDecisionWrite : AbstractCoroutineContextElement(Key) {
+// lms.decision_revision, en la misma transacción (ADR-0021). la API genérica de registros no la lleva (ADR-040 de Wasichai).
+// reason es el motivo de la decisión: lo lee quien escucha el cambio, como la intervención de un borrador generado (#288)
+class ReviewDecisionWrite(
+    val reason: String? = null,
+) : AbstractCoroutineContextElement(Key) {
     companion object Key : CoroutineContext.Key<ReviewDecisionWrite>
 }
 

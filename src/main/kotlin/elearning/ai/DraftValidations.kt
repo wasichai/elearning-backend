@@ -7,6 +7,7 @@ import elearning.jobs.JobQueue
 import elearning.jobs.JobState
 import elearning.jobs.JobStatus
 import elearning.jobs.PermanentJobFailure
+import kotlinx.coroutines.withContext
 import org.springframework.stereotype.Component
 import org.springframework.stereotype.Service
 import tools.jackson.databind.JsonNode
@@ -168,7 +169,10 @@ class DraftValidationJobHandler(
 ) : JobHandler {
     override val type = DraftValidations.JOB_TYPE
 
-    override suspend fun handle(job: Job): String? {
+    // con la marca AiWork, como todo trabajo de IA: no aprueba ni publica
+    override suspend fun handle(job: Job): String? = withContext(AiWork()) { validate(job) }
+
+    private suspend fun validate(job: Job): String {
         val payload = DraftValidations.MAPPER.readValue<ValidationPayload>(job.payload)
         permissions.requireStillAllowed(job.organizationId, payload.requester, AiAction.VALIDAR)
         val report =
