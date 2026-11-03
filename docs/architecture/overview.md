@@ -144,6 +144,7 @@ flowchart BT
     ai --> media
     ai --> workload
     media --> authoring
+    media --> course
     media --> jobs
     reputation --> enrollment
     reputation --> learning

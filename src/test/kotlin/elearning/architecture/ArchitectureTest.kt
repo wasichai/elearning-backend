@@ -123,8 +123,9 @@ class ArchitectureTest {
                 // horas y los créditos del diseño pedagógico los calcula workload, no el modelo (E33.5)
                 // E33.6: el borrador guarda el HTML de cada lección con el generador y el saneado de media (ADR-0022)
                 "ai" to setOf("common", "authoring", "course", "importer", "jobs", "media", "workload"),
-                // la generación encola y maneja sus trabajos en la cola persistente (ADR-0018 §7)
-                "media" to setOf("common", "authoring", "jobs"),
+                // la generación encola y maneja sus trabajos en la cola persistente (ADR-0018 §7); la guarda del vídeo
+                // renderizado se ordena con las de course (RF-MED-03)
+                "media" to setOf("common", "authoring", "course", "jobs"),
                 // las valoraciones (ADR-0038): leen la matrícula y el progreso del aula y sus agregados corren en la cola. nadie
                 // las usa: ni la matrícula ni las notas dependen de ellas (regla 8)
                 "reputation" to setOf("common", "enrollment", "learning", "jobs"),
