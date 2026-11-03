@@ -48,6 +48,15 @@ data class EnrollmentView(
 data class ClassroomView(
     @get:JsonUnwrapped val enrollment: EnrollmentView,
     val units: List<UnitView>,
+    val achievements: List<Achievement>,
+)
+
+// un logro (RF-AUL-08): se deriva al leer el aula, no se guarda. kind: UNIT_COMPLETED (ref: la unidad), ASSESSMENT_PASSED
+// (ref: la evaluación) o CERTIFICATE_ISSUED (ref: el código del certificado). at: cuándo se logró
+data class Achievement(
+    val kind: String,
+    val at: Instant?,
+    val ref: String,
 )
 
 data class UnitView(
