@@ -239,7 +239,7 @@ class DraftInterventionApiTest : ClassroomApiTestSupport() {
     }
 
     @Test
-    fun `interventions are only appended: no api changes or deletes them`() {
+    fun `interventions are only appended, no api changes or deletes them`() {
         val author = account("CREADOR")
         val reviewer = account("REVISOR")
         val (draft, run) = inReview(author, reviewer)
