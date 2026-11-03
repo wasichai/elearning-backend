@@ -54,14 +54,22 @@ class DemoClassroomApiTest : LmsApiTest() {
         val student = demoUser("estudiante")
         val teacher = demoUser("docente")
         val enrollment = get("/api/lms/classroom/enrollments", student).values().single { it["offering"]["code"].asString() == "CORTO-101-A" }
-        val lessons =
-            get("/api/lms/classroom/enrollments/${enrollment["id"].asString()}", student)["units"]
-                .values()
-                .flatMap { it["lessons"].values() }
+        val classroom = get("/api/lms/classroom/enrollments/${enrollment["id"].asString()}", student)
+        val lessons = classroom["units"].values().flatMap { it["lessons"].values() }
         val assessment = lessons.single { it["completion"].asString() == "ASSESSMENT" }["assessment"]
         assertEquals(1, assessment["attemptsUsed"].asInt())
         assertEquals(80, assessment["best"]["percent"].asInt())
         assertTrue(assessment["best"]["passed"].asBoolean())
+        // RF-AUL-08: la evaluación aprobada, con su calificación visible, es un logro del aula
+        val passed = classroom["achievements"].values().single { it["kind"].asString() == "ASSESSMENT_PASSED" }
+        assertEquals(assessment["id"].asString(), passed["ref"].asString())
+        // la fecha es la del envío del intento que aprobó
+        assertTrue(
+            java.time.Instant
+                .parse(passed["at"].asString())
+                .isBefore(java.time.Instant.now()),
+            passed.toString(),
+        )
 
         val row =
             get("/api/lms/teaching/offerings/CORTO-101-A/attempts?status=GRADED", teacher)

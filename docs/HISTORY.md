@@ -11,6 +11,22 @@ Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este
   Las instantáneas anteriores la dan como `null`. Las diferencias de versión no comparan evaluaciones: no aplica.
 - `ReviewLessonApiTest` (guarda, inmutabilidad y copia) y `AttemptApiTest` lo comprueban; `test_model`, el campo.
 
+## 2026-11-03 — Logros derivados en el aula ([#265](https://github.com/wasichai/elearning-backend/issues/265), RF-AUL-08)
+
+- El aula de una matrícula devuelve `achievements: [{ kind, at, ref }]`: `UNIT_COMPLETED` (unidad con todas sus
+  lecciones contables completadas), `ASSESSMENT_PASSED` (evaluación aprobada por un intento calificado) y
+  `CERTIFICATE_ISSUED` (certificado emitido). Se derivan al leer de lo que el aula ya calcula, sin modelo, tabla ni
+  escritura nuevos y sin otra lectura: el certificado se lee una vez para `certificateCode` y para su logro. Solo los ve
+  el estudiante de la matrícula (`404` a otro y al docente). `AchievementsApiTest` y la semilla (`CORTO-101-A`) lo
+  prueban; la interfaz los mostrará en front#154.
+
+## 2026-11-03 — LGPL definitiva y conservación según los términos ([#303](https://github.com/wasichai/elearning-backend/issues/303))
+
+- [ADR-0030](adr/0030-lgpl-definitiva-y-conservacion-segun-los-terminos.md) reemplaza a ADR-0015: la licencia
+  LGPL-3.0-or-later deja de ser provisional (RNF-OSS-07 implementado) y los datos personales se conservan el tiempo que la
+  persona aprueba en los términos de uso. La aceptación con plazo y la supresión se implementan en
+  [#304](https://github.com/wasichai/elearning-backend/issues/304).
+
 ## 2026-11-03 — Primer borrador vacío de un curso sin versiones ([#257](https://github.com/wasichai/elearning-backend/issues/257))
 
 - `POST /api/lms/studio/courses/{courseId}/versions` sobre un curso sin versiones ya no responde `400`: crea la v1

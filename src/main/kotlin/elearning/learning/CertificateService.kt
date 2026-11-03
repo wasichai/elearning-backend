@@ -195,8 +195,6 @@ class CertificateStore(
 
     suspend fun ofCode(code: String): Certificate? = one("codigo = :value", code)
 
-    suspend fun codeOf(enrollment: UUID): String? = ofEnrollment(enrollment)?.code
-
     private suspend fun one(
         condition: String,
         value: Any,
