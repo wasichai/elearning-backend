@@ -18,6 +18,9 @@ el cuándo, en [`roadmap.md`](roadmap.md).
   repartieron entre F3, F4 y F6 (decisión de la dirección, #103); cada uno conserva su «Pendiente de F2».
 - A fecha de 2026-10-31, la Fase 3 está cumplida (#130, pendientes en #231) y la Fase 4 integrada (#179); lo que aún no cumple su
   aceptación lleva un «Avance».
+- A fecha de 2026-11-03, con la unidad de demostración de extremo a extremo (E38.1, #300), RF-IA-01…07, RF-MED-01 y
+  RF-MED-02 están `implementado`; RF-IA-08 y RF-MED-04 esperan la interfaz (front#176, front#171), RF-IA-09 su primera ejecución
+  real (#290), RF-MED-03 su PR (#298) y RF-IA-10 el feedback contextual de F6.
 
 ## Requisitos funcionales
 
@@ -316,14 +319,15 @@ el cuándo, en [`roadmap.md`](roadmap.md).
 
 ### RF-IA — Canalización editorial con IA (§10, §11; ver [`docs/ai/README.md`](../ai/README.md))
 
-- **RF-IA-01** · F5 · planificado — Brief estructurado (temática, público, objetivos, duración, idioma, nivel,
+- **RF-IA-01** · F5 · implementado ([#278](https://github.com/wasichai/elearning-backend/issues/278), [#300](https://github.com/wasichai/elearning-backend/issues/300)) — Brief estructurado (temática, público, objetivos, duración, idioma, nivel,
   expertos, fuentes autorizadas) validado por esquema.
   _Aceptación:_ un brief incompleto se rechaza con los campos que faltan.
   _Avance:_ Custom Object `brief` del curso y `BriefGuard` (E33.1, [#278](https://github.com/wasichai/elearning-backend/issues/278)):
   se guarda a medias en `BORRADOR` y pasar a `LISTO` incompleto es `400` con los campos que faltan; cada fuente es de la lista
-  permitida del importador o de un paquete ya importado al curso; lo escribe quien crea versiones. Falta el formulario
-  en el estudio y su uso por los pasos (E33.2).
-- **RF-IA-02** · F5 · planificado — Pasos reproducibles (análisis de fuentes con procedencia, diseño pedagógico,
+  permitida del importador o de un paquete ya importado al curso; lo escribe quien crea versiones (`BriefGuardApiTest`). Lo
+  consumen los pasos desde E33.4 y la unidad de demostración parte de él (`DemoUnitApiTest`, E38.1). El formulario del
+  estudio es de la interfaz.
+- **RF-IA-02** · F5 · implementado ([#281](https://github.com/wasichai/elearning-backend/issues/281), [#282](https://github.com/wasichai/elearning-backend/issues/282), [#283](https://github.com/wasichai/elearning-backend/issues/283)) — Pasos reproducibles (análisis de fuentes con procedencia, diseño pedagógico,
   borrador con plantillas versionadas) con salidas tipadas; una salida inválida se rechaza o va a corrección.
   _Aceptación:_ prueba con una salida malformada del doble determinista.
   _Avance:_ análisis de fuentes (E33.4, [#281](https://github.com/wasichai/elearning-backend/issues/281)): `SourceAnalysis`
@@ -335,36 +339,42 @@ el cuándo, en [`roadmap.md`](roadmap.md).
   `LessonDraft` desde un diseño `SUCCEEDED`, juntado en AsciiDoc con la plantilla `lesson-draft@1`, que queda en `AgentRun` y en
   la versión; entra como `version_curso` `BORRADOR` de quien lo pidió, con el HTML de cada lección saneado (ADR-0022) y los
   enlaces que no están en las fuentes marcados para revisión; un borrador que no sigue el diseño queda `INVALID_OUTPUT` sin
-  versión.
-- **RF-IA-03** · F5 · planificado — Cada ejecución (`AgentRun`) registra usuario, ámbito, objetivo, entradas, fuentes,
+  versión. La salida del doble determinista sin nada verificable (una fuente sin secciones) queda `INVALID_OUTPUT` en
+  `SourceAnalysisApiTest`; las salidas malformadas de cada proveedor, en las pruebas contra el doble HTTP.
+- **RF-IA-03** · F5 · implementado ([#275](https://github.com/wasichai/elearning-backend/issues/275), [#276](https://github.com/wasichai/elearning-backend/issues/276), [#288](https://github.com/wasichai/elearning-backend/issues/288)) — Cada ejecución (`AgentRun`) registra usuario, ámbito, objetivo, entradas, fuentes,
   modelo y proveedor (sin secretos), versiones de instrucciones y plantillas, resultados, validaciones, estado,
   errores, consumo, duración e intervenciones humanas.
   _Aceptación:_ prueba que comprueba cada campo y la ausencia de claves.
   _Avance:_ intervenciones humanas (E34.3, [#288](https://github.com/wasichai/elearning-backend/issues/288)): aprobar,
   editar o rechazar un borrador generado añade `ACCEPTED`, `EDITED` o `REJECTED` a su ejecución en la transacción del
-  cambio, solo por inserción (docs/ai §14).
-- **RF-IA-04** · F5 · planificado — Trabajos persistentes con reintentos acotados, idempotencia y cancelación.
+  cambio, solo por inserción (docs/ai §14). Cada campo lo comprueba `AgentExecutionApiTest` y la ausencia de claves,
+  `AgentExecutionApiTest` y `ProviderKeysApiTest`.
+- **RF-IA-04** · F5 · implementado ([#279](https://github.com/wasichai/elearning-backend/issues/279)) — Trabajos persistentes con reintentos acotados, idempotencia y cancelación.
   _Aceptación:_ reintentar tras un fallo no duplica coste registrado ni artefactos; cancelar detiene el trabajo.
-- **RF-IA-05** · F5 · planificado — Validaciones automáticas de estructura, referencias, alineación objetivos-
+  Lo prueba `AiJobsApiTest` (cola `lms.trabajo`, `AiStepRunner`, E33.2): reintentar tras la llamada no la paga otra vez ni
+  hace un segundo borrador, y cancelar antes, entre llamadas o mientras responde el modelo detiene el paso sin borrador.
+- **RF-IA-05** · F5 · implementado ([#286](https://github.com/wasichai/elearning-backend/issues/286), [#287](https://github.com/wasichai/elearning-backend/issues/287), [#300](https://github.com/wasichai/elearning-backend/issues/300)) — Validaciones automáticas de estructura, referencias, alineación objetivos-
   evaluación, enlaces, duplicidad, accesibilidad y metadatos antes de la revisión humana.
   _Aceptación:_ un borrador con defectos sembrados no llega a la bandeja sin su informe.
   _Avance:_ validación por código e informe en `AgentRun` (E34.1, [#286](https://github.com/wasichai/elearning-backend/issues/286)):
   `DraftValidator` y `POST /api/lms/ai/validations` (`VALIDAR`); `GeneratedDraftGuard` da `409` al enviar a revisión un
   borrador generado sin informe vigente o con problemas bloqueantes. La opinión de consistencia de un modelo barato
   (E34.2, [#287](https://github.com/wasichai/elearning-backend/issues/287)) va al informe marcada como opinión y no bloquea.
-  Falta el paso que genera borradores (#283).
-- **RF-IA-06** · F5 · planificado — Los agentes no publican, no ejecutan código ni leen archivos arbitrarios; el texto
+  Con el paso que genera borradores (#283), la unidad de demostración (E38.1) no entra en revisión hasta que su informe deja
+  de bloquear (`DemoUnitApiTest`).
+- **RF-IA-06** · F5 · implementado ([#284](https://github.com/wasichai/elearning-backend/issues/284)) — Los agentes no publican, no ejecutan código ni leen archivos arbitrarios; el texto
   de las fuentes es dato no confiable.
   _Aceptación:_ prueba con una fuente que contiene instrucciones inyectadas: no cambia herramientas, permisos ni
   estado editorial.
   La prueba es `PromptInjectionProviderApiTest` (E33.7, [#284](https://github.com/wasichai/elearning-backend/issues/284)),
   contra el doble HTTP de Anthropic y de OpenAI; qué amenaza cubre cada aserción, en `docs/security` §4.5.
-- **RF-IA-07** · F5 · planificado — Permisos separados para generar, validar, aprobar y publicar.
+- **RF-IA-07** · F5 · implementado ([#280](https://github.com/wasichai/elearning-backend/issues/280), [#300](https://github.com/wasichai/elearning-backend/issues/300)) — Permisos separados para generar, validar, aprobar y publicar.
   _Aceptación:_ un usuario que solo puede generar recibe `403` al aprobar.
   _Avance:_ acciones declaradas `GENERAR` (CREADOR) y `VALIDAR` (REVISOR) sobre `version_curso` y `AiPermissions`
   (E33.3, [#280](https://github.com/wasichai/elearning-backend/issues/280)): al encolar exige la acción a quien llama
-  (`403`) y al ejecutar la vuelve a mirar con sus roles guardados (ADR-0022); quien genera no valida, aprueba ni publica.
-  Falta que la exijan los pasos de E33.4–E33.6.
+  (`403`) y al ejecutar la vuelve a mirar con sus roles guardados (ADR-0022); quien genera no valida, aprueba ni publica
+  (`AiPermissionsApiTest`). La exigen los pasos de E33.4–E33.6, y en la unidad de demostración la autora no valida, aprueba
+  ni publica lo suyo aunque tenga esos roles (E38.1).
 - **RF-IA-08** · F5 · planificado — Embabel se usa en la versión 1.5.4, con Anthropic y OpenAI opcionales
   ([ADR-0033](../adr/0033-fase-5-ia.md)); sin credenciales hay un doble determinista claramente identificado; si algo
   no es compatible se documenta y se entrega una alternativa real.
@@ -372,6 +382,8 @@ el cuándo, en [`roadmap.md`](roadmap.md).
   _Avance:_ el análisis de fuentes (E33.4) corre entero sin claves con su doble y su ejecución dice `generator = DETERMINISTIC`
   en la API. El estudio y la bandeja exponen `generator` de cada versión (E34.3, [#288](https://github.com/wasichai/elearning-backend/issues/288));
   falta el distintivo de la interfaz ([wasichai/elearning-frontend#176](https://github.com/wasichai/elearning-frontend/issues/176)).
+  La suite completa pasa sin claves: CI no las tiene y la unidad de demostración entera corre con el doble determinista
+  (E38.1); lo que falta para cumplir la aceptación es ese distintivo.
 - **RF-IA-09** · F5 · en curso ([#290](https://github.com/wasichai/elearning-backend/issues/290)) — Comparación de modelos por
   tarea con entradas, criterios, versiones e informes conservados.
   _Aceptación:_ un informe reproducible por tarea comparada.
@@ -387,7 +399,7 @@ el cuándo, en [`roadmap.md`](roadmap.md).
 
 ### RF-MED — Multimedia (§12)
 
-- **RF-MED-01** · F5 · planificado — Guion por secciones con duración, diapositivas, subtítulos y transcripción como
+- **RF-MED-01** · F5 · implementado ([#293](https://github.com/wasichai/elearning-backend/issues/293)) — Guion por secciones con duración, diapositivas, subtítulos y transcripción como
   datos versionados.
   _Aceptación:_ validación de esquema del guion y trazas a la fuente.
   _Avance:_ guion por secciones (E36.1, [#293](https://github.com/wasichai/elearning-backend/issues/293)): `ScriptWriter`
@@ -399,6 +411,8 @@ el cuándo, en [`roadmap.md`](roadmap.md).
 - **RF-MED-03** · F5 · planificado — Un vídeo se da por terminado solo si se renderizó y validó (duración,
   resolución, subtítulos), con previsualización.
   _Aceptación:_ un render fallido o incompleto no se ofrece para publicar.
+  _Avance:_ la validación del artefacto y la previsualización (E37.3, [#298](https://github.com/wasichai/elearning-backend/issues/298))
+  están en revisión; hasta su fusión, nada lo cumple en `main`.
 - **RF-MED-04** · F5 · planificado — Lo publicado funciona sin el proveedor de IA.
   _Aceptación:_ prueba E2E del aula con el proveedor desactivado. La API del aula sin proveedor y la regla de
   `ArchitectureTest` llegan con [#294](https://github.com/wasichai/elearning-backend/issues/294); falta el e2e de la

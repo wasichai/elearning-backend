@@ -17,7 +17,7 @@ ejecutando las pruebas y los recorridos indicados, en local y en CI, y el result
 | F2   | LMS básico: aula, matrícula, unidades, lecciones, recursos y progreso                      | criterio cumplido (2026-10-28): épicas E12–E16; pendientes a F3/F4/F6 (#103) |
 | F3   | Evaluaciones y operación docente                                                           | cumplida (2026-10-31): épicas E18–E23; sin pendientes (#183, #231)           |
 | F4   | Estudio editorial e importador AsciiDoc                                                    | integrada (2026-10-31): épicas E24–E28; criterio pendiente (#179)            |
-| F5   | IA y multimedia                                                                            | planificada: épicas E32–E38 (ADR-0033)                                       |
+| F5   | IA y multimedia                                                                            | en curso: épicas E32–E38 (ADR-0033); criterio pendiente (#300)               |
 | F6   | Calidad, reputación y despliegue                                                           | planificada                                                                  |
 
 Las épicas viven en [wasichai/elearning-backend](https://github.com/wasichai/elearning-backend/issues); los pasos de
@@ -274,6 +274,18 @@ compuerta de proveedores, el doble HTTP, el registro `lms.ejecucion_agente`, el 
 **Criterio de aceptación.** Una unidad de demostración generada con el doble determinista y, si hay credenciales,
 con un proveedor real, pasa las validaciones, la revisión humana y se publica; su vídeo se renderiza y valida; la
 suite completa pasa sin claves de proveedor.
+
+**Estado (2026-11-03).** Criterio aún sin cumplir del todo. La unidad de demostración recorre brief → análisis → diseño →
+borrador → validación → corrección → revisión → aprobación por una persona distinta de la autora → publicación, y la lee en
+el aula un estudiante matriculado, con el doble determinista (`DemoUnitApiTest`) y con Embabel contra el doble HTTP de
+Anthropic y de OpenAI (`DemoUnitAnthropicApiTest`, `DemoUnitOpenAiApiTest`) ([#300](https://github.com/wasichai/elearning-backend/issues/300)).
+La suite completa pasa sin claves: CI no tiene ninguna. Falta: la ejecución con un proveedor real, que necesita credenciales
+y tiene su procedimiento en [`docs/ai/evaluations/demo-unit/`](../ai/evaluations/demo-unit/README.md); el vídeo validado
+(RF-MED-03, [#298](https://github.com/wasichai/elearning-backend/issues/298), en revisión); la primera ejecución real
+de la comparación de modelos (RF-IA-09, [#290](https://github.com/wasichai/elearning-backend/issues/290)); el distintivo del doble y el e2e
+del aula sin proveedor en la interfaz ([front#176](https://github.com/wasichai/elearning-frontend/issues/176),
+[front#171](https://github.com/wasichai/elearning-frontend/issues/171)); y la revisión de seguridad
+([#302](https://github.com/wasichai/elearning-backend/issues/302)). Estado de cada requisito en [requirements.md](requirements.md).
 
 **Riesgos.** Inyección de instrucciones desde las fuentes; coste y no determinismo de los modelos (acotados por `max_tokens`, concurrencia y presupuesto, ADR-0033 §9); consumo de CPU y memoria del render;
 cambios de API en Embabel.

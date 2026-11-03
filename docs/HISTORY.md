@@ -2,6 +2,27 @@
 
 Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este archivo registra lo que se entregó.
 
+## 2026-11-03 — Unidad de demostración de extremo a extremo: E38.1 ([#300](https://github.com/wasichai/elearning-backend/issues/300))
+
+- `DemoUnitFlow` recorre por la API, con una cuenta por papel, la canalización entera: brief `LISTO` → análisis → diseño →
+  borrador → validación (la lanza el revisor; la autora no valida lo suyo aunque tenga `VALIDAR`) → corrección → otra
+  validación → revisión → aprobación en la bandeja por el revisor (la autora recibe `403` aunque tenga `APROBAR`; la
+  aceptación queda como `ACCEPTED` en la ejecución del borrador) → publicación por quien tiene `PUBLICAR` (la autora y el
+  revisor, `403`) → una edición abierta y un estudiante matriculado que lee en el aula las unidades y lecciones publicadas y
+  descarga el HTML saneado de cada lectura. Lo corren `DemoUnitApiTest` (sin claves, doble determinista, opinión `SKIPPED`)
+  y `DemoUnitAnthropicApiTest`/`DemoUnitOpenAiApiTest` (Embabel contra el doble HTTP: cinco peticiones, una por paso y por
+  opinión, con el modelo de cada clave y sin herramientas; la fuente nunca en las instrucciones de sistema).
+- Lo que el recorrido deja ver de la canalización: el borrador de lecciones no escribe evaluaciones (el diseño las propone,
+  el paso solo crea lecturas), así que la primera validación bloquea con `NO_ASSESSMENT` y una persona añade la evaluación
+  (paso 8); y las versiones de recurso de las lecturas nacen en `BORRADOR` (las escribe la plataforma, a la que no se aplica
+  «una lección solo usa versiones de recurso publicadas») y tienen que pasar su propio flujo antes de publicar la versión del
+  curso: nada lo exige al publicarla.
+- `docs/ai/evaluations/demo-unit/`: la fuente propia y sintética, el procedimiento exacto para ejecutarlo a mano con
+  Anthropic y con OpenAI y la plantilla de cada ejecución. **Pendiente: ejecución con credenciales**: aquí no hay claves y
+  no hay resultados reales todavía.
+- La suite completa pasa sin claves: CI no tiene `ANTHROPIC_API_KEY` ni `OPENAI_API_KEY` y las pruebas de proveedor usan el
+  doble HTTP. `requirements.md` y el roadmap (F5) dicen el estado real de cada RF-IA y RF-MED. Sin migraciones.
+
 ## 2026-11-03 — Prueba de inyección de instrucciones: E33.7 ([#284](https://github.com/wasichai/elearning-backend/issues/284))
 
 - `PromptInjectionProviderApiTest` (Anthropic y OpenAI, contra el doble HTTP): una fuente con órdenes inyectadas (publicar y

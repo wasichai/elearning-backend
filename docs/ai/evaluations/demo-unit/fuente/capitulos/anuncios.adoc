@@ -1,0 +1,16 @@
+== Publicar un anuncio
+
+Un anuncio llega a toda la organización en cuanto se publica y queda en el tablón hasta que alguien lo retira.
+
+. Abrir el panel de anuncios.
+. Escribir el título y el texto del anuncio.
+. Elegir a quién va dirigido.
+. Pulsar Publicar.
+
+== Retirar un anuncio
+
+Un anuncio retirado deja de verse en el tablón, pero queda en el historial con la fecha y la persona que lo retiró.
+
+. Abrir el anuncio en el tablón.
+. Pulsar Retirar.
+. Confirmar la retirada.

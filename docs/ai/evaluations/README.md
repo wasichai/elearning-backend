@@ -15,3 +15,6 @@ Cada carpeta tiene `set.json` (casos y lo esperado) y `criteria.md` (puntuacione
 rúbrica humana). Los resultados no se guardan aquí: van a `build/ai-eval/<inicio>/` (cómo se ejecuta y qué queda, en
 [docs/ai §9](../README.md#9-comparación-reproducible-de-modelos)); un informe que se quiera conservar se copia a mano a
 `results/` dentro de su tarea, con el nombre de su inicio.
+
+Aparte, [`demo-unit/`](demo-unit/README.md) no es una tarea comparada: es el procedimiento y la plantilla de la ejecución
+manual de la unidad de demostración de extremo a extremo con cada proveedor (E38.1, #300).

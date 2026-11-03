@@ -290,6 +290,14 @@ devuelve su ejecución, sin otra versión. El doble hace una lección por lectur
 una con el resumen y los temas si no tiene ninguna), el primer resultado de la unidad como objetivo y una verificación por
 actividad.
 
+**La unidad de demostración** (E38.1, [#300](https://github.com/wasichai/elearning-backend/issues/300)) recorre todo esto por la
+API hasta el aula: `DemoUnitFlow`, con `DemoUnitApiTest` (doble determinista) y `DemoUnitAnthropicApiTest`/`DemoUnitOpenAiApiTest`
+(doble HTTP). Deja dos cosas a la vista. El borrador no escribe evaluaciones, así que su primera validación bloquea con
+`NO_ASSESSMENT` hasta que una persona las añade. Y las versiones de recurso de las lecturas nacen en `BORRADOR` (las escribe la
+plataforma, que no pasa por «una lección solo usa versiones de recurso publicadas»): se envían, aprueban y publican por la API
+de registros antes de publicar la versión del curso, y hoy nada lo exige al publicarla. La ejecución con un proveedor real se
+documenta en [`evaluations/demo-unit/`](evaluations/demo-unit/README.md).
+
 ## 6. Protección contra prompt injection
 
 - El texto de manuales, fuentes y borradores es **dato no confiable**: va delimitado en el mensaje de usuario, nunca en
