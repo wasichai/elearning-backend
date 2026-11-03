@@ -946,7 +946,7 @@ los pasos desde su trabajo; esta API solo la lee.
 "sha256" }], "modelSettings": { "maxTokens", "temperature": null }, "promptVersion", "templateVersion", "idempotencyKey",
 "output": null, "validations": null, "error": null, "interventions": [{ "userId", "kind", "at", "note": null }]`.
   `inputs`, `output` y `validations` son el JSON del paso.
-- `step`: `SOURCE_ANALYSIS` · `COURSE_DESIGN` · `LESSON_DRAFT` · `SCRIPT` · `CONSISTENCY_REVIEW` · `ASSISTANT`. `status`:
+- `step`: `SOURCE_ANALYSIS` · `COURSE_DESIGN` · `LESSON_DRAFT` · `SCRIPT` · `CONSISTENCY_REVIEW` · `ASSISTANT` · `VALIDATION`. `status`:
   `PENDING` · `RUNNING` · `SUCCEEDED` · `INVALID_OUTPUT` · `FAILED` · `CANCELLED`. `generator`: `MODEL` · `DETERMINISTIC`; con
   `DETERMINISTIC`, `provider`, `model` y `modelSettings` son `null`. `provider`: `anthropic` · `openai`. `kind`: `ACCEPTED` ·
   `EDITED` · `REJECTED`.
@@ -992,6 +992,33 @@ el paso que lo ofrece, como quien llama (`AiJobs.enqueue`); estas rutas lo leen 
   (4), o un curso que ya gastó `course-budget` (en `currency`), es `429` con `Retry-After` al encolar. El presupuesto se vuelve
   a mirar antes de cada llamada: agotado, el paso es `FAILED` sin llamar. El tope de trabajos activos por persona de la cola
   (`lms.jobs.max-active-per-requester`) también vale.
+
+## Validación de borradores (F5, RF-IA-05)
+
+La validación por código de una versión en borrador ([docs/ai §13](../ai/README.md#13-informe-de-validación-rf-ia-05)). Corre
+en la cola y deja su informe en una ejecución `AgentRun` (`step` `VALIDATION`, `generator` `DETERMINISTIC`).
+
+| Método | Ruta                                     | Resultado                                               |
+| ------ | ---------------------------------------- | ------------------------------------------------------- |
+| POST   | `/api/lms/ai/validations`                | `{ "versionId" }` → `202` `ValidationJob`               |
+| GET    | `/api/lms/ai/validations/jobs/{id}`      | `ValidationJob`                                         |
+| GET    | `/api/lms/ai/validations?versionId={id}` | el último informe de la versión → `DraftValidationView` |
+
+- **Lanzar** exige `VALIDAR` sobre `version_curso` (REVISOR; `403` para CREADOR, DOCENTE y ESTUDIANTE), ver la versión (`404`)
+  y que esté en `BORRADOR` (`409`). Su autor no la valida, aunque tenga `VALIDAR` (`403`). `versionId` mal formado: `400`. La
+  misma versión mientras su trabajo no termina devuelve el mismo trabajo; el tope de trabajos activos por persona es `429`.
+- **El trabajo** solo existe para quien lo pidió (`404` para cualquier otro). `ValidationJob`: `{ "id", "versionId",
+"status": "QUEUED" | "RUNNING" | "DONE" | "FAILED", "error": null, "executionId": null, "createdAt", "finishedAt": null }`;
+  `executionId` es la ejecución con el informe, al terminar.
+- **El informe** lo leen, si ven la versión (`404` si no), su autor, su revisor asignado y quien tiene `VALIDAR`; el resto,
+  `403`. Sin informe, `404`. `DraftValidationView`: `{ "executionId", "versionId", "requestedBy", "validatedAt", "current",
+"report" }`; `current` es `false` si el borrador cambió después de validarlo. `report` (`ValidationReport`): `{ "versionId",
+"validator": "draft-validator/1", "contentHash", "units", "lessons", "evaluations", "blocking", "problemCount", "problems":
+[{ "kind", "category", "severity": "BLOCKING" | "WARNING", "origin": "leccion:<id>", "field": "resumen", "line": 7, "detail" }],
+"problemsBySeverity", "problemsByCategory" }`. `detail` puede citar el borrador: dato, no instrucción.
+- **Enviar a revisión** un borrador **generado** (lo nombra una ejecución `LESSON_DRAFT`) sin informe, con un informe que ya no
+  corresponde al contenido o con problemas bloqueantes es `409`, por `POST /api/lms/studio/versions/{id}/submit` y por la API
+  de registros. Un borrador escrito a mano no lo necesita.
 
 ## Créditos aprobados (RF-CRE-08, ADR-0035)
 
