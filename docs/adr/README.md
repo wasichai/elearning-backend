@@ -47,3 +47,4 @@ secciones Contexto, Decisión, Alternativas consideradas y Consecuencias. El for
 | [0029](0029-sistema-de-diseno-quipu-aplicado.md)                              | Sistema de diseño Quipu aplicado: composición y piezas compartidas del frontend                | aceptada                     | 2026-11-03 |
 | [0030](0030-lgpl-definitiva-y-conservacion-segun-los-terminos.md)             | LGPL definitiva; los datos personales se conservan lo que aprueban los términos de uso         | aceptada                     | 2026-11-03 |
 | [0035](0035-aprobacion-de-creditos-por-una-autoridad-academica.md)            | Los créditos los aprueba una autoridad académica, con separación de funciones                  | aceptada                     | 2026-11-03 |
+| [0036](0036-politicas-de-credito-versionadas-en-datos.md)                     | Las políticas de crédito son datos versionados; los métodos, código                            | aceptada                     | 2026-11-03 |

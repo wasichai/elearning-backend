@@ -5,7 +5,7 @@
     "tipo_duracion": ["SEMANAS", "SEMESTRAL"],
     "estado_version": ["BORRADOR", "EN_REVISION", "APROBADA", "PUBLICADA", "RETIRADA"],
     "estado_edicion": ["PROGRAMADA", "INSCRIPCION_ABIERTA", "EN_CURSO", "FINALIZADA", "CANCELADA"],
-    "sistema_credito": ["NINGUNO", "ECTS", "SCH"],
+    "sistema_credito": ["NINGUNO", "ECTS", "SCH", "PE_CREDITO"],
     "tipo_leccion": ["LECTURA", "VIDEO", "PRESENTACION", "LABORATORIO", "EVALUACION", "SESION"],
     "rol_docente": ["TITULAR", "ASISTENTE"],
     "estado_matricula": ["ACTIVA", "RETIRADA", "FINALIZADA"],
@@ -20,7 +20,9 @@
     "estado_sesion": ["PROGRAMADA", "REPROGRAMADA", "CANCELADA"],
     "estado_asistencia": ["PRESENTE", "TARDE", "AUSENTE", "JUSTIFICADO"],
     "formato_artefacto": ["HTML", "PDF"],
-    "tipo_aprobacion_creditos": ["APROBACION", "REVOCACION"]
+    "tipo_aprobacion_creditos": ["APROBACION", "REVOCACION"],
+    "estado_politica_credito": ["BORRADOR", "PUBLICADA", "RETIRADA"],
+    "metodo_credito": ["ECTS_CARGA_TOTAL", "US_SCH_34CFR600_2", "PE_LEY30220_HORAS_LECTIVAS"]
   },
   "objects": [
     {
@@ -1275,6 +1277,108 @@
       ]
     },
     {
+      "name": "politica_credito",
+      "label": "Política de crédito",
+      "pluralLabel": "Políticas de crédito",
+      "description": "Regla versionada con la que se proponen créditos (RF-CRE-07, ADR-0036): un método del código con sus parámetros, su fuente y su ámbito (jurisdicción, la organización y, si se indica, un programa). Solo se edita en borrador; publicada no cambia: un cambio es una versión nueva.",
+      "actions": [
+        {
+          "name": "PUBLICAR",
+          "label": "Publicar o retirar una política de crédito"
+        }
+      ],
+      "uniqueConstraints": [["clave", "numero"]],
+      "fields": [
+        {
+          "name": "clave",
+          "label": "Clave (la misma en todas sus versiones)",
+          "type": "TEXT",
+          "required": true,
+          "indexed": true
+        },
+        {
+          "name": "numero",
+          "label": "Número de versión",
+          "type": "INTEGER",
+          "required": true
+        },
+        {
+          "name": "nombre",
+          "label": "Nombre",
+          "type": "TEXT",
+          "required": true
+        },
+        {
+          "name": "estado",
+          "label": "Estado",
+          "type": "ENUM",
+          "enum": "estado_politica_credito",
+          "required": true,
+          "defaultValue": "BORRADOR",
+          "indexed": true
+        },
+        {
+          "name": "sistema",
+          "label": "Sistema de crédito",
+          "type": "ENUM",
+          "enum": "sistema_credito",
+          "required": true,
+          "indexed": true
+        },
+        {
+          "name": "metodo",
+          "label": "Método de cálculo",
+          "type": "ENUM",
+          "enum": "metodo_credito",
+          "required": true
+        },
+        {
+          "name": "parametros",
+          "label": "Parámetros del método (JSON; vacío: los de la norma)",
+          "type": "LONG_TEXT"
+        },
+        {
+          "name": "jurisdiccion",
+          "label": "Jurisdicción (ISO 3166-1 alfa-2, o EHEA)",
+          "type": "TEXT",
+          "required": true,
+          "indexed": true
+        },
+        {
+          "name": "programa_codigo",
+          "label": "Programa al que se limita (código; vacío: toda la institución)",
+          "type": "TEXT",
+          "indexed": true
+        },
+        {
+          "name": "fuente",
+          "label": "Fuente normativa o institucional",
+          "type": "TEXT",
+          "required": true
+        },
+        {
+          "name": "fuente_url",
+          "label": "Enlace a la fuente",
+          "type": "URL"
+        },
+        {
+          "name": "vigente_desde",
+          "label": "Vigente desde",
+          "type": "DATE"
+        },
+        {
+          "name": "publicada_por",
+          "label": "Publicada por (usuario de Wasichai)",
+          "type": "UUID"
+        },
+        {
+          "name": "publicada_en",
+          "label": "Publicada en",
+          "type": "DATETIME"
+        }
+      ]
+    },
+    {
       "name": "aprobacion_creditos",
       "label": "Aprobación de créditos",
       "pluralLabel": "Aprobaciones de créditos",
@@ -1670,6 +1774,24 @@
       "target": "version_curso",
       "fieldName": "version_curso",
       "required": true
+    },
+    {
+      "name": "version_curso_politica_credito",
+      "label": "Política de crédito",
+      "inverseLabel": "Versiones de curso que la usan",
+      "type": "MANY_TO_ONE",
+      "source": "version_curso",
+      "target": "politica_credito",
+      "fieldName": "politica_credito"
+    },
+    {
+      "name": "aprobacion_creditos_politica_credito",
+      "label": "Política de crédito aplicada",
+      "inverseLabel": "Aprobaciones de créditos",
+      "type": "MANY_TO_ONE",
+      "source": "aprobacion_creditos",
+      "target": "politica_credito",
+      "fieldName": "politica_credito"
     }
   ]
 }

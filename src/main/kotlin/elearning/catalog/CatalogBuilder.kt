@@ -1,11 +1,9 @@
 package elearning.catalog
 
+import elearning.course.CreditPolicyRecords
 import elearning.course.PrerequisiteKnowledge
 import elearning.course.PrerequisiteKnowledgeGuard
 import elearning.course.VersionWorkload
-import elearning.workload.CreditPolicy
-import elearning.workload.EctsPolicy
-import elearning.workload.SemesterCreditHourPolicy
 import elearning.workload.Workload
 import tools.jackson.databind.json.JsonMapper
 import wasichai.core.data.RecordResponse
@@ -31,6 +29,8 @@ data class CatalogRecords(
     val knowledge: List<RecordResponse> = emptyList(),
     // aprobacion_creditos: la última fila de cada versión dice si sus créditos están aprobados (ADR-0035)
     val approvals: List<RecordResponse> = emptyList(),
+    // politica_credito: la versión de política a la que está ligada cada versión de curso (ADR-0036)
+    val policies: List<RecordResponse> = emptyList(),
 )
 
 // un curso listo para la proyección: la ficha completa y las columnas por las que se filtra y ordena
@@ -53,10 +53,7 @@ data class PublishedCourse(
 
 // arma las fichas públicas a partir de los registros. puro: sin base de datos ni sesión, por eso se prueba solo.
 // entra únicamente la última versión PUBLICADA de cada curso; un curso sin versión publicada no existe para el catálogo
-class CatalogBuilder(
-    private val ectsPolicy: CreditPolicy = EctsPolicy(),
-    private val schPolicy: CreditPolicy = SemesterCreditHourPolicy(),
-) {
+class CatalogBuilder {
     // un curso que no se puede publicar (datos fuera de rango, slug que la ruta rechazaría) se deja fuera y se informa
     // por onReject: un registro malo no puede dejar sin refrescar el catálogo entero
     fun build(
@@ -72,6 +69,7 @@ class CatalogBuilder(
         val teachersByOffering = records.assignments.groupBy { it.ref("edicion_curso") }
         val knowledge = records.knowledge.mapNotNull { k -> k.text("clave")?.let { it to (k.text("nombre") ?: it) } }.toMap()
         // la vigente: la última de cada versión si es una aprobación; tras una revocación, ninguna
+        val policies = records.policies.associateBy { it.id }
         val approvals =
             records.approvals
                 .groupBy { it.ref("version_curso") }
@@ -100,6 +98,7 @@ class CatalogBuilder(
                         records.occupancy,
                         knowledge,
                         approvals[version.id],
+                        policies,
                     )
                 } catch (e: IllegalArgumentException) {
                     onReject(course.text("codigo") ?: course.id, e)
@@ -129,6 +128,7 @@ class CatalogBuilder(
         occupancy: Map<String, Int>,
         knowledge: Map<String, String>,
         approval: RecordResponse?,
+        policies: Map<String, RecordResponse>,
     ): PublishedCourse {
         val slug = requireNotNull(course.text("slug")) { "course without slug" }
         require(PUBLIC_SLUG.matches(slug)) { "slug '$slug' is not a public slug" }
@@ -175,7 +175,7 @@ class CatalogBuilder(
                     certification = version.text("certificacion"),
                     sources = version.lines("fuentes"),
                     workload = workloadView(workload),
-                    credits = credits(version, workload, approval),
+                    credits = credits(version, workload, approval, policies),
                     units = units,
                     offerings = offerings,
                     teachers = teachers,
@@ -200,23 +200,27 @@ class CatalogBuilder(
             totalHours = w.totalHours.plain(),
         )
 
-    // un solo sistema por versión: no se mezclan ECTS y SCH ni se convierte uno en otro (ADR-0007). «aprobados» solo con
-    // una aprobación vigente, con su órgano, su documento y su política (ADR-0035); si no, son propuestos y no oficiales
+    // un solo sistema por versión: no se mezclan sistemas ni se convierte uno en otro (ADR-0007). propone la versión de
+    // política ligada o, sin ella, la de referencia del sistema (ADR-0036); ligada a otro sistema, no propone. «aprobados»
+    // solo con una aprobación vigente, con su órgano, su documento y su política (ADR-0035); si no, propuestos, no oficiales
     private fun credits(
         version: RecordResponse,
         workload: Workload,
         approval: RecordResponse?,
+        policies: Map<String, RecordResponse>,
     ): CreditsView {
+        val system = CreditPolicyRecords.system(version.text("sistema_credito")) ?: return CreditsView(system = null, approved = null, proposal = null)
+        val bound = version.ref(CreditPolicyRecords.POLICY)
         val policy =
-            when (version.text("sistema_credito")) {
-                "ECTS" -> ectsPolicy
-                "SCH" -> schPolicy
-                else -> return CreditsView(system = null, approved = null, proposal = null)
+            if (bound != null && bound !in policies) {
+                null
+            } else {
+                CreditPolicyRecords.forVersion(version.attributes, bound?.let { policies.getValue(it).attributes })
             }
-        val proposal = policy.propose(workload)
+        val proposal = policy?.propose(workload)
         val approved = approval?.decimal("creditos_aprobados")?.plain()
         return CreditsView(
-            system = policy.system.name,
+            system = system.name,
             approved = approved,
             approval =
                 if (approval != null && approved != null) {
@@ -233,19 +237,21 @@ class CatalogBuilder(
                     null
                 },
             proposal =
-                CreditProposalView(
-                    system = proposal.system.name,
-                    policyId = proposal.policyId,
-                    policyVersion = proposal.policyVersion,
-                    method = proposal.method,
-                    parameters = proposal.parameters,
-                    source = proposal.source,
-                    totalHours = proposal.totalHours.plain(),
-                    calculated = proposal.calculated.plain(),
-                    proposed = proposal.proposed.plain(),
-                    warnings = proposal.warnings,
-                    status = proposal.status.name,
-                ),
+                proposal?.let {
+                    CreditProposalView(
+                        system = it.system.name,
+                        policyId = it.policyId,
+                        policyVersion = it.policyVersion,
+                        method = it.method,
+                        parameters = it.parameters,
+                        source = it.source,
+                        totalHours = it.totalHours.plain(),
+                        calculated = it.calculated.plain(),
+                        proposed = it.proposed.plain(),
+                        warnings = it.warnings,
+                        status = it.status.name,
+                    )
+                },
         )
     }
 

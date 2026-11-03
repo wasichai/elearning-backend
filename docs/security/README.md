@@ -105,6 +105,10 @@ guarda, un CREADOR podía publicar escribiendo `estado` con un `PATCH`.
   asignado, quien la aprobó en la bandeja (`lms.decision_revision`) ni un docente de una edición del curso
   (`docente_edicion`, leído con una subconsulta para no depender de lo que la autoridad pueda leer) → `403`. Pruebas:
   `CreditApprovalApiTest`.
+- **Políticas de crédito publicadas inmutables** (RF-CRE-07, ADR-0036): `CreditPolicyGuard` rechaza cambiar o borrar una
+  `politica_credito` publicada o retirada y escribir su estado por la API de registros (`409`, también ADMIN); publicar y
+  retirar exigen `PUBLICAR` sobre `politica_credito`. Aprobar exige la versión de política ligada publicada y del mismo
+  sistema (`409`).
 - `publicada_en` solo se pone al publicar. Solo se borra un borrador.
 - **Sin autoasignación de roles** (a verificar). Los roles se administran solo con `MANAGE_ORGANIZATION` de Wasichai y
   quedan en `audit_log` como `admin:*`. Que Wasichai impida a un administrador cambiar sus **propios** roles no está
