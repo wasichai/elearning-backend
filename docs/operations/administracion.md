@@ -10,8 +10,14 @@ Ejecutado el 2026-10-31, de principio a fin, con Playwright contra la interfaz c
 ## Antes de empezar
 
 Inicia sesión con una cuenta `ADMIN`. En desarrollo es `admin@wasichai.local` / `admin` (ver
-[la puesta en marcha](../development/getting-started.md)). El menú de la izquierda tiene los grupos «Datos» y
-«Administración».
+[la puesta en marcha](../development/getting-started.md)).
+
+La administración es una sección del menú, sin cambiar ninguna URL: una sola aplicación, sin segundo router
+([ADR-0005](../adr/0005-lms-en-el-registro-de-wasichai-ui.md)). La ofrece el menú a quien responde `admin: true` o la
+capacidad `MANAGE_ORGANIZATION` en `GET /auth/me/permissions`:
+
+- Fuera de las pantallas de Wasichai, el menú lleva **Plataforma → Administración**, que abre «Objetos» (`/data/objects`).
+- Dentro de ellas, el menú lleva los grupos «Datos» y «Administración», sin los grupos del LMS. **Inicio** vuelve al LMS.
 
 ## Usuarios
 
@@ -64,9 +70,17 @@ este recorrido aparecen, a nombre del administrador:
 | Modificación | `admin:user` | La edición y el cambio de roles (dos filas) |
 | Creación     | `categoria`  | El alta de la categoría                     |
 
-## Limitación conocida
+## Limitaciones conocidas
 
-La navegación todavía no se filtra por permisos ([RNF-UX-06](../product/requirements.md)). Una cuenta sin
-`MANAGE_ORGANIZATION` ve las entradas de «Administración» en el menú. Si abre `/admin/users`, ve el formulario y «Todavía
-no hay usuarios», aunque la lista no le ha llegado porque el servidor la rechaza. No hay fuga ni escalada: la API responde
-`403`, pero el mensaje induce a error. Lo decide el servidor (CLAUDE.md, regla 4).
+Sin ese permiso, «Datos» y «Administración» no salen en el menú, en ninguna ruta, y tampoco con los permisos cargando o
+con error ([RNF-UX-06](../product/requirements.md)). Ocultarlos es cortesía: decide el servidor. Las URL siguen abiertas
+porque un creador edita sus lecciones en `/data/objects/leccion/records/:id`, con su menú del LMS.
+
+Una cuenta sin `MANAGE_ORGANIZATION` que escriba `/admin/users` a mano ve el formulario y «Todavía no hay usuarios», aunque
+la lista no le ha llegado porque el servidor la rechaza. No hay fuga ni escalada: la API responde `403`, pero el mensaje
+induce a error. La pantalla es de `@wasichai/core`.
+
+La primera versión de un curso nuevo solo llega importando. `POST /api/lms/studio/courses/{courseId}/versions` responde `400`
+porque no hay de dónde copiar, y el formulario de `version_curso` exige en «Autor» el UUID de quien crea, que ninguna pantalla le
+muestra (sin él, `400`; lo exige `EditorialWorkflowGuard`). Por eso el estudio no enlaza a ese formulario
+([front#157](https://github.com/wasichai/elearning-frontend/pull/157)).
