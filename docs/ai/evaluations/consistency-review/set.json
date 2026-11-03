@@ -1,0 +1,273 @@
+{
+  "task": "consistency-review",
+  "criteria": "consistency-review-criteria@1",
+  "cases": [
+    {
+      "id": "coherente",
+      "description": "Sintético. La pregunta se responde con la lección y la opción correcta lo es.",
+      "draft": {
+        "versionId": "eval-coherente",
+        "texts": {
+          "objetivos": "Publicar un anuncio"
+        },
+        "units": [
+          {
+            "id": "eval-coherente-u1",
+            "order": 1,
+            "title": "Publicar anuncios",
+            "hours": "2",
+            "sourceRef": null,
+            "texts": {
+              "objetivos": "Publicar un anuncio"
+            },
+            "lessons": [
+              {
+                "id": "eval-coherente-l1",
+                "order": 1,
+                "title": "Publicar anuncios",
+                "type": "LECTURA",
+                "minutes": 30,
+                "sourceRef": null,
+                "texts": {
+                  "resumen": "Para publicar un anuncio se abre el panel de anuncios, se escribe el texto y se pulsa Publicar. Un anuncio publicado llega a toda la organización; uno retirado deja de verse en el tablón."
+                },
+                "resources": 0,
+                "labs": [],
+                "evaluations": []
+              },
+              {
+                "id": "eval-coherente-l2",
+                "order": 2,
+                "title": "Comprobación",
+                "type": "EVALUACION",
+                "minutes": 15,
+                "sourceRef": null,
+                "texts": {},
+                "resources": 0,
+                "labs": [],
+                "evaluations": [
+                  {
+                    "id": "eval-coherente-e1",
+                    "title": "Comprobación",
+                    "instructions": "Elige una respuesta.",
+                    "questions": [
+                      {
+                        "id": "eval-coherente-q1",
+                        "order": 1,
+                        "type": "UNICA",
+                        "statement": "¿Qué botón publica un anuncio?",
+                        "acceptedAnswers": null,
+                        "options": [
+                          {
+                            "id": "eval-coherente-q1-o1",
+                            "order": 1,
+                            "text": "Publicar",
+                            "correct": true
+                          },
+                          {
+                            "id": "eval-coherente-q1-o2",
+                            "order": 2,
+                            "text": "Guardar",
+                            "correct": false
+                          },
+                          {
+                            "id": "eval-coherente-q1-o3",
+                            "order": 3,
+                            "text": "Cancelar",
+                            "correct": false
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "expected": {
+        "verdict": "APPROVED",
+        "origins": []
+      }
+    },
+    {
+      "id": "opcion-erronea",
+      "description": "Sintético. La opción marcada como correcta contradice la lección: la lección dice Publicar.",
+      "draft": {
+        "versionId": "eval-opcion",
+        "texts": {
+          "objetivos": "Publicar un anuncio"
+        },
+        "units": [
+          {
+            "id": "eval-opcion-u1",
+            "order": 1,
+            "title": "Publicar anuncios",
+            "hours": "2",
+            "sourceRef": null,
+            "texts": {
+              "objetivos": "Publicar un anuncio"
+            },
+            "lessons": [
+              {
+                "id": "eval-opcion-l1",
+                "order": 1,
+                "title": "Publicar anuncios",
+                "type": "LECTURA",
+                "minutes": 30,
+                "sourceRef": null,
+                "texts": {
+                  "resumen": "Para publicar un anuncio se abre el panel de anuncios, se escribe el texto y se pulsa Publicar. Un anuncio publicado llega a toda la organización; uno retirado deja de verse en el tablón."
+                },
+                "resources": 0,
+                "labs": [],
+                "evaluations": []
+              },
+              {
+                "id": "eval-opcion-l2",
+                "order": 2,
+                "title": "Comprobación",
+                "type": "EVALUACION",
+                "minutes": 15,
+                "sourceRef": null,
+                "texts": {},
+                "resources": 0,
+                "labs": [],
+                "evaluations": [
+                  {
+                    "id": "eval-opcion-e1",
+                    "title": "Comprobación",
+                    "instructions": "Elige una respuesta.",
+                    "questions": [
+                      {
+                        "id": "eval-opcion-q1",
+                        "order": 1,
+                        "type": "UNICA",
+                        "statement": "¿Qué botón publica un anuncio?",
+                        "acceptedAnswers": null,
+                        "options": [
+                          {
+                            "id": "eval-opcion-q1-o1",
+                            "order": 1,
+                            "text": "Guardar",
+                            "correct": true
+                          },
+                          {
+                            "id": "eval-opcion-q1-o2",
+                            "order": 2,
+                            "text": "Publicar",
+                            "correct": false
+                          },
+                          {
+                            "id": "eval-opcion-q1-o3",
+                            "order": 3,
+                            "text": "Cancelar",
+                            "correct": false
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "expected": {
+        "verdict": "CONCERNS",
+        "origins": ["pregunta:eval-opcion-q1"]
+      }
+    },
+    {
+      "id": "sin-contenido",
+      "description": "Sintético. La pregunta trata de algo que la unidad no enseña (la caducidad de un anuncio).",
+      "draft": {
+        "versionId": "eval-ausente",
+        "texts": {
+          "objetivos": "Publicar un anuncio"
+        },
+        "units": [
+          {
+            "id": "eval-ausente-u1",
+            "order": 1,
+            "title": "Publicar anuncios",
+            "hours": "2",
+            "sourceRef": null,
+            "texts": {
+              "objetivos": "Publicar un anuncio"
+            },
+            "lessons": [
+              {
+                "id": "eval-ausente-l1",
+                "order": 1,
+                "title": "Publicar anuncios",
+                "type": "LECTURA",
+                "minutes": 30,
+                "sourceRef": null,
+                "texts": {
+                  "resumen": "Para publicar un anuncio se abre el panel de anuncios, se escribe el texto y se pulsa Publicar. Un anuncio publicado llega a toda la organización; uno retirado deja de verse en el tablón."
+                },
+                "resources": 0,
+                "labs": [],
+                "evaluations": []
+              },
+              {
+                "id": "eval-ausente-l2",
+                "order": 2,
+                "title": "Comprobación",
+                "type": "EVALUACION",
+                "minutes": 15,
+                "sourceRef": null,
+                "texts": {},
+                "resources": 0,
+                "labs": [],
+                "evaluations": [
+                  {
+                    "id": "eval-ausente-e1",
+                    "title": "Comprobación",
+                    "instructions": "Elige una respuesta.",
+                    "questions": [
+                      {
+                        "id": "eval-ausente-q1",
+                        "order": 1,
+                        "type": "UNICA",
+                        "statement": "¿A los cuántos días caduca un anuncio?",
+                        "acceptedAnswers": null,
+                        "options": [
+                          {
+                            "id": "eval-ausente-q1-o1",
+                            "order": 1,
+                            "text": "A los tres días",
+                            "correct": true
+                          },
+                          {
+                            "id": "eval-ausente-q1-o2",
+                            "order": 2,
+                            "text": "A los siete días",
+                            "correct": false
+                          },
+                          {
+                            "id": "eval-ausente-q1-o3",
+                            "order": 3,
+                            "text": "Nunca",
+                            "correct": false
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "expected": {
+        "verdict": "CONCERNS",
+        "origins": ["pregunta:eval-ausente-q1"]
+      }
+    }
+  ]
+}

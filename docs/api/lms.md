@@ -990,7 +990,7 @@ los pasos desde su trabajo; esta API solo la lee.
 "courseId", "unitId": null, "versionId": null, "attempt", "inputTokens": null, "outputTokens": null, "cost": null,
 "startedAt", "finishedAt": null }`.
 - `AgentExecution`: lo de la línea más `"organizationId", "objective", "inputs", "sources": [{ "ref": "owner/repo@sha:ruta#ancla",
-"sha256" }], "modelSettings": { "maxTokens", "temperature": null }, "promptVersion", "templateVersion", "idempotencyKey",
+"sha256" }], "modelSettings": { "maxTokens", "temperature": null, "effort": null }, "promptVersion", "templateVersion", "idempotencyKey",
 "output": null, "validations": null, "error": null, "interventions": [{ "userId", "kind", "at", "note": null }]`.
   `inputs`, `output` y `validations` son el JSON del paso.
 - `step`: `SOURCE_ANALYSIS` · `COURSE_DESIGN` · `LESSON_DRAFT` · `SCRIPT` · `CONSISTENCY_REVIEW` · `ASSISTANT` · `VALIDATION`. `status`:

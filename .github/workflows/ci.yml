@@ -42,6 +42,8 @@ jobs:
           sudo gem install --no-document asciidoctor:2.0.26 asciidoctor-pdf:2.3.27
           asciidoctor --version
           asciidoctor-pdf --version
+      # incluye la prueba de humo de la comparación de modelos contra el doble HTTP (ModelEvaluationSmokeTest, sin cifras);
+      # ./gradlew aiEval, contra los proveedores reales, nunca corre en CI (docs/ai §9)
       - run: ./gradlew integrationTest --no-daemon --max-workers=2
         env:
           GITHUB_ACTOR: ${{ github.actor }}

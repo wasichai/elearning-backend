@@ -10,6 +10,9 @@ object SourceAnalysisPrompt {
     const val VERSION = "source-analysis@1"
     const val TEMPLATE = "source-analysis@1"
 
+    // el objetivo declarado del paso (queda en AgentRun y en la clave); la comparación de modelos usa el mismo
+    fun objective(topic: String) = "Extract the concepts and procedures, with their provenance, of the sources of the brief «$topic»"
+
     // las de sistema: fijas, sin nada de la fuente ni del brief
     val SYSTEM =
         """

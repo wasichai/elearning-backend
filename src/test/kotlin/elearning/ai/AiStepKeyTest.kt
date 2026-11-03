@@ -70,6 +70,15 @@ class AiStepKeyTest {
                 "modelo" to request(model = ModelChoice("anthropic", "claude-haiku-5-5", ModelSettings(maxTokens = 4_096, temperature = 0.2))),
                 "proveedor" to request(model = ModelChoice("openai", "claude-sonnet-5-5", ModelSettings(maxTokens = 4_096, temperature = 0.2))),
                 "parámetros" to request(model = ModelChoice("anthropic", "claude-sonnet-5-5", ModelSettings(maxTokens = 1_024, temperature = 0.2))),
+                "esfuerzo" to
+                    request(
+                        model =
+                            ModelChoice(
+                                "anthropic",
+                                "claude-sonnet-5-5",
+                                ModelSettings(maxTokens = 4_096, temperature = 0.2, effort = ReasoningEffort.LOW),
+                            ),
+                    ),
                 "doble determinista" to request(model = null),
             )
         for ((what, variant) in variants) assertNotEquals(base, AiJobs.keyOf(variant), what)

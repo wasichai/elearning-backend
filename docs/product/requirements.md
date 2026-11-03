@@ -370,9 +370,12 @@ el cuándo, en [`roadmap.md`](roadmap.md).
   _Avance:_ el análisis de fuentes (E33.4) corre entero sin claves con su doble y su ejecución dice `generator = DETERMINISTIC`
   en la API. El estudio y la bandeja exponen `generator` de cada versión (E34.3, [#288](https://github.com/wasichai/elearning-backend/issues/288));
   falta el distintivo de la interfaz ([wasichai/elearning-frontend#176](https://github.com/wasichai/elearning-frontend/issues/176)).
-- **RF-IA-09** · F5 · planificado — Comparación de modelos por tarea con entradas, criterios, versiones e informes
-  conservados.
+- **RF-IA-09** · F5 · en curso ([#290](https://github.com/wasichai/elearning-backend/issues/290)) — Comparación de modelos por
+  tarea con entradas, criterios, versiones e informes conservados.
   _Aceptación:_ un informe reproducible por tarea comparada.
+  _Avance:_ `./gradlew aiEval` (a mano, proveedores reales) compara el análisis de fuentes y la opinión de consistencia sobre
+  los conjuntos de `docs/ai/evaluations/` con puntuaciones calculadas por código; en CI, prueba de humo contra el doble
+  HTTP. Faltan las tareas de diseño, borrador y guion y la primera ejecución real.
 - **RF-IA-10** · F5 · planificado — Indicadores de la canalización (§10) calculados desde `AgentRun` y revisiones.
   _Aceptación:_ cada indicador tiene definición escrita y prueba de cálculo; ninguno se presenta como calidad
   pedagógica.

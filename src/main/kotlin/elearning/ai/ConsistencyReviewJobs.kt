@@ -72,7 +72,7 @@ class ConsistencyReviews(
                 step = AgentStep.CONSISTENCY_REVIEW,
                 courseId = course,
                 versionId = version,
-                objective = "Give an opinion on the consistency between the content and the evaluations of the draft course version $version",
+                objective = ConsistencyReviewPrompt.objective(version.toString()),
                 inputs = inputs,
                 model = model,
                 promptVersion = ConsistencyReviewPrompt.VERSION,
