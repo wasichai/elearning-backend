@@ -53,6 +53,7 @@ class ClassroomReader(
                 .map { it.id }
                 .toSet()
         val environments = environments(labs)
+        val certificate = certificates.ofEnrollment(UUID.fromString(enrollment.id))
         val units =
             content.units.map { unit ->
                 UnitView(
@@ -79,14 +80,16 @@ class ClassroomReader(
                         },
                 )
             }
-        return ClassroomView(view(enrollment, content), units)
+        return ClassroomView(view(enrollment, content, certificate), units, achievements(units, content, certificate))
     }
 
-    suspend fun view(enrollment: RecordResponse): EnrollmentView = view(enrollment, content(enrollment))
+    suspend fun view(enrollment: RecordResponse): EnrollmentView =
+        view(enrollment, content(enrollment), certificates.ofEnrollment(UUID.fromString(enrollment.id)))
 
     private suspend fun view(
         enrollment: RecordResponse,
         content: Content,
+        certificate: Certificate?,
     ): EnrollmentView {
         val a = enrollment.attributes
         val course = records.get(COURSE, UUID.fromString(content.version.attributes.ref(COURSE)!!))
@@ -110,8 +113,37 @@ class ClassroomReader(
                 ),
             progress = summary(lessons, content),
             nextLesson = next?.let { NextLesson(it.id, it.text(TITLE), unitOrder.getValue(it.id), it.int(ORDER)) },
-            certificateCode = certificates.codeOf(UUID.fromString(enrollment.id)),
+            certificateCode = certificate?.code,
         )
+    }
+
+    // los logros salen de lo ya calculado para el aula, sin otra lectura: la unidad con todas sus lecciones contables
+    // completadas (fechada por la última), cada evaluación aprobada (solo cuenta un intento calificado, el que muestra su
+    // calificación; fechada por el envío del primero que aprobó) y el certificado. por fecha; un logro sin ella, al final
+    private fun achievements(
+        units: List<UnitView>,
+        content: Content,
+        certificate: Certificate?,
+    ): List<Achievement> {
+        val completed =
+            units
+                .filter { it.progress.totalLessons > 0 && it.progress.completedLessons == it.progress.totalLessons }
+                .map { unit ->
+                    val at =
+                        unit.lessons
+                            .filter { it.completion != "NOT_YET" }
+                            .mapNotNull { it.progress.completedAt }
+                            .maxOrNull()
+                    Achievement(UNIT_COMPLETED, at, unit.id)
+                }
+        val passed =
+            units
+                .flatMap { it.lessons }
+                .mapNotNull { content.assessments[it.id] }
+                .filter { it.passedAt != null }
+                .map { Achievement(ASSESSMENT_PASSED, it.passedAt, it.id) }
+        val issued = listOfNotNull(certificate?.let { Achievement(CERTIFICATE_ISSUED, it.issuedAt, it.code) })
+        return (completed + passed + issued).sortedWith(compareBy(nullsLast<Instant>()) { it.at })
     }
 
     private class Unit(
@@ -380,6 +412,10 @@ class ClassroomReader(
         const val ATTENDANCE = "asistencia"
         const val CANCELLED = "CANCELADA"
         val PRESENT = setOf("PRESENTE", "TARDE")
+
+        const val UNIT_COMPLETED = "UNIT_COMPLETED"
+        const val ASSESSMENT_PASSED = "ASSESSMENT_PASSED"
+        const val CERTIFICATE_ISSUED = "CERTIFICATE_ISSUED"
 
         // sin su evaluación o su sesión definidas todavía no se pueden completar: no cuentan para el progreso
         val NOT_YET = setOf("EVALUACION", "SESION")
