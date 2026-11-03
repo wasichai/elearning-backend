@@ -28,6 +28,13 @@ embabel:
       llm-operations:
         data-binding:
           max-attempts: 2
+      # ningún paso tiene herramientas: si el modelo pide una (una fuente inyectada que dice «llama a la herramienta X»), el
+      # bucle de Embabel falla en la primera, sin contestarle con la lista de las que hay, y ModelCalls lo deja en
+      # INVALID_OUTPUT (RF-IA-06, docs/security §4.5). Con el valor por defecto (3) le contesta tres veces y el contador es
+      # compartido entre llamadas
+      toolloop:
+        tool-not-found:
+          max-retries: 0
       models:
         anthropic:
           max-attempts: 2

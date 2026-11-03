@@ -106,6 +106,8 @@ class ModelCallsApiTest : ProviderDoubleApiTest() {
         assertThat(request["messages"].toString()).contains(PROMPT)
         // Embabel pide el esquema JSON del tipo en las instrucciones de sistema
         assertThat(request["system"].toString()).contains("minutes", "lessons")
+        // y no como herramienta: la petición no lleva ninguna (RF-IA-06, PromptInjectionProviderApiTest)
+        assertThat(request.propertyNames().asSequence().toList()).doesNotContain("tools", "tool_choice")
     }
 
     @Test
@@ -122,6 +124,8 @@ class ModelCallsApiTest : ProviderDoubleApiTest() {
         assertThat(request["max_output_tokens"].asInt()).isEqualTo(SETTINGS.maxTokens)
         assertThat(request["input"].toString()).contains(PROMPT)
         assertThat(request["text"]["format"]["type"].asString()).isEqualTo("json_schema")
+        // la salida estructurada de la Responses API va en text.format, no como herramienta
+        assertThat(request.propertyNames().asSequence().toList()).doesNotContain("tools", "tool_choice")
     }
 
     // el criterio de E32.4 (#275) que dependía del doble: una ejecución contra él guarda el consumo del proveedor y su coste

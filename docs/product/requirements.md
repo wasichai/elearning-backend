@@ -357,6 +357,8 @@ el cuándo, en [`roadmap.md`](roadmap.md).
   de las fuentes es dato no confiable.
   _Aceptación:_ prueba con una fuente que contiene instrucciones inyectadas: no cambia herramientas, permisos ni
   estado editorial.
+  La prueba es `PromptInjectionProviderApiTest` (E33.7, [#284](https://github.com/wasichai/elearning-backend/issues/284)),
+  contra el doble HTTP de Anthropic y de OpenAI; qué amenaza cubre cada aserción, en `docs/security` §4.5.
 - **RF-IA-07** · F5 · planificado — Permisos separados para generar, validar, aprobar y publicar.
   _Aceptación:_ un usuario que solo puede generar recibe `403` al aprobar.
   _Avance:_ acciones declaradas `GENERAR` (CREADOR) y `VALIDAR` (REVISOR) sobre `version_curso` y `AiPermissions`
