@@ -120,7 +120,7 @@ Respuesta 200 `CourseDetail` = todos los campos de `CourseSummary` (salvo `nextO
     "totalHours": 216
   },
   "credits": {
-    "system": "ECTS", // "ECTS" | "SCH" | null (NINGUNO)
+    "system": "ECTS", // "ECTS" | "SCH" | "PE_CREDITO" | null (NINGUNO)
     "approved": null, // número solo con una aprobación vigente (RF-CRE-08)
     "approval": null, // { credits, policyId, policyVersion, approvingBody, documentReference, documentDate, approvedAt } o null
     "proposal": {
@@ -858,3 +858,29 @@ CreditApproval | null }`.
 - En el catálogo, `credits.approved` y `credits.approval` (`{ "credits", "policyId", "policyVersion", "approvingBody",
 "documentReference", "documentDate", "approvedAt" }`) solo existen con una aprobación vigente; tras una revocación vuelven
   a `null` en el refresco siguiente de la proyección.
+
+### Políticas de crédito (RF-CRE-07, ADR-0036)
+
+| Método | Ruta                                         | Resultado                                                     |
+| ------ | -------------------------------------------- | ------------------------------------------------------------- |
+| GET    | `/api/lms/credits/policies`                  | `?jurisdiction=&system=&status=&program=` → `CreditPolicy[]`  |
+| GET    | `/api/lms/credits/policies/{id}`             | `CreditPolicy`                                                |
+| POST   | `/api/lms/credits/policies/{id}/publish`     | exige `PUBLICAR`; solo un borrador (`409`) → `CreditPolicy`   |
+| POST   | `/api/lms/credits/policies/{id}/retire`      | exige `PUBLICAR`; solo una publicada (`409`) → `CreditPolicy` |
+| POST   | `/api/lms/credits/policies/{id}/new-version` | exige `CREATE`; `201` borrador con `number + 1`               |
+
+- El borrador se crea y se edita con la API de registros: `POST /api/objects/politica_credito/records` con `clave`,
+  `numero`, `nombre`, `sistema` (`ECTS`, `SCH`, `PE_CREDITO`), `metodo` (`ECTS_CARGA_TOTAL`, `US_SCH_34CFR600_2`,
+  `PE_LEY30220_HORAS_LECTIVAS`), `parametros` (JSON de texto o números; vacío, los de la norma), `jurisdiccion` (ISO
+  3166-1 alfa-2 o `EHEA`), `programa_codigo`, `fuente`, `fuente_url`, `vigente_desde`. Nace en `BORRADOR` (`409` si no);
+  un método de otro sistema, un parámetro desconocido o fuera de la norma (ECTS fuera de 25–30 h; PE bajo 16 h de teoría o
+  32 de práctica) o una jurisdicción inválida son `400`. Publicada o retirada no cambia ni se borra (`409`, también ADMIN).
+- Parámetros: ECTS `horasPorCredito`, `paso`; SCH `horasInstruccionPorSemana`, `horasFueraDeClasePorSemana`,
+  `semanasDeReferencia`, `paso`; PE `horasTeoriaPorCredito`, `horasPracticaPorCredito`, `paso`.
+- `CreditPolicy`: `{ "id", "key", "number", "name", "status", "system", "method", "parameters", "jurisdiction",
+"programCode", "source", "sourceUrl", "validFrom", "publishedBy", "publishedAt" }`. La leen el personal y la autoridad
+  académica; el estudiante no (`403`). Lo de otra organización no existe (`404`).
+- Una versión de curso se liga a una versión de política con `version_curso.politica_credito` (en borrador, como todo su
+  contenido). Propone con ella si es de su sistema; sin ella, con la de referencia (`pe-ley30220-horas-lectivas@1` para
+  `PE_CREDITO`); ligada a otro sistema, `proposal` es `null`. `VersionCredits.policyId` es la ligada. Aprobar exige la
+  ligada `PUBLICADA` y de su sistema (`409`); la aprobación guarda `policyId` = `clave` y `policyVersion` = `numero`.

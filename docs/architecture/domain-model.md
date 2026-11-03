@@ -153,9 +153,21 @@ publicarla avisa a quien cursa otra versión del curso con su matrícula `ACTIVA
 al leer a partir de las horas y de la política, y la respuesta dice «propuestos», con sistema, método, parámetros, fuente y
 versión de la política. Los **aprobados** son un acto registrado en `aprobacion_creditos`.
 
+**`politica_credito`** (CreditPolicy) — F6, RF-CRE-07, [ADR-0036](../adr/0036-politicas-de-credito-versionadas-en-datos.md).
+`clave · TEXT · requerido` · `numero · INTEGER · requerido` · `nombre · TEXT` · `estado · ENUM(BORRADOR, PUBLICADA,
+RETIRADA)` · `sistema · ENUM sistema_credito` · `metodo · ENUM(ECTS_CARGA_TOTAL, US_SCH_34CFR600_2,
+PE_LEY30220_HORAS_LECTIVAS)` · `parametros · LONG_TEXT · JSON` · `jurisdiccion · TEXT · ISO 3166-1 alfa-2 o EHEA` ·
+`programa_codigo · TEXT` · `fuente · TEXT` · `fuente_url · URL` · `vigente_desde · DATE` · `publicada_por · UUID` ·
+`publicada_en · DATETIME`; `uniqueConstraints: [[clave, numero]]`. La institución es la organización.
+Invariantes: nace y se edita en borrador; publicada o retirada no cambia ni se borra; su estado solo lo cambian publicar y
+retirar (`PUBLICAR`) [guarda + comando]; el método es de su sistema y sus parámetros, los de la norma (ECTS 25–30 h, PE
+desde 16/32 h) [guarda]. `version_curso.politica_credito` (relación opcional, contenido de la versión) nombra la versión
+de política con la que propone; sin ella, la de referencia de su sistema.
+
 **`aprobacion_creditos`** (CreditApproval) — F6, RF-CRE-08, [ADR-0035](../adr/0035-aprobacion-de-creditos-por-una-autoridad-academica.md).
 `appendOnly` y `apiOnly`.
-`version_curso · RELATION → version_curso · requerido` · `tipo · ENUM(APROBACION, REVOCACION) · requerido` · `sustituye · UUID
+`version_curso · RELATION → version_curso · requerido` · `politica_credito · RELATION → politica_credito · la aplicada, si
+no es la de referencia` · `tipo · ENUM(APROBACION, REVOCACION) · requerido` · `sustituye · UUID
 · la aprobación que revoca` · instantánea de la política y del cálculo: `sistema · ENUM sistema_credito` · `politica_id ·
 TEXT` · `politica_version · TEXT` · `metodo · TEXT` · `parametros · LONG_TEXT · JSON` · `fuente · TEXT` · `horas_totales ·
 DECIMAL` · `creditos_calculados · DECIMAL` · `creditos_propuestos · DECIMAL` · `creditos_aprobados · DECIMAL` · `motivo ·
