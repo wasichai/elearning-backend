@@ -292,10 +292,10 @@ el cuándo, en [`roadmap.md`](roadmap.md).
   _Aceptación:_ pruebas con los manuales de SRTM (profundidad 1) y SGSPE (profundidad 2).
   _Avance:_ el analizador y la importación se prueban con fragmentos propios, con `leveloffset`, ciclos y defectos sembrados
   ([#207](https://github.com/wasichai/elearning-backend/pull/207), [#213](https://github.com/wasichai/elearning-backend/pull/213)); falta la comprobación manual documentada con los manuales reales (ADR-0018).
-- **RF-IMP-03** · F4 · planificado — Trazabilidad de cada elemento a `repositorio@sha:ruta#ancla`.
+- **RF-IMP-03** · F4 · implementado ([#213](https://github.com/wasichai/elearning-backend/pull/213), [#263](https://github.com/wasichai/elearning-backend/issues/263)) — Trazabilidad de cada elemento a `repositorio@sha:ruta#ancla`.
   _Aceptación:_ toda unidad propuesta enlaza su origen exacto.
-  _Avance:_ cada lección propuesta lleva `referencia_fuente` = `repo@sha:ruta#ancla` ([#213](https://github.com/wasichai/elearning-backend/pull/213)); `unidad` aún no tiene
-  campo de traza: la del capítulo va en su lección.
+  _Cumplimiento:_ cada unidad propuesta lleva en `referencia_fuente` la traza de su capítulo y cada lección la de su sección;
+  se congelan con la versión, la copia las lleva y las diferencias las comparan (`ImportApiTest`, `VersionDiffApiTest`).
 - **RF-IMP-04** · F4 · implementado ([#207](https://github.com/wasichai/elearning-backend/pull/207), [#213](https://github.com/wasichai/elearning-backend/pull/213)) — Informe de importación con includes, imágenes, enlaces y referencias faltantes
   o rotos.
   _Aceptación:_ una fuente con defectos sembrados los reporta todos.

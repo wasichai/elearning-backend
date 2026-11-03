@@ -143,6 +143,29 @@ class JobQueue(
             .one()
             .awaitSingleOrNull()
 
+    // los trabajos de este tipo que pidió esta persona, el más reciente primero; los terminados duran lms.jobs.retention
+    suspend fun requestedBy(
+        organization: UUID,
+        type: String,
+        requester: UUID,
+        limit: Int,
+    ): List<JobStatus> =
+        db
+            .sql(
+                """
+                SELECT id, tipo, datos::text AS datos, estado, intentos, max_intentos, error, resultado::text AS resultado, creado_en, terminado_en
+                FROM lms.trabajo WHERE organizacion_id = :org AND tipo = :type AND solicitante = :requester
+                ORDER BY creado_en DESC, id LIMIT :limit
+                """.trimIndent(),
+            ).bind("org", organization)
+            .bind("type", type)
+            .bind("requester", requester)
+            .bind("limit", limit)
+            .map { row, _ -> status(row) }
+            .all()
+            .collectList()
+            .awaitSingle()
+
     // reclama hasta limit trabajos de estos tipos: los encolados que ya tocan y los en curso cuyo reclamo caducó. cada
     // reclamo cuenta como un intento
     suspend fun claim(

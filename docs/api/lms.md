@@ -566,8 +566,8 @@ en borrador.
 `StudioVersion`: `{ "id", "number", "status", "course": { "id", "code", "title" }, "authorId", "reviewerId": null,
 "updatedAt", "openComments": 2 }`. `status`: `BORRADOR` · `EN_REVISION` · `APROBADA` · `PUBLICADA` · `RETIRADA`.
 
-`StudioVersionDetail` = `StudioVersion` más `units`: `[{ "id", "order", "title", "lessons": [{ "id", "order", "title", "type",
-"sourceRef": null, "hasAssessment": false, "resources": 1 }] }]`, `comments: ReviewComment[]`, `decisions: ReviewDecision[]`.
+`StudioVersionDetail` = `StudioVersion` más `units`: `[{ "id", "order", "title", "sourceRef": null, "lessons": [{ "id", "order",
+"title", "type", "sourceRef": null, "hasAssessment": false, "resources": 1 }] }]`, `comments: ReviewComment[]`, `decisions: ReviewDecision[]`.
 
 ### Bandeja del revisor
 
@@ -619,6 +619,7 @@ en borrador.
 | ------ | -------------------------------- | ---------------------------------------------------------------------------------- |
 | GET    | `/api/lms/studio/import/sources` | orígenes permitidos → `[{ "repository": "owner/repo", "sha": null }]`              |
 | POST   | `/api/lms/studio/import`         | `{ "source": "owner/repo@sha:ruta/maestro.adoc", "courseId" }` → `202` `ImportJob` |
+| GET    | `/api/lms/studio/import`         | mis trabajos de importación, el más reciente primero → `[ImportJob]`               |
 | GET    | `/api/lms/studio/import/{id}`    | `ImportJob`                                                                        |
 
 - Importar (y ver los orígenes) exige `CREATE` sobre `version_curso`, `unidad` y `leccion` (`403`). `source` es un archivo de un
@@ -632,7 +633,11 @@ en borrador.
   devuelve ese trabajo (`202`), sin otro borrador; terminado, importar otra vez es otro trabajo. Con
   `lms.jobs.max-active-per-requester` (5) trabajos pendientes o en curso, entre importaciones y generaciones, uno más es `429`
   con `Retry-After` ([ADR-0022](../adr/0022-limites-y-ciclo-de-vida-de-los-trabajos.md)).
-- `ImportJob`: `{ "id", "status": "PENDIENTE" | "EN_CURSO" | "HECHO" | "FALLIDO", "error": null, "versionId": null, "report": null }`.
+- `GET /api/lms/studio/import` lista a lo sumo 50 trabajos de importación de quien llama, pendientes, en curso y terminados aún
+  retenidos, el más reciente primero. Pide los mismos permisos que importar (`403`) y nunca muestra los de otra persona,
+  tampoco al administrador. Sirve para que la interfaz no pierda de vista una importación al recargar.
+- `ImportJob`: `{ "id", "status": "PENDIENTE" | "EN_CURSO" | "HECHO" | "FALLIDO", "error": null, "versionId": null, "report": null,
+"source": "owner/repo@sha:ruta", "courseId", "createdAt", "finishedAt": null }`.
   `error` es el motivo de `FALLIDO` (o el último fallo pasajero mientras se reintenta). Con `HECHO`, `versionId` es la versión
   nueva del curso y `report`: `{ "source", "files", "includes", "sections", "images", "units", "lessons", "problemCount",
 "problems": [{ "kind", "origin": "owner/repo@sha:ruta", "line", "detail", "severity" }], "problemsBySeverity": { "GAP": 1, "CHECK": 4 } }`
@@ -645,7 +650,8 @@ en borrador.
   problemas, también los que la lista no muestra; en un informe guardado antes de que existiera, cuenta los de la lista.
 - El resultado es siempre una versión `BORRADOR` nueva del curso (número siguiente), con `autor_id` de quien la pidió y la
   duración y la modalidad de la última versión: una unidad por capítulo (sección de nivel 1, tras `leveloffset`) y una lección
-  `LECTURA` por sección de nivel 2, con su título y `sourceRef` (`owner/repo@sha:ruta#ancla`); un capítulo sin secciones lleva
+  `LECTURA` por sección de nivel 2, cada una con su título y su `sourceRef` (`owner/repo@sha:ruta#ancla`, en
+  `referencia_fuente`), que se congela con la versión y pasa a sus copias; un capítulo sin secciones lleva
   una lección con su propio título. **Sin el texto del manual** (ADR-0018 §6) y **nunca publica**. Falla (`FALLIDO`, sin
   borrador) si el maestro no existe, el origen dejó de estar permitido, el curso desapareció, la fuente pasa de
   `lms.importer.max-files` archivos o quien la pidió ya no está habilitado o perdió alguno de los permisos de arriba antes de

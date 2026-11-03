@@ -85,6 +85,11 @@ class ImportApiTest : ClassroomApiTestSupport() {
 
         val detail = ok(call(creator, "/api/lms/studio/versions/$versionId"))
         assertEquals(listOf("Instalación", "Configuración"), detail["units"].values().map { it["title"].asString() })
+        // RF-IMP-03: cada unidad enlaza su capítulo, con su ancla explícita o la que Asciidoctor le generaría
+        assertEquals(
+            listOf("acme/manuales@$SHA:capitulos/uno.adoc#instalar", "acme/manuales@$SHA:capitulos/dos.adoc#_configuración"),
+            detail["units"].values().map { it["sourceRef"].asString() },
+        )
         val install = detail["units"][0]["lessons"].values().toList()
         assertEquals(listOf("Requisitos previos", "Pasos"), install.map { it["title"].asString() })
         assertEquals("acme/manuales@$SHA:capitulos/uno.adoc#_requisitos_previos", install[0]["sourceRef"].asString())
@@ -107,6 +112,21 @@ class ImportApiTest : ClassroomApiTestSupport() {
                 }
         assertTrue(written.none { BODY in it }, written.toString())
         assertTrue(versionId in ok(call(creator, "/api/lms/studio/versions")).values().map { it["id"].asString() })
+    }
+
+    // la traza de la unidad es parte de la versión: la copia la lleva y nace igual a su origen
+    @Test
+    fun `a copy of the imported draft keeps the trace of each unit`() {
+        val course = courseId()
+        val versionId = imported(courseId = course)["versionId"].asString()
+
+        val (status, copy) = call(creator, "/api/lms/studio/courses/$course/versions", mapOf("fromVersionId" to versionId))
+
+        assertEquals(HttpStatus.CREATED, status, copy.toString())
+        val traces = { detail: JsonNode -> detail["units"].values().map { it["sourceRef"].asString() } }
+        assertEquals(traces(ok(call(creator, "/api/lms/studio/versions/$versionId"))), traces(copy!!))
+        val diff = ok(call(creator, "/api/lms/studio/versions/${copy["id"].asString()}/diff"))
+        assertEquals(listOf("SAME", "SAME"), diff["units"].values().map { it["change"].asString() })
     }
 
     // M2 de #216: cada clic no es un trabajo ni un borrador más
@@ -321,6 +341,42 @@ class ImportApiTest : ClassroomApiTestSupport() {
         }
         assertEquals(HttpStatus.NOT_FOUND, call(creator, "/api/lms/studio/import/${UUID.randomUUID()}").first)
         assertEquals(HttpStatus.UNAUTHORIZED, call(null, path).first)
+    }
+
+    // E30.2: al recargar, la interfaz recupera sus importaciones; las de otra persona nunca aparecen
+    @Test
+    fun `who imports lists their own import jobs, the newest first, with source, course and dates`() {
+        val course = courseId()
+        val first = imported(source = "acme/manuales@$SHA:ciclo/raiz.adoc", courseId = course)
+        val (_, waiting) = start(creator, "acme/manuales@$SHA:manual.adoc", course)
+
+        val listed = ok(call(creator, "/api/lms/studio/import")).values().toList()
+
+        val ids = listed.map { it["id"].asString() }
+        assertTrue(ids.indexOf(waiting!!["id"].asString()) < ids.indexOf(first["id"].asString()), ids.toString())
+        val newest = listed.first { it["id"].asString() == waiting["id"].asString() }
+        assertEquals("PENDIENTE", newest["status"].asString())
+        assertEquals("acme/manuales@$SHA:manual.adoc", newest["source"].asString())
+        assertEquals(course, newest["courseId"].asString())
+        assertNotNull(newest["createdAt"].asString())
+        assertTrue(newest.lacks("finishedAt"))
+        val done = listed.first { it["id"].asString() == first["id"].asString() }
+        assertEquals("HECHO", done["status"].asString())
+        assertNotNull(done["finishedAt"].asString())
+        drain()
+    }
+
+    @Test
+    fun `nobody else sees my import jobs in a list, and listing asks for the import permissions`() {
+        val (_, job) = start(creator, "acme/manuales@$SHA:manual.adoc", courseId())
+        drain()
+        val id = job!!["id"].asString()
+
+        val (adminStatus, adminList) = call(admin, "/api/lms/studio/import")
+        assertFalse(adminList.toString().contains(id), "$adminStatus $adminList")
+        assertEquals(HttpStatus.FORBIDDEN, call(newStudent(), "/api/lms/studio/import").first)
+        assertEquals(HttpStatus.FORBIDDEN, call(demoUser("revisor"), "/api/lms/studio/import").first)
+        assertEquals(HttpStatus.UNAUTHORIZED, call(null, "/api/lms/studio/import").first)
     }
 
     @TestConfiguration(proxyBeanMethods = false)
