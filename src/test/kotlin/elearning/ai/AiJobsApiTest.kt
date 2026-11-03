@@ -421,6 +421,7 @@ class AiJobsApiTest : LmsApiTest() {
         assertEquals(HttpStatus.TOO_MANY_REQUESTS, refused.status, refused.body.toString())
         assertEquals("3600", refused.retryAfter)
         assertEquals(HttpStatus.ACCEPTED, enqueue(course()).status, "el presupuesto es por curso")
+        assertTrue(refused.body.toString().contains("course-budget"), refused.body.toString())
     }
 
     private fun spend(course: UUID) =
@@ -460,19 +461,7 @@ class AiJobsApiTest : LmsApiTest() {
         suspend fun enqueue(
             @RequestBody body: StepBody,
         ): ResponseEntity<Map<String, String>> {
-            val id =
-                jobs.enqueue(
-                    AiStepRequest(
-                        step = AgentStep.ASSISTANT,
-                        courseId = body.courseId,
-                        objective = "Responder con lo pedido",
-                        inputs = mapOf("tag" to body.tag),
-                        sources = listOf(SourceDigest("acme/manuales@1:manual.adoc#intro", "ab".repeat(32))),
-                        model = ModelChoice("anthropic", MODEL, ModelSettings(maxTokens = 1_024)),
-                        promptVersion = "assistant@1",
-                        templateVersion = "none@1",
-                    ),
-                )
+            val id = jobs.enqueue(stepRequest(body.courseId, body.tag))
             return ResponseEntity.accepted().body(mapOf("id" to id.toString()))
         }
     }
@@ -500,6 +489,21 @@ class AiJobsApiTest : LmsApiTest() {
         val DEMO_ORGANIZATION: UUID = UUID.fromString("00000000-0000-0000-0000-000000000001")
         const val MODEL = "claude-test-model"
         const val ENQUEUE = "/api/test/ai/steps"
+
+        // el paso de prueba que encola EnqueueController; AiOrganizationBudgetApiTest calcula su clave
+        fun stepRequest(
+            course: UUID,
+            tag: String,
+        ) = AiStepRequest(
+            step = AgentStep.ASSISTANT,
+            courseId = course,
+            objective = "Responder con lo pedido",
+            inputs = mapOf("tag" to tag),
+            sources = listOf(SourceDigest("acme/manuales@1:manual.adoc#intro", "ab".repeat(32))),
+            model = ModelChoice("anthropic", MODEL, ModelSettings(maxTokens = 1_024)),
+            promptVersion = "assistant@1",
+            templateVersion = "none@1",
+        )
 
         // lo que responde cada llamada, en orden; sin nada más, una respuesta con su consumo
         val script = ConcurrentLinkedQueue<suspend (AiPrompt) -> AiReply>()

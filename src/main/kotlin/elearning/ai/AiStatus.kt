@@ -78,10 +78,10 @@ data class AiStatus(
             }
         }
 
-        // con presupuesto por curso (lms.ai.limits.course-budget), el modelo de cada paso del proveedor activo (el de su clave
-        // de lms.ai.max-tokens, o el por defecto, como AiStepModels) necesita una tarifa vigente en la moneda del presupuesto:
-        // sin ella su coste queda null, no suma en AgentExecutionStore.spent y el presupuesto no se cumpliría nunca (revisión de
-        // seguridad de la F5, #302)
+        // con presupuesto por curso o por organización (lms.ai.limits.course-budget u organization-budget, #368), el modelo de
+        // cada paso del proveedor activo (el de su clave de lms.ai.max-tokens, o el por defecto, como AiStepModels) necesita
+        // una tarifa vigente en la moneda del presupuesto: sin ella su coste queda null, no suma en AgentExecutionStore.spent ni
+        // en spentSince y el presupuesto no se cumpliría nunca (revisión de seguridad de la F5, #302)
         private fun budgetProblems(
             environment: Environment,
             provider: AiProvider,
@@ -89,7 +89,8 @@ data class AiStatus(
         ): List<String> {
             val binder = Binder.get(environment)
             val limits = binder.bindOrCreate("lms.ai.limits", AiLimits::class.java)
-            if (limits.courseBudget == null) return emptyList()
+            if (!limits.budgeted) return emptyList()
+            val setting = if (limits.courseBudget != null) "lms.ai.limits.course-budget" else "lms.ai.limits.organization-budget"
             val rates = binder.bindOrCreate("lms.ai", AiRates::class.java)
             val models = provider.models(environment)
             val steps = binder.bindOrCreate("lms.ai", AiStepSettings::class.java).maxTokens.keys
@@ -99,7 +100,7 @@ data class AiStatus(
                 .sorted()
                 .filter { rates.rateFor(provider.id, it, on)?.currency != limits.currency }
                 .map { model ->
-                    "lms.ai.limits.course-budget is set, but ${provider.id} '$model' has no rate in ${limits.currency} on $on in lms.ai.rates: " +
+                    "$setting is set, but ${provider.id} '$model' has no rate in ${limits.currency} on $on in lms.ai.rates: " +
                         "its cost would not count and the budget would never be spent"
                 }
         }

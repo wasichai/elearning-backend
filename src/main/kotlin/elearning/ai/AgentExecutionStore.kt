@@ -192,6 +192,23 @@ class AgentExecutionStore(
             .one()
             .awaitSingle()
 
+    // lo gastado en la organización en esta moneda desde since, entre todos sus cursos (#368): una consulta, con el índice de V31
+    suspend fun spentSince(
+        organization: UUID,
+        since: Instant,
+        currency: String,
+    ): BigDecimal =
+        db
+            .sql(
+                "SELECT COALESCE(sum(coste), 0) AS gastado FROM lms.ejecucion_agente " +
+                    "WHERE organizacion_id = :org AND iniciada_en >= :since AND coste IS NOT NULL AND moneda = :currency",
+            ).bind("org", organization)
+            .bind("since", since.atOffset(ZoneOffset.UTC))
+            .bind("currency", currency)
+            .map { row, _ -> row.get("gastado", BigDecimal::class.java)!! }
+            .one()
+            .awaitSingle()
+
     private fun <T : Any> DatabaseClient.GenericExecuteSpec.bindOrNull(
         name: String,
         value: Any?,

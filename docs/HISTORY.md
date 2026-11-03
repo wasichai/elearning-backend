@@ -23,6 +23,20 @@ Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este
 - La suite completa pasa sin claves: CI no tiene `ANTHROPIC_API_KEY` ni `OPENAI_API_KEY` y las pruebas de proveedor usan el
   doble HTTP. `requirements.md` y el roadmap (F5) dicen el estado real de cada RF-IA y RF-MED. Sin migraciones.
 
+## 2026-11-03 — Presupuesto de IA por organización y período ([#368](https://github.com/wasichai/elearning-backend/issues/368))
+
+- Hallazgo medio de la revisión de seguridad de la F5 (#302, docs/security §4.5 **D**): el presupuesto de IA era solo por
+  curso, y quien crea cursos estrenaba uno con cada curso nuevo. `lms.ai.limits.organization-budget` (opcional, en
+  `currency`) y `organization-budget-period` (`MONTH` por defecto o `DAY`, en UTC) acotan lo que gasta la organización entera
+  en cada período: superado, encolar es `429` con `Retry-After` hasta el período siguiente en cualquier curso, el paso ya en
+  cola falla sin reintento ni llamada y la opinión de consistencia se omite con `BUDGET_SPENT`. Lo ya resuelto por la clave
+  de idempotencia no cuenta (la opinión también lo mira ya antes del presupuesto). Con este presupuesto, como con el del
+  curso, cada modelo de paso necesita su tarifa o la aplicación no arranca.
+- Lo gastado desde el comienzo del período es una consulta (`AgentExecutionStore.spentSince`), solo con presupuesto
+  configurado, sobre el índice nuevo de **V31** (`ejecucion_agente_gasto`, solo índice). Pruebas: `AiOrganizationBudgetApiTest`
+  (encolar, al ejecutar, lo resuelto, la opinión), `AiStepKeyTest` (enlace y períodos), `AiStatusTest`. Docs: `docs/ai` §5,
+  §11 y §13, `docs/api/lms.md`, `docs/operations`, `docs/security` §4.5.
+
 ## 2026-11-03 — Prueba de inyección de instrucciones: E33.7 ([#284](https://github.com/wasichai/elearning-backend/issues/284))
 
 - `PromptInjectionProviderApiTest` (Anthropic y OpenAI, contra el doble HTTP): una fuente con órdenes inyectadas (publicar y

@@ -11,6 +11,7 @@ import org.springframework.boot.context.properties.bind.Binder
 import org.springframework.boot.context.properties.source.MapConfigurationPropertySource
 import java.math.BigDecimal
 import java.time.Duration
+import java.time.Instant
 import java.util.UUID
 
 // la clave de idempotencia de un paso (ADR-0033 §5, docs/ai §5), la clasificación de los errores del proveedor (§6) y los
@@ -123,5 +124,39 @@ class AiStepKeyTest {
         assertEquals(Duration.ofHours(1), limits.budgetRetryAfter)
         assertNull(bind(mapOf("lms.ai.limits.course-budget" to "")).courseBudget)
         assertThrows<Exception> { bind(mapOf("lms.ai.limits.max-active-per-organization" to "0")) }
+        // sin presupuesto de la organización, el período es el mes
+        assertNull(limits.organizationBudget)
+        assertEquals(BudgetPeriod.MONTH, limits.organizationBudgetPeriod)
+        assertTrue(limits.budgeted)
+        assertFalse(bind(emptyMap()).budgeted)
+    }
+
+    @Test
+    fun `the organization budget binds with its period and must not be negative`() {
+        fun bind(values: Map<String, String>) = Binder(MapConfigurationPropertySource(values)).bindOrCreate("lms.ai.limits", AiLimits::class.java)
+
+        val limits = bind(mapOf("lms.ai.limits.organization-budget" to "200", "lms.ai.limits.organization-budget-period" to "DAY"))
+        assertEquals(0, BigDecimal("200").compareTo(limits.organizationBudget))
+        assertEquals(BudgetPeriod.DAY, limits.organizationBudgetPeriod)
+        assertTrue(limits.budgeted)
+        assertNull(bind(mapOf("lms.ai.limits.organization-budget" to "")).organizationBudget)
+        assertThrows<Exception> { bind(mapOf("lms.ai.limits.organization-budget" to "-1")) }
+        assertThrows<Exception> { bind(mapOf("lms.ai.limits.organization-budget-period" to "YEAR")) }
+    }
+
+    // el período, en UTC: una ejecución cuenta en el que empezó, y lo gastado vuelve a cero al empezar el siguiente
+    @Test
+    fun `a budget period starts at midnight UTC of its day or of the first of its month`() {
+        val at = Instant.parse("2026-12-31T23:59:59.5Z")
+        assertEquals(Instant.parse("2026-12-01T00:00:00Z"), BudgetPeriod.MONTH.start(at))
+        assertEquals(Instant.parse("2027-01-01T00:00:00Z"), BudgetPeriod.MONTH.next(at))
+        assertEquals(Instant.parse("2026-12-31T00:00:00Z"), BudgetPeriod.DAY.start(at))
+        assertEquals(Instant.parse("2027-01-01T00:00:00Z"), BudgetPeriod.DAY.next(at))
+        // el primer instante del período es suyo
+        val first = Instant.parse("2027-02-01T00:00:00Z")
+        assertEquals(first, BudgetPeriod.MONTH.start(first))
+        assertEquals(Instant.parse("2027-03-01T00:00:00Z"), BudgetPeriod.MONTH.next(first))
+        // las 23:30 del 3 en UTC−3 ya son el 4 en UTC: el período es el del 4
+        assertEquals(Instant.parse("2026-11-04T00:00:00Z"), BudgetPeriod.DAY.start(Instant.parse("2026-11-03T23:30:00-03:00")))
     }
 }
