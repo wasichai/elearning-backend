@@ -201,6 +201,34 @@ class SourceScannerTest {
         assertThat(adapters.filter { it.rule == Rule.CONCRETE_PROVIDER } + comment).isEmpty()
     }
 
+    // ADR-0033 §4: Embabel vive en elearning.ai, ni siquiera en los demás adaptadores; fuera, cada paso es su interfaz pequeña
+    @Test
+    fun `embabel outside elearning ai is caught, imported or fully qualified, even in another adapter`() {
+        val path = "src/main/kotlin/elearning/media/Narration.kt"
+        val violations =
+            scan(
+                path,
+                """
+                package elearning.media
+
+                import com.embabel.agent.api.common.Ai
+                import com.embabel.agent.api.models.AnthropicModels
+
+                class Narration(val ai: com.embabel.agent.api.common.Ai)
+                """,
+            )
+        val inside =
+            listOf("elearning.ai", "elearning.ai.anthropic").flatMap { pkg ->
+                scan("src/main/kotlin/${pkg.replace('.', '/')}/Step.kt", "package $pkg\n\nimport com.embabel.agent.api.common.Ai\n")
+            }
+        val comment = scan("src/main/kotlin/elearning/authoring/Port.kt", "package elearning.authoring\n\n// nunca com.embabel.agent aquí\nclass Port")
+
+        assertThat(violations).allMatch { it.rule == Rule.EMBABEL }
+        assertThat(violations.map { it.line }).containsExactly(3, 4, 6)
+        assertThat(violations.first().toString()).startsWith("$path:3: usa com.embabel.agent.api.common.Ai")
+        assertThat(inside + comment).isEmpty()
+    }
+
     // ADR-0018 §7: la fuente de un documento no es de confianza; el único proceso externo es el generador, en su adaptador
     @Test
     fun `an external process outside the renderer adapter is caught`() {

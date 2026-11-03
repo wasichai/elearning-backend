@@ -1,0 +1,3 @@
+# compuerta de los proveedores de IA (ADR-0033 §2): corre antes de crear el contexto
+org.springframework.boot.EnvironmentPostProcessor=\
+  elearning.ai.AiProviderGate
