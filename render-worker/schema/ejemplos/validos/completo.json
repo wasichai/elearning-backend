@@ -1,0 +1,53 @@
+{
+  "version": 1,
+  "idioma": "es",
+  "titulo": "Variables en Kotlin",
+  "objetivos": ["Declarar valores con val y var", "Distinguir lo inmutable de lo mutable"],
+  "tipografia": "source-serif-4",
+  "salida": { "resolucion": "1280x720", "fps": 25 },
+  "secciones": [
+    {
+      "id": "portada",
+      "titulo": "Portada",
+      "segundos": 4,
+      "diapositiva": { "tipo": "portada", "titulo": "Variables en Kotlin", "subtitulo": "Unidad 1 · Lección 2" },
+      "narracion": "En esta lección veremos cómo se declaran las variables.",
+      "subtitulos": [{ "desde": 0, "hasta": 3.5, "texto": "En esta lección veremos cómo se declaran las variables." }],
+      "trazas": [{ "doc": "unidad-1/leccion-2.adoc", "ancla": "_variables" }]
+    },
+    {
+      "id": "ideas",
+      "titulo": "Ideas clave",
+      "segundos": 6,
+      "diapositiva": { "tipo": "vinetas", "titulo": "Ideas clave", "vinetas": ["val no se reasigna", "var sí", "Prefiere val <siempre que puedas>"] },
+      "narracion": "Un val no se reasigna; un var, sí.",
+      "subtitulos": [
+        { "desde": 0, "hasta": 2.5, "texto": "Un val no se reasigna;" },
+        { "desde": 2.5, "hasta": 5, "texto": "un var, sí." }
+      ]
+    },
+    {
+      "id": "diagrama",
+      "titulo": "Diagrama",
+      "segundos": 4,
+      "diapositiva": {
+        "tipo": "imagen",
+        "imagen": "d60c7fed88016bb7f9f1fac1d993f2a0bca05586705e44b95830a66eba202725",
+        "alt": "Una caja con la etiqueta val y otra con la etiqueta var",
+        "pie": "Figura 1. val y var"
+      }
+    },
+    {
+      "id": "ejemplo",
+      "titulo": "Ejemplo",
+      "segundos": 5,
+      "diapositiva": { "tipo": "codigo", "titulo": "Ejemplo", "lenguaje": "kotlin", "codigo": "val nombre = \"Ada\"\nvar edad = 36\nedad += 1" }
+    },
+    {
+      "id": "cierre",
+      "titulo": "Cierre",
+      "segundos": 3,
+      "diapositiva": { "tipo": "cierre", "titulo": "Gracias", "mensaje": "Siguiente: funciones" }
+    }
+  ]
+}

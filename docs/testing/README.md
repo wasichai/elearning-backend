@@ -92,6 +92,25 @@ se envía, la deserialización, los errores y el consumo de tokens. La lógica d
 rechazo de salida inválida, permisos) y el desarrollo sin claves usan el determinista, que no habla HTTP ni pasa por
 Embabel.
 
+### Trabajador de render
+
+`render-worker/` (ADR-0040) tiene sus propias pruebas, con `node:test` y sin dependencias de prueba salvo `ajv`
+(`cd render-worker && yarn install --frozen-lockfile && yarn test`):
+
+- **Esquema**: cada ejemplo de `render-worker/schema/ejemplos/` da lo mismo con zod (lo que usa el trabajador) y con ajv
+  sobre `guion.schema.json`; los `regla-*` cumplen el esquema y solo los rechazan las reglas. El backend prueba los mismos
+  ejemplos en `ScriptSchemaTest`.
+- **Servidor**, con un renderizador y un `ffprobe` simulados: secreto, rechazo de una petición con código, HTML o una URL
+  (nunca llega al renderizador), imágenes que no son PNG/JPEG/WebP o no coinciden con su sha256, `PUT` idempotente por
+  trabajo (también a la vez), `409` con otro guion, `503` lleno, `413`, `422`, descarga y borrado.
+- **Diapositivas**: el texto que parece HTML o código se pinta escapado (`react-dom/server`).
+- **Render de verdad** (`test/render.test.mjs`) con Remotion y su `ffprobe`: solo con `RENDER_WORKER_TEST_RENDER=required`
+  (CI, tras `yarn ensure-browser`) o `RENDER_WORKER_BROWSER=<Chrome del sistema>`; si no, se salta.
+
+En el backend, `VideoRenderApiTest` usa un WireMock con retardo en lugar del trabajador (los renders de más esperan en la
+cola mientras la API responde) y `RenderWorkerClientTest` los errores de la frontera (trabajador inexistente, secreto,
+`4xx`, `503`, tiempo límite).
+
 ### Arquitectura
 
 Prueba de escaneo de fuentes en `src/test` que falla si en `src/main`:
@@ -130,6 +149,9 @@ GITHUB_ACTOR=$(gh api user -q .login) GITHUB_TOKEN=$(gh auth token) ./gradlew bu
 
 # backend: integración (Docker o WASICHAI_TEST_DB_*)
 GITHUB_ACTOR=$(gh api user -q .login) GITHUB_TOKEN=$(gh auth token) ./gradlew integrationTest
+
+# trabajador de render (solo si se toca render-worker/)
+cd render-worker && yarn install --frozen-lockfile && yarn test && cd ..
 
 # aprovisionamiento
 python3 model/apply.py --validate-only

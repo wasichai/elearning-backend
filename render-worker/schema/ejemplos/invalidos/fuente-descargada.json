@@ -1,0 +1,7 @@
+{
+  "version": 1,
+  "idioma": "es",
+  "titulo": "Una fuente que habría que descargar",
+  "tipografia": "https://fonts.example.com/fuente.woff2",
+  "secciones": [{ "id": "portada", "titulo": "Portada", "segundos": 3, "diapositiva": { "tipo": "portada", "titulo": "Hola" } }]
+}

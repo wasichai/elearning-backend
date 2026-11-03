@@ -24,9 +24,11 @@ import org.springframework.test.context.TestPropertySource
 import tools.jackson.databind.json.JsonMapper
 import wasichai.core.common.RetryLaterException
 import wasichai.test.WasichaiIntegrationTest
+import java.time.Duration
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CountDownLatch
+import java.util.concurrent.Semaphore
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.concurrent.thread
@@ -348,6 +350,66 @@ class JobQueueTest : WasichaiIntegrationTest() {
         assertEquals(JobState.DONE, status(id).state)
     }
 
+    // ADR-0040 §3: un tipo con límite de concurrencia no se reclama mientras tenga tantos en curso, contando todas las
+    // réplicas; los demás esperan en QUEUED sin gastar intentos
+    @Test
+    fun `a type with a concurrency limit keeps the rest queued, without spending attempts, on every replica`() {
+        val ids = runBlocking { (1..3).map { queue.enqueue(org, CAPPED) } }
+        val other = JobRunner(queue, properties, listOf(Handlers.capped()))
+        val worker = thread { drain() }
+        try {
+            assertTrue(cappedStarted.tryAcquire(30, TimeUnit.SECONDS), "el trabajo no empezó")
+            assertEquals(listOf(JobState.RUNNING, JobState.QUEUED, JobState.QUEUED), ids.map { status(it).state }.sorted())
+            assertEquals(listOf(0, 0, 1), ids.map { status(it).attempts }.sorted())
+            assertEquals(0, runBlocking { other.runOnce() }, "otra réplica tampoco reclama uno más")
+            assertTrue(runBlocking { queue.claimCapped(CAPPED, 1, 5) }.isEmpty())
+        } finally {
+            cappedRelease.release(3)
+            worker.join(TimeUnit.SECONDS.toMillis(60))
+        }
+        assertEquals(List(3) { JobState.DONE }, ids.map { status(it).state })
+        assertEquals(List(3) { 1 }, ids.map { status(it).attempts }, "esperar en la cola no gasta intentos")
+        assertEquals(1, cappedPeak.get(), "nunca más de uno a la vez")
+    }
+
+    @Test
+    fun `a capped claim takes only what fits and ignores stale claims`() {
+        val type = "test.capped-claim-${UUID.randomUUID()}"
+        val ids = runBlocking { (1..4).map { queue.enqueue(org, type) } }
+
+        assertEquals(2, runBlocking { queue.claimCapped(type, 2, 5) }.size)
+        assertTrue(runBlocking { queue.claimCapped(type, 2, 5) }.isEmpty())
+        abandon(ids.first { status(it).state == JobState.RUNNING }, attempts = 1)
+        val retaken = runBlocking { queue.claimCapped(type, 2, 5) }
+        assertEquals(1, retaken.size, "el reclamo caducado no cuenta y se retoma: uno")
+        assertEquals(1, runBlocking { queue.claimCapped(type, 4, 1) }.size, "como mucho limit")
+        runBlocking { ids.forEach { queue.cancel(org, it) } }
+    }
+
+    // ADR-0040 §3: un manejador puede tener su propio tiempo límite, mayor que lms.jobs.timeout (2 s aquí)
+    @Test
+    fun `a handler with its own time limit may run longer than the queue's`() {
+        val id = runBlocking { queue.enqueue(org, PATIENT, maxAttempts = 1) }
+
+        drain()
+
+        assertEquals(JobState.DONE, status(id).state, status(id).error)
+    }
+
+    @Test
+    fun `a handler time limit longer than the lease does not start`() {
+        val handler =
+            object : JobHandler {
+                override val type = "test.too-patient"
+                override val timeout = properties.lease
+
+                override suspend fun handle(job: Job): String? = null
+            }
+
+        val error = assertThrows<IllegalArgumentException> { JobRunner(queue, properties, listOf(handler)) }
+        assertTrue(error.message!!.startsWith("lms.jobs.lease must be longer than"), error.message)
+    }
+
     // vueltas hasta que no quede nada que reclamar
     private suspend fun JobRunner.drainAll() {
         while (true) {
@@ -390,6 +452,21 @@ class JobQueueTest : WasichaiIntegrationTest() {
         @Bean
         fun countHandler(): JobHandler = count()
 
+        @Bean
+        fun cappedHandler(): JobHandler = capped()
+
+        @Bean
+        fun patientHandler(): JobHandler =
+            object : JobHandler {
+                override val type = PATIENT
+                override val timeout: Duration = Duration.ofSeconds(10)
+
+                override suspend fun handle(job: Job): String? {
+                    delay(3_000)
+                    return null
+                }
+            }
+
         // se cancela a sí mismo, como lo haría quien lo pidió mientras corre, y lo ve antes de seguir
         @Bean
         fun cancellingHandler(queue: JobQueue): JobHandler =
@@ -409,6 +486,25 @@ class JobQueueTest : WasichaiIntegrationTest() {
             }
 
         companion object {
+            // uno a la vez; cada uno espera a que la prueba lo suelte. cappedPeak guarda cuántos llegó a haber a la vez
+            fun capped(): JobHandler =
+                object : JobHandler {
+                    override val type = CAPPED
+                    override val maxConcurrent = 1
+
+                    override suspend fun handle(job: Job): String? {
+                        val now = cappedRunning.incrementAndGet()
+                        cappedPeak.accumulateAndGet(now, ::maxOf)
+                        try {
+                            cappedStarted.release()
+                            check(cappedRelease.tryAcquire(60, TimeUnit.SECONDS)) { "never released" }
+                        } finally {
+                            cappedRunning.decrementAndGet()
+                        }
+                        return null
+                    }
+                }
+
             fun count(): JobHandler =
                 handler(COUNT) {
                     delay(5)
@@ -438,9 +534,15 @@ class JobQueueTest : WasichaiIntegrationTest() {
         const val COUNT = "test.count"
         const val BLOCKING = "test.blocking"
         const val CANCELLING = "test.cancelling"
+        const val CAPPED = "test.capped"
+        const val PATIENT = "test.patient"
 
         val calls = ConcurrentHashMap<UUID, AtomicInteger>()
         val blockingStarted = CountDownLatch(1)
         val blockingRelease = CountDownLatch(1)
+        val cappedStarted = Semaphore(0)
+        val cappedRelease = Semaphore(0)
+        val cappedRunning = AtomicInteger()
+        val cappedPeak = AtomicInteger()
     }
 }

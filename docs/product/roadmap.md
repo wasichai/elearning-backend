@@ -258,8 +258,8 @@ Remotion asíncrono con validación del artefacto.
 - [E36 Multimedia: guion, diapositivas y subtítulos (#292)](https://github.com/wasichai/elearning-backend/issues/292): #293 guion por secciones, #294 lo publicado sin el
   proveedor. Requisitos: RF-MED-01, RF-MED-04.
 - [E37 Multimedia: renderizado de vídeo (#295)](https://github.com/wasichai/elearning-backend/issues/295): #296 ADR del renderizador, #297 trabajador de render, #298
-  validación y previsualización. Requisitos: RF-MED-02, RF-MED-03. Bloqueada por la licencia de Remotion
-  ([#267](https://github.com/wasichai/elearning-backend/issues/267)).
+  validación y previsualización. Requisitos: RF-MED-02, RF-MED-03. Licencia de Remotion decidida en
+  [ADR-0039](../adr/0039-remotion-como-motor-de-render-con-licencia-por-despliegue.md) ([#267](https://github.com/wasichai/elearning-backend/issues/267)).
 - [E38 Cierre de la Fase 5 (#299)](https://github.com/wasichai/elearning-backend/issues/299): #300 unidad de demostración de extremo a extremo, #302 revisión de seguridad.
 
 **Dependencias.** F4 (flujo editorial, bandeja y publicación: la IA solo produce borradores para ese flujo).

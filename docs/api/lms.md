@@ -943,6 +943,36 @@ pasajero (almacenamiento, interrupción) vuelve a `PENDIENTE` hasta agotar `lms.
   `version_recurso` y `fuente_recurso`. Se descargan con `GET /api/objects/artefacto_generado/records/{id}/files/archivo`,
   siempre como adjunto. La API de registros no los escribe (`403`).
 
+## Render de vídeo (F5, RF-MED-02)
+
+Un guion de vídeo ([IA §12.1](../ai/README.md#121-el-guion-de-vídeo-esquema-1)) se renderiza en la cola con el trabajador
+de render ([ADR-0040](../adr/0040-renderizador-de-video-en-un-trabajador-node.md)). **Opcional y apagado por defecto**
+(`LMS_RENDER_ENABLED`): apagado, pedir un render es `409` (`Video rendering is not enabled in this deployment: …`).
+
+| Método | Ruta                                           | Resultado                                               |
+| ------ | ---------------------------------------------- | ------------------------------------------------------- |
+| POST   | `/api/lms/studio/resources/{id}/video-renders` | `{ "guion": … }` → `202` `VideoRenderJob` (`PENDIENTE`) |
+| GET    | `/api/lms/studio/video-renders/{id}`           | `VideoRenderJob`                                        |
+
+`VideoRenderJob`: `{ "id", "resourceId", "status": "PENDIENTE" | "EN_CURSO" | "HECHO" | "FALLIDO" | "CANCELADO", "attempts",
+"maxAttempts", "error", "durationSeconds", "video": { "sha256", "bytes" } | null, "subtitles": { "sha256", "bytes" } | null,
+"createdAt", "finishedAt" }`.
+
+- **Permisos**: las dos rutas exigen `CREATE` sobre `version_recurso` (`403`); el recurso se lee como quien pide (`404`) y
+  tiene que ser `VIDEO` (`409`). Un trabajo de otra persona es `404`, también para el administrador. Antes de ejecutarse se
+  vuelve a mirar que quien lo pidió siga pudiendo (ADR-0022).
+- **El guion** se valida antes de encolar contra el esquema y sus reglas, con `lms.render.max-seconds`: lo que no lo
+  cumple es `400` con un error por campo (`guion.secciones.0.diapositiva.html: is not a field of the script`) y no llega a
+  la cola. Hasta [#293](https://github.com/wasichai/elearning-backend/issues/293), un guion con diapositivas `imagen` es `400`.
+- **Una a la vez**: la misma persona, el mismo recurso y el mismo guion mientras el trabajo no termina devuelven ese
+  trabajo. Como mucho `lms.render.max-concurrent` renders en curso en todo el despliegue; los demás quedan `PENDIENTE`
+  (sin gastar intentos) y la API responde igual mientras tanto. El tope por persona es el de la cola (`429`).
+- **Errores**: el trabajador inexistente o inalcanzable (`The render worker at … cannot be reached …: check that the
+render-worker container is running and that LMS_RENDER_WORKER_URL points to it`), el secreto que no coincide, el guion
+  rechazado o el render imposible son `FALLIDO` en el primer intento; ocupado o un corte a mitad, `PENDIENTE` hasta agotar
+  `lms.jobs.max-attempts`. Guardar el vídeo como versión del recurso y validarlo con `ffprobe` llegan con
+  [#298](https://github.com/wasichai/elearning-backend/issues/298).
+
 ## Registro de ejecuciones de IA (F5, ADR-0033 §7)
 
 Cada llamada de un paso de la canalización deja una ejecución (`AgentRun`, RF-IA-03) en `lms.ejecucion_agente`. La escriben

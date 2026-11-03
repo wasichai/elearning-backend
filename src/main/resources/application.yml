@@ -147,6 +147,20 @@ lms:
       # cada generación (HTML y PDF por separado); por debajo de lms.jobs.timeout
       timeout: ${LMS_MEDIA_ASCIIDOCTOR_TIMEOUT:2m}
       max-bytes: ${LMS_MEDIA_ASCIIDOCTOR_MAX_BYTES:25MB}
+  # render de vídeo con Remotion en el trabajador render-worker/ (ADR-0039, ADR-0040, RF-MED-02). Opcional y apagado: así
+  # no hay manejador ni cliente HTTP y pedir un render es 409. Encendido, no arranca sin la URL y el secreto del trabajador,
+  # ni si wasichai.files.max-bytes es menor que max-bytes. Quien lo enciende responde de su licencia de Remotion (docs/operations)
+  render:
+    enabled: ${LMS_RENDER_ENABLED:false}
+    worker-url: ${LMS_RENDER_WORKER_URL:}
+    # el secreto compartido con el trabajador (su RENDER_WORKER_TOKEN), 32 caracteres o más; solo por entorno
+    worker-token: ${LMS_RENDER_WORKER_TOKEN:}
+    # de la petición al informe; lms.jobs.lease tiene que ser mayor
+    timeout: ${LMS_RENDER_TIMEOUT:30m}
+    # renders en curso a la vez entre todas las réplicas; los demás esperan en la cola sin gastar intentos
+    max-concurrent: ${LMS_RENDER_MAX_CONCURRENT:1}
+    max-seconds: ${LMS_RENDER_MAX_SECONDS:900}
+    max-bytes: ${LMS_RENDER_MAX_BYTES:256MB}
   # canalización editorial con IA (ADR-0033). sin claves no hay proveedor y cada paso usa su doble determinista
   ai:
     # con las dos claves, cuál usa la canalización: anthropic u openai. vacío: Anthropic. sin claves no cuenta

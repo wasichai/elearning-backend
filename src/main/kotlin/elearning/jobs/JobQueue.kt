@@ -6,6 +6,8 @@ import kotlinx.coroutines.reactor.awaitSingleOrNull
 import org.springframework.http.HttpStatus
 import org.springframework.r2dbc.core.DatabaseClient
 import org.springframework.stereotype.Repository
+import org.springframework.transaction.reactive.TransactionalOperator
+import org.springframework.transaction.reactive.executeAndAwait
 import wasichai.core.common.RetryLaterException
 import java.time.Clock
 import java.time.Duration
@@ -22,6 +24,7 @@ class JobQueue(
     private val db: DatabaseClient,
     private val properties: JobProperties,
     private val clock: Clock,
+    private val transactions: TransactionalOperator,
 ) {
     // el id del trabajo. con la misma clave en la misma organización y tipo, mientras el que ya estaba siga pendiente o en
     // curso, el de ese (ADR-0022): pedir dos veces lo mismo no hace dos trabajos. terminado, la clave queda libre.
@@ -209,6 +212,52 @@ class JobQueue(
             .collectList()
             .awaitSingle()
 
+    // como claim, para un tipo con límite de concurrencia (ADR-0040 §3): reclama como mucho los que faltan para tener max en
+    // curso, contando todas las réplicas (un reclamo caducado no cuenta: se retoma). los demás siguen en QUEUED sin gastar
+    // intentos. un candado de transacción por tipo ordena a las réplicas que reclaman a la vez: la segunda espera a que la
+    // primera confirme y su UPDATE, con una instantánea nueva, ya cuenta lo que esa reclamó
+    suspend fun claimCapped(
+        type: String,
+        max: Int,
+        limit: Int,
+    ): List<Job> {
+        require(max > 0 && limit > 0) { "max and limit must be positive" }
+        val now = now()
+        return transactions.executeAndAwait {
+            db
+                .sql("SELECT 1 AS locked FROM (SELECT pg_advisory_xact_lock(hashtext(:lock))) AS l")
+                .bind("lock", "lms.trabajo:$type")
+                .map { row, _ -> row.get("locked", Number::class.java)!!.toInt() }
+                .one()
+                .awaitSingle()
+            db
+                .sql(
+                    """
+                    UPDATE lms.trabajo SET estado = 'RUNNING', intentos = intentos + 1, reclamado_en = :now
+                    WHERE id IN (
+                        SELECT id FROM lms.trabajo
+                        WHERE tipo = :type
+                          AND ((estado = 'QUEUED' AND disponible_en <= :now) OR (estado = 'RUNNING' AND reclamado_en < :stale))
+                        ORDER BY disponible_en
+                        LIMIT GREATEST(0, LEAST(:limit, :max - (
+                            SELECT count(*) FROM lms.trabajo WHERE tipo = :type AND estado = 'RUNNING' AND reclamado_en >= :stale
+                        )))
+                        FOR UPDATE SKIP LOCKED
+                    )
+                    RETURNING id, organizacion_id, tipo, datos::text AS datos, intentos, max_intentos
+                    """.trimIndent(),
+                ).bind("now", now)
+                .bind("stale", now.minus(properties.lease))
+                .bind("type", type)
+                .bind("limit", limit)
+                .bind("max", max)
+                .map { row, _ -> job(row) }
+                .all()
+                .collectList()
+                .awaitSingle()
+        }
+    }
+
     // reclama hasta limit trabajos de estos tipos: los encolados que ya tocan y los en curso cuyo reclamo caducó. cada
     // reclamo cuenta como un intento
     suspend fun claim(
@@ -235,16 +284,8 @@ class JobQueue(
             .bind("stale", now.minus(properties.lease))
             .bind("types", types.toTypedArray())
             .bind("limit", limit)
-            .map { row, _ ->
-                Job(
-                    id = row.get("id", UUID::class.java)!!,
-                    organizationId = row.get("organizacion_id", UUID::class.java)!!,
-                    type = row.get("tipo", String::class.java)!!,
-                    payload = row.get("datos", String::class.java)!!,
-                    attempt = row.get("intentos", Number::class.java)!!.toInt(),
-                    maxAttempts = row.get("max_intentos", Number::class.java)!!.toInt(),
-                )
-            }.all()
+            .map { row, _ -> job(row) }
+            .all()
             .collectList()
             .awaitSingle()
     }
@@ -312,6 +353,16 @@ class JobQueue(
             .awaitSingle()
 
     private fun now(): OffsetDateTime = clock.instant().atOffset(ZoneOffset.UTC)
+
+    private fun job(row: Readable) =
+        Job(
+            id = row.get("id", UUID::class.java)!!,
+            organizationId = row.get("organizacion_id", UUID::class.java)!!,
+            type = row.get("tipo", String::class.java)!!,
+            payload = row.get("datos", String::class.java)!!,
+            attempt = row.get("intentos", Number::class.java)!!.toInt(),
+            maxAttempts = row.get("max_intentos", Number::class.java)!!.toInt(),
+        )
 
     private fun status(row: Readable) =
         JobStatus(

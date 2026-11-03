@@ -1,0 +1,7 @@
+{
+  "version": 1,
+  "idioma": "es",
+  "titulo": "Una resolución fuera de la lista",
+  "salida": { "resolucion": "3840x2160", "fps": 60 },
+  "secciones": [{ "id": "portada", "titulo": "Portada", "segundos": 3, "diapositiva": { "tipo": "portada", "titulo": "Hola" } }]
+}

@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "idioma": "es",
+  "titulo": "Una expresión en una diapositiva",
+  "secciones": [
+    {
+      "id": "portada",
+      "titulo": "Portada",
+      "segundos": 3,
+      "diapositiva": { "tipo": "portada", "titulo": "Hola", "estilo": "${process.exit(1)}", "import": "./malicioso.js" }
+    }
+  ]
+}
