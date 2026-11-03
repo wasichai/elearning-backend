@@ -127,6 +127,10 @@ class AiStepKeyTest {
         // sin presupuesto de la organización, el período es el mes
         assertNull(limits.organizationBudget)
         assertEquals(BudgetPeriod.MONTH, limits.organizationBudgetPeriod)
+        // el borrador de la opinión de consistencia, con el tope del análisis (#369)
+        assertEquals(400_000, limits.consistencyMaxChars)
+        assertEquals(1_000, bind(mapOf("lms.ai.limits.consistency-max-chars" to "1000")).consistencyMaxChars)
+        assertThrows<Exception> { bind(mapOf("lms.ai.limits.consistency-max-chars" to "0")) }
         assertTrue(limits.budgeted)
         assertFalse(bind(emptyMap()).budgeted)
     }

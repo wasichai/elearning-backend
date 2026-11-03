@@ -12,10 +12,13 @@ import os from 'node:os'
 import path from 'node:path'
 import { createProbe } from './ffprobe.mjs'
 import { createRemotionRenderer } from './renderer.mjs'
+import { takeSecret } from './secret.mjs'
 import { createWorker } from './server.mjs'
 
 const require = createRequire(import.meta.url)
 const env = process.env
+// lo primero: fuera de process.env antes de lanzar nada, ningún proceso hijo lo hereda (#369)
+const token = takeSecret('RENDER_WORKER_TOKEN')
 const int = (name, fallback) => {
   const value = env[name] ? Number(env[name]) : fallback
   if (!Number.isInteger(value) || value <= 0) throw new Error(`${name} must be a positive integer`)
@@ -25,7 +28,7 @@ const int = (name, fallback) => {
 const maxBytes = int('RENDER_WORKER_MAX_BYTES', 256 * 1024 * 1024)
 const log = (message) => console.log(`${new Date().toISOString()} ${message}`)
 const { server, sweep } = createWorker({
-  token: env.RENDER_WORKER_TOKEN,
+  token,
   renderer: createRemotionRenderer({ browserExecutable: env.RENDER_WORKER_BROWSER || null, maxBytes }),
   probe: createProbe(),
   workDir: env.RENDER_WORKER_DIR || path.join(os.tmpdir(), 'render-worker'),

@@ -214,6 +214,8 @@ lms:
       course-budget: ${LMS_AI_COURSE_BUDGET:}
       organization-budget: ${LMS_AI_ORGANIZATION_BUDGET:}
       organization-budget-period: ${LMS_AI_ORGANIZATION_BUDGET_PERIOD:MONTH}
+      # el borrador que lee la opinión de consistencia, en caracteres; más, y la opinión falla sin llamar al modelo (#369)
+      consistency-max-chars: ${LMS_AI_CONSISTENCY_MAX_CHARS:400000}
       currency: ${LMS_AI_BUDGET_CURRENCY:USD}
       concurrency-retry-after: ${LMS_AI_CONCURRENCY_RETRY_AFTER:1m}
       budget-retry-after: ${LMS_AI_BUDGET_RETRY_AFTER:1h}

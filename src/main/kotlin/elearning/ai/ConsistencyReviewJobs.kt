@@ -151,16 +151,18 @@ class ConsistencyReviews(
     }
 }
 
-// el trabajo ai.consistency_review: lee el borrador como la plataforma, comprueba que es el que se validó (el mismo hash),
-// pide la opinión al modelo y la comprueba por código. Lo demás (permisos al ejecutar, idempotencia, reintentos, cancelación,
-// presupuesto y AgentRun con su coste) es de AiStepRunner, con VALIDAR en lugar de GENERAR: la pide quien valida. No escribe
-// ningún registro: la opinión es la salida de su ejecución, que el informe lee por la clave
+// el trabajo ai.consistency_review: lee el borrador como la plataforma, comprueba que es el que se validó (el mismo hash) y
+// que no pasa de lms.ai.limits.consistency-max-chars (si pasa, falla sin ejecución y el informe da la opinión FAILED con su
+// error, #369), pide la opinión al modelo y la comprueba por código. Lo demás (permisos al ejecutar, idempotencia,
+// reintentos, cancelación, presupuesto y AgentRun con su coste) es de AiStepRunner, con VALIDAR en lugar de GENERAR: la
+// pide quien valida. No escribe ningún registro: la opinión es la salida de su ejecución, que el informe lee por la clave
 @Component
 class ConsistencyReviewJobHandler(
     private val runner: AiStepRunner,
     private val records: RecordService,
     private val snapshots: DraftSnapshots,
     private val reviewer: ConsistencyReviewer,
+    private val limits: AiLimits,
 ) : JobHandler {
     override val type = AiJobs.typeOf(AgentStep.CONSISTENCY_REVIEW)
 
@@ -181,6 +183,14 @@ class ConsistencyReviewJobHandler(
                     }
                 if (DraftValidator.hash(snapshot) != inputs.contentHash) {
                     throw PermanentJobFailure("The draft changed after its validation: a new validation asks for a new opinion")
+                }
+                // un borrador enorme es una llamada cara que el presupuesto solo vería después: falla aquí, sin ejecución (#369)
+                val size = ConsistencyReviewPrompt.draft(snapshot).length
+                if (size > limits.consistencyMaxChars) {
+                    throw PermanentJobFailure(
+                        "The draft has $size characters, more than ${limits.consistencyMaxChars} for one consistency opinion " +
+                            "(lms.ai.limits.consistency-max-chars): it is not sent to the model",
+                    )
                 }
                 AiStepInput(snapshot, emptyList())
             },
