@@ -54,17 +54,21 @@ los cuatro ejes y fallar cualquiera la rechaza.
 4. **Propiedad** → `404`. `own_records_only` de Wasichai; un usuario multi-rol solo queda restringido si **todos** sus
    roles lo fijan.
 
-Roles (`model/roles.json`, multi-rol en `user_roles`): ESTUDIANTE, DOCENTE, CREADOR, REVISOR y el ADMIN de Wasichai.
+Roles (`model/roles.json`, multi-rol en `user_roles`): ESTUDIANTE, DOCENTE, CREADOR, REVISOR, AUTORIDAD_ACADEMICA y el
+ADMIN de Wasichai.
 `ADMIN` atraviesa las comprobaciones de permiso y no recibe `RecordReadScope`; por eso el trabajo diario no se hace con
 `ADMIN` y las pruebas negativas nunca lo usan como sujeto.
 
 Acciones declaradas:
 
-| Objeto          | Acción                                   | Quién la recibe                                              | Estado                  |
-| --------------- | ---------------------------------------- | ------------------------------------------------------------ | ----------------------- |
-| `version_curso` | `APROBAR`                                | REVISOR (o el rol que fije la política), nunca el autor (§3) | En el modelo F1, uso F4 |
-| `version_curso` | `PUBLICAR`                               | ADMIN o un rol editorial designado                           | En el modelo F1, uso F4 |
-| A decidir       | p. ej. `CALIFICAR`, `GENERAR`, `VALIDAR` | Ver [IA §8](../ai/README.md#8-permisos-separados)            | F3/F5                   |
+| Objeto          | Acción             | Quién la recibe                                                                | Estado                   |
+| --------------- | ------------------ | ------------------------------------------------------------------------------ | ------------------------ |
+| `version_curso` | `APROBAR`          | REVISOR (o el rol que fije la política), nunca el autor (§3)                   | En el modelo F1, uso F4  |
+| `version_curso` | `PUBLICAR`         | ADMIN o un rol editorial designado                                             | En el modelo F1, uso F4  |
+| `version_curso` | `APROBAR_CREDITOS` | AUTORIDAD_ACADEMICA, con separación de funciones (§3)                          | F6 (ADR-0035)            |
+| `version_curso` | `GENERAR`          | CREADOR; encolar un paso de IA ([IA §8](../ai/README.md#8-permisos-separados)) | F5 (ADR-0033 §10, E33.3) |
+| `version_curso` | `VALIDAR`          | REVISOR, nunca quien genera ([IA §8](../ai/README.md#8-permisos-separados))    | F5 (ADR-0033 §10, E33.3) |
+| A decidir       | p. ej. `CALIFICAR` | —                                                                              | F3                       |
 
 `GET /api/auth/me/permissions` informa al frontend de lo que el usuario puede hacer, acciones declaradas incluidas.
 
@@ -94,7 +98,20 @@ guarda, un CREADOR podía publicar escribiendo `estado` con un `PATCH`.
 - **El contenido solo cambia en borrador y solo lo cambia su autor** (o quien tiene `PUBLICAR`): en revisión, aprobada,
   publicada o retirada la versión **y su temario** (`unidad`, `leccion`) no se crean, cambian ni borran (`409`). El
   revisor tiene `UPDATE` sobre `version_curso` solo para poder transitar; no reescribe borradores ajenos (`403`).
-- `creditos_aprobados` exige `APROBAR`; `publicada_en` solo se pone al publicar. Solo se borra un borrador.
+- **Créditos aprobados solo por el comando de aprobación** (RF-CRE-08, ADR-0035). `creditos_aprobados` y
+  `politica_creditos` no se escriben por la API de registros (`403` para todos, ADMIN incluido): antes bastaba `APROBAR`,
+  la acción editorial, y quien aprobaba el contenido ponía un número con un `PATCH` (hallazgo de #269). El comando
+  `POST /api/lms/credits/versions/{id}/approvals` exige `APROBAR_CREDITOS` y deja una fila de `aprobacion_creditos`
+  (`appendOnly`, `apiOnly`) con la política, el órgano y el documento, en la misma transacción que la copia.
+  **Separación de funciones por datos, también para ADMIN**: no aprueba ni revoca el autor de la versión, su revisor
+  asignado, quien la aprobó en la bandeja (`lms.decision_revision`) ni un docente de una edición del curso
+  (`docente_edicion`, leído con una subconsulta para no depender de lo que la autoridad pueda leer) → `403`. Pruebas:
+  `CreditApprovalApiTest`.
+- **Políticas de crédito publicadas inmutables** (RF-CRE-07, ADR-0036): `CreditPolicyGuard` rechaza cambiar o borrar una
+  `politica_credito` publicada o retirada y escribir su estado por la API de registros (`409`, también ADMIN); publicar y
+  retirar exigen `PUBLICAR` sobre `politica_credito`. Aprobar exige la versión de política ligada publicada y del mismo
+  sistema (`409`).
+- `publicada_en` solo se pone al publicar. Solo se borra un borrador.
 - **Sin autoasignación de roles** (a verificar). Los roles se administran solo con `MANAGE_ORGANIZATION` de Wasichai y
   quedan en `audit_log` como `admin:*`. Que Wasichai impida a un administrador cambiar sus **propios** roles no está
   documentado; si no lo impide, se cubre con revisión periódica de las entradas `admin:*`.
@@ -216,6 +233,8 @@ Detalle en [`docs/ai/README.md`](../ai/README.md#6-protección-contra-prompt-inj
   dato de estudiantes; claves fuera del prompt; sin herramientas de red; `AgentResultFilter` en el asistente.
 - **D** Coste desbocado o bucles → límites de tokens e iteraciones, presupuesto, trabajos cancelables, idempotencia.
 - **E** El agente hereda los permisos de quien lo lanzó → el trabajo no aprueba ni publica; son acciones humanas.
+  Encolar exige `GENERAR` o `VALIDAR` y el trabajo lo vuelve a mirar al ejecutar con los roles guardados de quien lo
+  pidió (`AiPermissions`, ADR-0022 §4).
 
 ### 4.6 Importador AsciiDoc (F4)
 
@@ -301,6 +320,7 @@ Qué consulta ADMIN de cada operación sensible (RF-ADM-03, `SensitiveOperations
 | --------------------------------------------- | ---------------------------------------------- | ---------------------------------------------------------------------- |
 | Crear o cambiar una versión, unidad o lección | `audit_log`, con quién, campo, antes y después | `/api/audit?objectName=leccion&recordId=…` o el `history` del registro |
 | Decisión de revisión y publicación            | `audit_log` (cambio de `estado`, con su autor) | igual, sobre `version_curso`; la decisión, además, en la bandeja       |
+| Aprobación o revocación de créditos           | `audit_log` (alta de `aprobacion_creditos`)    | `/api/audit?objectName=aprobacion_creditos&recordId=…`; el historial   |
 | Roles de un usuario                           | `audit_log` como `admin:user`                  | `/api/audit?objectName=admin:user&recordId=<usuario>`                  |
 | Calificación manual (y su cambio, con motivo) | `lms.calificacion`, de solo inserción          | cola `?status=GRADED` e intento con `history` del espacio docente      |
 
@@ -348,7 +368,12 @@ aplicación se conecta con un rol que no es dueño de las tablas, para que nadie
   | Certificados                                                            | Se disocian: seudónimo y sin nombre; el código sigue verificando el impreso         |
   | Perfil docente                                                          | Se vacía y deja de publicarse; sigue enlazado a la cuenta por sus asignaciones      |
   | Trabajos que pidió y la aceptación misma                                | Se suprimen                                                                         |
+  | Ejecuciones de agente que pidió o en las que intervino                  | Se disocian: seudónimo como solicitante y en sus intervenciones; la ejecución queda |
   | Autoría, revisiones, notas puestas, sesiones y asistencias que registró | Se conservan con el id de cuenta: son actos de la organización                      |
+
+  Las intervenciones en una ejecución de agente son, como las revisiones, actos de la organización, pero se disocian:
+  la ejecución guarda qué pidió y qué aceptó o editó la persona sobre material generado, y la decisión editorial que
+  importa ya queda, con su autor, en la versión y en `lms.decision_revision` (#326).
 
   Queda en Wasichai: la cuenta (nombre, correo, roles), que deshabilita o elimina el administrador; las notificaciones;
   y `audit_log`, con el antes de cada registro suprimido o disociado, hasta que lo borre el rol de purga de Wasichai
@@ -388,6 +413,8 @@ comprueba también que **nada cambió**, releyendo como propietario.
 | Rol sin permiso               | ESTUDIANTE llama a un comando de DOCENTE, CREADOR o REVISOR; DOCENTE intenta `PUBLICAR`               | `403`                                |
 | Docente fuera de su edición   | DOCENTE de la edición X lee o califica en la Y                                                        | `404`                                |
 | Autoaprobación                | El autor, aun con `APROBAR`, aprueba su versión                                                       | Rechazo del guard                    |
+| Créditos sin la acción        | REVISOR con `APROBAR` aprueba créditos o hace `PATCH` de `creditos_aprobados`                         | `403`                                |
+| Créditos de lo propio         | Autor, revisor asignado, quien aprobó en la bandeja o docente del curso, también ADMIN                | `403`                                |
 | Publicada inmutable           | Editar o borrar una versión `PUBLICADA`                                                               | Rechazo del guard                    |
 | Nota sin motivo               | `PATCH` de calificación sin motivo                                                                    | `400`                                |
 | Sin términos aceptados        | Matricularse o registrar progreso sin aceptación vigente; publicar términos sin `MANAGE_ORGANIZATION` | `403`                                |

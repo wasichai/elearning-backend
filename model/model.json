@@ -5,7 +5,7 @@
     "tipo_duracion": ["SEMANAS", "SEMESTRAL"],
     "estado_version": ["BORRADOR", "EN_REVISION", "APROBADA", "PUBLICADA", "RETIRADA"],
     "estado_edicion": ["PROGRAMADA", "INSCRIPCION_ABIERTA", "EN_CURSO", "FINALIZADA", "CANCELADA"],
-    "sistema_credito": ["NINGUNO", "ECTS", "SCH"],
+    "sistema_credito": ["NINGUNO", "ECTS", "SCH", "PE_CREDITO"],
     "tipo_leccion": ["LECTURA", "VIDEO", "PRESENTACION", "LABORATORIO", "EVALUACION", "SESION"],
     "rol_docente": ["TITULAR", "ASISTENTE"],
     "estado_matricula": ["ACTIVA", "RETIRADA", "FINALIZADA"],
@@ -19,7 +19,11 @@
     "modalidad_sesion": ["PRESENCIAL", "VIRTUAL"],
     "estado_sesion": ["PROGRAMADA", "REPROGRAMADA", "CANCELADA"],
     "estado_asistencia": ["PRESENTE", "TARDE", "AUSENTE", "JUSTIFICADO"],
-    "formato_artefacto": ["HTML", "PDF"]
+    "formato_artefacto": ["HTML", "PDF"],
+    "tipo_aprobacion_creditos": ["APROBACION", "REVOCACION"],
+    "estado_politica_credito": ["BORRADOR", "PUBLICADA", "RETIRADA"],
+    "metodo_credito": ["ECTS_CARGA_TOTAL", "US_SCH_34CFR600_2", "PE_LEY30220_HORAS_LECTIVAS"],
+    "estado_brief": ["BORRADOR", "LISTO"]
   },
   "objects": [
     {
@@ -156,6 +160,18 @@
           "label": "Retirar"
         },
         {
+          "name": "APROBAR_CREDITOS",
+          "label": "Aprobar créditos (autoridad académica)"
+        },
+        {
+          "name": "GENERAR",
+          "label": "Generar con IA (encolar un paso)"
+        },
+        {
+          "name": "VALIDAR",
+          "label": "Validar lo generado con IA"
+        },
+        {
           "name": "VER_TODAS",
           "label": "Ver todo el contenido, no solo el de las matrículas propias"
         }
@@ -236,12 +252,12 @@
         },
         {
           "name": "creditos_aprobados",
-          "label": "Créditos aprobados",
+          "label": "Créditos aprobados (los copia la aprobación de créditos)",
           "type": "DECIMAL"
         },
         {
           "name": "politica_creditos",
-          "label": "Política de créditos aplicada (id@versión)",
+          "label": "Política de los créditos aprobados (id@versión, la copia la aprobación de créditos)",
           "type": "TEXT"
         },
         {
@@ -1268,6 +1284,273 @@
           "defaultValue": "false"
         }
       ]
+    },
+    {
+      "name": "politica_credito",
+      "label": "Política de crédito",
+      "pluralLabel": "Políticas de crédito",
+      "description": "Regla versionada con la que se proponen créditos (RF-CRE-07, ADR-0036): un método del código con sus parámetros, su fuente y su ámbito (jurisdicción, la organización y, si se indica, un programa). Solo se edita en borrador; publicada no cambia: un cambio es una versión nueva.",
+      "actions": [
+        {
+          "name": "PUBLICAR",
+          "label": "Publicar o retirar una política de crédito"
+        }
+      ],
+      "uniqueConstraints": [["clave", "numero"]],
+      "fields": [
+        {
+          "name": "clave",
+          "label": "Clave (la misma en todas sus versiones)",
+          "type": "TEXT",
+          "required": true,
+          "indexed": true
+        },
+        {
+          "name": "numero",
+          "label": "Número de versión",
+          "type": "INTEGER",
+          "required": true
+        },
+        {
+          "name": "nombre",
+          "label": "Nombre",
+          "type": "TEXT",
+          "required": true
+        },
+        {
+          "name": "estado",
+          "label": "Estado",
+          "type": "ENUM",
+          "enum": "estado_politica_credito",
+          "required": true,
+          "defaultValue": "BORRADOR",
+          "indexed": true
+        },
+        {
+          "name": "sistema",
+          "label": "Sistema de crédito",
+          "type": "ENUM",
+          "enum": "sistema_credito",
+          "required": true,
+          "indexed": true
+        },
+        {
+          "name": "metodo",
+          "label": "Método de cálculo",
+          "type": "ENUM",
+          "enum": "metodo_credito",
+          "required": true
+        },
+        {
+          "name": "parametros",
+          "label": "Parámetros del método (JSON; vacío: los de la norma)",
+          "type": "LONG_TEXT"
+        },
+        {
+          "name": "jurisdiccion",
+          "label": "Jurisdicción (ISO 3166-1 alfa-2, o EHEA)",
+          "type": "TEXT",
+          "required": true,
+          "indexed": true
+        },
+        {
+          "name": "programa_codigo",
+          "label": "Programa al que se limita (código; vacío: toda la institución)",
+          "type": "TEXT",
+          "indexed": true
+        },
+        {
+          "name": "fuente",
+          "label": "Fuente normativa o institucional",
+          "type": "TEXT",
+          "required": true
+        },
+        {
+          "name": "fuente_url",
+          "label": "Enlace a la fuente",
+          "type": "URL"
+        },
+        {
+          "name": "vigente_desde",
+          "label": "Vigente desde",
+          "type": "DATE"
+        },
+        {
+          "name": "publicada_por",
+          "label": "Publicada por (usuario de Wasichai)",
+          "type": "UUID"
+        },
+        {
+          "name": "publicada_en",
+          "label": "Publicada en",
+          "type": "DATETIME"
+        }
+      ]
+    },
+    {
+      "name": "aprobacion_creditos",
+      "label": "Aprobación de créditos",
+      "pluralLabel": "Aprobaciones de créditos",
+      "appendOnly": true,
+      "apiOnly": true,
+      "description": "Acto con el que una autoridad académica aprueba o revoca los créditos de una versión de curso (RF-CRE-08, ADR-0035). Lo escribe solo el comando de aprobación, con la instantánea de la política y del cálculo; nunca cambia: revocar es otra fila.",
+      "fields": [
+        {
+          "name": "tipo",
+          "label": "Tipo",
+          "type": "ENUM",
+          "enum": "tipo_aprobacion_creditos",
+          "required": true
+        },
+        {
+          "name": "sustituye",
+          "label": "Aprobación que revoca (solo en una revocación)",
+          "type": "UUID"
+        },
+        {
+          "name": "sistema",
+          "label": "Sistema de crédito",
+          "type": "ENUM",
+          "enum": "sistema_credito"
+        },
+        {
+          "name": "politica_id",
+          "label": "Política aplicada",
+          "type": "TEXT"
+        },
+        {
+          "name": "politica_version",
+          "label": "Versión de la política",
+          "type": "TEXT"
+        },
+        {
+          "name": "metodo",
+          "label": "Método",
+          "type": "TEXT"
+        },
+        {
+          "name": "parametros",
+          "label": "Parámetros de la política (JSON)",
+          "type": "LONG_TEXT"
+        },
+        {
+          "name": "fuente",
+          "label": "Fuente normativa",
+          "type": "TEXT"
+        },
+        {
+          "name": "horas_totales",
+          "label": "Horas de carga total",
+          "type": "DECIMAL"
+        },
+        {
+          "name": "creditos_calculados",
+          "label": "Créditos calculados",
+          "type": "DECIMAL"
+        },
+        {
+          "name": "creditos_propuestos",
+          "label": "Créditos propuestos",
+          "type": "DECIMAL"
+        },
+        {
+          "name": "creditos_aprobados",
+          "label": "Créditos aprobados",
+          "type": "DECIMAL"
+        },
+        {
+          "name": "motivo",
+          "label": "Motivo (si difiere de lo propuesto y al revocar)",
+          "type": "LONG_TEXT"
+        },
+        {
+          "name": "organo",
+          "label": "Órgano que aprueba (p. ej. Consejo de Facultad)",
+          "type": "TEXT",
+          "required": true
+        },
+        {
+          "name": "documento_referencia",
+          "label": "Documento que lo respalda (p. ej. número de resolución)",
+          "type": "TEXT",
+          "required": true
+        },
+        {
+          "name": "documento_fecha",
+          "label": "Fecha del documento",
+          "type": "DATE"
+        },
+        {
+          "name": "aprobada_por",
+          "label": "Quién la registró (usuario de Wasichai)",
+          "type": "UUID",
+          "required": true
+        },
+        {
+          "name": "aprobada_en",
+          "label": "Registrada en",
+          "type": "DATETIME",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "brief",
+      "label": "Brief",
+      "pluralLabel": "Briefs",
+      "description": "Encargo estructurado de un curso para la canalización de IA (RF-IA-01, E33.1): temática, público, objetivos, duración, idioma, nivel, expertos y fuentes autorizadas. Se guarda a medias en borrador; pasa a LISTO solo completo y con fuentes de la lista permitida del importador o de paquetes ya importados al curso (BriefGuard).",
+      "fields": [
+        {
+          "name": "tematica",
+          "label": "Temática",
+          "type": "TEXT"
+        },
+        {
+          "name": "publico",
+          "label": "Público destinatario",
+          "type": "LONG_TEXT"
+        },
+        {
+          "name": "objetivos",
+          "label": "Objetivos (uno por línea)",
+          "type": "LONG_TEXT"
+        },
+        {
+          "name": "duracion_horas",
+          "label": "Duración (horas)",
+          "type": "DECIMAL"
+        },
+        {
+          "name": "idioma",
+          "label": "Idioma (BCP 47)",
+          "type": "TEXT"
+        },
+        {
+          "name": "nivel",
+          "label": "Nivel",
+          "type": "ENUM",
+          "enum": "nivel"
+        },
+        {
+          "name": "expertos",
+          "label": "Expertos de la materia (uno por línea)",
+          "type": "LONG_TEXT"
+        },
+        {
+          "name": "fuentes",
+          "label": "Fuentes autorizadas (owner/repo@sha:ruta, una por línea)",
+          "type": "LONG_TEXT"
+        },
+        {
+          "name": "estado",
+          "label": "Estado",
+          "type": "ENUM",
+          "enum": "estado_brief",
+          "required": true,
+          "defaultValue": "BORRADOR",
+          "indexed": true
+        }
+      ]
     }
   ],
   "relationships": [
@@ -1547,6 +1830,44 @@
       "source": "comentario_revision",
       "target": "version_curso",
       "fieldName": "version_curso",
+      "required": true
+    },
+    {
+      "name": "aprobacion_creditos_version_curso",
+      "label": "Versión del curso",
+      "inverseLabel": "Aprobaciones de créditos",
+      "type": "MANY_TO_ONE",
+      "source": "aprobacion_creditos",
+      "target": "version_curso",
+      "fieldName": "version_curso",
+      "required": true
+    },
+    {
+      "name": "version_curso_politica_credito",
+      "label": "Política de crédito",
+      "inverseLabel": "Versiones de curso que la usan",
+      "type": "MANY_TO_ONE",
+      "source": "version_curso",
+      "target": "politica_credito",
+      "fieldName": "politica_credito"
+    },
+    {
+      "name": "aprobacion_creditos_politica",
+      "label": "Política de crédito aplicada",
+      "inverseLabel": "Aprobaciones de créditos",
+      "type": "MANY_TO_ONE",
+      "source": "aprobacion_creditos",
+      "target": "politica_credito",
+      "fieldName": "politica_credito"
+    },
+    {
+      "name": "brief_curso",
+      "label": "Curso",
+      "inverseLabel": "Briefs",
+      "type": "MANY_TO_ONE",
+      "source": "brief",
+      "target": "curso",
+      "fieldName": "curso",
       "required": true
     }
   ]

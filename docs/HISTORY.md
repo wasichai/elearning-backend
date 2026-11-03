@@ -23,6 +23,93 @@ Segundo paso de la épica E32 ([#271](https://github.com/wasichai/elearning-back
   URL base a un puerto cerrado: ninguna llama a un proveedor.
 - `docs/operations` (variables `LMS_AI_*` y arranque sin claves), `docs/ai` §2 y `.env.example`.
 
+## 2026-11-03 — Permisos para generar y validar con IA ([#280](https://github.com/wasichai/elearning-backend/issues/280), RF-IA-07)
+
+- Acciones declaradas `GENERAR` y `VALIDAR` sobre `version_curso` ([ADR-0033](adr/0033-fase-5-ia.md) §10): genera CREADOR
+  y valida REVISOR; quien genera no valida, aprueba ni publica. `APROBAR` y `PUBLICAR` siguen siendo las de F4.
+- `AiPermissions` (`elearning.ai`): `requireToEnqueue` exige la acción a quien llama con `CurrentUser.requirePermission`
+  (`403`) y `requireStillAllowed` la vuelve a mirar al ejecutar con los roles guardados de quien lo pidió (`Requesters`,
+  ADR-0022 §4). Aún no hay pasos que encolar: los de E33.4–E33.6 llamarán a las dos. Ningún código mira nombres de rol.
+- `ai` puede usar `jobs` ([overview §2.3](architecture/overview.md#23-dependencias-permitidas-y-prohibidas)): sus pasos son
+  trabajos de la cola (ADR-0033 §5).
+- `AiPermissionsApiTest` llama al servicio con el token real de cada persona de la demo; `test_model.py` fija el reparto.
+
+## 2026-11-03 — Brief estructurado del curso ([#278](https://github.com/wasichai/elearning-backend/issues/278), RF-IA-01)
+
+- Custom Object `brief` (relación `brief_curso`): temática, público, objetivos, duración en horas, idioma, nivel, expertos y
+  fuentes autorizadas, con estado `BORRADOR` → `LISTO` (enum `estado_brief`). CREADOR lo lee y escribe.
+- `BriefGuard` (`elearning.ai`), para toda escritura: el brief se guarda a medias en borrador y pasar a `LISTO` (o seguir en
+  él) incompleto es `400` con un error por campo que falta; horas > 0. Cada fuente es `owner/repo@sha:ruta` de
+  `lms.importer.allowed-sources` o del repositorio y commit de un paquete ya importado al curso (`400` si no, también en
+  borrador). Lo escribe solo quien tiene `CREATE` sobre `version_curso`: darle el brief a otro rol no basta (`403`).
+- `ai` puede usar `course` e `importer` ([overview §2.3](architecture/overview.md#23-dependencias-permitidas-y-prohibidas)).
+  `BriefGuardApiTest` y `test_model.py`.
+
+## 2026-11-03 — La supresión de datos personales cubre `lms.ejecucion_agente` ([#326](https://github.com/wasichai/elearning-backend/issues/326), RNF-SEG-11)
+
+- `V18__supresion_ejecucion_agente.sql`: el disparador de `lms.ejecucion_agente` deja pasar, solo dentro de la transacción
+  de una supresión (`lms.supresion`, como V15), el cambio de `solicitante_id` y del `userId` de las intervenciones; nada
+  más cambia y borrar sigue prohibido.
+- `PersonalDataErasure` disocia las ejecuciones que la persona pidió o en las que intervino con el mismo seudónimo: la
+  ejecución queda como evidencia del proceso editorial y la constancia las cuenta en `disociados.ejecucion_agente`.
+  `PersonalDataErasureApiTest` lo prueba con una ejecución sembrada con `AgentExecutionLog`; repetirla no cambia nada.
+
+## 2026-11-03 — Registro `AgentRun` de las ejecuciones de IA ([#275](https://github.com/wasichai/elearning-backend/issues/275), RF-IA-03)
+
+- `lms.ejecucion_agente` (`V17__ejecucion_agente.sql`, [ADR-0033](adr/0033-fase-5-ia.md) §7) con los campos de `docs/ai` §4:
+  quién lo pidió, curso, unidad y versión, objetivo, entradas, fuentes con hash, proveedor, modelo y parámetros efectivos,
+  versiones de instrucciones y plantilla, salida, validaciones, estado, error, tokens, coste con su tarifa y fecha, inicio y
+  fin, intervenciones, clave, intento y `generator`. Un disparador impide editar lo pedido, cerrar dos veces, borrar y tocar
+  las intervenciones ya escritas: solo se añaden.
+- `AgentExecutionLog` (`elearning.ai`) es la escritura para los pasos de F5: abre, cierra con el consumo del proveedor y
+  calcula el coste con la tarifa de `lms.ai.rates` que regía el día en que empezó; tapa como `[REDACTED]` una clave
+  configurada que aparezca en cualquier campo. Los parámetros del modelo son tipados (`maxTokens`, `temperature`).
+- `GET /api/lms/ai/runs?courseId=` y `GET /api/lms/ai/runs/{id}` con `UPDATE` sobre `version_curso` y el alcance del curso
+  (`403`/`404`). `AgentExecutionApiTest` y `AiRatesTest` lo prueban con ejecuciones construidas en la prueba; la de un paso
+  contra el doble WireMock queda para [#274](https://github.com/wasichai/elearning-backend/issues/274).
+
+## 2026-11-03 — Políticas de crédito versionadas por jurisdicción, institución y programa ([#318](https://github.com/wasichai/elearning-backend/issues/318), RF-CRE-07)
+
+- [ADR-0036](adr/0036-politicas-de-credito-versionadas-en-datos.md): método en código, política en datos.
+  `politica_credito` (clave y número, borrador → publicada → retirada, sistema, método, parámetros, jurisdicción ISO 3166-1
+  o `EHEA`, programa opcional, fuente y vigencia). `CreditPolicyGuard`: publicada no cambia ni se borra (`409`);
+  `CreditMethods.of` valida los parámetros contra la norma (`400`).
+- Método nuevo `PE_LEY30220_HORAS_LECTIVAS` (Ley 30220 art. 39: 16 h de teoría o 32 de práctica por crédito, sin estudio
+  autónomo) y sistema `PE_CREDITO`; sin conversión entre sistemas.
+- `/api/lms/credits/policies`: listado por jurisdicción, sistema, estado y programa; publicar, retirar y `new-version`.
+- `version_curso.politica_credito` liga una versión de curso a una versión de política: propone con ella en el catálogo y
+  en la aprobación, que la exige publicada y del mismo sistema y guarda la relación y su instantánea. Publicar otra
+  versión de la política no cambia lo ya ligado. `CreditPolicyApiTest`, `CreditPolicyTest` y `CatalogBuilderTest`.
+
+## 2026-11-03 — Historial de estados de una versión ([#259](https://github.com/wasichai/elearning-backend/issues/259))
+
+- [ADR-0032](adr/0032-historial-de-estados-de-la-version-en-tabla-propia.md): cada cambio de `estado` de una
+  `version_curso`, y su creación, deja una fila en la tabla nueva `lms.transicion_version` (V16) con el estado anterior,
+  el nuevo, quién y cuándo. Es de solo inserción (un disparador impide cambiarla o borrarla) y la escribe un
+  `RecordChangeListener` en la transacción de quien escribe, sea por el estudio, la bandeja, la API de registros o la
+  plataforma. No se lee el `audit_log` de Wasichai.
+- El detalle del estudio y de la bandeja (`StudioVersionDetail`) gana `history: [{ from, to, by, byName, at }]`, con las
+  mismas reglas de lectura; `byName` se lee junto con los demás nombres de la versión (ADR-0034). Enviar a revisión y
+  crear la primera versión vacía pasan a escribir en una transacción. `VersionHistoryApiTest` recorre BORRADOR →
+  EN_REVISION → BORRADOR → EN_REVISION → APROBADA → PUBLICADA, la API de registros, la plataforma y el disparador.
+
+## 2026-11-03 — Aprobación de créditos por una autoridad académica ([#315](https://github.com/wasichai/elearning-backend/issues/315), RF-CRE-08)
+
+- **Corrige un fallo** que encontró la investigación de [#269](https://github.com/wasichai/elearning-backend/issues/269):
+  `EditorialWorkflowGuard` dejaba escribir `version_curso.creditos_aprobados` a quien tenía `APROBAR`, la acción editorial
+  del revisor. Ahora ese campo y `politica_creditos` solo los escribe el comando de aprobación (`403` por la API de
+  registros para todos, ADMIN incluido) y una versión nueva no los hereda.
+- [ADR-0035](adr/0035-aprobacion-de-creditos-por-una-autoridad-academica.md): acción `APROBAR_CREDITOS` sobre
+  `version_curso` y rol `AUTORIDAD_ACADEMICA` (demo: `autoridad@demo.wasichai-learning.test`). `aprobacion_creditos`
+  (`appendOnly`, `apiOnly`) guarda cada acto con la instantánea de la política de referencia (id@versión, método,
+  parámetros, fuente), horas, créditos calculados, propuestos y aprobados, motivo, órgano, documento, persona y hora.
+- `/api/lms/credits/**`: propuesta y aprobación vigente, historial, aprobar (versión `APROBADA` o `PUBLICADA` con sistema
+  de crédito, recálculo en el servidor, motivo si difiere) y revocar (otra fila, con motivo). Separación de funciones por
+  datos, también para ADMIN: ni el autor, ni el revisor asignado, ni quien aprobó en la bandeja, ni un docente del curso.
+- El catálogo dice «aprobados» solo con una aprobación vigente, con su órgano, documento y política (`credits.approval`).
+  `CreditApprovalApiTest`, `CatalogBuilderTest`, `EditorialWorkflowGuardApiTest`, `ModelProvisioningApiTest` y las pruebas
+  de `model/` lo comprueban.
+
 ## 2026-11-03 — ADR de la Fase 5: Embabel 1.5.4, proveedores, límites y `AgentRun` ([#272](https://github.com/wasichai/elearning-backend/issues/272))
 
 Solo documentación, primer paso de la épica E32 ([#271](https://github.com/wasichai/elearning-backend/issues/271)).

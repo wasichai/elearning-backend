@@ -116,11 +116,19 @@ el cuándo, en [`roadmap.md`](roadmap.md).
 - **RF-CRE-06** · F1 · implementado ([#50](https://github.com/wasichai/elearning-backend/pull/50)) — Sin conversión entre ECTS y SCH.
   _Aceptación:_ no existe función de conversión; cada propuesta lleva un único sistema; la UI no muestra
   equivalencias.
-- **RF-CRE-07** · F6 · planificado — Políticas de crédito configurables por programa, institución y jurisdicción, y
-  versionadas.
+- **RF-CRE-07** · F6 · implementado ([#318](https://github.com/wasichai/elearning-backend/issues/318), ADR-0036) —
+  Políticas de crédito configurables por programa, institución y jurisdicción, y versionadas.
   _Aceptación:_ cambiar una política crea una versión nueva y las propuestas anteriores conservan la suya.
-- **RF-CRE-08** · F6 · planificado — Aprobación humana de créditos por una persona autorizada, auditada.
+  Implementado: `politica_credito` (borrador, publicada inmutable, `new-version`), métodos `ECTS_CARGA_TOTAL`,
+  `US_SCH_34CFR600_2` y `PE_LEY30220_HORAS_LECTIVAS` validados contra la norma, sistema `PE_CREDITO` y
+  `version_curso.politica_credito` ligada a una versión concreta.
+- **RF-CRE-08** · F6 · implementado ([#315](https://github.com/wasichai/elearning-backend/issues/315), ADR-0035) —
+  Aprobación humana de créditos por una persona autorizada, auditada.
   _Aceptación:_ sin el permiso → `403`; la aprobación queda en la auditoría con la política y versión usadas.
+  Implementado: acción `APROBAR_CREDITOS` (rol `AUTORIDAD_ACADEMICA`), distinta de la editorial `APROBAR`; separación de
+  funciones por datos (ni autor, ni revisor asignado, ni quien aprobó en la bandeja, ni docente del curso, tampoco ADMIN);
+  `aprobacion_creditos` de solo inserción con la instantánea de la política, el órgano y el documento; revocar es otra
+  fila; `creditos_aprobados` solo lo escribe el comando.
 
 ### RF-AUL — Aula del estudiante y progreso (§6.4)
 
@@ -312,6 +320,10 @@ el cuándo, en [`roadmap.md`](roadmap.md).
 - **RF-IA-01** · F5 · planificado — Brief estructurado (temática, público, objetivos, duración, idioma, nivel,
   expertos, fuentes autorizadas) validado por esquema.
   _Aceptación:_ un brief incompleto se rechaza con los campos que faltan.
+  _Avance:_ Custom Object `brief` del curso y `BriefGuard` (E33.1, [#278](https://github.com/wasichai/elearning-backend/issues/278)):
+  se guarda a medias en `BORRADOR` y pasar a `LISTO` incompleto es `400` con los campos que faltan; cada fuente es de la lista
+  permitida del importador o de un paquete ya importado al curso; lo escribe quien crea versiones. Falta el formulario
+  en el estudio y su uso por los pasos (E33.2).
 - **RF-IA-02** · F5 · planificado — Pasos reproducibles (análisis de fuentes con procedencia, diseño pedagógico,
   borrador con plantillas versionadas) con salidas tipadas; una salida inválida se rechaza o va a corrección.
   _Aceptación:_ prueba con una salida malformada del doble determinista.
@@ -330,6 +342,10 @@ el cuándo, en [`roadmap.md`](roadmap.md).
   estado editorial.
 - **RF-IA-07** · F5 · planificado — Permisos separados para generar, validar, aprobar y publicar.
   _Aceptación:_ un usuario que solo puede generar recibe `403` al aprobar.
+  _Avance:_ acciones declaradas `GENERAR` (CREADOR) y `VALIDAR` (REVISOR) sobre `version_curso` y `AiPermissions`
+  (E33.3, [#280](https://github.com/wasichai/elearning-backend/issues/280)): al encolar exige la acción a quien llama
+  (`403`) y al ejecutar la vuelve a mirar con sus roles guardados (ADR-0022); quien genera no valida, aprueba ni publica.
+  Falta que la exijan los pasos de E33.4–E33.6.
 - **RF-IA-08** · F5 · planificado — Embabel se usa en la versión 1.5.4, con Anthropic y OpenAI opcionales
   ([ADR-0033](../adr/0033-fase-5-ia.md)); sin credenciales hay un doble determinista claramente identificado; si algo
   no es compatible se documenta y se entrega una alternativa real.

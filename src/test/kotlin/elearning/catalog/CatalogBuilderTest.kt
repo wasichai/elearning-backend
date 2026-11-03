@@ -176,6 +176,119 @@ class CatalogBuilderTest {
         assertNull(detail.credits.proposal)
     }
 
+    private fun policy(
+        id: String,
+        number: Int,
+        hours: String,
+    ) = record(
+        id,
+        "clave" to "ects-facultad",
+        "numero" to number,
+        "estado" to "PUBLICADA",
+        "sistema" to "ECTS",
+        "metodo" to "ECTS_CARGA_TOTAL",
+        "parametros" to """{"horasPorCredito": "$hours"}""",
+        "jurisdiccion" to "EHEA",
+        "fuente" to "Reglamento de la Facultad",
+    )
+
+    // ADR-0036: propone la versión de política ligada, aunque haya otra más nueva; ligada a otro sistema, no propone
+    @Test
+    fun `a version proposes with the policy version it is bound to`() {
+        val policies = listOf(policy("p1", 1, "25"), policy("p2", 2, "30"))
+        val bound = CatalogBuilder().build(records(version("v1", 1, "PUBLICADA", "politica_credito" to "p1")).copy(policies = policies)).single().detail
+        val proposal = bound.credits.proposal!!
+        assertEquals("ects-facultad", proposal.policyId)
+        assertEquals("1", proposal.policyVersion)
+        assertEquals("Reglamento de la Facultad", proposal.source)
+        assertEquals(0, BigDecimal("8.5").compareTo(proposal.proposed))
+
+        // sin política ligada, la de referencia
+        assertEquals(
+            "ects-carga-total",
+            CatalogBuilder()
+                .build(records(version("v1", 1, "PUBLICADA")))
+                .single()
+                .detail.credits.proposal!!
+                .policyId,
+        )
+        // ligada a una política de otro sistema, o que no se encuentra, no propone
+        val sch =
+            CatalogBuilder().build(
+                records(version("v1", 1, "PUBLICADA", "sistema_credito" to "SCH", "politica_credito" to "p1")).copy(policies = policies),
+            )
+        assertNull(
+            sch
+                .single()
+                .detail.credits.proposal,
+        )
+        assertEquals(
+            "SCH",
+            sch
+                .single()
+                .detail.credits.system,
+        )
+        assertNull(
+            CatalogBuilder()
+                .build(records(version("v1", 1, "PUBLICADA", "politica_credito" to "nada")))
+                .single()
+                .detail.credits.proposal,
+        )
+    }
+
+    @Test
+    fun `a peruvian version proposes lective hours only`() {
+        // 6 × 12 h de teoría = 72 / 16 = 4,5; 6 × 12 h de práctica = 72 / 32 = 2,25; las autónomas no cuentan
+        val detail = CatalogBuilder().build(records(version("v1", 1, "PUBLICADA", "sistema_credito" to "PE_CREDITO"))).single().detail
+        assertEquals("PE_CREDITO", detail.credits.system)
+        assertEquals(0, BigDecimal("6.5").compareTo(detail.credits.proposal!!.proposed))
+    }
+
+    private fun approval(
+        id: String,
+        type: String,
+        at: String,
+        vararg extra: Pair<String, Any?>,
+    ) = record(id, "version_curso" to "v1", "tipo" to type, "aprobada_en" to at, *extra)
+
+    // ADR-0035: «aprobados» solo con una aprobación vigente, con su órgano, su documento y su política
+    @Test
+    fun `approved credits come only from a current approval, never from the version alone`() {
+        val approved =
+            approval(
+                "a1",
+                "APROBACION",
+                "2026-11-03T10:00:00Z",
+                "creditos_aprobados" to BigDecimal("8.00"),
+                "politica_id" to "ects-carga-total",
+                "politica_version" to "1",
+                "organo" to "Consejo de Facultad",
+                "documento_referencia" to "Resolución 045-2026-CF",
+                "documento_fecha" to "2026-10-30",
+                "aprobada_por" to "00000000-0000-0000-0000-000000000077",
+            )
+        // una copia en la versión sin aprobación detrás no vale como aprobación
+        val alone = CatalogBuilder().build(records(version("v1", 1, "PUBLICADA", "creditos_aprobados" to BigDecimal("9")))).single().detail
+        assertNull(alone.credits.approved)
+        assertNull(alone.credits.approval)
+
+        val built = CatalogBuilder().build(records(version("v1", 1, "PUBLICADA")).copy(approvals = listOf(approved))).single()
+        assertEquals(0, BigDecimal("8").compareTo(built.detail.credits.approved))
+        val summary = built.detail.credits.approval!!
+        assertEquals("Consejo de Facultad", summary.approvingBody)
+        assertEquals("Resolución 045-2026-CF", summary.documentReference)
+        assertEquals(LocalDate.parse("2026-10-30"), summary.documentDate)
+        assertEquals("ects-carga-total", summary.policyId)
+        // quién la registró no se publica
+        assertFalse(built.json().contains("000000000077"))
+
+        val revoked = approval("a2", "REVOCACION", "2026-11-03T11:00:00Z", "sustituye" to "a1", "motivo" to "Error en la resolución")
+        val after = CatalogBuilder().build(records(version("v1", 1, "PUBLICADA")).copy(approvals = listOf(revoked, approved))).single().detail
+        assertNull(after.credits.approved)
+        assertNull(after.credits.approval)
+        assertEquals("PROPUESTO", after.credits.proposal!!.status)
+    }
+
     @Test
     fun `one broken course is left out and the rest still build`() {
         val other = record("c2", "codigo" to "OTRO", "slug" to "otro", "titulo" to "Otro", "nivel" to "INICIAL")

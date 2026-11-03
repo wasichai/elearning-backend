@@ -84,7 +84,8 @@ class NewVersionService(
         author: String,
     ): UUID {
         val attributes = FIRST_DRAFT + mapOf(COURSE to course, "numero" to 1, "autor_id" to author, "estado" to "BORRADOR")
-        return UUID.fromString(records.create(VERSION, RecordRequest(attributes)).id)
+        // en una transacción: la versión y la primera fila de su historial (ADR-0032) se confirman juntas
+        return transactions.executeAndAwait { UUID.fromString(records.create(VERSION, RecordRequest(attributes)).id) }
     }
 
     // copia los registros bajo sus padres nuevos, en orden y en un lote; devuelve la identidad nueva de cada uno
@@ -138,6 +139,6 @@ class NewVersionService(
         val FIRST_DRAFT = mapOf("modalidad" to "ASINCRONA", "duracion" to "SEMANAS", "semanas" to 1, "sistema_credito" to "NINGUNO")
 
         // lo decidido en la versión de origen no se hereda: ni su estado, ni su publicación, ni sus créditos aprobados
-        val DRAFT_DROPS = setOf(COURSE, "numero", "autor_id", "estado", "publicada_en", "creditos_aprobados", "revisor_id")
+        val DRAFT_DROPS = setOf(COURSE, "numero", "autor_id", "estado", "publicada_en", "creditos_aprobados", "politica_creditos", "revisor_id")
     }
 }

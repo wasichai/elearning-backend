@@ -16,7 +16,9 @@ que es lógica determinista del módulo `elearning.ai` o de `authoring`; «perso
 
 1. **Brief** — temática, público, objetivos, duración, idioma, nivel, expertos y fuentes autorizadas. _Persona_
    (CREADOR) con formulario validado → `Brief`. Fuentes solo de la lista permitida o de paquetes importados
-   ([importador](../security/README.md#46-importador-asciidoc-f4)).
+   ([importador](../security/README.md#46-importador-asciidoc-f4)). Implementado en E33.1 ([#278](https://github.com/wasichai/elearning-backend/issues/278)):
+   Custom Object `brief` del curso y `BriefGuard` ([modelo](../architecture/domain-model.md)); se guarda a medias en
+   `BORRADOR` y solo pasa a `LISTO` completo, que es lo que consumirán los pasos.
 2. **Análisis de fuentes con procedencia** — _código_ (importador: grafo `include::`, secciones, anclas) + _Embabel_
    (extracción de conceptos y procedimientos) → `SourceAnalysis`, cada elemento ligado a `repo@sha:ruta#ancla`. Lo que
    no tiene procedencia se descarta.
@@ -132,6 +134,9 @@ orden 200), porque `inputs`, `output` y `validations` son JSON (`jsonb`) y el ti
 ([ADR-0004](../adr/0004-modelo-hibrido-custom-objects-y-tablas-fijas.md)). Cada fila apunta a su trabajo de `lms.trabajo`.
 Lectura por API propia bajo `/api/lms/ai/**` con el mismo alcance que el curso. Las filas no se editan (salvo el cierre
 de la ejecución y las intervenciones, que se añaden) ni se purgan con los trabajos; la retención se define en F6.
+Implementado en E32.4 ([#275](https://github.com/wasichai/elearning-backend/issues/275)): `AgentExecutionLog` (`elearning.ai`)
+abre, cierra y añade intervenciones; el coste sale de `lms.ai.rates` y la lectura es `GET /api/lms/ai/runs`
+([docs/api](../api/lms.md#registro-de-ejecuciones-de-ia-f5-adr-0033-7)).
 
 ## 5. Esquemas tipados y trabajos
 
@@ -193,12 +198,20 @@ Generar, validar, aprobar y publicar son permisos distintos (acciones declaradas
 
 | Acción                                              | Quién                                     | Objeto                          | Estado                        |
 | --------------------------------------------------- | ----------------------------------------- | ------------------------------- | ----------------------------- |
-| Generar (encolar un paso)                           | CREADOR con acceso al curso               | Acción `GENERAR` (ADR-0033 §10) | Planificado (E33.3)           |
-| Validar (lanzar y aceptar el informe de validación) | CREADOR o REVISOR asignado                | Acción `VALIDAR` (ADR-0033 §10) | Planificado (E33.3)           |
+| Generar (encolar un paso)                           | CREADOR con acceso al curso               | `GENERAR` sobre `version_curso` | Implementado (E33.3)          |
+| Validar (lanzar y aceptar el informe de validación) | REVISOR, nunca quien genera               | `VALIDAR` sobre `version_curso` | Implementado (E33.3)          |
 | Aprobar                                             | Persona con `APROBAR`, distinta del autor | `version_curso`                 | Planificado (F1 en el modelo) |
 | Publicar                                            | Persona con `PUBLICAR`                    | `version_curso`                 | Planificado (F1 en el modelo) |
 
 Los trabajos IA no tienen ninguna de las dos últimas.
+
+`elearning.ai.AiPermissions` las comprueba ([#280](https://github.com/wasichai/elearning-backend/issues/280)):
+`requireToEnqueue` exige la acción a quien llama con `CurrentUser.requirePermission` (`403`) y `requireStillAllowed`
+la vuelve a mirar al ejecutar con los roles guardados de quien pidió el trabajo (`Requesters`, ADR-0022 §4). Cada paso
+de E33.4–E33.6 llama a las dos. Validar es del REVISOR y no del CREADOR, como aprobar: ningún rol da por bueno lo que
+él mismo genera (separación de deberes, [seguridad §3](../security/README.md#3-separación-de-deberes)), y el
+issue lo pide así («quien solo puede generar recibe `403` al validar»). Aprobar sigue sin autoaprobación
+(`EditorialWorkflowGuard`).
 
 ## 9. Comparación reproducible de modelos
 

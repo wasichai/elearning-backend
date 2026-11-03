@@ -120,8 +120,9 @@ Respuesta 200 `CourseDetail` = todos los campos de `CourseSummary` (salvo `nextO
     "totalHours": 216
   },
   "credits": {
-    "system": "ECTS", // "ECTS" | "SCH" | null (NINGUNO)
-    "approved": null, // número si una persona los aprobó
+    "system": "ECTS", // "ECTS" | "SCH" | "PE_CREDITO" | null (NINGUNO)
+    "approved": null, // número solo con una aprobación vigente (RF-CRE-08)
+    "approval": null, // { credits, policyId, policyVersion, approvingBody, documentReference, documentDate, approvedAt } o null
     "proposal": {
       // null si system es null
       "system": "ECTS",
@@ -176,7 +177,8 @@ edición no está en `INSCRIPCION_ABIERTA` o la fecha de hoy (en la zona de la e
 dice solo eso, nunca cuántos ni quiénes se matricularon; llega con el refresco de la proyección, así que el comando de
 matrícula puede responder «sin cupo» antes de que la ficha lo diga. `full`, `enrollmentStatus` y el `enrollmentStatus`
 de `nextOffering` son campos añadidos: un cliente que no los lee sigue funcionando. Los créditos son siempre una **propuesta**: la interfaz debe decir
-«créditos propuestos, no oficiales» salvo que `approved` tenga valor.
+«créditos propuestos, no oficiales» salvo que `approved` tenga valor, y entonces citar el órgano y el documento de
+`approval`: la plataforma solo registra el reconocimiento de la institución (ADR-0035).
 
 ## Valores y nulos
 
@@ -186,7 +188,7 @@ de `nextOffering` son campos añadidos: un cliente que no los lee sigue funciona
   catálogo, no del modelo); lección `type` `LECTURA` \| `VIDEO` \| `PRESENTACION` \| `LABORATORIO` \|
   `EVALUACION` \| `SESION`; docente `role` `TITULAR` \| `ASISTENTE`. Un valor nuevo llega primero al modelo y aquí.
 - **Pueden ser `null`**: `summary`, `category`, `nextOffering`, `prerequisiteKnowledge`, `version.publishedAt`,
-  `requirements`, `assessment`, `certification`, `credits.system`, `credits.approved`, `credits.proposal`;
+  `requirements`, `assessment`, `certification`, `credits.system`, `credits.approved`, `credits.approval`, `credits.proposal`;
   en unidades `description` y `estimatedHours`; en lecciones `durationMinutes`, `summary` y `source`; en ediciones
   `enrollmentFrom`, `enrollmentUntil`, `capacity` y `schedule`; en docentes `professionalTitle`, `bio` y `specialties`.
   Las listas nunca son `null` (como mucho, vacías).
@@ -677,7 +679,13 @@ id es `null` o si la persona está deshabilitada o fue borrada; el id se devuelv
 versión (lo demás sigue siendo `404`/`403`), y se leen de una vez para toda la respuesta.
 
 `StudioVersionDetail` = `StudioVersion` más `units`: `[{ "id", "order", "title", "sourceRef": null, "lessons": [{ "id", "order",
-"title", "type", "sourceRef": null, "hasAssessment": false, "resources": 1 }] }]`, `comments: ReviewComment[]`, `decisions: ReviewDecision[]`.
+"title", "type", "sourceRef": null, "hasAssessment": false, "resources": 1 }] }]`, `comments: ReviewComment[]`, `decisions: ReviewDecision[]`,
+`history: VersionTransition[]`.
+
+`VersionTransition`: `{ "from": "BORRADOR", "to": "EN_REVISION", "by", "byName", "at" }`, la más antigua primero: cada cambio de
+`status` de la versión, por cualquier vía (estudio, bandeja, API de registros o plataforma), y su creación (`from: null`).
+`by` es quien la movió y `byName` su nombre para mostrar (null si está deshabilitada o se borró); los dos son null si la movió
+la plataforma. Historial de solo inserción en `lms.transicion_version` (ADR-0032); escribir otros campos no deja fila.
 
 ### Bandeja del revisor
 
@@ -809,3 +817,104 @@ pasajero (almacenamiento, interrupción) vuelve a `PENDIENTE` hasta agotar `lms.
   REVISOR): `formato`, `archivo`, `sha256`, `hash_fuente`, `generador`, `version_generador`, `trabajo_id` y las relaciones
   `version_recurso` y `fuente_recurso`. Se descargan con `GET /api/objects/artefacto_generado/records/{id}/files/archivo`,
   siempre como adjunto. La API de registros no los escribe (`403`).
+
+## Registro de ejecuciones de IA (F5, ADR-0033 §7)
+
+Cada llamada de un paso de la canalización deja una ejecución (`AgentRun`, RF-IA-03) en `lms.ejecucion_agente`. La escriben
+los pasos desde su trabajo; esta API solo la lee.
+
+| Método | Ruta                             | Resultado                                                                                  |
+| ------ | -------------------------------- | ------------------------------------------------------------------------------------------ |
+| GET    | `/api/lms/ai/runs?courseId={id}` | las ejecuciones del curso, la más reciente primero, a lo sumo 100 → `[AgentExecutionLine]` |
+| GET    | `/api/lms/ai/runs/{id}`          | `AgentExecution`                                                                           |
+
+- **Permisos**: ambas rutas exigen `UPDATE` sobre `version_curso` (CREADOR, REVISOR y ADMIN; `403` para ESTUDIANTE y DOCENTE) y
+  el curso se lee como quien llama: el mismo alcance que el curso. Un curso que no existe o no ve es `404`; una ejecución que
+  no existe, de otra organización o de un curso que no ve, también `404`. No hay ruta que escriba (`405`).
+- `AgentExecutionLine`: `{ "id", "jobId", "step", "status", "generator", "provider": null, "model": null, "requestedBy",
+"courseId", "unitId": null, "versionId": null, "attempt", "inputTokens": null, "outputTokens": null, "cost": null,
+"startedAt", "finishedAt": null }`.
+- `AgentExecution`: lo de la línea más `"organizationId", "objective", "inputs", "sources": [{ "ref": "owner/repo@sha:ruta#ancla",
+"sha256" }], "modelSettings": { "maxTokens", "temperature": null }, "promptVersion", "templateVersion", "idempotencyKey",
+"output": null, "validations": null, "error": null, "interventions": [{ "userId", "kind", "at", "note": null }]`.
+  `inputs`, `output` y `validations` son el JSON del paso.
+- `step`: `SOURCE_ANALYSIS` · `COURSE_DESIGN` · `LESSON_DRAFT` · `SCRIPT` · `CONSISTENCY_REVIEW` · `ASSISTANT`. `status`:
+  `PENDING` · `RUNNING` · `SUCCEEDED` · `INVALID_OUTPUT` · `FAILED` · `CANCELLED`. `generator`: `MODEL` · `DETERMINISTIC`; con
+  `DETERMINISTIC`, `provider`, `model` y `modelSettings` son `null`. `provider`: `anthropic` · `openai`. `kind`: `ACCEPTED` ·
+  `EDITED` · `REJECTED`.
+- `cost`: `{ "amount", "currency", "inputPerMillion", "outputPerMillion", "rateSince" }`, calculado al cerrar con la tarifa de
+  `lms.ai.rates` que regía el día en que empezó, y guardado con ella: cambiar la tarifa no reescribe lo gastado. `null`
+  mientras corre, sin consumo informado, con el doble determinista o si el modelo no tiene tarifa configurada. Cada tarifa de la lista lleva `provider`, `model`, `input-per-million`, `output-per-million`, `currency` y `since` (por entorno, `LMS_AI_RATES_0_PROVIDER`…).
+- **Lo que no cambia**: lo pedido (paso, ámbito, objetivo, entradas, fuentes, modelo, versiones, clave e intento) no se edita;
+  la ejecución se cierra una sola vez (estado, salida, validaciones, error, tokens, coste y fin) y las intervenciones solo se
+  añaden al final. Nada se borra ni se purga con los trabajos. Lo hace cumplir un disparador, también frente a SQL directo.
+- **Sin secretos**: ningún campo guarda claves ni cabeceras; `modelSettings` es tipado (no admite parámetros libres) y una clave
+  configurada (`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`) que aparezca en el objetivo, las entradas, la salida, el error o una nota
+  se guarda como `[REDACTED]` (RNF-SEG-09).
+
+## Créditos aprobados (RF-CRE-08, ADR-0035)
+
+La plataforma calcula y **propone** créditos ([ADR-0007](../adr/0007-carga-academica-y-creditos-como-politica-versionada.md));
+reconocerlos es un acto de la institución que una persona con `APROBAR_CREDITOS` sobre `version_curso` (rol
+`AUTORIDAD_ACADEMICA`) registra en nombre de un órgano y con un documento
+([ADR-0035](../adr/0035-aprobacion-de-creditos-por-una-autoridad-academica.md)).
+
+| Método | Ruta                                       | Resultado                                                         |
+| ------ | ------------------------------------------ | ----------------------------------------------------------------- |
+| GET    | `/api/lms/credits/versions/{id}/proposal`  | propuesta de hoy y aprobación vigente → `VersionCredits`          |
+| GET    | `/api/lms/credits/versions/{id}/approvals` | historial, lo más antiguo primero → `CreditApproval[]`            |
+| POST   | `/api/lms/credits/versions/{id}/approvals` | `CreditApprovalRequest` → `201` `CreditApproval` (`APROBACION`)   |
+| POST   | `/api/lms/credits/approvals/{id}/revoke`   | `CreditRevocationRequest` → `201` `CreditApproval` (`REVOCACION`) |
+
+- **Quién**: aprobar y revocar exigen `APROBAR_CREDITOS` (`403`; un REVISOR con `APROBAR` tampoco la tiene). Leer exige leer
+  la versión (`404` si no) y `READ` sobre `aprobacion_creditos` (`403`; el estudiante nunca).
+- **Separación de funciones**, también para ADMIN (`403`): no aprueba ni revoca el autor de la versión, su revisor asignado,
+  quien la aprobó en la bandeja ni quien tiene una asignación docente en una edición de alguna versión del curso.
+- **Cuándo**: solo una versión `APROBADA` o `PUBLICADA`, con sistema de crédito (`409`), sin otra aprobación vigente (`409`:
+  primero se revoca). Solo se revoca la aprobación vigente (`409`).
+- `CreditApprovalRequest`: `{ "approvedCredits": 8, "reason": null, "approvingBody": "Consejo de Facultad",
+"documentReference": "Resolución 045-2026-CF", "documentDate": "2026-10-30" }`. `approvedCredits` es opcional (por
+  omisión, lo propuesto), positivo y con hasta 2 decimales; si difiere de lo propuesto, `reason` es obligatorio (`400`).
+  `approvingBody` y `documentReference` son obligatorios, hasta 200 caracteres; `reason`, hasta 4000; `documentDate`,
+  opcional. `CreditRevocationRequest` es igual sin `approvedCredits`, con `reason` obligatorio.
+- El servidor **recalcula** con la política del sistema de la versión y guarda su instantánea. Hasta que existan políticas
+  en datos (RF-CRE-07) es la de referencia: `ects-carga-total@1` o `sch-34cfr600.2-trabajo-equivalente@1`.
+- `CreditApproval`: `{ "id", "versionId", "type": "APROBACION" | "REVOCACION", "revokes", "system", "policyId",
+"policyVersion", "method", "parameters": { "horasPorCredito": "27" }, "source", "totalHours", "calculated", "proposed",
+"approvedCredits", "reason", "approvingBody", "documentReference", "documentDate", "approvedBy", "approvedAt" }`. En una
+  revocación, `revokes` es la aprobación revocada y la instantánea va vacía.
+- `VersionCredits`: `{ "versionId", "versionStatus", "system", "proposal": { …como la del catálogo… }, "current":
+CreditApproval | null }`.
+- Las filas son `aprobacion_creditos` (`appendOnly`, `apiOnly`): la API de registros las lee pero no las crea, cambia ni
+  borra; quedan en `/api/audit?objectName=aprobacion_creditos&recordId=…` con la persona, la hora y, en `reason`, un resumen del acto (tipo, órgano, documento, política con sus parámetros, horas y créditos, motivo; hasta 500 caracteres). El comando copia lo
+  aprobado a `version_curso.creditos_aprobados` y `politica_creditos` (`id@versión`) y lo borra al revocar; esos dos campos
+  no se escriben por la API de registros (`403` para todos). Una versión nueva no los hereda.
+- En el catálogo, `credits.approved` y `credits.approval` (`{ "credits", "policyId", "policyVersion", "approvingBody",
+"documentReference", "documentDate", "approvedAt" }`) solo existen con una aprobación vigente; tras una revocación vuelven
+  a `null` en el refresco siguiente de la proyección.
+
+### Políticas de crédito (RF-CRE-07, ADR-0036)
+
+| Método | Ruta                                         | Resultado                                                     |
+| ------ | -------------------------------------------- | ------------------------------------------------------------- |
+| GET    | `/api/lms/credits/policies`                  | `?jurisdiction=&system=&status=&program=` → `CreditPolicy[]`  |
+| GET    | `/api/lms/credits/policies/{id}`             | `CreditPolicy`                                                |
+| POST   | `/api/lms/credits/policies/{id}/publish`     | exige `PUBLICAR`; solo un borrador (`409`) → `CreditPolicy`   |
+| POST   | `/api/lms/credits/policies/{id}/retire`      | exige `PUBLICAR`; solo una publicada (`409`) → `CreditPolicy` |
+| POST   | `/api/lms/credits/policies/{id}/new-version` | exige `CREATE`; `201` borrador con `number + 1`               |
+
+- El borrador se crea y se edita con la API de registros: `POST /api/objects/politica_credito/records` con `clave`,
+  `numero`, `nombre`, `sistema` (`ECTS`, `SCH`, `PE_CREDITO`), `metodo` (`ECTS_CARGA_TOTAL`, `US_SCH_34CFR600_2`,
+  `PE_LEY30220_HORAS_LECTIVAS`), `parametros` (JSON de texto o números; vacío, los de la norma), `jurisdiccion` (ISO
+  3166-1 alfa-2 o `EHEA`), `programa_codigo`, `fuente`, `fuente_url`, `vigente_desde`. Nace en `BORRADOR` (`409` si no);
+  un método de otro sistema, un parámetro desconocido o fuera de la norma (ECTS fuera de 25–30 h; PE bajo 16 h de teoría o
+  32 de práctica) o una jurisdicción inválida son `400`. Publicada o retirada no cambia ni se borra (`409`, también ADMIN).
+- Parámetros: ECTS `horasPorCredito`, `paso`; SCH `horasInstruccionPorSemana`, `horasFueraDeClasePorSemana`,
+  `semanasDeReferencia`, `paso`; PE `horasTeoriaPorCredito`, `horasPracticaPorCredito`, `paso`.
+- `CreditPolicy`: `{ "id", "key", "number", "name", "status", "system", "method", "parameters", "jurisdiction",
+"programCode", "source", "sourceUrl", "validFrom", "publishedBy", "publishedAt" }`. La leen el personal y la autoridad
+  académica; el estudiante no (`403`). Lo de otra organización no existe (`404`).
+- Una versión de curso se liga a una versión de política con `version_curso.politica_credito` (en borrador, como todo su
+  contenido). Propone con ella si es de su sistema; sin ella, con la de referencia (`pe-ley30220-horas-lectivas@1` para
+  `PE_CREDITO`); ligada a otro sistema, `proposal` es `null`. `VersionCredits.policyId` es la ligada. Aprobar exige la
+  ligada `PUBLICADA` y de su sistema (`409`); la aprobación guarda `policyId` = `clave` y `policyVersion` = `numero`.

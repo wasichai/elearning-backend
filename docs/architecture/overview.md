@@ -78,6 +78,7 @@ modelo, sus guardas, sus alcances de lectura y sus comandos en `/api/lms/**`. La
 | `learning`                      | Aula, progreso, eventos de aprendizaje, asistencia, finalización, certificados                            | `/api/lms/classroom/**`                           | F2 · F3            |
 | `assessment`                    | Evaluaciones, versiones e instantáneas, intentos, entregas, rúbricas, resultados                          | `/api/lms/assessments/**`, `/api/lms/attempts/**` | F3                 |
 | `authoring`                     | Recursos versionados, revisión, comentarios, publicación, importador AsciiDoc                             | `/api/lms/authoring/**`, `/api/lms/reviews/**`    | F4                 |
+| `credits`                       | Aprobación y revocación de créditos por una autoridad académica (ADR-0035)                                | `/api/lms/credits/**`                             | F6                 |
 | `ai`                            | Canalización editorial con Embabel, `AgentRun`, doble determinista                                        | `/api/lms/ai/**`                                  | F5                 |
 | `media`                         | Renderizado (HTML, PDF, Remotion), artefactos generados                                                   | `/api/lms/media/**`                               | F4 · F5            |
 | `reputation` (nombre propuesto) | Valoraciones y feedback contextual                                                                        | `/api/lms/ratings/**`, `/api/lms/feedback/**`     | F6                 |
@@ -99,6 +100,7 @@ la API genérica de Wasichai (`/api/objects/{o}/records`) salvo los marcados `ap
 | `learning`   | Objetos + `lms.evento_aprendizaje`   | Estudiante: lo suyo; docente: su edición             | Finalización; emisión de certificado      | `classroom`, `teaching`         |
 | `assessment` | Objetos + tablas `lms`               | Docente de la edición; con motivo                    | Vencimiento de intentos; corrección       | `classroom`, `teaching`         |
 | `authoring`  | Objetos                              | Revisor: sus revisiones; sin autoaprobación          | Importación (trabajo); avisos de revisión | `studio`, `review`              |
+| `credits`    | Objeto `aprobacion_creditos`         | `APROBAR_CREDITOS`; separación de funciones          | —                                         | `studio`                        |
 | `ai`         | Objeto `ejecucion_agente`            | Generar ≠ validar ≠ aprobar ≠ publicar               | Ejecuciones en cola persistente           | `studio`                        |
 | `media`      | Objeto `artefacto_generado` + `FILE` | Hereda del recurso                                   | Renderizado en cola persistente           | `studio`                        |
 | `reputation` | Objetos                              | Solo matriculados valoran; moderación                | Agregados periódicos                      | `classroom`, `teaching`         |
@@ -131,8 +133,14 @@ flowchart BT
     assessment --> enrollment
     assessment --> jobs
     authoring --> course
+    credits --> authoring
+    credits --> course
+    credits --> workload
     importer
     ai --> authoring
+    ai --> course
+    ai --> importer
+    ai --> jobs
     media --> authoring
     media --> jobs
     reputation --> enrollment

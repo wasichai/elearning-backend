@@ -233,7 +233,7 @@ class DemoDataTest(unittest.TestCase):
 
     def test_one_user_per_role_and_one_multi_role(self):
         role_sets = [tuple(sorted(u["roles"])) for u in DATA["users"]]
-        for role in ("ESTUDIANTE", "DOCENTE", "CREADOR", "REVISOR"):
+        for role in ("ESTUDIANTE", "DOCENTE", "CREADOR", "REVISOR", "AUTORIDAD_ACADEMICA"):
             self.assertIn((role,), role_sets)
         self.assertIn(("DOCENTE", "REVISOR"), role_sets)
         self.assertTrue(all(u["email"].endswith("@demo.wasichai-learning.test") and "password" not in u for u in DATA["users"]))
