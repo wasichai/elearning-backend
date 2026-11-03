@@ -2,6 +2,24 @@
 
 Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este archivo registra lo que se entregó.
 
+## 2026-11-03 — Términos de uso con plazo y supresión de datos personales ([#304](https://github.com/wasichai/elearning-backend/issues/304), RNF-SEG-11)
+
+- [ADR-0037](adr/0037-terminos-de-uso-y-supresion-de-datos-personales.md) implementa ADR-0030: términos de uso
+  versionados e inmutables (`lms.terminos_uso`, V15) que publica quien tiene `MANAGE_ORGANIZATION`, y una aceptación por
+  persona con la versión y el plazo que aprobó (`lms.aceptacion_terminos`). `GET`/`POST /api/lms/terms` y
+  `POST`/`DELETE /api/lms/terms/acceptance`. Publicar otra versión no altera las aceptaciones previas.
+- **Sin aceptación vigente, matricularse y registrar progreso dan `403`** con el motivo; el catálogo público sigue
+  abierto. Sin términos publicados nadie se matricula: una organización existente debe publicar los suyos.
+- Al retirar la aceptación o vencer su plazo (barrido cada `lms.privacy.sweep-every`, 1 h), el trabajo `privacy.erase`
+  de la cola suprime eventos, progreso, asistencias, entregas, intentos sin calificar, trabajos y la aceptación, y
+  disocia matrículas, intentos calificados y certificados (seudónimo aleatorio, sin correo, respuestas ni nombre; el
+  código del certificado sigue verificando) y vacía el perfil docente. Una transacción, idempotente, con constancia sin
+  datos personales en `lms.supresion`. Los disparadores de solo inserción ceden solo dentro de esa transacción.
+- `Certificate.holderName` puede ser `null` (titular suprimido). La semilla publica unos términos ficticios y el
+  estudiante demo los acepta antes de matricularse (`terms` en `model/demo/data.json`, validado por `apply.py`).
+- `TermsApiTest` (puerta `403`, catálogo abierto, versiones y permisos) y `PersonalDataErasureApiTest` (supresión por
+  retirada y por vencimiento, lo disociado, la constancia y la idempotencia) lo prueban; `test_demo`, la semilla.
+
 ## 2026-11-03 — Paneles del estudiante y del docente en una lectura ([#261](https://github.com/wasichai/elearning-backend/issues/261))
 
 - `GET /api/lms/classroom/panel` y `GET /api/lms/teaching/panel`, paginados con `page` y `size`, devuelven por elemento

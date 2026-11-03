@@ -2,6 +2,7 @@ package elearning.learning
 
 import elearning.common.listAll
 import elearning.common.ref
+import elearning.privacy.TermsService
 import kotlinx.coroutines.reactor.awaitSingleOrNull
 import org.springframework.r2dbc.core.DatabaseClient
 import org.springframework.stereotype.Service
@@ -25,7 +26,8 @@ enum class LearningEventType { STARTED, MARKED_COMPLETE, VIDEO_ENDED }
 // las reglas del progreso (ADR-0012). solo el estudiante, sobre su matrícula activa y una lección de su versión; el
 // estado solo avanza y cada tipo de lección se completa con su evidencia: lectura, presentación y laboratorio cuando el
 // estudiante la marca, vídeo al terminar, evaluación y sesión en F3. el tiempo con la página abierta no es evidencia.
-// el evento crudo se guarda una vez por clientEventId en la misma transacción que el progreso, serializada por lección
+// el evento crudo se guarda una vez por clientEventId en la misma transacción que el progreso, serializada por lección.
+// sin aceptación vigente de los términos de uso no se registra nada (ADR-0037)
 @Service
 class LessonProgressService(
     private val currentUser: CurrentUser,
@@ -35,6 +37,7 @@ class LessonProgressService(
     private val transactions: TransactionalOperator,
     private val db: DatabaseClient,
     private val clock: Clock,
+    private val terms: TermsService,
 ) {
     suspend fun record(
         enrollmentId: UUID,
@@ -43,6 +46,7 @@ class LessonProgressService(
         clientEventId: UUID,
     ): LessonProgress {
         val user = currentUser.require()
+        terms.requireAccepted(user, "registrar tu progreso")
         // la matrícula se lee con el alcance de la persona; quien ve todas (un docente) tampoco avanza la de otro
         val enrollment = records.get(ENROLLMENT, enrollmentId)
         if (enrollment.attributes[STUDENT]?.toString() != user.userId.toString()) throw NotFoundException(NOT_FOUND)

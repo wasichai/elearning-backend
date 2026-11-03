@@ -77,6 +77,21 @@ abstract class LmsApiTest : WasichaiIntegrationTest() {
 
     protected fun demoUser(role: String): String = bearer("$role@demo.wasichai-learning.test", DEMO_PASSWORD)
 
+    // acepta los términos de uso vigentes de la demo (los publica model/apply.py): sin aceptación no hay matrícula ni
+    // progreso (ADR-0037). devuelve el token, para encadenarlo al crear una persona
+    protected fun acceptTerms(token: String): String {
+        val version = get("/api/lms/terms", token)["current"]["version"].asInt()
+        client
+            .post()
+            .uri("/api/lms/terms/acceptance")
+            .header("Authorization", token)
+            .bodyValue(mapOf("version" to version))
+            .exchange()
+            .expectStatus()
+            .isOk
+        return token
+    }
+
     companion object {
         const val DEMO_PASSWORD = "Demo-integration-2026"
         private val LOCK = Any()
