@@ -163,6 +163,13 @@ no una tabla nueva:
   encolar es `429` con `Retry-After`. Un paso es una llamada, más los reintentos de corrección acotados.
 - Corre en un dispatcher acotado, nunca en el event loop de WebFlux.
 
+Implementado en E33.2 ([#279](https://github.com/wasichai/elearning-backend/issues/279)): `AiStepRunner` (`elearning.ai`) es la
+política común que llama el `JobHandler` de cada paso con su generador (`AiModelCall`, una llamada por intento) y su borrador;
+`AiJobs` encola con la clave y los límites (`lms.ai.limits`) y lee y cancela (`GET /api/lms/ai/jobs/{id}`,
+`POST /api/lms/ai/jobs/{id}/cancel`, [docs/api](../api/lms.md#trabajos-de-ia-f5-adr-0033-5-6-y-9)). La cola gana `CANCELLED`
+(`V21`). Con una sola llamada por intento, «entre llamadas» es antes de llamar y al volver; los reintentos de corrección
+acotados llegarán con los pasos que los usen.
+
 ## 6. Protección contra prompt injection
 
 - El texto de manuales, fuentes y borradores es **dato no confiable**: va delimitado en el mensaje de usuario, nunca en

@@ -42,6 +42,27 @@ licencia de [ADR-0039](adr/0039-remotion-como-motor-de-render-con-licencia-por-d
 - Los criterios de #267 que piden código (build sin Remotion comprobada en CI, informe de licencias, rechazo de
   peticiones con código, licencia del `ffprobe`) quedan para el trabajador, [#297](https://github.com/wasichai/elearning-backend/issues/297).
 
+## 2026-11-03 — Trabajos de IA en la cola: idempotencia, reintentos, cancelación y límites ([#279](https://github.com/wasichai/elearning-backend/issues/279))
+
+Segundo paso de la épica E33 ([#277](https://github.com/wasichai/elearning-backend/issues/277)), según
+[ADR-0033](adr/0033-fase-5-ia.md) §5, §6 y §9 sobre la cola de ADR-0018/0022.
+
+- `lms.trabajo` gana el estado `CANCELLED` (`V21`): `JobQueue.cancel` lo pone a un trabajo pendiente o en curso, que nadie
+  vuelve a reclamar y cuyo cierre ya no escribe; `JobQueue.cancelled` lo mira el manejador y `JobCancelled` lo detiene sin
+  cerrarlo otra vez. Libera su clave y la retención lo borra como a uno terminado.
+- `AiStepRunner` (`elearning.ai`): la política común de los pasos, que cada `JobHandler` llama con su generador
+  (`AiModelCall`) y su borrador. Reutiliza la ejecución `SUCCEEDED` con la misma clave sin llamar al proveedor; `408`, `429`
+  y `5xx` (`AiProviderFailure`) se reintentan con la espera y el tope de la cola; otro `4xx`, `AiInvalidOutput`, el
+  presupuesto agotado o la pérdida de `GENERAR` son `PermanentJobFailure`. Cancelación antes de llamar y al volver; el
+  borrador y el cierre del trabajo en una transacción.
+- `AiJobs`: clave de idempotencia (hash de paso, ámbito, objetivo, entradas, fuentes con su hash, versiones de instrucciones
+  y plantilla, modelo y parámetros, en JSON canónico), límites `lms.ai.limits` (concurrencia por organización y presupuesto
+  por curso, `429` con `Retry-After`) y `GET /api/lms/ai/jobs/{id}` y `POST /api/lms/ai/jobs/{id}/cancel`, solo de quien lo
+  pidió y con `GENERAR`.
+- Pruebas: `AiStepKeyTest` (unitaria) y `AiJobsApiTest` con un paso de prueba y un proveedor falso que cuenta sus llamadas.
+  La prueba equivalente contra el doble WireMock de los proveedores llega con E32.3
+  ([#274](https://github.com/wasichai/elearning-backend/issues/274)).
+
 ## 2026-11-03 — `pendingAttempts` del panel docente sin los intentos propios ([#338](https://github.com/wasichai/elearning-backend/issues/338))
 
 - `pendingAttempts` de `GET /api/lms/teaching/panel` y `GET /api/lms/teaching/offerings` cuenta lo que quien llama puede

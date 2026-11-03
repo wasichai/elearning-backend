@@ -80,8 +80,9 @@ class JobQueue(
             .awaitSingleOrNull()
     }
 
-    // el trabajo pendiente o en curso con esta clave
-    private suspend fun active(
+    // el trabajo pendiente o en curso con esta clave: el que devolvería encolar. quien pone límites propios antes de encolar
+    // (los de la IA, ADR-0033 §9) lo mira primero para no negar lo que ya está pedido
+    suspend fun active(
         organization: UUID,
         type: String,
         key: String,
@@ -125,6 +126,48 @@ class JobQueue(
             )
         }
     }
+
+    // los trabajos pendientes o en curso de estos tipos en la organización
+    suspend fun activeCount(
+        organization: UUID,
+        types: Collection<String>,
+    ): Int =
+        db
+            .sql("SELECT count(*) AS activos FROM lms.trabajo WHERE organizacion_id = :org AND tipo = ANY(:types) AND estado IN ('QUEUED', 'RUNNING')")
+            .bind("org", organization)
+            .bind("types", types.toTypedArray())
+            .map { row, _ -> row.get("activos", Number::class.java)!!.toInt() }
+            .one()
+            .awaitSingle()
+
+    // cancela un trabajo pendiente o en curso de la organización (ADR-0033 §5): queda CANCELLED y terminado. nadie lo vuelve
+    // a reclamar, y complete y fail de quien lo está ejecutando ya no escriben: un manejador que cierra su trabajo en la
+    // misma transacción que su borrador (ADR-0022) lo deshace. false si no existe o ya había terminado
+    suspend fun cancel(
+        organization: UUID,
+        id: UUID,
+    ): Boolean =
+        db
+            .sql(
+                """
+                UPDATE lms.trabajo SET estado = 'CANCELLED', reclamado_en = NULL, terminado_en = :now
+                WHERE organizacion_id = :org AND id = :id AND estado IN ('QUEUED', 'RUNNING')
+                """.trimIndent(),
+            ).bind("now", now())
+            .bind("org", organization)
+            .bind("id", id)
+            .fetch()
+            .rowsUpdated()
+            .awaitSingle() > 0
+
+    // si lo cancelaron: lo mira el manejador entre llamadas largas (al modelo) para no seguir gastando
+    suspend fun cancelled(job: Job): Boolean =
+        db
+            .sql("SELECT estado = 'CANCELLED' AS cancelado FROM lms.trabajo WHERE id = :id")
+            .bind("id", job.id)
+            .map { row, _ -> row.get("cancelado", Boolean::class.javaObjectType)!! }
+            .one()
+            .awaitSingleOrNull() ?: false
 
     // como toda lectura de lms, dentro de su organización
     suspend fun find(
@@ -258,11 +301,11 @@ class JobQueue(
             .awaitSingle() > 0
     }
 
-    // borra los trabajos terminados (DONE o FAILED) hace más de lms.jobs.retention (ADR-0022): sus datos nombran a quien
+    // borra los trabajos terminados (DONE, FAILED o CANCELLED) hace más de lms.jobs.retention (ADR-0022): sus datos nombran a quien
     // los pidió y su error puede citar la fuente. devuelve cuántos borró
     suspend fun purge(): Long =
         db
-            .sql("DELETE FROM lms.trabajo WHERE estado IN ('DONE', 'FAILED') AND terminado_en < :before")
+            .sql("DELETE FROM lms.trabajo WHERE estado IN ('DONE', 'FAILED', 'CANCELLED') AND terminado_en < :before")
             .bind("before", now().minus(properties.retention))
             .fetch()
             .rowsUpdated()

@@ -260,13 +260,54 @@ class JobQueueTest : WasichaiIntegrationTest() {
         assertEquals(json.readTree("""{"n": 1}"""), json.readTree(status(id).result))
     }
 
+    // ADR-0033 §5: cancelar termina el trabajo, pendiente o en curso, y quien lo ejecuta ya no puede cerrarlo
+    @Test
+    fun `a cancelled job is never claimed, its runner cannot close it and its key is free again`() {
+        val type = "test.cancel-${UUID.randomUUID()}"
+        val running = runBlocking { queue.enqueue(org, type, key = "r") }
+        val claimed = runBlocking { queue.claim(listOf(type), 1) }.single()
+        val waiting = runBlocking { queue.enqueue(org, type, key = "w") }
+        assertEquals(running, claimed.id)
+
+        assertFalse(runBlocking { queue.cancel(UUID.randomUUID(), waiting) }, "otra organización no lo cancela")
+        assertTrue(runBlocking { queue.cancel(org, waiting) })
+        assertTrue(runBlocking { queue.cancel(org, running) })
+        assertFalse(runBlocking { queue.cancel(org, running) }, "ya terminado")
+
+        assertEquals(JobState.CANCELLED, status(waiting).state)
+        assertNotNull(status(waiting).finishedAt)
+        assertTrue(runBlocking { queue.cancelled(claimed) })
+        assertFalse(runBlocking { queue.complete(claimed, """{"late": true}""") })
+        assertFalse(runBlocking { queue.fail(claimed, "late") })
+        assertEquals(JobState.CANCELLED, status(running).state)
+        assertNull(status(running).result)
+        assertTrue(runBlocking { queue.claim(listOf(type), 2) }.isEmpty())
+        assertEquals(0, runBlocking { queue.activeCount(org, listOf(type)) })
+        assertNotEquals(waiting, runBlocking { queue.enqueue(org, type, key = "w") }, "cancelado, la clave queda libre")
+        assertEquals(1, runBlocking { queue.activeCount(org, listOf(type)) })
+        runBlocking { queue.cancel(org, queue.active(org, type, "w")!!) }
+    }
+
+    @Test
+    fun `a handler that sees its job cancelled stops without failing it`() {
+        val id = runBlocking { queue.enqueue(org, CANCELLING) }
+
+        drain()
+
+        val cancelled = status(id)
+        assertEquals(JobState.CANCELLED, cancelled.state)
+        assertEquals(1, cancelled.attempts)
+        assertNull(cancelled.error)
+    }
+
     // L5 de #216: un trabajo terminado no se guarda para siempre; lo pendiente y lo reciente, sí
     @Test
     fun `finished jobs older than the retention are purged`() {
-        val old = runBlocking { listOf(queue.enqueue(org, ECHO), queue.enqueue(org, FLAKY, maxAttempts = 1)) }
+        val old = runBlocking { listOf(queue.enqueue(org, ECHO), queue.enqueue(org, FLAKY, maxAttempts = 1), queue.enqueue(org, "test.nobody-runs-this")) }
         val recent = runBlocking { queue.enqueue(org, ECHO) }
         drain()
         val waiting = runBlocking { queue.enqueue(org, "test.nobody-runs-this") }
+        assertTrue(runBlocking { queue.cancel(org, old[2]) })
         runBlocking {
             db
                 .sql("UPDATE lms.trabajo SET terminado_en = now() - interval '31 days' WHERE id = ANY(:ids)")
@@ -276,8 +317,9 @@ class JobQueueTest : WasichaiIntegrationTest() {
                 .awaitSingle()
         }
         assertEquals(JobState.FAILED, status(old[1]).state)
+        assertEquals(JobState.CANCELLED, status(old[2]).state)
 
-        assertTrue(runBlocking { queue.purge() } >= 2)
+        assertTrue(runBlocking { queue.purge() } >= 3)
 
         assertTrue(old.all { runBlocking { queue.find(org, it) } == null })
         assertEquals(JobState.DONE, status(recent).state)
@@ -348,6 +390,15 @@ class JobQueueTest : WasichaiIntegrationTest() {
         @Bean
         fun countHandler(): JobHandler = count()
 
+        // se cancela a sí mismo, como lo haría quien lo pidió mientras corre, y lo ve antes de seguir
+        @Bean
+        fun cancellingHandler(queue: JobQueue): JobHandler =
+            handler(CANCELLING) {
+                queue.cancel(it.organizationId, it.id)
+                if (queue.cancelled(it)) throw JobCancelled(it)
+                null
+            }
+
         @Bean
         fun blockingHandler(): JobHandler =
             handler(BLOCKING) {
@@ -386,6 +437,7 @@ class JobQueueTest : WasichaiIntegrationTest() {
         const val DOOMED = "test.doomed"
         const val COUNT = "test.count"
         const val BLOCKING = "test.blocking"
+        const val CANCELLING = "test.cancelling"
 
         val calls = ConcurrentHashMap<UUID, AtomicInteger>()
         val blockingStarted = CountDownLatch(1)

@@ -146,6 +146,52 @@ class AgentExecutionStore(
             .collectList()
             .awaitSingle()
 
+    // la ejecución que ya resolvió esta clave (ADR-0033 §5): la más antigua, que es la que se entregó primero
+    suspend fun succeededWithKey(
+        organization: UUID,
+        key: String,
+    ): AgentExecution? =
+        db
+            .sql(
+                "SELECT $COLUMNS FROM lms.ejecucion_agente WHERE organizacion_id = :org AND clave = :key AND estado = 'SUCCEEDED' " +
+                    "ORDER BY iniciada_en, id LIMIT 1",
+            ).bind("org", organization)
+            .bind("key", key)
+            .map { row, _ -> execution(row) }
+            .one()
+            .awaitSingleOrNull()
+
+    // las ejecuciones de este trabajo que siguen abiertas: las de un intento cuya réplica se perdió
+    suspend fun openOfJob(
+        organization: UUID,
+        job: UUID,
+    ): List<UUID> =
+        db
+            .sql("SELECT id FROM lms.ejecucion_agente WHERE organizacion_id = :org AND trabajo_id = :job AND estado IN ('PENDING', 'RUNNING')")
+            .bind("org", organization)
+            .bind("job", job)
+            .map { row, _ -> row.get("id", UUID::class.java)!! }
+            .all()
+            .collectList()
+            .awaitSingle()
+
+    // lo gastado en el curso en esta moneda: la suma del coste de sus ejecuciones (ADR-0033 §9)
+    suspend fun spent(
+        organization: UUID,
+        course: UUID,
+        currency: String,
+    ): BigDecimal =
+        db
+            .sql(
+                "SELECT COALESCE(sum(coste), 0) AS gastado FROM lms.ejecucion_agente " +
+                    "WHERE organizacion_id = :org AND curso_id = :course AND moneda = :currency",
+            ).bind("org", organization)
+            .bind("course", course)
+            .bind("currency", currency)
+            .map { row, _ -> row.get("gastado", BigDecimal::class.java)!! }
+            .one()
+            .awaitSingle()
+
     private fun <T : Any> DatabaseClient.GenericExecuteSpec.bindOrNull(
         name: String,
         value: Any?,
