@@ -176,6 +176,74 @@ class CatalogBuilderTest {
         assertNull(detail.credits.proposal)
     }
 
+    private fun policy(
+        id: String,
+        number: Int,
+        hours: String,
+    ) = record(
+        id,
+        "clave" to "ects-facultad",
+        "numero" to number,
+        "estado" to "PUBLICADA",
+        "sistema" to "ECTS",
+        "metodo" to "ECTS_CARGA_TOTAL",
+        "parametros" to """{"horasPorCredito": "$hours"}""",
+        "jurisdiccion" to "EHEA",
+        "fuente" to "Reglamento de la Facultad",
+    )
+
+    // ADR-0036: propone la versión de política ligada, aunque haya otra más nueva; ligada a otro sistema, no propone
+    @Test
+    fun `a version proposes with the policy version it is bound to`() {
+        val policies = listOf(policy("p1", 1, "25"), policy("p2", 2, "30"))
+        val bound = CatalogBuilder().build(records(version("v1", 1, "PUBLICADA", "politica_credito" to "p1")).copy(policies = policies)).single().detail
+        val proposal = bound.credits.proposal!!
+        assertEquals("ects-facultad", proposal.policyId)
+        assertEquals("1", proposal.policyVersion)
+        assertEquals("Reglamento de la Facultad", proposal.source)
+        assertEquals(0, BigDecimal("8.5").compareTo(proposal.proposed))
+
+        // sin política ligada, la de referencia
+        assertEquals(
+            "ects-carga-total",
+            CatalogBuilder()
+                .build(records(version("v1", 1, "PUBLICADA")))
+                .single()
+                .detail.credits.proposal!!
+                .policyId,
+        )
+        // ligada a una política de otro sistema, o que no se encuentra, no propone
+        val sch =
+            CatalogBuilder().build(
+                records(version("v1", 1, "PUBLICADA", "sistema_credito" to "SCH", "politica_credito" to "p1")).copy(policies = policies),
+            )
+        assertNull(
+            sch
+                .single()
+                .detail.credits.proposal,
+        )
+        assertEquals(
+            "SCH",
+            sch
+                .single()
+                .detail.credits.system,
+        )
+        assertNull(
+            CatalogBuilder()
+                .build(records(version("v1", 1, "PUBLICADA", "politica_credito" to "nada")))
+                .single()
+                .detail.credits.proposal,
+        )
+    }
+
+    @Test
+    fun `a peruvian version proposes lective hours only`() {
+        // 6 × 12 h de teoría = 72 / 16 = 4,5; 6 × 12 h de práctica = 72 / 32 = 2,25; las autónomas no cuentan
+        val detail = CatalogBuilder().build(records(version("v1", 1, "PUBLICADA", "sistema_credito" to "PE_CREDITO"))).single().detail
+        assertEquals("PE_CREDITO", detail.credits.system)
+        assertEquals(0, BigDecimal("6.5").compareTo(detail.credits.proposal!!.proposed))
+    }
+
     private fun approval(
         id: String,
         type: String,

@@ -1,5 +1,5 @@
 {
-  "_comentario": "Roles del LMS. ADMIN es de Wasichai y tiene todo, incluidas las acciones declaradas. Una cuenta puede tener varios roles. Las acciones declaradas no protegen nada por sí solas: el flujo editorial lo hace cumplir EditorialWorkflowGuard (transiciones con su acción, sin autoaprobación, lo publicado inmutable). PUBLICAR y RETIRAR solo los tiene ADMIN hasta el estudio editorial (F4). comentario_revision es apiOnly: lo escribe solo la bandeja del revisor; el creador lo lee en su estudio (ADR-0018). DOCENTE no edita ediciones hasta que su alcance por asignación exista (F3); ESTUDIANTE solo ve categorías y cursos: lo publicado lo lee del catálogo público y su aula llega en F2. perfil_docente.usuario_id (la cuenta que respalda un perfil) solo lo ve ADMIN (#65). matricula es apiOnly: ESTUDIANTE la crea solo por el comando de matrícula, la finaliza solo al emitir su certificado y lee solo las suyas (ADR-0012, ADR-0016). fuente_recurso es de solo inserción (corregir una fuente es subir otra) y artefacto_generado es apiOnly: lo escribe solo el trabajo de generación, como la plataforma, con autor_id de quien la pidió en la versión que crea (ADR-0018 §7). ESTUDIANTE lee versiones, unidades, lecciones y ediciones a través de ContentReadScope: lo publicado y lo de sus matrículas activas, nunca un borrador (ADR-0013); el personal tiene VER_TODAS. entorno_laboratorio lo lee como recurso_leccion: el estudiante, solo los de las lecciones de sus matrículas (ContentReadScope); su enlace lo valida LabEnvironmentGuard con SafeLink (ADR-0027). AUTORIDAD_ACADEMICA actúa por el órgano que reconoce créditos (Consejo de Facultad, comité de currículo, registrar): lee cursos y versiones y aprueba o revoca créditos (APROBAR_CREDITOS) solo con el comando de aprobación; UPDATE sobre version_curso es lo que ese comando necesita para copiar lo aprobado, y EditorialWorkflowGuard no le deja cambiar nada más. aprobacion_creditos es appendOnly y apiOnly: la lee el personal, nunca ESTUDIANTE; la separación de funciones (ni autor, ni revisor, ni quien aprobó en la bandeja, ni docente del curso) se comprueba por datos, también para ADMIN (ADR-0035).",
+  "_comentario": "Roles del LMS. ADMIN es de Wasichai y tiene todo, incluidas las acciones declaradas. Una cuenta puede tener varios roles. Las acciones declaradas no protegen nada por sí solas: el flujo editorial lo hace cumplir EditorialWorkflowGuard (transiciones con su acción, sin autoaprobación, lo publicado inmutable). PUBLICAR y RETIRAR solo los tiene ADMIN hasta el estudio editorial (F4). comentario_revision es apiOnly: lo escribe solo la bandeja del revisor; el creador lo lee en su estudio (ADR-0018). DOCENTE no edita ediciones hasta que su alcance por asignación exista (F3); ESTUDIANTE solo ve categorías y cursos: lo publicado lo lee del catálogo público y su aula llega en F2. perfil_docente.usuario_id (la cuenta que respalda un perfil) solo lo ve ADMIN (#65). matricula es apiOnly: ESTUDIANTE la crea solo por el comando de matrícula, la finaliza solo al emitir su certificado y lee solo las suyas (ADR-0012, ADR-0016). fuente_recurso es de solo inserción (corregir una fuente es subir otra) y artefacto_generado es apiOnly: lo escribe solo el trabajo de generación, como la plataforma, con autor_id de quien la pidió en la versión que crea (ADR-0018 §7). ESTUDIANTE lee versiones, unidades, lecciones y ediciones a través de ContentReadScope: lo publicado y lo de sus matrículas activas, nunca un borrador (ADR-0013); el personal tiene VER_TODAS. entorno_laboratorio lo lee como recurso_leccion: el estudiante, solo los de las lecciones de sus matrículas (ContentReadScope); su enlace lo valida LabEnvironmentGuard con SafeLink (ADR-0027). AUTORIDAD_ACADEMICA actúa por el órgano que reconoce créditos (Consejo de Facultad, comité de currículo, registrar): lee cursos y versiones y aprueba o revoca créditos (APROBAR_CREDITOS) solo con el comando de aprobación; UPDATE sobre version_curso es lo que ese comando necesita para copiar lo aprobado, y EditorialWorkflowGuard no le deja cambiar nada más. aprobacion_creditos es appendOnly y apiOnly: la lee el personal, nunca ESTUDIANTE; la separación de funciones (ni autor, ni revisor, ni quien aprobó en la bandeja, ni docente del curso) se comprueba por datos, también para ADMIN (ADR-0035). politica_credito (ADR-0036) la redacta y la publica o retira (PUBLICAR) AUTORIDAD_ACADEMICA; publicada no cambia (CreditPolicyGuard). El personal la lee para ligar una versión de curso a una de sus versiones.",
   "roles": [
     {
       "name": "ESTUDIANTE",
@@ -150,6 +150,10 @@
         {
           "object": "aprobacion_creditos",
           "actions": ["READ"]
+        },
+        {
+          "object": "politica_credito",
+          "actions": ["READ"]
         }
       ],
       "fieldPermissions": [
@@ -247,6 +251,10 @@
         },
         {
           "object": "aprobacion_creditos",
+          "actions": ["READ"]
+        },
+        {
+          "object": "politica_credito",
           "actions": ["READ"]
         }
       ],
@@ -346,6 +354,10 @@
         {
           "object": "aprobacion_creditos",
           "actions": ["READ"]
+        },
+        {
+          "object": "politica_credito",
+          "actions": ["READ"]
         }
       ],
       "fieldPermissions": [
@@ -392,6 +404,10 @@
         {
           "object": "aprobacion_creditos",
           "actions": ["READ", "CREATE"]
+        },
+        {
+          "object": "politica_credito",
+          "actions": ["READ", "CREATE", "UPDATE", "DELETE", "PUBLICAR"]
         }
       ]
     }

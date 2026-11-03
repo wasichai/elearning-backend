@@ -81,6 +81,11 @@ class ValidationTest(unittest.TestCase):
         self.assertTrue(any("target desconocido" in p for p in found))
         self.assertTrue(any("ya existe" in p for p in found))
 
+    def test_relationship_name_fits_wasichai(self):
+        bad = copy.deepcopy(MODEL)
+        bad["relationships"].append({"name": "r" * 36, "type": "MANY_TO_ONE", "source": "version_curso", "target": "curso", "fieldName": "otro"})
+        self.assertTrue(any("más de 35 caracteres" in p for p in self.problems(bad)))
+
     def test_constraint_names_unknown_field(self):
         bad = copy.deepcopy(MODEL)
         bad["objects"][1]["uniqueConstraints"] = [["numero", "inexistente"]]

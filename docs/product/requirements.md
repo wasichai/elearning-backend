@@ -116,9 +116,12 @@ el cuándo, en [`roadmap.md`](roadmap.md).
 - **RF-CRE-06** · F1 · implementado ([#50](https://github.com/wasichai/elearning-backend/pull/50)) — Sin conversión entre ECTS y SCH.
   _Aceptación:_ no existe función de conversión; cada propuesta lleva un único sistema; la UI no muestra
   equivalencias.
-- **RF-CRE-07** · F6 · planificado — Políticas de crédito configurables por programa, institución y jurisdicción, y
-  versionadas.
+- **RF-CRE-07** · F6 · implementado ([#318](https://github.com/wasichai/elearning-backend/issues/318), ADR-0036) —
+  Políticas de crédito configurables por programa, institución y jurisdicción, y versionadas.
   _Aceptación:_ cambiar una política crea una versión nueva y las propuestas anteriores conservan la suya.
+  Implementado: `politica_credito` (borrador, publicada inmutable, `new-version`), métodos `ECTS_CARGA_TOTAL`,
+  `US_SCH_34CFR600_2` y `PE_LEY30220_HORAS_LECTIVAS` validados contra la norma, sistema `PE_CREDITO` y
+  `version_curso.politica_credito` ligada a una versión concreta.
 - **RF-CRE-08** · F6 · implementado ([#315](https://github.com/wasichai/elearning-backend/issues/315), ADR-0035) —
   Aprobación humana de créditos por una persona autorizada, auditada.
   _Aceptación:_ sin el permiso → `403`; la aprobación queda en la auditoría con la política y versión usadas.

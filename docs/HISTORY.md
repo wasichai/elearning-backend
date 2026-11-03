@@ -16,6 +16,19 @@ Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este
   (`403`/`404`). `AgentExecutionApiTest` y `AiRatesTest` lo prueban con ejecuciones construidas en la prueba; la de un paso
   contra el doble WireMock queda para [#274](https://github.com/wasichai/elearning-backend/issues/274).
 
+## 2026-11-03 — Políticas de crédito versionadas por jurisdicción, institución y programa ([#318](https://github.com/wasichai/elearning-backend/issues/318), RF-CRE-07)
+
+- [ADR-0036](adr/0036-politicas-de-credito-versionadas-en-datos.md): método en código, política en datos.
+  `politica_credito` (clave y número, borrador → publicada → retirada, sistema, método, parámetros, jurisdicción ISO 3166-1
+  o `EHEA`, programa opcional, fuente y vigencia). `CreditPolicyGuard`: publicada no cambia ni se borra (`409`);
+  `CreditMethods.of` valida los parámetros contra la norma (`400`).
+- Método nuevo `PE_LEY30220_HORAS_LECTIVAS` (Ley 30220 art. 39: 16 h de teoría o 32 de práctica por crédito, sin estudio
+  autónomo) y sistema `PE_CREDITO`; sin conversión entre sistemas.
+- `/api/lms/credits/policies`: listado por jurisdicción, sistema, estado y programa; publicar, retirar y `new-version`.
+- `version_curso.politica_credito` liga una versión de curso a una versión de política: propone con ella en el catálogo y
+  en la aprobación, que la exige publicada y del mismo sistema y guarda la relación y su instantánea. Publicar otra
+  versión de la política no cambia lo ya ligado. `CreditPolicyApiTest`, `CreditPolicyTest` y `CatalogBuilderTest`.
+
 ## 2026-11-03 — Historial de estados de una versión ([#259](https://github.com/wasichai/elearning-backend/issues/259))
 
 - [ADR-0032](adr/0032-historial-de-estados-de-la-version-en-tabla-propia.md): cada cambio de `estado` de una
