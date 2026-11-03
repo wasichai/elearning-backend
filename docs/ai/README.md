@@ -193,6 +193,14 @@ no una tabla nueva:
   consulta (`spent`, `spentSince`, con el índice de V31), ninguna sin presupuesto. Un paso es una llamada, más los
   reintentos de corrección acotados. Con presupuesto, el modelo de cada paso necesita su tarifa vigente en la moneda del
   presupuesto (`lms.ai.rates`) o la aplicación no arranca: sin tarifa su coste sería `null` y no sumaría (#302).
+- **Topes blandos** (#369, aceptado): el de pasos por organización cuenta y después encola, como el de la cola por persona
+  (ADR-0022), así que dos peticiones a la vez pueden pasarlo por uno; los presupuestos se miran antes de cada llamada y el
+  coste se suma al cerrarla, así que los pasos que ya están llamando pueden pasarlo, como mucho, por lo que cueste uno de
+  cada uno (acotado por `max_tokens` y por el tope de concurrencia). Hacerlos exactos pediría un bloqueo asesor por
+  organización en cada encolado y antes de cada llamada; con estos márgenes no compensa.
+- **Entrada acotada**: el análisis corta en `SourceMaterialReader.MAX_CHARS` (400 000 caracteres de fuentes) y la opinión
+  de consistencia en `lms.ai.limits.consistency-max-chars` (400 000 caracteres del JSON del borrador, #369); pasado, el paso
+  falla sin ejecución y sin llamar al modelo.
 - Corre en un dispatcher acotado, nunca en el event loop de WebFlux.
 
 Implementado en E33.2 ([#279](https://github.com/wasichai/elearning-backend/issues/279)): `AiStepRunner` (`elearning.ai`) es la
@@ -679,6 +687,8 @@ sobre `AiStepRunner`), con el patrón de §5:
   determinista, una opinión sin modelo no aporta nada), con el presupuesto del curso o el de la organización en su período gastado (`BUDGET_SPENT`, #368) o con la cola
   de quien validó llena o la organización en su tope de pasos de IA a la vez (`QUEUE_FULL`, #302: validar no elude
   `lms.ai.limits.max-active-per-organization`). Lo que pidió la validación queda en `output.consistencyReview` de su ejecución.
+- **Entrada acotada** (#369): un borrador cuyo JSON pasa de `lms.ai.limits.consistency-max-chars` (400 000 caracteres) no
+  se manda: la opinión falla sin ejecución (`FAILED`, con el error que lo dice) y la validación no cambia.
 - **Idempotente por contenido**: la clave lleva el `contentHash` del informe; validar otra vez lo mismo reutiliza la opinión
   sin llamar al proveedor. El trabajo lee el borrador como la plataforma y, si cambió desde que se validó (otro hash), falla
   sin llamar.

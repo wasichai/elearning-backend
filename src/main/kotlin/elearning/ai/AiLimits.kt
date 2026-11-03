@@ -18,6 +18,9 @@ data class AiLimits(
     val courseBudget: BigDecimal? = null,
     val organizationBudget: BigDecimal? = null,
     val organizationBudgetPeriod: BudgetPeriod = BudgetPeriod.MONTH,
+    // el borrador que lee la opinión de consistencia, en caracteres de su JSON: más, y la opinión falla sin llamar (#369).
+    // El mismo tope que el texto de un análisis (SourceMaterialReader.MAX_CHARS)
+    val consistencyMaxChars: Int = 400_000,
     val currency: String = "USD",
     // lo que se pide esperar: un paso tarda eso en terminar; el presupuesto del curso solo se libera si alguien lo sube. El
     // de la organización se libera al empezar el período siguiente, y eso es lo que se pide esperar
@@ -28,6 +31,7 @@ data class AiLimits(
         require(maxActivePerOrganization > 0) { "lms.ai.limits.max-active-per-organization must be positive" }
         require(courseBudget == null || courseBudget.signum() >= 0) { "lms.ai.limits.course-budget must not be negative" }
         require(organizationBudget == null || organizationBudget.signum() >= 0) { "lms.ai.limits.organization-budget must not be negative" }
+        require(consistencyMaxChars > 0) { "lms.ai.limits.consistency-max-chars must be positive" }
         require(currency.isNotBlank()) { "lms.ai.limits.currency must not be blank" }
         require(concurrencyRetryAfter > Duration.ZERO && budgetRetryAfter > Duration.ZERO) { "lms.ai.limits retry-after must be positive" }
     }

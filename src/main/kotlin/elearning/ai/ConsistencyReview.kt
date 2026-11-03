@@ -96,7 +96,7 @@ object ConsistencyReviewPrompt {
         prompt: AiPrompt,
         snapshot: DraftSnapshot,
     ): String {
-        val draft = AiJobs.MAPPER.writeValueAsString(material(snapshot))
+        val draft = draft(snapshot)
         val marker = HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(draft.toByteArray())).take(MARKER_LENGTH)
         return buildString {
             append("Objective: ").append(prompt.objective).append('\n')
@@ -106,6 +106,9 @@ object ConsistencyReviewPrompt {
             append("<<<END-DRAFT-").append(marker).append(">>>\n")
         }
     }
+
+    // el borrador tal como va en el mensaje, sin delimitar: su longitud es la que acota lms.ai.limits.consistency-max-chars
+    fun draft(snapshot: DraftSnapshot): String = AiJobs.MAPPER.writeValueAsString(material(snapshot))
 
     // el borrador como lo lee el modelo: cada registro con su origin (objeto:id), el mismo que citan los hallazgos
     fun material(snapshot: DraftSnapshot): Map<String, Any?> =

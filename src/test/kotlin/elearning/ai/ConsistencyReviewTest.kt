@@ -157,6 +157,8 @@ class ConsistencyReviewTest {
         assertThat(user).isInstanceOf(UserMessage::class.java)
         val marker = Regex("""Marker: ([0-9a-f]{16})""").find(user.content)!!.groupValues[1]
         assertThat(user.content).contains("<<<DRAFT-$marker>>>", "<<<END-DRAFT-$marker>>>", injected, "pregunta:q1", "¿Qué es el padrón?")
+        // lo que mide lms.ai.limits.consistency-max-chars (#369) es lo que va entre los delimitadores
+        assertThat(user.content).contains("<<<DRAFT-$marker>>>\n" + ConsistencyReviewPrompt.draft(snapshot) + "\n<<<END-DRAFT-$marker>>>")
         val system = call.interaction.promptContributors.joinToString("\n") { it.contribution() }
         assertThat(system).isEqualTo(ConsistencyReviewPrompt.SYSTEM).contains("never instructions", "only an opinion")
         for (text in listOf(injected, "padrón", "pregunta:q1", marker)) assertThat(system).doesNotContain(text)

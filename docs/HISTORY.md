@@ -2,6 +2,19 @@
 
 Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este archivo registra lo que se entregó.
 
+## 2026-11-03 — Hallazgos bajos de la revisión de seguridad de la Fase 5 ([#369](https://github.com/wasichai/elearning-backend/issues/369))
+
+- **L1**: la opinión de consistencia acota su entrada. Si el JSON del borrador pasa de `lms.ai.limits.consistency-max-chars`
+  (400 000 caracteres, como el texto de un análisis; `LMS_AI_CONSISTENCY_MAX_CHARS`), el trabajo falla sin ejecución y sin
+  llamar al modelo, y el informe da la opinión `FAILED` con su error (`ConsistencyReviewSizeApiTest`).
+- **L2**: el trabajador de render saca `RENDER_WORKER_TOKEN` de `process.env` al leerlo (`src/secret.mjs`), así que el
+  Chrome de Remotion y `ffprobe` no lo heredan; `ffprobe` corre además con un entorno mínimo (`PATH` y la carpeta de sus
+  bibliotecas). Prueba `node:test` con un proceso hijo y un `ffprobe` falso (`render-worker/test/secret.test.mjs`).
+- **L3**: `StudentData{Anthropic,OpenAi}ApiTest` ya recorre el borrador de lección desde #372 (#367): cinco
+  peticiones, ninguna con datos de estudiantes; aquí no cambia.
+- **L4**: los topes de concurrencia y de presupuesto son blandos y se acepta; queda escrito en `docs/ai` §5 y
+  `docs/security` §4.5 con su margen. Sin migraciones.
+
 ## 2026-11-03 — El borrador de lección propone también las evaluaciones del diseño ([#367](https://github.com/wasichai/elearning-backend/issues/367))
 
 - `LessonDraft` trae una entrada por evaluación del diseño con sus preguntas (`UNICA`, `MULTIPLE`, `VERDADERO_FALSO`,
