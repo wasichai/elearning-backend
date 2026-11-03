@@ -16,7 +16,8 @@ import wasichai.core.metadata.MetadataService
 import java.time.Clock
 import java.util.UUID
 
-// las invariantes de las valoraciones (ADR-0038 §24) para TODA escritura de valoracion y puntaje_valoracion, la plataforma
+// las invariantes de las valoraciones (ADR-0038 §24) para TODA escritura de valoracion, puntaje_valoracion y
+// denuncia_valoracion, la plataforma
 // incluida. son apiOnly, así que solo escribe el LMS, pero la guarda no se fía de quien llama:
 //
 // - una valoración tiene un destino y solo uno, del tipo que declara; su matrícula es de la persona que valora, de la misma
@@ -24,7 +25,9 @@ import java.util.UUID
 // - nadie valora lo suyo: ni un docente de la edición a sus colegas (ni a sí mismo), ni el autor su versión de recurso
 // - una persona escribe solo a su nombre y, fuera de la ventana, no crea, edita ni retira (la plataforma suprime siempre)
 // - lo que identifica la valoración no cambia; editar el comentario lo devuelve a PENDIENTE
-// - publicar u ocultar un comentario exige MODERAR, y no se modera lo propio ni lo que lo tiene a uno como destino
+// - publicar u ocultar un comentario exige MODERAR, y no se modera lo propio ni lo que lo tiene a uno como destino; ocultar
+//   pide un motivo tasado; el autor apela una vez lo oculto y la apelación la decide otro moderador, una vez
+// - una denuncia la hace el valorado de lo que lo tiene como destino; resolverla, quien modera
 // - un puntaje es de 1 a 5, de una dimensión activa del destino de su valoración y del mismo estudiante
 //
 // las comprobaciones que cruzan objetos leen por RatingFacts: no dependen de lo que quien escribe puede leer
@@ -39,10 +42,14 @@ class RatingWriteGuard(
     private val clock: Clock,
 ) : RecordWriteGuard {
     override suspend fun beforeWrite(change: RecordWrite) {
-        if (change.objectName != RatingFacts.RATING && change.objectName != RatingFacts.SCORE) return
+        if (change.objectName !in GUARDED) return
         val user = change.userId?.let { currentUser.require() }
         try {
-            if (change.objectName == RatingFacts.RATING) rating(change, user) else score(change, user)
+            when (change.objectName) {
+                RatingFacts.RATING -> rating(change, user)
+                RatingFacts.SCORE -> score(change, user)
+                else -> report(change, user)
+            }
         } catch (_: RatingFacts.MissingModel) {
             throw ConflictException("The rating model is incomplete")
         }
@@ -60,12 +67,14 @@ class RatingWriteGuard(
             RecordChangeKind.UPDATED -> {
                 val changed = IDENTITY.filter { !same(before[it], after[it]) }
                 if (changed.isNotEmpty()) throw ConflictException("What a rating is about does not change: ${changed.joinToString()}")
+                val fields = after.keys.filter { !same(before[it], after[it]) }.toSet()
                 val from = text(before, MODERATION)
                 val to = text(after, MODERATION)
-                if (from != to && to in MODERATED) {
-                    moderated(org, change.recordId, user)
+                if (fields.any { it in MODERATOR_FIELDS } || (from != to && to in MODERATED)) {
+                    moderated(org, change.recordId, before, after, fields, user)
                 } else {
-                    authored(org, before, user)
+                    authored(org, before, user, appealOnly = fields.isNotEmpty() && fields.all { it in APPEAL_FIELDS })
+                    if (fields.any { it in APPEAL_FIELDS }) appealed(before, after, fields)
                     val comment = text(after, COMMENT)
                     if (comment != text(before, COMMENT)) {
                         // el comentario editado vuelve a moderación; sin comentario no hay nada que moderar
@@ -117,22 +126,47 @@ class RatingWriteGuard(
         if (user != null) requireOpen(org, offering)
     }
 
-    // una persona cambia o retira solo lo suyo y con la ventana abierta; la plataforma (la supresión) siempre
+    // una persona cambia o retira solo lo suyo y con la ventana abierta; la plataforma (la supresión) siempre. apelar no
+    // depende de la ventana: lo oculto puede llegar después de cerrarse
     private suspend fun authored(
         org: UUID,
         before: Map<String, Any?>,
         user: AuthenticatedUser?,
+        appealOnly: Boolean = false,
     ) {
         if (user == null) return
         if (uuidOf(before[RatingFacts.STUDENT]) != user.userId) throw ForbiddenException("Only its author changes a rating")
-        requireOpen(org, uuidOf(before[RatingFacts.OFFERING_FIELD]))
+        if (!appealOnly) requireOpen(org, uuidOf(before[RatingFacts.OFFERING_FIELD]))
     }
 
+    // una sola apelación, de un comentario oculto (regla 17)
+    private fun appealed(
+        before: Map<String, Any?>,
+        after: Map<String, Any?>,
+        fields: Set<String>,
+    ) {
+        if (text(before, APPEAL) != null) throw ConflictException("A hidden comment is appealed only once")
+        if (text(before, MODERATION) != HIDDEN) throw ConflictException("Only a hidden comment is appealed")
+        if (COMMENT in fields || text(after, APPEAL) == null) invalid(APPEAL, "an appeal has a text and leaves the comment as it is")
+    }
+
+    // publicar, ocultar con motivo tasado o decidir una apelación: MODERAR, nunca lo propio ni lo que lo tiene a uno como
+    // destino; la apelación la decide otro moderador, una vez (reglas 14, 15, 17 y 18)
     private suspend fun moderated(
         org: UUID,
         id: UUID?,
+        before: Map<String, Any?>,
+        after: Map<String, Any?>,
+        fields: Set<String>,
         user: AuthenticatedUser?,
     ) {
+        if (fields.any { it == COMMENT || it in APPEAL_FIELDS }) throw ConflictException("A moderator does not rewrite a comment nor its appeal")
+        if (text(after, MODERATION) == HIDDEN && text(after, REASON) !in REASONS) invalid(REASON, "hiding needs one of ${REASONS.joinToString()}")
+        val deciding = fields.any { it in DECISION_FIELDS }
+        if (deciding) {
+            if (text(before, APPEAL) == null) throw ConflictException("There is no appeal to decide")
+            if (text(before, DECIDED_BY) != null) throw ConflictException("An appeal is decided once")
+        }
         if (user == null) return
         val ratingObject =
             metadata
@@ -140,9 +174,42 @@ class RatingWriteGuard(
                 .loadDefinition(org, RatingFacts.RATING)
                 .obj.id
         if (!currentUser.hasPermission(user, MODERATE, ratingObject)) throw ForbiddenException("Missing permission $MODERATE")
+        if (deciding && uuidOf(before[MODERATED_BY]) == user.userId) throw ForbiddenException("Another moderator decides the appeal")
         val rating = id?.let { facts.rating(org, it) } ?: return
         if (rating.student == user.userId) throw ForbiddenException("Nobody moderates their own rating")
         if (facts.ratedUser(org, rating) == user.userId) throw ForbiddenException("Nobody moderates a rating about themselves")
+    }
+
+    // una denuncia la hace el valorado de un comentario publicado que lo tiene como destino; la resuelve quien modera
+    private suspend fun report(
+        change: RecordWrite,
+        user: AuthenticatedUser?,
+    ) {
+        if (user == null) return
+        val org = change.organizationId
+        when (change.kind) {
+            RecordChangeKind.CREATED -> {
+                val after = change.attributes.orEmpty()
+                if (uuidOf(after[REPORTER]) != user.userId) invalid(REPORTER, "must be your own user id")
+                val rating = uuidOf(after[REPORTED])?.let { facts.rating(org, it) } ?: invalid(REPORTED, "does not exist")
+                if (facts.ratedUser(org, rating) != user.userId) throw ForbiddenException("Only whoever is rated reports a comment")
+            }
+            else -> {
+                val reportObject =
+                    metadata
+                        .getObject()
+                        .loadDefinition(org, REPORT)
+                        .obj.id
+                val ratingObject =
+                    metadata
+                        .getObject()
+                        .loadDefinition(org, RatingFacts.RATING)
+                        .obj.id
+                if (!currentUser.hasPermission(user, MODERATE, ratingObject) || !currentUser.hasPermission(user, "UPDATE", reportObject)) {
+                    throw ForbiddenException("Missing permission $MODERATE")
+                }
+            }
+        }
     }
 
     private suspend fun score(
@@ -206,6 +273,22 @@ class RatingWriteGuard(
         const val VALUE = "valor"
         const val DIMENSION = "dimension"
         const val WINDOW_CLOSED = "The rating window of this offering is closed"
+        const val REASON = "motivo_moderacion"
+        const val MODERATED_BY = "moderada_por"
+        const val MODERATED_AT = "moderada_en"
+        const val APPEAL = "apelacion"
+        const val APPEALED_AT = "apelada_en"
+        const val DECIDED_BY = "apelacion_decidida_por"
+        const val APPEAL_RESULT = "apelacion_resultado"
+        const val TOKEN = "ficha"
+        const val REPORT = "denuncia_valoracion"
+        const val REPORTED = "valoracion_id"
+        const val REPORTER = "denunciante_id"
+        val GUARDED = setOf(RatingFacts.RATING, RatingFacts.SCORE, REPORT)
+        val REASONS = listOf("ATAQUE_PERSONAL", "DATOS_PERSONALES", "SPAM", "FUERA_DE_TEMA", "CONFLICTO_DE_INTERES", "ILEGAL")
+        val APPEAL_FIELDS = setOf(APPEAL, APPEALED_AT)
+        val DECISION_FIELDS = setOf(DECIDED_BY, APPEAL_RESULT)
+        val MODERATOR_FIELDS = setOf(REASON, MODERATED_BY, MODERATED_AT) + DECISION_FIELDS
         val MODERATED = setOf(PUBLISHED, HIDDEN)
         val RATING_ENROLLMENTS = setOf("ACTIVA", "FINALIZADA")
         val SCALE = 1..5
@@ -217,6 +300,7 @@ class RatingWriteGuard(
                 RatingFacts.TARGET,
                 RatingFacts.ASSIGNMENT,
                 RatingFacts.RESOURCE_VERSION,
+                TOKEN,
             )
         val SCORE_IDENTITY = listOf(RatingFacts.STUDENT, RatingFacts.RATING, DIMENSION)
 

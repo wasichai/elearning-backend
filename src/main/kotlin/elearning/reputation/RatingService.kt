@@ -92,6 +92,8 @@ class RatingService(
                                 RatingFacts.RESOURCE_VERSION to if (type == RatingWriteGuard.RESOURCE) targetId.toString() else null,
                                 RatingWriteGuard.COMMENT to comment,
                                 RatingWriteGuard.MODERATION to comment?.let { RatingWriteGuard.PENDING },
+                                // la ficha opaca con la que el valorado denuncia el comentario, sin saber de quién es
+                                RatingWriteGuard.TOKEN to UUID.randomUUID().toString(),
                             ),
                         ),
                     )

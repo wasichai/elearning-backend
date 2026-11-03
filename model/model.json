@@ -25,7 +25,10 @@
     "metodo_credito": ["ECTS_CARGA_TOTAL", "US_SCH_34CFR600_2", "PE_LEY30220_HORAS_LECTIVAS"],
     "estado_brief": ["BORRADOR", "LISTO"],
     "destino_valoracion": ["DOCENCIA", "RECURSO"],
-    "estado_moderacion": ["PENDIENTE", "PUBLICADA", "OCULTA"]
+    "estado_moderacion": ["PENDIENTE", "PUBLICADA", "OCULTA"],
+    "motivo_moderacion": ["ATAQUE_PERSONAL", "DATOS_PERSONALES", "SPAM", "FUERA_DE_TEMA", "CONFLICTO_DE_INTERES", "ILEGAL"],
+    "resultado_apelacion": ["MANTENIDA", "REVOCADA"],
+    "estado_denuncia": ["ABIERTA", "RESUELTA"]
   },
   "objects": [
     {
@@ -1650,6 +1653,49 @@
           "label": "Moderación del comentario",
           "type": "ENUM",
           "enum": "estado_moderacion"
+        },
+        {
+          "name": "ficha",
+          "label": "Ficha opaca del comentario (con la que el valorado lo denuncia)",
+          "type": "UUID",
+          "unique": true
+        },
+        {
+          "name": "motivo_moderacion",
+          "label": "Motivo tasado al ocultar",
+          "type": "ENUM",
+          "enum": "motivo_moderacion"
+        },
+        {
+          "name": "moderada_por",
+          "label": "Quién moderó (usuario de Wasichai)",
+          "type": "UUID"
+        },
+        {
+          "name": "moderada_en",
+          "label": "Moderada en",
+          "type": "DATETIME"
+        },
+        {
+          "name": "apelacion",
+          "label": "Apelación del autor (una vez)",
+          "type": "LONG_TEXT"
+        },
+        {
+          "name": "apelada_en",
+          "label": "Apelada en",
+          "type": "DATETIME"
+        },
+        {
+          "name": "apelacion_decidida_por",
+          "label": "Quién decidió la apelación (otro moderador)",
+          "type": "UUID"
+        },
+        {
+          "name": "apelacion_resultado",
+          "label": "Resultado de la apelación",
+          "type": "ENUM",
+          "enum": "resultado_apelacion"
         }
       ],
       "uniqueConstraints": [
@@ -1679,6 +1725,46 @@
         }
       ],
       "uniqueConstraints": [["valoracion", "dimension"]]
+    },
+    {
+      "name": "denuncia_valoracion",
+      "label": "Denuncia de valoración",
+      "pluralLabel": "Denuncias de valoraciones",
+      "description": "El valorado denuncia un comentario que ve (ADR-0038 §16). No oculta nada por sí sola: la resuelve quien modera. La escribe solo el LMS.",
+      "apiOnly": true,
+      "fields": [
+        {
+          "name": "valoracion_id",
+          "label": "Valoración denunciada (id; el valorado no lee valoraciones)",
+          "type": "UUID",
+          "required": true,
+          "indexed": true
+        },
+        {
+          "name": "denunciante_id",
+          "label": "Quién denuncia (usuario de Wasichai)",
+          "type": "UUID",
+          "indexed": true
+        },
+        {
+          "name": "motivo",
+          "label": "Motivo (texto plano)",
+          "type": "LONG_TEXT"
+        },
+        {
+          "name": "estado",
+          "label": "Estado",
+          "type": "ENUM",
+          "enum": "estado_denuncia",
+          "required": true,
+          "defaultValue": "ABIERTA"
+        },
+        {
+          "name": "resuelta_por",
+          "label": "Quién la resolvió (usuario de Wasichai)",
+          "type": "UUID"
+        }
+      ]
     }
   ],
   "relationships": [
