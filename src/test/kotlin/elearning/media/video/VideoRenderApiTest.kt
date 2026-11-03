@@ -357,6 +357,8 @@ class VideoRenderApiTest : LmsApiTest() {
                 worker.stubFor(put(urlPathEqualTo("/renders/$id")).atPriority(1).willReturn(aResponse().withStatus(200).withBody(report)))
                 title to id
             }
+        // el tope por persona de la cola es 5 trabajos activos: el sexto, después de vaciarla
+        drain()
         val subtitled = render(resource, script("Subtítulos de más")).second!!["id"].asString()
         val extraCue = "WEBVTT\n\n00:00:00.000 --> 00:00:01.000\nde más\n".toByteArray()
         worker.stubFor(

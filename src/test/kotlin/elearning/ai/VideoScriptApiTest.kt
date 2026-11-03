@@ -14,9 +14,13 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.context.annotation.Import
+import org.springframework.core.io.ByteArrayResource
 import org.springframework.http.HttpStatus
+import org.springframework.http.MediaType
+import org.springframework.http.client.MultipartBodyBuilder
 import org.springframework.r2dbc.core.DatabaseClient
 import org.springframework.test.context.TestPropertySource
+import org.springframework.web.reactive.function.BodyInserters
 import tools.jackson.databind.JsonNode
 
 // el guion por secciones por la API sin claves (E36.1, RF-MED-01): el doble determinista escribe el guion entero desde el brief
@@ -110,6 +114,28 @@ class VideoScriptApiTest : LmsApiTest() {
     ): String {
         val resource = created("/api/objects/recurso/records", mapOf("titulo" to "Vídeo de anuncios", "tipo" to type, "idioma" to "es"), token)
         return created("/api/objects/version_recurso/records", mapOf("recurso" to resource, "numero" to 1, "autor_id" to me(token)), token)
+    }
+
+    // RF-MED-03 (#298): una versión VIDEO no entra en revisión sin vídeo. Estas pruebas tratan del guion, no del vídeo: les
+    // basta un archivo subido a mano (RenderedVideoGuard lo admite como hasta ahora), unos bytes de WebM
+    private fun withVideoFile(version: String) {
+        val parts = MultipartBodyBuilder()
+        parts
+            .part(
+                "file",
+                object : ByteArrayResource(WEBM) {
+                    override fun getFilename() = "clase.webm"
+                },
+            ).contentType(MediaType.APPLICATION_OCTET_STREAM)
+        client
+            .post()
+            .uri("/api/objects/version_recurso/records/$version/files/archivo")
+            .header("Authorization", creator)
+            .contentType(MediaType.MULTIPART_FORM_DATA)
+            .body(BodyInserters.fromMultipartData(parts.build()))
+            .exchange()
+            .expectStatus()
+            .isOk
     }
 
     private fun write(
@@ -217,6 +243,7 @@ class VideoScriptApiTest : LmsApiTest() {
         assertEquals(HttpStatus.FORBIDDEN, exchange("POST", "/api/objects/guion_video/records", admin, mapOf("attributes" to forged)).first)
         assertEquals(HttpStatus.FORBIDDEN, exchange("POST", "/api/objects/guion_video/records", creator, mapOf("attributes" to forged)).first)
 
+        withVideoFile(version)
         assertEquals(HttpStatus.OK, patch(creator, version, "EN_REVISION"))
         assertEquals(HttpStatus.OK, patch(reviewer, version, "APROBADA"))
         assertEquals(HttpStatus.OK, patch(admin, version, "PUBLICADA"))
@@ -236,6 +263,7 @@ class VideoScriptApiTest : LmsApiTest() {
         val version = resourceVersion()
         val (status, job) = write(brief, version)
         assertEquals(HttpStatus.ACCEPTED, status, job.toString())
+        withVideoFile(version)
         assertEquals(HttpStatus.OK, patch(creator, version, "EN_REVISION"))
 
         drain()
@@ -293,3 +321,6 @@ class VideoScriptApiTest : LmsApiTest() {
         assertTrue(scripts(version).isEmpty())
     }
 }
+
+// el principio de un WebM (EBML): wasichai-files lo detecta como octet-stream, el tipo que admite un recurso VIDEO
+private val WEBM = byteArrayOf(0x1A, 0x45, 0xDF.toByte(), 0xA3.toByte(), 1, 2, 3)
