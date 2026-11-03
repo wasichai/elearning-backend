@@ -274,7 +274,7 @@ class ReviewFindingsTest(IdempotencyTest):
     def test_drift_on_existing_fields_and_roles_is_reported_not_written(self):
         self.run_once()
         drifted = copy.deepcopy(MODEL)
-        drifted["objects"][0]["fields"][0]["unique"] = True
+        drifted["objects"][0]["fields"][0]["required"] = False
         roles = copy.deepcopy(ROLES)
         roles["roles"][0]["ownRecordsOnly"] = True
         writes = len(self.fake.writes)
@@ -282,34 +282,8 @@ class ReviewFindingsTest(IdempotencyTest):
         apply.apply_model(self.client, drifted, report)
         apply.apply_roles(self.client, roles, report)
         self.assertEqual(writes, len(self.fake.writes), "una diferencia en algo existente se avisa, no se escribe")
-        self.assertTrue(any("curso.titulo" in w and "unique" in w for w in report.warnings), report.warnings)
+        self.assertTrue(any("curso.titulo" in w and "required" in w for w in report.warnings), report.warnings)
         self.assertTrue(any("CREADOR" in w and "ownRecordsOnly" in w for w in report.warnings), report.warnings)
-
-    def test_a_field_made_required_on_the_server_is_reported_not_written(self):
-        self.run_once()
-        drifted = copy.deepcopy(MODEL)
-        drifted["objects"][0]["fields"][1]["required"] = True
-        writes = len(self.fake.writes)
-        report = apply.Report()
-        apply.apply_model(self.client, drifted, report)
-        self.assertEqual(writes, len(self.fake.writes), "exigir un campo existente podría invalidar registros: se avisa")
-        self.assertTrue(any("curso.nivel" in w and "required" in w for w in report.warnings), report.warnings)
-
-    # ADR-0040 §4: dejar de exigir un campo o una relación no invalida ningún registro, así que se aplica (el artefacto MP4
-    # de un render no tiene archivo ni fuente_recurso)
-    def test_a_field_or_relationship_no_longer_required_is_relaxed(self):
-        self.run_once()
-        relaxed = copy.deepcopy(MODEL)
-        relaxed["objects"][0]["fields"][0]["required"] = False
-        relaxed["relationships"][0]["required"] = False
-        changes = self.run_once(relaxed)
-        self.assertIn("opcional curso.titulo", changes)
-        self.assertIn("opcional version_curso.curso", changes)
-        fields = {f["name"]: f for f in self.fake.objects["curso"]["fields"]}
-        self.assertFalse(fields["titulo"]["required"])
-        link = next(f for f in self.fake.objects["version_curso"]["fields"] if f["name"] == "curso")
-        self.assertFalse(link["required"])
-        self.assertEqual([], self.run_once(relaxed), "aplicado una vez, no se repite")
 
     def test_unexpected_bodies_become_api_errors(self):
         with self.assertRaises(apply.ApiError) as html:

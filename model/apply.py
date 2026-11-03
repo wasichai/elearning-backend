@@ -91,6 +91,9 @@ class ApiError(Exception):
             errors = problem.get("errors") if isinstance(problem.get("errors"), list) else []
             if errors:
                 detail += " — " + "; ".join(f"{e.get('field')}: {e.get('message')}" if isinstance(e, dict) else str(e) for e in errors)
+            # el cuerpo entero también: un problema puede decir lo importante fuera de detail y errors
+            if detail != body:
+                detail += f" (respuesta: {body[:2000]})"
         super().__init__(f"{method} {path} → {status}: {detail}")
         self.status = status
 
@@ -720,13 +723,7 @@ def apply_model(client: Client, model: dict, report: Report) -> None:
                 report.add(f"campo {name}.{f['name']}")
             else:
                 for prop in ("required", "unique"):
-                    if bool(f.get(prop)) == bool(current[f["name"]].get(prop)):
-                        continue
-                    if prop == "required" and not f.get(prop):
-                        # dejar de exigir un campo no invalida ningún registro: se aplica (ADR-0040 §4, el MP4 sin archivo)
-                        client.call("PUT", f"/api/metadata/objects/{name}/fields/{f['name']}", {"required": False})
-                        report.add(f"opcional {name}.{f['name']}")
-                    else:
+                    if bool(f.get(prop)) != bool(current[f["name"]].get(prop)):
                         report.warn(f"{name}.{f['name']}: {prop} es {bool(current[f['name']].get(prop))} en el servidor y {bool(f.get(prop))} en el modelo (no se cambia)")
             if f["name"] in current and f.get("type") == "ENUM":
                 have = list(current[f["name"]].get("enumOptions") or [])
@@ -753,16 +750,12 @@ def apply_model(client: Client, model: dict, report: Report) -> None:
             client.call("POST", "/api/relationships", body)
             report.add(f"relación {rel['name']}")
     for rel in model.get("relationships", []):
-        owner, fname = _relationship_owner(rel), rel["fieldName"]
-        current = {f["name"]: f for f in client.call("GET", f"/api/metadata/objects/{owner}").get("fields", [])}
-        held = bool(current.get(fname, {}).get("required"))
-        if rel.get("required") and not held:
-            client.call("PUT", f"/api/metadata/objects/{owner}/fields/{fname}", {"required": True})
-            report.add(f"obligatorio {owner}.{fname}")
-        elif not rel.get("required") and held:
-            # como con un campo: dejar de exigirla no invalida nada (el artefacto de un render no tiene fuente_recurso)
-            client.call("PUT", f"/api/metadata/objects/{owner}/fields/{fname}", {"required": False})
-            report.add(f"opcional {owner}.{fname}")
+        if rel.get("required"):
+            owner, fname = _relationship_owner(rel), rel["fieldName"]
+            current = {f["name"]: f for f in client.call("GET", f"/api/metadata/objects/{owner}").get("fields", [])}
+            if not current.get(fname, {}).get("required"):
+                client.call("PUT", f"/api/metadata/objects/{owner}/fields/{fname}", {"required": True})
+                report.add(f"obligatorio {owner}.{fname}")
     for obj in model.get("objects", []):
         # los que nombran un campo de relación ya existen; los demás pueden faltar en un objeto creado antes
         wanted = {key: obj[key] for key in ("indexes", "uniqueConstraints") if obj.get(key)}

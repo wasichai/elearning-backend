@@ -72,9 +72,12 @@ wasichai:
     cors-allowed-origin-patterns: ${WASICHAI_CORS_ALLOWED_ORIGINS:}
   # archivos de los recursos (ADR-0012): nunca en PostgreSQL. local en desarrollo; S3 compatible (AWS, MinIO…) con
   # WASICHAI_FILES_STORE=s3 y WASICHAI_FILES_S3_* (RF-CON-02, docs/operations); el perfil minio usa el de compose.yaml.
-  # la subida se lee entera en memoria antes de comprobarse: 25 MB alcanza para lecturas, PDF y vídeos cortos
+  # la subida se lee entera en memoria antes de comprobarse. max-bytes es el techo: el máximo que un campo puede declarar
+  # (ADR-0040 §4). 256 MB por el vídeo renderizado (version_recurso.video, que solo escribe la plataforma); todos los
+  # demás campos FILE de model/model.json declaran su tope (25 MB o menos, apply.py lo exige), así que el techo no cambia
+  # lo que sube una persona
   files:
-    max-bytes: 25MB
+    max-bytes: ${WASICHAI_FILES_MAX_BYTES:256MB}
     local:
       path: ${LMS_FILES_PATH:var/archivos}
 

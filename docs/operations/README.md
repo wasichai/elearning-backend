@@ -266,7 +266,8 @@ Para activarlo ([ADR-0040](../adr/0040-renderizador-de-video-en-un-trabajador-no
 3. **Tiempo límite**: `LMS_RENDER_TIMEOUT` (30 min) tiene que ser menor que `LMS_JOBS_LEASE` (15 min por defecto): con el
    render activo, **sube `LMS_JOBS_LEASE`** (p. ej. `35m`) o el backend no arranca. Un render ocupa una plaza de
    `LMS_JOBS_PARALLELISM` mientras dura.
-4. **Archivos**: `WASICHAI_FILES_MAX_BYTES=256MB` (los campos que suben personas conservan su tope de 25 MB) y un heap del
+4. **Archivos**: `WASICHAI_FILES_MAX_BYTES` en 256 MB (el valor por defecto desde #298; los campos que suben personas
+   conservan su tope de 25 MB) y un heap del
    backend de al menos 1 GB; con un techo menor que `LMS_RENDER_MAX_BYTES` (256 MB) el backend no arranca.
 5. `LMS_RENDER_MAX_CONCURRENT` (1, entre todas las réplicas: los demás esperan en la cola), `LMS_RENDER_MAX_SECONDS` (900)
    y `LMS_RENDER_MAX_BYTES` (256 MB).
@@ -282,10 +283,11 @@ Para activarlo ([ADR-0040](../adr/0040-renderizador-de-video-en-un-trabajador-no
 
 Apagar el render con renders en cola los deja `PENDIENTE`: ninguna réplica los reclama hasta que se vuelva a encender.
 
-Un despliegue con el modelo anterior a #298 lo actualiza `model/apply.py` sin pasos a mano: añade `version_recurso.video`
-(256 MB) y `MP4`/`VTT` a `formato_artefacto`, y deja de exigir `archivo` y `fuente_recurso` en `artefacto_generado` (el MP4
-no lleva archivo ni sale de una fuente). Dejar de exigir un campo es lo único que el script cambia en un campo existente:
-volver a exigirlo, o hacerlo único, se avisa y no se escribe.
+Un despliegue con el modelo anterior a #298: `model/apply.py` añade `version_recurso.video` (256 MB, que pide el techo
+`WASICHAI_FILES_MAX_BYTES` de 256 MB, el valor por defecto) y `MP4`/`VTT` a `formato_artefacto`, pero no cambia campos
+existentes: avisa de que `artefacto_generado.archivo` y `artefacto_generado.fuente_recurso` siguen obligatorios en el
+servidor. Antes de activar el render, quítales la obligatoriedad desde la administración de metadatos de Wasichai (el
+MP4 no lleva archivo ni sale de una fuente); sin eso, guardar un render falla.
 
 ## Despliegue objetivo (k3s)
 

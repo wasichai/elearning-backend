@@ -52,7 +52,7 @@ private const val TOKEN = "a-shared-secret-for-the-render-worker-tests"
         "lms.render.worker-token=$TOKEN",
         "lms.render.max-concurrent=1",
         "lms.render.timeout=1m",
-        // el techo de wasichai-files de las pruebas es 25 MB (application.yml)
+        // por debajo del techo de wasichai-files (application.yml)
         "lms.render.max-bytes=20MB",
     ],
 )

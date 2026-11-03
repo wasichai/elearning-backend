@@ -55,6 +55,7 @@ Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este
   razonamiento, que `ModelCalls` envía como `output_config.effort` (pensamiento adaptativo) a Anthropic y como
   `reasoning.effort` a OpenAI. Sin él no se envía nada y la clave de idempotencia de los pasos no cambia.
 - En CI, `ModelEvaluationSmokeTest` corre contra el doble HTTP como prueba de humo, sin cifras. Sin migraciones.
+
 ## 2026-11-03 — Validación del vídeo y previsualización: E37.3 ([#298](https://github.com/wasichai/elearning-backend/issues/298))
 
 - `RenderedVideoCheck` compara el informe de `ffprobe` del trabajador con el guion: MP4 (marca ISO, no QuickTime), una sola
@@ -71,8 +72,10 @@ Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este
 - `GET /api/lms/studio/resource-versions/{id}/video`: el revisor (o quien publica, o su autor) previsualiza el MP4 antes de
   decidir, como `video/mp4` `inline`; quien solo lee la versión, `403`. Sin `Range` hasta que Wasichai lo tenga.
 - Modelo: `formato_artefacto` gana `MP4` y `VTT`; `artefacto_generado` gana `parametros` e `informe` y deja de exigir
-  `archivo` y `fuente_recurso`. `model/apply.py` exige `maxBytes` en todo campo `FILE` y aplica dejar de exigir un campo o
-  una relación (lo demás que difiere sigue solo avisándose). Sin migraciones.
+  `archivo` y `fuente_recurso` (en un despliegue anterior, `apply.py` lo avisa y se quita a mano: docs/operations).
+  `model/apply.py` exige `maxBytes` en todo campo `FILE` e imprime el cuerpo entero de una respuesta de error. El techo
+  `wasichai.files.max-bytes` pasa a 256 MB por defecto (`WASICHAI_FILES_MAX_BYTES`), el tope que declara el campo del
+  vídeo; los demás campos conservan el suyo. Sin migraciones.
 
 ## 2026-11-03 — Opinión de consistencia contenido-evaluación: E34.2 ([#287](https://github.com/wasichai/elearning-backend/issues/287))
 
