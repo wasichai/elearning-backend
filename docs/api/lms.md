@@ -714,7 +714,9 @@ cualquier edición, sin asignación; calificar le sigue respondiendo `404`.
 
 - `email` puede ser `null` en `Roster`, `PendingAttempt` y `AttendanceRow`: lo guarda la matrícula al crearse.
 - `TeachingOffering`: `{ "code", "status", "startDate", "endDate", "timeZone", "course": { "slug", "code", "title" },
-"enrolled": 12, "pendingAttempts": 3 }`.
+"enrolled": 12, "pendingAttempts": 3 }`. `pendingAttempts` son los intentos `SUBMITTED` que quien llama puede corregir:
+  los de su cola, sin los suyos si además es estudiante de la edición (#338), así que coincide con el total de
+  `GET …/attempts`. Lo mismo en `GET /offerings` y en el panel.
 - `TeachingPanelItem` (#261) = `TeachingOffering` más `upcomingSessions` (`Session[]` sin `attendance`, sin las
   canceladas ni las ya terminadas, la más próxima primero) y `oldestPending` (`PendingAttempt[]`: los 5 primeros de la
   cola, en su orden; el total está en `pendingAttempts` y la cola entera en `GET …/attempts`). Una página de las

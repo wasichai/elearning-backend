@@ -46,8 +46,10 @@ class TeachingPanelApiTest : ClassroomApiTestSupport() {
     }
 
     // un estudiante con un intento enviado que espera corrección: la abierta respondida queda pendiente
-    private fun submitted(course: Course): String {
-        val student = newStudent()
+    private fun submitted(
+        course: Course,
+        student: String = newStudent(),
+    ): String {
         val enrollment = enroll(student, course)["id"].asString()
         val attempt =
             call(student, "/api/lms/classroom/enrollments/$enrollment/lessons/${course.assessment}/attempts", emptyMap()).second!!["id"].asString()
@@ -84,6 +86,32 @@ class TeachingPanelApiTest : ClassroomApiTestSupport() {
         val queue = ok(call(teacher, "/api/lms/teaching/offerings/${course.offering}/attempts"))
         assertEquals(attempts.take(QUEUE_PREVIEW), item["oldestPending"].strings { it["attemptId"] })
         for (n in 0 until QUEUE_PREVIEW) assertEquals(queue[n], item["oldestPending"][n])
+    }
+
+    // quien también es estudiante en su edición no corrige sus intentos (#338): ni el total ni la bandeja los cuentan
+    @Test
+    fun `my own attempts count neither in pendingAttempts nor in the queue preview`() {
+        val course = course(withEvaluation = true)
+        val email = "${uniqueName("mix")}@demo.wasichai-learning.test"
+        client
+            .post()
+            .uri("/api/users")
+            .header("Authorization", admin)
+            .bodyValue(
+                mapOf("email" to email, "displayName" to "Docente y estudiante", "password" to DEMO_PASSWORD, "roles" to listOf("DOCENTE", "ESTUDIANTE")),
+            ).exchange()
+            .expectStatus()
+            .isCreated
+        val both = acceptTerms(bearer(email, DEMO_PASSWORD))
+        assign(both, course)
+        submitted(course, both)
+        val theirs = submitted(course)
+
+        val item = ok(call(both, panel)).single()
+        assertEquals(1, item["pendingAttempts"].asInt())
+        assertEquals(listOf(theirs), item["oldestPending"].strings { it["attemptId"] })
+        assertEquals(1, ok(call(both, "/api/lms/teaching/offerings")).single()["pendingAttempts"].asInt())
+        assertEquals(1, ok(call(both, "/api/lms/teaching/offerings/${course.offering}/attempts")).size())
     }
 
     @Test

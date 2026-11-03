@@ -24,6 +24,14 @@ Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este
 - Los criterios de #267 que piden código (build sin Remotion comprobada en CI, informe de licencias, rechazo de
   peticiones con código, licencia del `ffprobe`) quedan para el trabajador, [#297](https://github.com/wasichai/elearning-backend/issues/297).
 
+## 2026-11-03 — `pendingAttempts` del panel docente sin los intentos propios ([#338](https://github.com/wasichai/elearning-backend/issues/338))
+
+- `pendingAttempts` de `GET /api/lms/teaching/panel` y `GET /api/lms/teaching/offerings` cuenta lo que quien llama puede
+  corregir: `AttemptStore.countPending` excluye, como `oldestPending` y la cola, los intentos de quien además es estudiante
+  de su edición. El total coincide con el de `GET …/attempts` y la interfaz ya no promete «Ver N más» de intentos que no
+  puede abrir ([front#168](https://github.com/wasichai/elearning-frontend/issues/168)). Sigue siendo una lectura para todas
+  las ediciones (#261). Documentado en `docs/api/lms.md`.
+
 ## 2026-11-03 — Logros en la interfaz del aula: RF-AUL-08 implementado ([front#166](https://github.com/wasichai/elearning-frontend/pull/166))
 
 - La interfaz muestra `achievements` junto al avance, con su fecha y enlace a su unidad, evaluación o certificado. El
