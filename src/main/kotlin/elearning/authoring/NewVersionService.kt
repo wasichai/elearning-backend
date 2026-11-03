@@ -138,7 +138,9 @@ class NewVersionService(
         // los mínimos válidos de la primera versión; los mismos DEFAULTS que ImportJobHandler, que no depende de authoring
         val FIRST_DRAFT = mapOf("modalidad" to "ASINCRONA", "duracion" to "SEMANAS", "semanas" to 1, "sistema_credito" to "NINGUNO")
 
-        // lo decidido en la versión de origen no se hereda: ni su estado, ni su publicación, ni sus créditos aprobados
-        val DRAFT_DROPS = setOf(COURSE, "numero", "autor_id", "estado", "publicada_en", "creditos_aprobados", "politica_creditos", "revisor_id")
+        // lo decidido en la versión de origen no se hereda: ni su estado, ni su publicación, ni sus créditos aprobados, ni la
+        // plantilla de IA con que se generó (la copia la escribe una persona)
+        val DRAFT_DROPS =
+            setOf(COURSE, "numero", "autor_id", "estado", "publicada_en", "creditos_aprobados", "politica_creditos", "revisor_id", "plantilla_ia")
     }
 }

@@ -1,5 +1,6 @@
 package elearning.ai
 
+import elearning.jobs.Job
 import tools.jackson.databind.JsonNode
 
 // la llamada de un paso a su generador (ADR-0033 §4): una por intento. La implementa cada paso (con Embabel o con el doble
@@ -62,3 +63,25 @@ class AiInvalidOutput(
     val usage: TokenUsage? = null,
     val validations: Any? = null,
 ) : RuntimeException(message)
+
+// lo que escribe un paso que crea registros con su salida (AiStepRunner.runWriting). scope envuelve las dos fases (la del
+// borrador: como la plataforma, donde lo que se sube y lo que lo adjunta van en el mismo bloque); prepare corre fuera de la
+// transacción (lo que bloquea o sube archivos) y write dentro, la misma que cierra la ejecución y el trabajo, y devuelve la
+// salida con que se cierra la ejecución
+interface AiDraftWriter<P : Any> {
+    suspend fun <T> scope(
+        job: Job,
+        block: suspend () -> T,
+    ): T
+
+    suspend fun prepare(
+        request: AiStepPayload,
+        reply: AiReply,
+    ): P
+
+    suspend fun write(
+        request: AiStepPayload,
+        reply: AiReply,
+        prepared: P,
+    ): Any
+}

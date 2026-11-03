@@ -331,7 +331,11 @@ el cuándo, en [`roadmap.md`](roadmap.md).
   salida malformada, o sin nada verificable, queda `INVALID_OUTPUT` sin borrador. Diseño pedagógico (E33.5,
   [#282](https://github.com/wasichai/elearning-backend/issues/282)): `CourseDesign` desde un análisis `SUCCEEDED`, con horas y
   créditos de `workload` (lo que diga el modelo se ignora) y `INVALID_OUTPUT` si una evaluación no se alinea con ningún
-  resultado. Falta el borrador (E33.6).
+  resultado. Borrador con plantillas versionadas (E33.6, [#283](https://github.com/wasichai/elearning-backend/issues/283)):
+  `LessonDraft` desde un diseño `SUCCEEDED`, juntado en AsciiDoc con la plantilla `lesson-draft@1`, que queda en `AgentRun` y en
+  la versión; entra como `version_curso` `BORRADOR` de quien lo pidió, con el HTML de cada lección saneado (ADR-0022) y los
+  enlaces que no están en las fuentes marcados para revisión; un borrador que no sigue el diseño queda `INVALID_OUTPUT` sin
+  versión.
 - **RF-IA-03** · F5 · planificado — Cada ejecución (`AgentRun`) registra usuario, ámbito, objetivo, entradas, fuentes,
   modelo y proveedor (sin secretos), versiones de instrucciones y plantillas, resultados, validaciones, estado,
   errores, consumo, duración e intervenciones humanas.

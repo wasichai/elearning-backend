@@ -1,0 +1,33 @@
+{
+  "id": "resp_double_lesson_draft",
+  "object": "response",
+  "created_at": 1793700000,
+  "status": "completed",
+  "model": "gpt-6.1-sol",
+  "output": [
+    {
+      "type": "message",
+      "id": "msg_double_lesson_draft",
+      "status": "completed",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "output_text",
+          "text": "{\"units\": [{\"lessons\": [{\"title\": \"Publicar un anuncio\", \"summary\": \"Cómo llega un anuncio a toda la organización\", \"objective\": \"Publicar un anuncio para toda la organización\", \"durationMinutes\": 45, \"source\": \"acme/manuales@0123456789abcdef0123456789abcdef01234567:capitulos/anuncios.adoc#_publicar_un_anuncio\", \"body\": \"== Pasos\\n\\n. Abrir el panel de anuncios.\\n. Escribir el texto.\\n. Pulsar Publicar.\\n\\nMás ayuda en https://ayuda.example.org/anuncios.\\n\\n++++\\n<script>alert(1)</script>\\n++++\", \"checks\": [\"Publica un anuncio de prueba y compruébalo en el tablón\"], \"html\": \"<b>ignorado</b>\"}]}, {\"lessons\": [{\"title\": \"Retirar un anuncio\", \"summary\": \"Retirar y comprobar\", \"objective\": \"Retirar un anuncio publicado\", \"durationMinutes\": 9999, \"source\": \"acme/otro@0123456789abcdef0123456789abcdef01234567:guia.adoc#_x\", \"body\": \"Un anuncio retirado deja de verse. Procedimiento interno en http://intranet.local/anuncios.\", \"checks\": [\"Retira el anuncio y comprueba que ya no se ve\"]}]}]}",
+          "annotations": []
+        }
+      ]
+    }
+  ],
+  "usage": {
+    "input_tokens": 3800,
+    "input_tokens_details": {
+      "cached_tokens": 0
+    },
+    "output_tokens": 1100,
+    "output_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "total_tokens": 4900
+  }
+}

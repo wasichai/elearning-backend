@@ -310,6 +310,11 @@
           "type": "LONG_TEXT"
         },
         {
+          "name": "plantilla_ia",
+          "label": "Plantilla de IA y su versión del borrador (p. ej. lesson-draft@1)",
+          "type": "TEXT"
+        },
+        {
           "name": "contenido_ilustrativo",
           "label": "Contenido ilustrativo no validado por un experto",
           "type": "BOOLEAN",

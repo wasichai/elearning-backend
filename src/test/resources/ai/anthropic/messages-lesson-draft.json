@@ -1,0 +1,18 @@
+{
+  "id": "msg_double_lesson_draft",
+  "type": "message",
+  "role": "assistant",
+  "model": "claude-sonnet-5-5",
+  "content": [
+    {
+      "type": "text",
+      "text": "{\"units\": [{\"lessons\": [{\"title\": \"Publicar un anuncio\", \"summary\": \"Cómo llega un anuncio a toda la organización\", \"objective\": \"Publicar un anuncio para toda la organización\", \"durationMinutes\": 45, \"source\": \"acme/manuales@0123456789abcdef0123456789abcdef01234567:capitulos/anuncios.adoc#_publicar_un_anuncio\", \"body\": \"== Pasos\\n\\n. Abrir el panel de anuncios.\\n. Escribir el texto.\\n. Pulsar Publicar.\\n\\nMás ayuda en https://ayuda.example.org/anuncios.\\n\\n++++\\n<script>alert(1)</script>\\n++++\", \"checks\": [\"Publica un anuncio de prueba y compruébalo en el tablón\"], \"html\": \"<b>ignorado</b>\"}]}, {\"lessons\": [{\"title\": \"Retirar un anuncio\", \"summary\": \"Retirar y comprobar\", \"objective\": \"Retirar un anuncio publicado\", \"durationMinutes\": 9999, \"source\": \"acme/otro@0123456789abcdef0123456789abcdef01234567:guia.adoc#_x\", \"body\": \"Un anuncio retirado deja de verse. Procedimiento interno en http://intranet.local/anuncios.\", \"checks\": [\"Retira el anuncio y comprueba que ya no se ve\"]}]}]}"
+    }
+  ],
+  "stop_reason": "end_turn",
+  "stop_sequence": null,
+  "usage": {
+    "input_tokens": 4000,
+    "output_tokens": 1200
+  }
+}

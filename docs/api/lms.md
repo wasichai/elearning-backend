@@ -1174,6 +1174,36 @@ sigue con las rutas de [Trabajos de IA](#trabajos-de-ia-f5-adr-0033-5-6-y-9).
   `403` y cambiarlo o borrarlo es `409`. Solo se añade a una versión en `BORRADOR`; si la versión sale de borrador mientras
   el trabajo espera, el trabajo falla sin guion. Una versión publicada conserva los suyos (regla 5).
 
+## Borrador de lecciones (F5, E33.6)
+
+El paso 4 de la canalización ([docs/ai](../ai/README.md#5-esquemas-tipados-y-trabajos)): de la ejecución `SUCCEEDED` de un
+diseño pedagógico, las lecciones de cada unidad en AsciiDoc, guardadas como una versión del curso en borrador. Se encola como
+trabajo de IA (`ai.lesson_draft`) y se sigue con las rutas de [Trabajos de IA](#trabajos-de-ia-f5-adr-0033-5-6-y-9).
+
+| Método | Ruta                       | Resultado                           |
+| ------ | -------------------------- | ----------------------------------- |
+| POST   | `/api/lms/ai/lesson-draft` | `{ "executionId" }` → `202` `AiJob` |
+
+- **Permisos**: `GENERAR` sobre `version_curso` (`403`) y ver el curso del diseño como quien llama (`404`). Sin `executionId`,
+  `400`; una ejecución que no existe o no es un diseño, `404`; un diseño que no terminó `SUCCEEDED`, cuyo brief ya no está
+  `LISTO` o cuyas semanas no son una duración válida (1–8 o 12–26), `409`. Pedir otra vez el mismo borrador devuelve su
+  ejecución sin llamar al proveedor ni crear otra versión.
+- **Generador**: con proveedor, el modelo `draft` de `lms.ai.models` y `lms.ai.max-tokens.draft`; sin claves, el doble
+  determinista. Instrucciones `lesson-draft@1` (`promptVersion`) y plantilla `lesson-draft@1` (`templateVersion`).
+- **Resultado**: la ejecución tiene `inputs` `{ "designExecutionId", "analysisExecutionId", "briefId", "topic", "language",
+"sources" }`, las `sources` leídas otra vez con su hash, `output` `{ "template", "units": [{ "title", "summary", "objectives":
+[], "lessons": [{ "title", "summary", "objective", "durationMinutes", "source", "asciidoc" }] }], "load", "outcomes",
+"assessmentSystem", "versionId", "versionNumber" }` y `validations` `{ "units", "lessons", "problems": [], "discarded": [{
+"at", "value", "reason" }], "linksToReview": [{ "at", "lesson", "url", "reason" }] }` (`reason`: `NOT_IN_SOURCES` · `UNSAFE`).
+- **Borrador**: `versionId` es una `version_curso` `BORRADOR` con `autor_id` = quien lo pidió y `plantilla_ia` =
+  `lesson-draft@1`; cada lección tiene un `recurso` HTML con su `fuente_recurso` (el AsciiDoc) y una `version_recurso`
+  `BORRADOR` con el HTML saneado (ADR-0022), enlazada por `recurso_leccion`. Es un borrador **generado**: no se envía a revisión
+  sin un informe de validación al día ([Validación de borradores](#validación-de-borradores-f5-rf-ia-05)).
+- **Fallos**: una salida que no es el JSON del tipo o que no pasa la comprobación (`problems[].code`: `UNITS_MISMATCH` ·
+  `UNIT_WITHOUT_LESSONS` · `BLANK_LESSON` · `LESSON_WITHOUT_CHECKS` · `TOO_MANY_ELEMENTS` · `LESSON_TOO_LONG`) deja la
+  ejecución `INVALID_OUTPUT` sin `output` ni versión; un fallo al generar el HTML o al escribir el borrador, `FAILED` con lo que
+  costó la llamada.
+
 ## Créditos aprobados (RF-CRE-08, ADR-0035)
 
 La plataforma calcula y **propone** créditos ([ADR-0007](../adr/0007-carga-academica-y-creditos-como-politica-versionada.md));

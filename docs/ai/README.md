@@ -28,7 +28,9 @@ que es lógica determinista del módulo `elearning.ai` o de `authoring`; «perso
    `workload` (código), no el modelo. Implementado en E33.5 ([#282](https://github.com/wasichai/elearning-backend/issues/282)):
    `POST /api/lms/ai/course-design` con la ejecución `SUCCEEDED` de un análisis; ver §5.
 4. **Borrador con plantillas versionadas** — _Embabel_ → `LessonDraft` en la fuente canónica (AsciiDoc). Plantilla y
-   versión quedan en `AgentRun`.
+   versión quedan en `AgentRun`. Implementado en E33.6 ([#283](https://github.com/wasichai/elearning-backend/issues/283)):
+   `POST /api/lms/ai/lesson-draft` con la ejecución `SUCCEEDED` de un diseño deja una `version_curso` `BORRADOR` a nombre de
+   quien lo pidió; ver §5.
 5. **Multimedia** — guiones, diapositivas, narración, subtítulos y Remotion. _Embabel_ (guion y estructura) + _código_
    (render) → `VideoScript`, `SlideDeck`. Un vídeo solo está «terminado» si se renderizó y validó (§12). El guion está
    implementado en E36.1 ([#293](https://github.com/wasichai/elearning-backend/issues/293)): `POST /api/lms/ai/scripts` con un
@@ -221,7 +223,10 @@ en `elearning.ai`:
    (`MODEL` o `DETERMINISTIC`) queda en `AgentRun` y se lee en `GET /api/lms/ai/runs`.
 7. **Borrador.** Un paso que escribe registros los escribe en el `draft` del runner, en la transacción que cierra el
    trabajo. El análisis no escribe ninguno: su borrador es la salida de su ejecución `SUCCEEDED`, que el paso siguiente lee
-   por el `executionId` del trabajo.
+   por el `executionId` del trabajo. Un paso cuya salida tiene que nombrar lo que crea (el borrador de lecciones, §13) usa
+   `AiStepRunner.runWriting` con un `AiDraftWriter`: `prepare` corre fuera de la transacción (generar y subir archivos) y
+   `write` dentro de la misma que cierra la ejecución `SUCCEEDED` (con la salida que devuelve) y el trabajo, así que no hay
+   ejecución `SUCCEEDED` sin su borrador ni borrador sin ella; si escribir falla, la ejecución queda `FAILED` con lo que costó.
 8. **Pruebas.** Unitarias sin Spring con el `FakeOperationContext` de Embabel (§6); de API sin claves con el doble
    determinista y contra el doble HTTP de Anthropic y de OpenAI (`SourceAnalysisApiTest`, `SourceAnalysisAnthropicApiTest`,
    `SourceAnalysisOpenAiApiTest`).
@@ -255,6 +260,35 @@ unidades o con una sin actividades, sin evaluaciones, con **una evaluación que 
 evaluaciones) o con más carga por semana de la que tiene una semana. Un resultado que ninguna evaluación mide es un aviso
 (`unassessedOutcomes`). El doble hace un resultado por objetivo del brief, una unidad por concepto (teoría y lectura) y por
 procedimiento (práctica y ejercicio) con la lectura de su sección, y un cuestionario por resultado.
+
+**Borrador con plantillas versionadas** (E33.6, [#283](https://github.com/wasichai/elearning-backend/issues/283)). Parte de la
+ejecución `SUCCEEDED` de un diseño cuyo brief sigue `LISTO` y cuyas semanas son una duración válida (de 1 a 8, o un semestre
+de 12 a 26): lee su salida y vuelve a leer las fuentes del brief en el mismo commit exacto (`SourceMaterialReader`), que son
+las `sources` de la ejecución. `LessonDrafter` tiene dos implementaciones, `ModelLessonDrafter` (modelo `draft` y
+`lms.ai.max-tokens.draft`, 16000) y `DeterministicLessonDrafter`; instrucciones `lesson-draft@1`. El diseño y las secciones de
+las fuentes (texto no confiable) van delimitados en el mensaje de usuario. `LessonDraft` trae, por cada unidad del diseño y en
+su orden, sus lecciones: título, resumen, objetivo, duración, la sección de la que sale (`source`), el cuerpo en AsciiDoc y las
+verificaciones. **El modelo no escribe el documento**: `LessonTemplate` (`lesson-draft@1`, la `version_plantilla` de la
+ejecución) junta título, resumen, _Objetivo_, cuerpo, _Verificación_ y fuente, en el idioma del brief, y baja a sección un
+título de documento colado en el cuerpo. `LessonDraftCheck` deja `INVALID_OUTPUT`, sin versión, un borrador con otro número de
+unidades que el diseño (`UNITS_MISMATCH`), una unidad sin lecciones, una lección sin título, objetivo o cuerpo (`BLANK_LESSON`)
+o sin verificaciones, más de 20 lecciones por unidad o una lección de más de 100 000 caracteres; descarta, con su motivo en
+`validations`, una fuente que no es la referencia de una sección leída (`NO_PROVENANCE`, `SOURCE_NOT_READ`) y una duración
+fuera de 1–600 minutos (`INVALID_DURATION`). **Los enlaces nuevos se marcan para revisión**, no se quitan: cada enlace del
+texto generado que no está en ninguna de las secciones leídas (`NOT_IN_SOURCES`) o que no pasa `SafeLink` (`UNSAFE`) queda
+en `validations.linksToReview` y en `referencias` de la versión del recurso de su lección (`REVISAR (…): url`).
+
+`LessonDraftWriter` escribe, como la plataforma y a nombre de quien lo pidió (`autor_id`), como la importación: una
+`version_curso` **`BORRADOR`** con el número siguiente del curso, sus semanas y horas por semana (`workload`, del diseño), sus
+resultados, su sistema de evaluación, sus fuentes y la plantilla con su versión (`plantilla_ia`); una unidad por unidad del
+diseño y, por lección, su `leccion` (tipo `LECTURA`, con su procedencia) y un `recurso` HTML: la fuente canónica AsciiDoc en
+`fuente_recurso` (RF-CON-03) y una `version_recurso` `BORRADOR` con el HTML que genera `DocumentRenderer` (Asciidoctor en modo
+`secure`), **saneado con la lista blanca de ADR-0022** (`GeneratedHtml`) antes de guardarse, enlazada por `recurso_leccion`.
+Nada de eso cambia de estado por sí mismo: enviarlo a revisión, aprobarlo y publicarlo son de personas, y la versión es
+**generada** (§13), así que no entra en revisión sin un informe de validación al día. Pedir otra vez el mismo borrador
+devuelve su ejecución, sin otra versión. El doble hace una lección por lectura de cada unidad con el texto de su sección (o
+una con el resumen y los temas si no tiene ninguna), el primer resultado de la unidad como objetivo y una verificación por
+actividad.
 
 ## 6. Protección contra prompt injection
 
@@ -525,9 +559,9 @@ versión, su autor, su revisor asignado y quien tiene `VALIDAR`; el resto, `403`
 
 **Borrador generado.** Una versión es **generada** si alguna ejecución de un paso que crea borradores
 (`DraftValidationStore.GENERATING_STEPS`, hoy `LESSON_DRAFT`) la nombra: en `version_curso_id` si la versión existía al
-empezar, o en `output.versionId` si la creó la propia ejecución. Es lo que el paso de borrador
-([#283](https://github.com/wasichai/elearning-backend/issues/283)) tiene que respetar: al crear la versión, cerrar su
-ejecución con `output = { "versionId": "<id>", … }`. El vínculo vive en `lms.ejecucion_agente`, que solo escribe la
+empezar, o en `output.versionId` si la creó la propia ejecución. El paso de borrador
+([#283](https://github.com/wasichai/elearning-backend/issues/283), §5) lo respeta: crea la versión y cierra su ejecución con
+`output = { "versionId": "<id>", … }` en la misma transacción (`AiStepRunner.runWriting`). El vínculo vive en `lms.ejecucion_agente`, que solo escribe la
 plataforma y no se edita, así que el autor no puede quitárselo a su borrador. Un paso nuevo que cree versiones entra en
 `GENERATING_STEPS`.
 
