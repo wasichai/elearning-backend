@@ -13,6 +13,12 @@ Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este
 - `GeneratedDraftGuard`: enviar a revisión un borrador generado sin informe, con uno que ya no corresponde al contenido o con
   errores bloqueantes es `409`. Generado = una ejecución `LESSON_DRAFT` lo nombra en `version_curso_id` u `output.versionId`
   ([docs/ai §13](ai/README.md#13-informe-de-validación-rf-ia-05)); #283 lo respetará. `V23` añade los índices por versión.
+## 2026-11-03 — Una versión sin lecciones no se envía a revisión ([#346](https://github.com/wasichai/elearning-backend/issues/346))
+
+- `EditorialWorkflowGuard` responde `409` al llevar una `version_curso` sin lecciones a `EN_REVISION`, `APROBADA` o
+  `PUBLICADA`, por el estudio, la bandeja o la API de registros, y al crearla directamente en uno de esos estados. El
+  borrador vacío se sigue creando (#270), quien no tiene la acción sigue recibiendo `403`, y una versión vacía anterior a
+  la regla se puede devolver a borrador, rechazar o retirar. La plataforma no pasa por la guarda.
 
 ## 2026-11-03 — Lo publicado funciona sin el proveedor ([#294](https://github.com/wasichai/elearning-backend/issues/294))
 

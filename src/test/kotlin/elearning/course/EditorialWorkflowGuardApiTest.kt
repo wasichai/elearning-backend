@@ -82,6 +82,15 @@ class EditorialWorkflowGuardApiTest : LmsApiTest() {
         return course to version
     }
 
+    // el temario mínimo para avanzar en el flujo: una versión sin lecciones no se envía a revisión (#346)
+    private fun withLesson(
+        token: String,
+        version: String,
+    ) {
+        val unit = create(token, "unidad", mapOf("version_curso" to version, "orden" to 1, "titulo" to "Unidad"))
+        create(token, "leccion", mapOf("unidad" to unit, "orden" to 1, "titulo" to "Lección", "tipo" to "LECTURA"))
+    }
+
     @Test
     fun `a creator cannot publish, not by creating nor by editing the state`() {
         val (course, version) = draft()
@@ -126,6 +135,7 @@ class EditorialWorkflowGuardApiTest : LmsApiTest() {
     @Test
     fun `only legal transitions, each with its action, and no self approval`() {
         val (_, version) = draft()
+        withLesson(creator, version)
 
         // saltarse la revisión no es una transición
         assertEquals(HttpStatus.CONFLICT, patch(admin, "version_curso", version, mapOf("estado" to "APROBADA")).first)
@@ -149,6 +159,7 @@ class EditorialWorkflowGuardApiTest : LmsApiTest() {
         val course = create(admin, "curso", mapOf("codigo" to slug.uppercase(), "slug" to slug, "titulo" to "Del administrador"))
         val version =
             create(admin, "version_curso", mapOf("curso" to course, "numero" to 1, "modalidad" to "ASINCRONA", "semanas" to 2, "autor_id" to userId(admin)))
+        withLesson(admin, version)
 
         assertEquals(HttpStatus.OK, patch(admin, "version_curso", version, mapOf("estado" to "EN_REVISION")).first)
         assertEquals(HttpStatus.FORBIDDEN, patch(admin, "version_curso", version, mapOf("estado" to "APROBADA")).first)
@@ -200,6 +211,7 @@ class EditorialWorkflowGuardApiTest : LmsApiTest() {
     fun `a review is decided only in the inbox, which leaves the decision, never through the record API`() {
         // revisión de la Fase 4 (M1 de #216): por la API de registros quedaba la transición sin decisión ni motivo
         val (_, version) = draft()
+        withLesson(creator, version)
         assertEquals(HttpStatus.OK, patch(creator, "version_curso", version, mapOf("estado" to "EN_REVISION")).first)
 
         // quien sí puede decidir tampoco decide por aquí: ni aprobar, ni pedir cambios, ni rechazar

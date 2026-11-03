@@ -92,6 +92,8 @@ registros de Wasichai incluida—. Las acciones declaradas (`PUBLICAR`, `APROBAR
 conceden y se consultan, y es la guarda la que las exige. Lo encontró la revisión de seguridad de E10.1: antes de la
 guarda, un CREADOR podía publicar escribiendo `estado` con un `PATCH`.
 
+- **Una versión sin lecciones no avanza** (#346): llevarla a `EN_REVISION`, `APROBADA` o `PUBLICADA`, o crearla en uno de
+  esos estados, es `409` por cualquier ruta; quien no tiene la acción recibe antes su `403`.
 - **Solo transiciones legales, cada una con su acción**: `BORRADOR→EN_REVISION` (`ENVIAR_A_REVISION`),
   `EN_REVISION→BORRADOR` (`ENVIAR_A_REVISION` o `APROBAR`), `EN_REVISION→APROBADA` (`APROBAR`), `APROBADA→PUBLICADA`
   (`PUBLICAR`), `PUBLICADA→RETIRADA` (`RETIRAR`). Cualquier otra es `409`; una legal sin la acción, `403`. Crear
