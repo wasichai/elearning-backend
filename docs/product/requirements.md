@@ -322,8 +322,9 @@ el cuándo, en [`roadmap.md`](roadmap.md).
   estado editorial.
 - **RF-IA-07** · F5 · planificado — Permisos separados para generar, validar, aprobar y publicar.
   _Aceptación:_ un usuario que solo puede generar recibe `403` al aprobar.
-- **RF-IA-08** · F5 · planificado — Embabel se usa en la versión verificada (1.5.3); sin credenciales hay un doble
-  determinista claramente identificado; si algo no es compatible se documenta y se entrega una alternativa real.
+- **RF-IA-08** · F5 · planificado — Embabel se usa en la versión 1.5.4, con Anthropic y OpenAI opcionales
+  ([ADR-0033](../adr/0033-fase-5-ia.md)); sin credenciales hay un doble determinista claramente identificado; si algo
+  no es compatible se documenta y se entrega una alternativa real.
   _Aceptación:_ la suite de pruebas pasa sin claves de proveedor y la UI marca los resultados del doble.
 - **RF-IA-09** · F5 · planificado — Comparación de modelos por tarea con entradas, criterios, versiones e informes
   conservados.
