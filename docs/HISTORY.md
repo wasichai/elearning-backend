@@ -94,6 +94,31 @@ El criterio de F4 ([roadmap](product/roadmap.md)) todavía no se da por cumplido
   `02-primeros-pasos.adoc`). Falta ejecutarla con `LMS_IMPORTER_ALLOWED_SOURCES` y `LMS_IMPORTER_GITHUB_TOKEN` en un
   entorno con acceso a la API de GitHub, y dejar aquí el informe y las trazas.
 
+## 2026-11-03 — Doble HTTP de Anthropic y OpenAI con WireMock ([#274](https://github.com/wasichai/elearning-backend/issues/274))
+
+Tercer paso de la épica E32 ([#271](https://github.com/wasichai/elearning-backend/issues/271)), según
+[ADR-0033](adr/0033-fase-5-ia.md) §4, §6 y §11.
+
+- `org.wiremock:wiremock-standalone` 3.13.2 como `testImplementation` (la variante que sombrea su Jetty).
+- Soporte reutilizable en `src/test/kotlin/elearning/ai/ProviderDouble.kt`: `ProviderDouble`, un WireMock por JVM en
+  `127.0.0.1` y puerto dinámico que hace de Anthropic (`/v1/messages`) y de OpenAI (`/v1/responses`), con respuestas en
+  `src/test/resources/ai/{anthropic,openai}/`, recuento y cuerpos de las peticiones; y `ProviderDoubleApiTest`, la base
+  de las pruebas de API con los dos proveedores (claves ficticias, URL base por `@DynamicPropertySource`, tarifas) que vacía
+  el doble antes de cada prueba y falla si quedó una petición sin emparejar.
+- `elearning.ai.ModelCalls`: la llamada tipada de cada paso, `Ai.withLlm(LlmOptions).createObject(prompt, type)` de
+  Embabel 1.5.4 (el nombre que el ADR dejaba por verificar), sobre un contexto de Embabel propio por llamada para leer su
+  consumo de tokens. 400, 401, 403, 404, 422 y una salida que no se deserializa salen como `PermanentJobFailure`; 408, 409,
+  429, 5xx y los de red, tal cual, para que la cola los reintente.
+- Lo que el doble enseñó de 1.5.4: el reintento que envuelve cada llamada tipada es el de
+  `embabel.agent.platform.llm-operations.data-binding` (10 intentos por defecto, también ante un 400), no el
+  `max-attempts` de cada proveedor; queda en 2 en `application.yml` y `AiStatus` impide arrancar con más. Además, el SDK de
+  cada proveedor repite 408, 409, 429 y 5xx dos veces dentro de cada intento: un 429 son 6 peticiones. Documentado en
+  `docs/ai` §2.
+- Pruebas: `ModelCallsApiTest` (salida tipada de ejemplo por cada proveedor con lo que se envía; 400, 429, 500 y JSON
+  inválido con su recuento; petición no emparejada; las URL base en el doble; y el criterio de E32.4 que dependía de él:
+  una ejecución guarda el consumo del proveedor y su coste, leídos en `GET /api/lms/ai/runs/{id}`), `AiStatusTest` y
+  `NoAiProviderApiTest` (sin claves, `ModelCalls` no llama a nada). Documentado en `docs/testing`.
+
 ## 2026-11-03 — Logros en la interfaz del aula: RF-AUL-08 implementado ([front#166](https://github.com/wasichai/elearning-frontend/pull/166))
 
 - La interfaz muestra `achievements` junto al avance, con su fecha y enlace a su unidad, evaluación o certificado. El

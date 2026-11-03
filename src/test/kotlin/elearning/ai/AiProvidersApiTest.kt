@@ -55,6 +55,9 @@ abstract class AiProvidersApiTestSupport : WasichaiIntegrationTest() {
     ],
 )
 class NoAiProviderApiTest : AiProvidersApiTestSupport() {
+    @Autowired
+    private lateinit var calls: ModelCalls
+
     @Test
     fun `without keys the application starts and the pipeline reports no provider`() {
         assertThat(status.available).isFalse()
@@ -69,6 +72,14 @@ class NoAiProviderApiTest : AiProvidersApiTestSupport() {
             .exchange()
             .expectStatus()
             .isOk
+    }
+
+    // sin proveedor, cada paso usa su doble determinista: llamar a un modelo es un error del programa, no una llamada a la red
+    @Test
+    fun `without keys a model call is refused before anything is sent`() {
+        assertThatThrownBy { calls.createObject("claude-haiku-5-5", ModelSettings(maxTokens = 16), "hola", String::class.java) }
+            .isInstanceOf(IllegalStateException::class.java)
+            .hasMessageContaining("deterministic double")
     }
 }
 

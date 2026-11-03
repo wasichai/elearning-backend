@@ -66,14 +66,27 @@ Decisión en [ADR-0033](../adr/0033-fase-5-ia.md) §1–§4.
   `spring.ai.mcp.client.annotation-scanner.enabled=false`; con Embabel en el classpath no llega Spring MVC ni Tomcat (la
   tarea `noServletStack` de `check` lo vigila).
 - **Uso selectivo**: Embabel solo en los pasos 2–5 (y la opinión del 6), con **una llamada tipada por paso**
-  (`PromptRunner.createObject`, nombre exacto a verificar contra 1.5.4), sin planificador, sin herramientas y con el
-  cliente MCP desactivado. Sin abstracción multi-proveedor propia: una interfaz interna pequeña por paso
+  (`PromptRunner.createObject`), sin planificador, sin herramientas y con el cliente MCP desactivado. Verificado contra
+  1.5.4 en E32.3 ([#274](https://github.com/wasichai/elearning-backend/issues/274)): la llamada es
+  `Ai.withLlm(LlmOptions.withModel(m).withMaxTokens(n)).createObject(prompt, type)`, y `elearning.ai.ModelCalls` la hace
+  sobre un `ExecutingOperationContext` propio por llamada (un bean prototipo de Embabel), cuyo `agentProcess.usage()` da
+  los tokens que informó el proveedor; esos van a `AgentRun`. OpenAI va por la Responses API (`gpt-6-*` se declara así en
+  el catálogo de 1.5.4) y recibe `max_output_tokens` y `text.format` `json_schema`; Anthropic recibe `max_tokens` y el
+  esquema JSON en `system`. Sin abstracción multi-proveedor propia: una interfaz interna pequeña por paso
   (`SourceAnalyzer`, `CourseDesigner`, `LessonDrafter`, `ScriptWriter`) que tiene dos implementaciones, Embabel y el
   doble determinista (§7). Sirve para probar y para comparar modelos (§9). Si algo no fuera compatible, se documenta
   aquí y se entrega la alternativa con Spring AI `ChatClient` directo.
 - **Llamadas bloqueantes**: la canalización corre siempre en un trabajo (§5), en un dispatcher acotado, nunca en el
   event loop de WebFlux.
 - **Reintentos**: el interno de Embabel (10 por defecto) baja a 1–2; la política de reintentos es la de la cola (§5).
+  Medido con el doble HTTP en E32.3: en 1.5.4 el reintento que envuelve cada llamada tipada, con los dos proveedores, es
+  el de `embabel.agent.platform.llm-operations.data-binding.max-attempts` (repite cualquier fallo, un 400 incluido; el
+  segundo intento lleva el error de validación y es la corrección acotada de §5). El `max-attempts` de cada proveedor solo
+  cuenta en el camino Chat Completions de OpenAI, que la canalización no usa. Los dos quedan en 2 y `AiStatus` impide
+  arrancar con más. Debajo, `anthropic-java` y `openai-java` repiten 408, 409, 429 y 5xx dos veces dentro de cada intento
+  (respetan `Retry-After`) y Embabel 1.5.4 no deja configurarlo para Anthropic: un 429 son 2 × 3 = 6 peticiones antes de
+  volver a la cola. `ModelCalls` entrega a la cola 400, 401, 403, 404, 422 y la salida inválida como `PermanentJobFailure`;
+  lo demás, tal cual, para que la reintente.
 - **Perfiles**: `wasichai-test` advierte que un perfil llamado `test` puede desactivar los agentes de Embabel; las
   pruebas no lo usan.
 - **Catálogo de modelos**: 1.5.4 conoce `claude-opus-5-5`, `claude-sonnet-5-5`, `claude-haiku-5-5` y `gpt-6-*`. El
@@ -197,7 +210,7 @@ procedimiento con su _Objetivo_ y _Verificación_). Reglas:
 - No se presenta como «Embabel simulado»: es una implementación distinta de la misma interfaz.
 - Aparte está el **doble HTTP** (WireMock) de las API de Anthropic y OpenAI, solo en pruebas de integración: prueba
   Embabel, la deserialización y los errores del proveedor sin salir a la red. No sustituye al doble determinista
-  ([ADR-0033](../adr/0033-fase-5-ia.md) §11).
+  ([ADR-0033](../adr/0033-fase-5-ia.md) §11). Cómo se usa: [docs/testing](../testing/README.md#doble-http-de-los-proveedores-de-ia).
 
 ## 8. Permisos separados
 
