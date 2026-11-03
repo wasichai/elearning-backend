@@ -86,9 +86,9 @@ class ArchitectureTest {
                 "ai" to setOf("common", "authoring", "course", "importer"),
                 // la generación encola y maneja sus trabajos en la cola persistente (ADR-0018 §7)
                 "media" to setOf("common", "authoring", "jobs"),
-                // las valoraciones (ADR-0038): leen la matrícula y el progreso del aula. nadie las usa: ni la matrícula ni las
-                // notas dependen de ellas (regla 8)
-                "reputation" to setOf("common", "enrollment", "learning"),
+                // las valoraciones (ADR-0038): leen la matrícula y el progreso del aula y sus agregados corren en la cola. nadie
+                // las usa: ni la matrícula ni las notas dependen de ellas (regla 8)
+                "reputation" to setOf("common", "enrollment", "learning", "jobs"),
             )
 
         // un ciclo como lista de nodos, o null si no hay

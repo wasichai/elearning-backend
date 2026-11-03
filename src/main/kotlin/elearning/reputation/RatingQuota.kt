@@ -54,4 +54,13 @@ class RatingQuota(
             )
         }
     }
+
+    // los días pasados no sirven para nada: los borra el trabajo de agregados
+    suspend fun purgeBefore(day: LocalDate): Long =
+        db
+            .sql("DELETE FROM lms.cuota_valoracion WHERE dia < :day")
+            .bind("day", day)
+            .fetch()
+            .rowsUpdated()
+            .awaitSingle()
 }

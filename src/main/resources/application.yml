@@ -82,6 +82,8 @@ lms:
     # cambios (alta, edición o retirada) y denuncias por persona y día UTC; uno más es 429
     max-edits-per-day: ${LMS_REPUTATION_MAX_EDITS_PER_DAY:5}
     max-reports-per-day: ${LMS_REPUTATION_MAX_REPORTS_PER_DAY:10}
+    # cada cuánto se encola el trabajo de agregados: congela las ediciones liberadas y rehace los indicadores de recurso
+    aggregate-every: ${LMS_REPUTATION_AGGREGATE_EVERY:1d}
   # importador AsciiDoc (ADR-0018 §5): solo lee de estos repositorios, separados por comas, como owner/repo (cualquier
   # commit) u owner/repo@sha (solo ese). vacío: no importa nada. el host de GitHub es fijo, nunca configuración
   importer:

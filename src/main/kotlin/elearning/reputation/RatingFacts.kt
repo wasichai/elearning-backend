@@ -255,6 +255,87 @@ class RatingFacts(
             .awaitSingleOrNull()
     }
 
+    // una edición por su código
+    suspend fun offeringByCode(
+        organization: UUID,
+        code: String,
+    ): Offering? {
+        val o = table(organization, OFFERING)
+        return db
+            .sql(
+                "SELECT o.\"id\", o.${o.column(END)} AS fin, o.${o.column(ZONE)} AS zona " +
+                    "FROM ${o.name} o WHERE o.organization_id = :org AND o.${o.column(CODE)} = :code",
+            ).bind("org", organization)
+            .bind("code", code)
+            .map { row, _ -> Offering(row.get("id", UUID::class.java)!!, row.get("fin", LocalDate::class.java), row.get("zona", String::class.java)) }
+            .one()
+            .awaitSingleOrNull()
+    }
+
+    // las matrículas no retiradas de la edición que aún no tienen resultado
+    suspend fun pendingResults(
+        organization: UUID,
+        offering: UUID,
+    ): Long {
+        val m = table(organization, ENROLLMENT)
+        return db
+            .sql(
+                "SELECT count(*) AS pending FROM ${m.name} m WHERE m.organization_id = :org AND m.${m.column(OFFERING_FIELD)} = :offering " +
+                    "AND m.${m.column(STATE)} IS DISTINCT FROM :withdrawn AND (m.${m.column(RESULT)} IS NULL OR m.${m.column(RESULT)} = :none)",
+            ).bind("org", organization)
+            .bind("offering", offering)
+            .bind("withdrawn", WITHDRAWN)
+            .bind("none", NO_RESULT)
+            .map { row, _ -> row.get("pending", Number::class.java)!!.toLong() }
+            .one()
+            .awaitSingle()
+    }
+
+    data class AuthoredVersion(
+        val id: UUID,
+        val title: String?,
+        val number: Int?,
+    )
+
+    // las versiones de recurso de las que la persona es autora, con el título del recurso
+    suspend fun authoredResourceVersions(
+        organization: UUID,
+        user: UUID,
+    ): List<AuthoredVersion> {
+        val rv = table(organization, RESOURCE_VERSION)
+        val r = table(organization, RESOURCE)
+        return db
+            .sql(
+                "SELECT rv.\"id\", r.${r.column(TITLE)} AS title, rv.${rv.column(NUMBER)} AS number FROM ${rv.name} rv " +
+                    "LEFT JOIN ${r.name} r ON r.\"id\" = rv.${rv.column(RESOURCE)} AND r.organization_id = :org " +
+                    "WHERE rv.organization_id = :org AND rv.${rv.column(AUTHOR)} = :user ORDER BY r.${r.column(TITLE)}, rv.${rv.column(NUMBER)}",
+            ).bind("org", organization)
+            .bind("user", user)
+            .map {
+                row,
+                _,
+                ->
+                AuthoredVersion(row.get("id", UUID::class.java)!!, row.get("title", String::class.java), row.get("number", Number::class.java)?.toInt())
+            }.all()
+            .collectList()
+            .awaitSingle()
+    }
+
+    // las ediciones con alguna valoración de docente
+    suspend fun offeringsWithTeacherRatings(organization: UUID): List<UUID> {
+        val v = table(organization, RATING)
+        return db
+            .sql(
+                "SELECT DISTINCT v.${v.column(OFFERING_FIELD)} AS offering FROM ${v.name} v WHERE v.organization_id = :org " +
+                    "AND v.${v.column(TARGET)} = :target AND v.${v.column(OFFERING_FIELD)} IS NOT NULL",
+            ).bind("org", organization)
+            .bind("target", RatingWriteGuard.TEACHER)
+            .map { row, _ -> row.get("offering", UUID::class.java)!! }
+            .all()
+            .collectList()
+            .awaitSingle()
+    }
+
     // la cuenta valorada: la del docente de la asignación o la del autor de la versión de recurso
     suspend fun ratedUser(
         organization: UUID,
@@ -316,6 +397,11 @@ class RatingFacts(
         const val TARGET = "destino"
         const val ACTIVE = "activa"
         const val ORDER = "orden"
+        const val CODE = "codigo"
+        const val RESULT = "resultado"
+        const val NO_RESULT = "SIN_RESULTADO"
+        const val WITHDRAWN = "RETIRADA"
+        const val NUMBER = "numero"
         val DONE = arrayOf("COMPLETADA", "APROBADA")
     }
 }
