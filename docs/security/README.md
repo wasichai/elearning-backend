@@ -108,6 +108,10 @@ guarda, un CREADOR podía publicar escribiendo `estado` con un `PATCH`.
   asignado, quien la aprobó en la bandeja (`lms.decision_revision`) ni un docente de una edición del curso
   (`docente_edicion`, leído con una subconsulta para no depender de lo que la autoridad pueda leer) → `403`. Pruebas:
   `CreditApprovalApiTest`.
+- **Políticas de crédito publicadas inmutables** (RF-CRE-07, ADR-0036): `CreditPolicyGuard` rechaza cambiar o borrar una
+  `politica_credito` publicada o retirada y escribir su estado por la API de registros (`409`, también ADMIN); publicar y
+  retirar exigen `PUBLICAR` sobre `politica_credito`. Aprobar exige la versión de política ligada publicada y del mismo
+  sistema (`409`).
 - `publicada_en` solo se pone al publicar. Solo se borra un borrador.
 - **Sin autoasignación de roles** (a verificar). Los roles se administran solo con `MANAGE_ORGANIZATION` de Wasichai y
   quedan en `audit_log` como `admin:*`. Que Wasichai impida a un administrador cambiar sus **propios** roles no está
@@ -379,7 +383,12 @@ aplicación se conecta con un rol que no es dueño de las tablas, para que nadie
   | Certificados                                                            | Se disocian: seudónimo y sin nombre; el código sigue verificando el impreso         |
   | Perfil docente                                                          | Se vacía y deja de publicarse; sigue enlazado a la cuenta por sus asignaciones      |
   | Trabajos que pidió y la aceptación misma                                | Se suprimen                                                                         |
+  | Ejecuciones de agente que pidió o en las que intervino                  | Se disocian: seudónimo como solicitante y en sus intervenciones; la ejecución queda |
   | Autoría, revisiones, notas puestas, sesiones y asistencias que registró | Se conservan con el id de cuenta: son actos de la organización                      |
+
+  Las intervenciones en una ejecución de agente son, como las revisiones, actos de la organización, pero se disocian:
+  la ejecución guarda qué pidió y qué aceptó o editó la persona sobre material generado, y la decisión editorial que
+  importa ya queda, con su autor, en la versión y en `lms.decision_revision` (#326).
 
   Queda en Wasichai: la cuenta (nombre, correo, roles), que deshabilita o elimina el administrador; las notificaciones;
   y `audit_log`, con el antes de cada registro suprimido o disociado, hasta que lo borre el rol de purga de Wasichai

@@ -67,6 +67,8 @@ data class VersionCredits(
     val versionId: String,
     val versionStatus: String,
     val system: String?,
+    // la versión de política ligada (politica_credito); null: propone la de referencia del sistema
+    val policyId: String?,
     val proposal: ProposalView?,
     val current: CreditApprovalView?,
 )

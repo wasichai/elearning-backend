@@ -16,7 +16,9 @@ que es lógica determinista del módulo `elearning.ai` o de `authoring`; «perso
 
 1. **Brief** — temática, público, objetivos, duración, idioma, nivel, expertos y fuentes autorizadas. _Persona_
    (CREADOR) con formulario validado → `Brief`. Fuentes solo de la lista permitida o de paquetes importados
-   ([importador](../security/README.md#46-importador-asciidoc-f4)).
+   ([importador](../security/README.md#46-importador-asciidoc-f4)). Implementado en E33.1 ([#278](https://github.com/wasichai/elearning-backend/issues/278)):
+   Custom Object `brief` del curso y `BriefGuard` ([modelo](../architecture/domain-model.md)); se guarda a medias en
+   `BORRADOR` y solo pasa a `LISTO` completo, que es lo que consumirán los pasos.
 2. **Análisis de fuentes con procedencia** — _código_ (importador: grafo `include::`, secciones, anclas) + _Embabel_
    (extracción de conceptos y procedimientos) → `SourceAnalysis`, cada elemento ligado a `repo@sha:ruta#ancla`. Lo que
    no tiene procedencia se descarta.
@@ -121,6 +123,9 @@ orden 200), porque `inputs`, `output` y `validations` son JSON (`jsonb`) y el ti
 ([ADR-0004](../adr/0004-modelo-hibrido-custom-objects-y-tablas-fijas.md)). Cada fila apunta a su trabajo de `lms.trabajo`.
 Lectura por API propia bajo `/api/lms/ai/**` con el mismo alcance que el curso. Las filas no se editan (salvo el cierre
 de la ejecución y las intervenciones, que se añaden) ni se purgan con los trabajos; la retención se define en F6.
+Implementado en E32.4 ([#275](https://github.com/wasichai/elearning-backend/issues/275)): `AgentExecutionLog` (`elearning.ai`)
+abre, cierra y añade intervenciones; el coste sale de `lms.ai.rates` y la lectura es `GET /api/lms/ai/runs`
+([docs/api](../api/lms.md#registro-de-ejecuciones-de-ia-f5-adr-0033-7)).
 
 ## 5. Esquemas tipados y trabajos
 

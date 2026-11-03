@@ -120,7 +120,7 @@ Respuesta 200 `CourseDetail` = todos los campos de `CourseSummary` (salvo `nextO
     "totalHours": 216
   },
   "credits": {
-    "system": "ECTS", // "ECTS" | "SCH" | null (NINGUNO)
+    "system": "ECTS", // "ECTS" | "SCH" | "PE_CREDITO" | null (NINGUNO)
     "approved": null, // número solo con una aprobación vigente (RF-CRE-08)
     "approval": null, // { credits, policyId, policyVersion, approvingBody, documentReference, documentDate, approvedAt } o null
     "proposal": {
@@ -864,6 +864,40 @@ pasajero (almacenamiento, interrupción) vuelve a `PENDIENTE` hasta agotar `lms.
   `version_recurso` y `fuente_recurso`. Se descargan con `GET /api/objects/artefacto_generado/records/{id}/files/archivo`,
   siempre como adjunto. La API de registros no los escribe (`403`).
 
+## Registro de ejecuciones de IA (F5, ADR-0033 §7)
+
+Cada llamada de un paso de la canalización deja una ejecución (`AgentRun`, RF-IA-03) en `lms.ejecucion_agente`. La escriben
+los pasos desde su trabajo; esta API solo la lee.
+
+| Método | Ruta                             | Resultado                                                                                  |
+| ------ | -------------------------------- | ------------------------------------------------------------------------------------------ |
+| GET    | `/api/lms/ai/runs?courseId={id}` | las ejecuciones del curso, la más reciente primero, a lo sumo 100 → `[AgentExecutionLine]` |
+| GET    | `/api/lms/ai/runs/{id}`          | `AgentExecution`                                                                           |
+
+- **Permisos**: ambas rutas exigen `UPDATE` sobre `version_curso` (CREADOR, REVISOR y ADMIN; `403` para ESTUDIANTE y DOCENTE) y
+  el curso se lee como quien llama: el mismo alcance que el curso. Un curso que no existe o no ve es `404`; una ejecución que
+  no existe, de otra organización o de un curso que no ve, también `404`. No hay ruta que escriba (`405`).
+- `AgentExecutionLine`: `{ "id", "jobId", "step", "status", "generator", "provider": null, "model": null, "requestedBy",
+"courseId", "unitId": null, "versionId": null, "attempt", "inputTokens": null, "outputTokens": null, "cost": null,
+"startedAt", "finishedAt": null }`.
+- `AgentExecution`: lo de la línea más `"organizationId", "objective", "inputs", "sources": [{ "ref": "owner/repo@sha:ruta#ancla",
+"sha256" }], "modelSettings": { "maxTokens", "temperature": null }, "promptVersion", "templateVersion", "idempotencyKey",
+"output": null, "validations": null, "error": null, "interventions": [{ "userId", "kind", "at", "note": null }]`.
+  `inputs`, `output` y `validations` son el JSON del paso.
+- `step`: `SOURCE_ANALYSIS` · `COURSE_DESIGN` · `LESSON_DRAFT` · `SCRIPT` · `CONSISTENCY_REVIEW` · `ASSISTANT`. `status`:
+  `PENDING` · `RUNNING` · `SUCCEEDED` · `INVALID_OUTPUT` · `FAILED` · `CANCELLED`. `generator`: `MODEL` · `DETERMINISTIC`; con
+  `DETERMINISTIC`, `provider`, `model` y `modelSettings` son `null`. `provider`: `anthropic` · `openai`. `kind`: `ACCEPTED` ·
+  `EDITED` · `REJECTED`.
+- `cost`: `{ "amount", "currency", "inputPerMillion", "outputPerMillion", "rateSince" }`, calculado al cerrar con la tarifa de
+  `lms.ai.rates` que regía el día en que empezó, y guardado con ella: cambiar la tarifa no reescribe lo gastado. `null`
+  mientras corre, sin consumo informado, con el doble determinista o si el modelo no tiene tarifa configurada. Cada tarifa de la lista lleva `provider`, `model`, `input-per-million`, `output-per-million`, `currency` y `since` (por entorno, `LMS_AI_RATES_0_PROVIDER`…).
+- **Lo que no cambia**: lo pedido (paso, ámbito, objetivo, entradas, fuentes, modelo, versiones, clave e intento) no se edita;
+  la ejecución se cierra una sola vez (estado, salida, validaciones, error, tokens, coste y fin) y las intervenciones solo se
+  añaden al final. Nada se borra ni se purga con los trabajos. Lo hace cumplir un disparador, también frente a SQL directo.
+- **Sin secretos**: ningún campo guarda claves ni cabeceras; `modelSettings` es tipado (no admite parámetros libres) y una clave
+  configurada (`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`) que aparezca en el objetivo, las entradas, la salida, el error o una nota
+  se guarda como `[REDACTED]` (RNF-SEG-09).
+
 ## Créditos aprobados (RF-CRE-08, ADR-0035)
 
 La plataforma calcula y **propone** créditos ([ADR-0007](../adr/0007-carga-academica-y-creditos-como-politica-versionada.md));
@@ -904,3 +938,29 @@ CreditApproval | null }`.
 - En el catálogo, `credits.approved` y `credits.approval` (`{ "credits", "policyId", "policyVersion", "approvingBody",
 "documentReference", "documentDate", "approvedAt" }`) solo existen con una aprobación vigente; tras una revocación vuelven
   a `null` en el refresco siguiente de la proyección.
+
+### Políticas de crédito (RF-CRE-07, ADR-0036)
+
+| Método | Ruta                                         | Resultado                                                     |
+| ------ | -------------------------------------------- | ------------------------------------------------------------- |
+| GET    | `/api/lms/credits/policies`                  | `?jurisdiction=&system=&status=&program=` → `CreditPolicy[]`  |
+| GET    | `/api/lms/credits/policies/{id}`             | `CreditPolicy`                                                |
+| POST   | `/api/lms/credits/policies/{id}/publish`     | exige `PUBLICAR`; solo un borrador (`409`) → `CreditPolicy`   |
+| POST   | `/api/lms/credits/policies/{id}/retire`      | exige `PUBLICAR`; solo una publicada (`409`) → `CreditPolicy` |
+| POST   | `/api/lms/credits/policies/{id}/new-version` | exige `CREATE`; `201` borrador con `number + 1`               |
+
+- El borrador se crea y se edita con la API de registros: `POST /api/objects/politica_credito/records` con `clave`,
+  `numero`, `nombre`, `sistema` (`ECTS`, `SCH`, `PE_CREDITO`), `metodo` (`ECTS_CARGA_TOTAL`, `US_SCH_34CFR600_2`,
+  `PE_LEY30220_HORAS_LECTIVAS`), `parametros` (JSON de texto o números; vacío, los de la norma), `jurisdiccion` (ISO
+  3166-1 alfa-2 o `EHEA`), `programa_codigo`, `fuente`, `fuente_url`, `vigente_desde`. Nace en `BORRADOR` (`409` si no);
+  un método de otro sistema, un parámetro desconocido o fuera de la norma (ECTS fuera de 25–30 h; PE bajo 16 h de teoría o
+  32 de práctica) o una jurisdicción inválida son `400`. Publicada o retirada no cambia ni se borra (`409`, también ADMIN).
+- Parámetros: ECTS `horasPorCredito`, `paso`; SCH `horasInstruccionPorSemana`, `horasFueraDeClasePorSemana`,
+  `semanasDeReferencia`, `paso`; PE `horasTeoriaPorCredito`, `horasPracticaPorCredito`, `paso`.
+- `CreditPolicy`: `{ "id", "key", "number", "name", "status", "system", "method", "parameters", "jurisdiction",
+"programCode", "source", "sourceUrl", "validFrom", "publishedBy", "publishedAt" }`. La leen el personal y la autoridad
+  académica; el estudiante no (`403`). Lo de otra organización no existe (`404`).
+- Una versión de curso se liga a una versión de política con `version_curso.politica_credito` (en borrador, como todo su
+  contenido). Propone con ella si es de su sistema; sin ella, con la de referencia (`pe-ley30220-horas-lectivas@1` para
+  `PE_CREDITO`); ligada a otro sistema, `proposal` es `null`. `VersionCredits.policyId` es la ligada. Aprobar exige la
+  ligada `PUBLICADA` y de su sistema (`409`); la aprobación guarda `policyId` = `clave` y `policyVersion` = `numero`.

@@ -153,9 +153,21 @@ publicarla avisa a quien cursa otra versión del curso con su matrícula `ACTIVA
 al leer a partir de las horas y de la política, y la respuesta dice «propuestos», con sistema, método, parámetros, fuente y
 versión de la política. Los **aprobados** son un acto registrado en `aprobacion_creditos`.
 
+**`politica_credito`** (CreditPolicy) — F6, RF-CRE-07, [ADR-0036](../adr/0036-politicas-de-credito-versionadas-en-datos.md).
+`clave · TEXT · requerido` · `numero · INTEGER · requerido` · `nombre · TEXT` · `estado · ENUM(BORRADOR, PUBLICADA,
+RETIRADA)` · `sistema · ENUM sistema_credito` · `metodo · ENUM(ECTS_CARGA_TOTAL, US_SCH_34CFR600_2,
+PE_LEY30220_HORAS_LECTIVAS)` · `parametros · LONG_TEXT · JSON` · `jurisdiccion · TEXT · ISO 3166-1 alfa-2 o EHEA` ·
+`programa_codigo · TEXT` · `fuente · TEXT` · `fuente_url · URL` · `vigente_desde · DATE` · `publicada_por · UUID` ·
+`publicada_en · DATETIME`; `uniqueConstraints: [[clave, numero]]`. La institución es la organización.
+Invariantes: nace y se edita en borrador; publicada o retirada no cambia ni se borra; su estado solo lo cambian publicar y
+retirar (`PUBLICAR`) [guarda + comando]; el método es de su sistema y sus parámetros, los de la norma (ECTS 25–30 h, PE
+desde 16/32 h) [guarda]. `version_curso.politica_credito` (relación opcional, contenido de la versión) nombra la versión
+de política con la que propone; sin ella, la de referencia de su sistema.
+
 **`aprobacion_creditos`** (CreditApproval) — F6, RF-CRE-08, [ADR-0035](../adr/0035-aprobacion-de-creditos-por-una-autoridad-academica.md).
 `appendOnly` y `apiOnly`.
-`version_curso · RELATION → version_curso · requerido` · `tipo · ENUM(APROBACION, REVOCACION) · requerido` · `sustituye · UUID
+`version_curso · RELATION → version_curso · requerido` · `politica_credito · RELATION → politica_credito · la aplicada, si
+no es la de referencia` · `tipo · ENUM(APROBACION, REVOCACION) · requerido` · `sustituye · UUID
 · la aprobación que revoca` · instantánea de la política y del cálculo: `sistema · ENUM sistema_credito` · `politica_id ·
 TEXT` · `politica_version · TEXT` · `metodo · TEXT` · `parametros · LONG_TEXT · JSON` · `fuente · TEXT` · `horas_totales ·
 DECIMAL` · `creditos_calculados · DECIMAL` · `creditos_propuestos · DECIMAL` · `creditos_aprobados · DECIMAL` · `motivo ·
@@ -356,18 +368,30 @@ solo en una versión `EN_REVISION` y solo quien la revisa; el creador lo lee en 
 por cada cambio de `estado` de una versión, por cualquier vía; la escribe un `RecordChangeListener` en la transacción de
 quien escribe ([ADR-0032](../adr/0032-historial-de-estados-de-la-version-en-tabla-propia.md)).
 
+**`brief`** (Brief) — F5, RF-IA-01, E33.1 ([docs/ai §1](../ai/README.md)). El encargo de un curso para la canalización
+de IA. `curso · RELATION → curso · requerido` · `tematica · TEXT` · `publico · LONG_TEXT` · `objetivos · LONG_TEXT · uno
+por línea` · `duracion_horas · DECIMAL` · `idioma · TEXT · BCP 47` · `nivel · ENUM nivel` · `expertos · LONG_TEXT · uno
+por línea` · `fuentes · LONG_TEXT · owner/repo@sha:ruta, una por línea` · `estado · ENUM(BORRADOR, LISTO) · por defecto
+BORRADOR`. Un curso puede tener varios.
+Invariantes: se guarda incompleto en borrador; en `LISTO` tiene todos los campos y horas > 0, o `400` con la lista de lo
+que falta [guarda]; cada fuente es de `lms.importer.allowed-sources` o del repositorio y commit de un paquete ya importado
+al curso (las fuentes de sus versiones), también en borrador [guarda]; lo crea, edita y borra quien tiene `CREATE` sobre
+`version_curso`, aunque un rol tenga permisos sobre `brief` [guarda]. Lo leen quienes lo escriben (CREADOR), sin alcance
+por curso: el creador ya ve todas las versiones (`VER_TODAS`).
+
 **`lms.ejecucion_agente`** (AgentRun) — F5, tabla fija del esquema `lms` (`ModuleMigration` orden 200), no un Custom
 Object: sus entradas, salida y validaciones son JSON ([ADR-0033](../adr/0033-fase-5-ia.md) §7, ADR-0004).
-`id` · `organizacion_id` · `trabajo_id` (el de `lms.trabajo`) · `paso` · `usuario_id` · `curso_id`, `version_curso_id`,
-`unidad_id` · `objetivo` · `entradas · jsonb` · `fuentes · jsonb · referencias y hashes` · `proveedor` · `modelo` ·
-`parametros · jsonb` · `version_instrucciones` · `version_plantilla` · `resultado · jsonb · validado` ·
-`validaciones · jsonb` · `estado · PENDING | RUNNING | SUCCEEDED | INVALID_OUTPUT | FAILED | CANCELLED` · `error` ·
-`tokens_entrada` · `tokens_salida` · `coste`, `tarifa`, `tarifa_fecha` · `iniciada_en`, `terminada_en` ·
-`intervenciones · jsonb` · `clave_idempotencia` · `intento` · `generador · MODEL | DETERMINISTIC`. Nombres de columna
-definitivos en la migración (E32.4); los campos son los de [docs/ai §4](../ai/README.md#4-registro-agentrun).
+`id` · `organizacion_id` · `trabajo_id` (el de `lms.trabajo`, sin clave foránea: la cola purga sus trabajos) · `paso` ·
+`solicitante_id` · `curso_id`, `unidad_id`, `version_curso_id` · `objetivo` · `entradas · jsonb` · `fuentes · jsonb ·
+[{ref, sha256}]` · `generador · MODEL | DETERMINISTIC` · `proveedor · anthropic | openai`, `modelo`, `parametros_modelo ·
+jsonb` (los tres solo con `MODEL`) · `version_instrucciones` · `version_plantilla` · `clave` · `intento` · `iniciada_en` ·
+`estado · PENDING | RUNNING | SUCCEEDED | INVALID_OUTPUT | FAILED | CANCELLED` · `salida · jsonb` · `validaciones · jsonb` ·
+`error` · `tokens_entrada` · `tokens_salida` · `coste`, `moneda`, `tarifa_entrada`, `tarifa_salida`, `tarifa_desde`
+(por millón de tokens) · `terminada_en` · `intervenciones · jsonb · [{userId, kind, at, note}]`
+(`V17__ejecucion_agente.sql`, E32.4); los campos son los de [docs/ai §4](../ai/README.md#4-registro-agentrun).
 Invariantes: sin secretos en ningún campo [servicio]; repetir con la misma clave no crea otra ejecución [cola]; una
-ejecución nunca publica [diseño]; no se edita salvo su cierre y las intervenciones, que se añaden, y no se purga con los
-trabajos [servicio]. Se lee por `/api/lms/ai/**` con el alcance del curso.
+ejecución nunca publica [diseño]; no se edita salvo su cierre, una vez, y las intervenciones, que se añaden, y no se borra
+[disparador]; no se purga con los trabajos [servicio]. Se lee por `/api/lms/ai/**` con el alcance del curso.
 
 **`artefacto_generado`** (GeneratedArtifact) — F4 (HTML/PDF, implementado) · F5 (vídeo). `appendOnly` y `apiOnly`.
 `version_recurso · RELATION` · `fuente_recurso · RELATION` · `formato · ENUM formato_artefacto(HTML, PDF)` · `archivo ·
@@ -409,7 +433,7 @@ la ventana abierta (`lms.reputation.window-after-end` tras `fecha_fin`); lo que 
 editar el comentario lo devuelve a `PENDIENTE`; solo `MODERAR` publica u oculta, nunca sobre lo propio ni sobre lo que
 lo tiene como destino; un puntaje es de 1 a 5, de una dimensión activa del destino. Alcance (`RatingReadScope`): el
 estudiante lee lo suyo; quien modera, todo menos lo que lo tiene como destino. El valorado no tiene `READ`. Los límites
-diarios se cuentan en la tabla fija `lms.cuota_valoracion` (V17).
+diarios se cuentan en la tabla fija `lms.cuota_valoracion` (V19).
 
 **`feedback_contenido`** (Feedback) — F6.
 `autor_id · UUID` · `matricula · RELATION` · `version_curso · RELATION` · `unidad · RELATION` · `leccion · RELATION` ·

@@ -5,11 +5,10 @@ import elearning.common.instantOf
 import elearning.common.listAll
 import elearning.common.ref
 import elearning.course.CreditApprovalWrite
+import elearning.course.CreditPolicyRecords
 import elearning.course.VersionWorkload
 import elearning.workload.CreditPolicy
 import elearning.workload.CreditProposal
-import elearning.workload.CreditSystem
-import elearning.workload.ReferencePolicies
 import kotlinx.coroutines.withContext
 import org.springframework.stereotype.Service
 import org.springframework.transaction.reactive.TransactionalOperator
@@ -50,12 +49,13 @@ class CreditApprovalService(
     suspend fun credits(versionId: UUID): VersionCredits {
         val version = visible(versionId)
         val current = current(history(versionId))
-        val policy = policyOf(version)
+        val rule = ruleOf(version)
         return VersionCredits(
             versionId = version.id,
             versionStatus = version.attributes[STATE]?.toString() ?: DRAFT,
-            system = policy?.system?.name,
-            proposal = policy?.propose(VersionWorkload.of(version.attributes))?.let(::proposalView),
+            system = CreditPolicyRecords.system(version.attributes[SYSTEM]?.toString())?.name,
+            policyId = rule.bound?.id,
+            proposal = rule.policy?.propose(VersionWorkload.of(version.attributes))?.let(::proposalView),
             current = current?.let(::approvalView),
         )
     }
@@ -89,7 +89,15 @@ class CreditApprovalService(
                 val fresh = records.get(VERSION, versionId)
                 val state = fresh.attributes[STATE]?.toString() ?: DRAFT
                 if (state !in APPROVABLE) throw ConflictException("Only an approved or published version gets its credits approved, not a $state one")
-                val policy = policyOf(fresh) ?: throw ConflictException("A version without a credit system has no credits to approve")
+                if (CreditPolicyRecords.system(fresh.attributes[SYSTEM]?.toString()) == null) {
+                    throw ConflictException("A version without a credit system has no credits to approve")
+                }
+                // la versión de política ligada, publicada y del sistema de la versión; sin ella, la de referencia (ADR-0036)
+                val rule = ruleOf(fresh)
+                if (rule.bound != null && rule.bound.attributes[CreditPolicyRecords.STATE]?.toString() != CreditPolicyRecords.PUBLISHED) {
+                    throw ConflictException("The credit policy of this version is not published")
+                }
+                val policy = rule.policy ?: throw ConflictException("The credit policy of this version is of another credit system")
                 if (current(history(versionId)) != null) throw ConflictException("This version already has approved credits: revoke them first")
                 val proposal = policy.propose(VersionWorkload.of(fresh.attributes))
                 val approved = request.approvedCredits ?: proposal.proposed
@@ -106,6 +114,7 @@ class CreditApprovalService(
                             mapOf(
                                 VERSION to versionId.toString(),
                                 TYPE to APPROVAL_TYPE,
+                                CreditPolicyRecords.POLICY to rule.bound?.id,
                                 "sistema" to proposal.system.name,
                                 "politica_id" to proposal.policyId,
                                 "politica_version" to proposal.policyVersion,
@@ -229,9 +238,18 @@ class CreditApprovalService(
         }
     }
 
-    // la política con la que se propone y se aprueba: hasta que haya políticas en datos, la de referencia del sistema
-    private fun policyOf(version: RecordResponse): CreditPolicy? =
-        CreditSystem.entries.firstOrNull { it.name == version.attributes[SYSTEM]?.toString() }?.let(ReferencePolicies::of)
+    // la regla con la que se propone y se aprueba: la versión de política ligada a la versión del curso (bound) o, sin ella,
+    // la de referencia de su sistema; ligada a otro sistema, ninguna (ADR-0036). publicar otra versión de la política no la
+    // cambia: la relación nombra una versión concreta
+    private class Rule(
+        val policy: CreditPolicy?,
+        val bound: RecordResponse?,
+    )
+
+    private suspend fun ruleOf(version: RecordResponse): Rule {
+        val bound = version.attributes.ref(CreditPolicyRecords.POLICY)?.let { records.get(CreditPolicyRecords.POLICY, UUID.fromString(it)) }
+        return Rule(CreditPolicyRecords.forVersion(version.attributes, bound?.attributes), bound)
+    }
 
     private suspend fun history(versionId: UUID): List<RecordResponse> =
         records

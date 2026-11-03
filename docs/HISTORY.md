@@ -11,9 +11,56 @@ Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este
   las acciones `VALORAR` (ESTUDIANTE), `VER_RESUMEN` y `DENUNCIAR` (DOCENTE y CREADOR, sin `READ`) y `MODERAR` (ADMIN).
 - `elearning.reputation`: elegibilidad, crear (con `Idempotency-Key`), editar, retirar y listar las propias desde
   `/api/lms/classroom/enrollments/{id}/ratings` y `/api/lms/ratings/**`; progreso mínimo, lección completada, conflicto
-  de interés, ventana tras `fecha_fin` y `429` pasado el límite diario (`lms.cuota_valoracion`, V17). `RatingWriteGuard`
+  de interés, ventana tras `fecha_fin` y `429` pasado el límite diario (`lms.cuota_valoracion`, V19). `RatingWriteGuard`
   e `RatingReadScope` para toda escritura y lectura; `lms.reputation.*`. `ArchitectureTest`: nadie usa `reputation`.
 - Pruebas: `RatingApiTest` (sujetos de un solo rol, releyendo tras cada negativa), `RatingWindowTest`, `test_model.py`.
+
+## 2026-11-03 — Brief estructurado del curso ([#278](https://github.com/wasichai/elearning-backend/issues/278), RF-IA-01)
+
+- Custom Object `brief` (relación `brief_curso`): temática, público, objetivos, duración en horas, idioma, nivel, expertos y
+  fuentes autorizadas, con estado `BORRADOR` → `LISTO` (enum `estado_brief`). CREADOR lo lee y escribe.
+- `BriefGuard` (`elearning.ai`), para toda escritura: el brief se guarda a medias en borrador y pasar a `LISTO` (o seguir en
+  él) incompleto es `400` con un error por campo que falta; horas > 0. Cada fuente es `owner/repo@sha:ruta` de
+  `lms.importer.allowed-sources` o del repositorio y commit de un paquete ya importado al curso (`400` si no, también en
+  borrador). Lo escribe solo quien tiene `CREATE` sobre `version_curso`: darle el brief a otro rol no basta (`403`).
+- `ai` puede usar `course` e `importer` ([overview §2.3](architecture/overview.md#23-dependencias-permitidas-y-prohibidas)).
+  `BriefGuardApiTest` y `test_model.py`.
+
+## 2026-11-03 — La supresión de datos personales cubre `lms.ejecucion_agente` ([#326](https://github.com/wasichai/elearning-backend/issues/326), RNF-SEG-11)
+
+- `V18__supresion_ejecucion_agente.sql`: el disparador de `lms.ejecucion_agente` deja pasar, solo dentro de la transacción
+  de una supresión (`lms.supresion`, como V15), el cambio de `solicitante_id` y del `userId` de las intervenciones; nada
+  más cambia y borrar sigue prohibido.
+- `PersonalDataErasure` disocia las ejecuciones que la persona pidió o en las que intervino con el mismo seudónimo: la
+  ejecución queda como evidencia del proceso editorial y la constancia las cuenta en `disociados.ejecucion_agente`.
+  `PersonalDataErasureApiTest` lo prueba con una ejecución sembrada con `AgentExecutionLog`; repetirla no cambia nada.
+
+## 2026-11-03 — Registro `AgentRun` de las ejecuciones de IA ([#275](https://github.com/wasichai/elearning-backend/issues/275), RF-IA-03)
+
+- `lms.ejecucion_agente` (`V17__ejecucion_agente.sql`, [ADR-0033](adr/0033-fase-5-ia.md) §7) con los campos de `docs/ai` §4:
+  quién lo pidió, curso, unidad y versión, objetivo, entradas, fuentes con hash, proveedor, modelo y parámetros efectivos,
+  versiones de instrucciones y plantilla, salida, validaciones, estado, error, tokens, coste con su tarifa y fecha, inicio y
+  fin, intervenciones, clave, intento y `generator`. Un disparador impide editar lo pedido, cerrar dos veces, borrar y tocar
+  las intervenciones ya escritas: solo se añaden.
+- `AgentExecutionLog` (`elearning.ai`) es la escritura para los pasos de F5: abre, cierra con el consumo del proveedor y
+  calcula el coste con la tarifa de `lms.ai.rates` que regía el día en que empezó; tapa como `[REDACTED]` una clave
+  configurada que aparezca en cualquier campo. Los parámetros del modelo son tipados (`maxTokens`, `temperature`).
+- `GET /api/lms/ai/runs?courseId=` y `GET /api/lms/ai/runs/{id}` con `UPDATE` sobre `version_curso` y el alcance del curso
+  (`403`/`404`). `AgentExecutionApiTest` y `AiRatesTest` lo prueban con ejecuciones construidas en la prueba; la de un paso
+  contra el doble WireMock queda para [#274](https://github.com/wasichai/elearning-backend/issues/274).
+
+## 2026-11-03 — Políticas de crédito versionadas por jurisdicción, institución y programa ([#318](https://github.com/wasichai/elearning-backend/issues/318), RF-CRE-07)
+
+- [ADR-0036](adr/0036-politicas-de-credito-versionadas-en-datos.md): método en código, política en datos.
+  `politica_credito` (clave y número, borrador → publicada → retirada, sistema, método, parámetros, jurisdicción ISO 3166-1
+  o `EHEA`, programa opcional, fuente y vigencia). `CreditPolicyGuard`: publicada no cambia ni se borra (`409`);
+  `CreditMethods.of` valida los parámetros contra la norma (`400`).
+- Método nuevo `PE_LEY30220_HORAS_LECTIVAS` (Ley 30220 art. 39: 16 h de teoría o 32 de práctica por crédito, sin estudio
+  autónomo) y sistema `PE_CREDITO`; sin conversión entre sistemas.
+- `/api/lms/credits/policies`: listado por jurisdicción, sistema, estado y programa; publicar, retirar y `new-version`.
+- `version_curso.politica_credito` liga una versión de curso a una versión de política: propone con ella en el catálogo y
+  en la aprobación, que la exige publicada y del mismo sistema y guarda la relación y su instantánea. Publicar otra
+  versión de la política no cambia lo ya ligado. `CreditPolicyApiTest`, `CreditPolicyTest` y `CatalogBuilderTest`.
 
 ## 2026-11-03 — Historial de estados de una versión ([#259](https://github.com/wasichai/elearning-backend/issues/259))
 
