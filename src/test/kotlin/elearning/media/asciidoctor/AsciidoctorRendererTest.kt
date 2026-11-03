@@ -14,8 +14,8 @@ import java.nio.file.Path
 import java.time.Duration
 import kotlin.time.measureTime
 
-// el adaptador sin Asciidoctor: en CI no está instalado. Un guion de shell hace de ejecutable para probar la línea de
-// órdenes, el entorno, el tiempo límite y los errores; la prueba con el Asciidoctor real es manual (docs/operations)
+// el adaptador sin Asciidoctor: un guion de shell hace de ejecutable para probar la línea de órdenes, el entorno, el tiempo
+// límite y los errores. con el Asciidoctor real lo prueba la integración (RenderApiTest, ADR-0031), que CI instala
 @DisabledOnOs(OS.WINDOWS)
 class AsciidoctorRendererTest {
     @TempDir

@@ -253,7 +253,8 @@ el único sitio del código que lanza un proceso (`ArchitectureTest`, regla `EXT
   y trabajo (RF-CON-03); la versión que crea sigue el flujo editorial.
 - **I** Lectura de archivos del servidor o de la red desde el documento (`include::`, imágenes, `docinfo`) → modo
   `secure`, carpeta temporal propia como base, sin `allow-uri-read` (solo se activa por línea de órdenes). El proceso no
-  hereda el entorno del servidor (credenciales): solo `PATH`, `LANG`, `LC_ALL`, `GEM_HOME` y `GEM_PATH`.
+  hereda el entorno del servidor (credenciales): solo `PATH`, `LANG`, `LC_ALL`, `GEM_HOME` y `GEM_PATH`. Probado con
+  Asciidoctor real en CI: `include::/etc/passwd[]` queda en un enlace sin leer nada (ADR-0031).
 - **D** Documento que no termina o que produce un archivo enorme → tiempo límite por generación (2 min) que mata el
   proceso, tope de 25 MB de salida y la cola con intentos acotados, sin reintentar lo que la fuente rompe en cada intento
   (ADR-0022); nunca en el hilo de WebFlux. Pedir en bucle → la misma fuente mientras espera es el mismo trabajo y cada

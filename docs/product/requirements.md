@@ -277,11 +277,15 @@ el cuándo, en [`roadmap.md`](roadmap.md).
 - **RF-CON-06** · F4 · implementado ([#208](https://github.com/wasichai/elearning-backend/pull/208)) — Las correcciones no borran versiones anteriores ni alteran las decisiones del
   revisor.
   _Aceptación:_ tras una corrección, comentarios y decisiones previas siguen ligados a su versión.
-- **RF-CON-07** · F4 · planificado — Generación de HTML y PDF desde AsciiDoc como trabajo asíncrono.
-  _Aceptación:_ una lección importada produce ambos artefactos validados sin bloquear peticiones HTTP.
-  _Avance:_ una `fuente_recurso` produce HTML y PDF en la cola, con hash y generador ([#209](https://github.com/wasichai/elearning-backend/pull/209), [#212](https://github.com/wasichai/elearning-backend/pull/212)), probado con un
-  generador doble; el adaptador se prueba con guiones en lugar de Asciidoctor. Falta el binario en la imagen de despliegue
-  (F6) y partir de una lección importada: la importación no copia el texto de los manuales (ADR-0015).
+- **RF-CON-07** · F4 · implementado ([#209](https://github.com/wasichai/elearning-backend/pull/209), [#212](https://github.com/wasichai/elearning-backend/pull/212), [#264](https://github.com/wasichai/elearning-backend/issues/264)) — Generación de HTML y PDF desde AsciiDoc como trabajo
+  asíncrono.
+  _Aceptación_ ([ADR-0031](../adr/0031-aceptacion-de-la-generacion-con-una-fuente-propia.md)): una `fuente_recurso`
+  AsciiDoc propia, con `include::`, una imagen y una tabla, produce en la cola HTML y PDF validados sin bloquear
+  peticiones HTTP. Antes pedía una lección importada, pero la importación no copia el texto de los manuales (ADR-0018 §6).
+  _Nota:_ `RenderApiTest` lo prueba con el doble y con Asciidoctor real, que CI instala en versiones fijas y exige
+  (`LMS_TEST_ASCIIDOCTOR=required`). En modo `secure`, `include::` queda como enlace y la imagen llega al PDF si va
+  incrustada como URI `data:`; en el HTML queda su texto alternativo. El binario en la imagen de despliegue es de F6
+  (RNF-OPS-04).
 
 ### RF-IMP — Importador AsciiDoc (§9; ADR-0010)
 
