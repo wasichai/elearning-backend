@@ -1064,6 +1064,38 @@ rutas de [Trabajos de IA](#trabajos-de-ia-f5-adr-0033-5-6-y-9).
   `lms.importer.allowed-sources` o demasiado grande hace `FAILED` el trabajo sin ejecución; un fallo pasajero de GitHub se
   reintenta.
 
+## Diseño pedagógico (F5, E33.5)
+
+El paso 3 de la canalización ([docs/ai](../ai/README.md#5-esquemas-tipados-y-trabajos)): de la ejecución `SUCCEEDED` de un
+análisis de fuentes, el diseño del curso. Se encola como trabajo de IA (`ai.course_design`) y se sigue con las rutas de
+[Trabajos de IA](#trabajos-de-ia-f5-adr-0033-5-6-y-9).
+
+| Método | Ruta                        | Resultado                           |
+| ------ | --------------------------- | ----------------------------------- |
+| POST   | `/api/lms/ai/course-design` | `{ "executionId" }` → `202` `AiJob` |
+
+- **Permisos**: `GENERAR` sobre `version_curso` (`403`) y ver el curso del análisis como quien llama (`404`, como su
+  lectura). Sin `executionId`, `400`; una ejecución que no existe o no es un análisis, `404`; un análisis que no terminó
+  `SUCCEEDED` o cuyo brief ya no está `LISTO`, `409`. Pedir otra vez el mismo diseño devuelve su ejecución sin llamar al
+  proveedor.
+- **Generador**: con proveedor, el modelo `design` de `lms.ai.models` y `lms.ai.max-tokens.design`; sin claves, el doble
+  determinista (`generator`).
+- **Resultado**: la ejecución tiene `inputs` `{ "analysisExecutionId", "briefId", "topic", "audience", "objectives",
+"language", "level", "hours" }` (las horas del brief), las `sources` del análisis, `output`
+  `{ "design": CourseDesign, "workload" }` y `validations` `{ "outcomes", "units", "assessments", "problems": [],
+"discarded": [{ "at", "value", "reason" }], "unassessedOutcomes": [] }`.
+- `CourseDesign`: `{ "outcomes": [{ "id", "statement", "evidence" }], "units": [{ "title", "summary", "topics": [],
+"outcomes": [], "activities": [{ "title", "kind", "description" }], "readings": [{ "title", "source" }] }], "assessments":
+[{ "title", "kind", "outcomes": [], "description" }], "passingCriteria": [] }`. `kind` de actividad: `THEORY` · `PRACTICE` ·
+  `SUPERVISED` · `AUTONOMOUS`; de evaluación: `QUIZ` · `ASSIGNMENT` · `PROJECT` · `EXAM` · `PRACTICAL`.
+- `workload` lo calcula el servidor, nunca el modelo: `{ "weeks", "weekly": { "theory", "practice", "supervised",
+"autonomous", "total" }, "theoryHours", "practiceHours", "supervisedHours", "autonomousHours", "contactHours", "totalHours",
+"credits": [CreditProposal] }`, una propuesta `PROPUESTO` por sistema (`ECTS`, `SCH`, `PE_CREDITO`).
+- **Fallos**: una salida que no es el JSON del tipo o que no pasa la comprobación (`problems[].code`: `NO_OUTCOMES` ·
+  `BLANK_OUTCOME` · `DUPLICATE_OUTCOME` · `NO_UNITS` · `BLANK_UNIT` · `UNIT_WITHOUT_ACTIVITIES` · `NO_ASSESSMENTS` ·
+  `BLANK_ASSESSMENT` · `ASSESSMENT_NOT_ALIGNED` · `NO_PASSING_CRITERIA` · `TOO_MANY_ELEMENTS` · `TOO_MUCH_WEEKLY_LOAD`) deja la
+  ejecución `INVALID_OUTPUT` sin `output` y el trabajo `FAILED` sin `executionId`.
+
 ## Créditos aprobados (RF-CRE-08, ADR-0035)
 
 La plataforma calcula y **propone** créditos ([ADR-0007](../adr/0007-carga-academica-y-creditos-como-politica-versionada.md));

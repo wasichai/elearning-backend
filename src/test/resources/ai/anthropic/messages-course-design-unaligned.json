@@ -1,0 +1,18 @@
+{
+  "id": "msg_double_course_design_unaligned",
+  "type": "message",
+  "role": "assistant",
+  "model": "claude-sonnet-5-5",
+  "content": [
+    {
+      "type": "text",
+      "text": "{\"outcomes\":[{\"id\":\"O1\",\"statement\":\"Publicar un anuncio para toda la organización\",\"evidence\":\"Publica un anuncio en el entorno de prácticas\"},{\"id\":\"O2\",\"statement\":\"Retirar un anuncio publicado\",\"evidence\":\"Retira un anuncio y comprueba que ya no se ve en el tablón\"}],\"units\":[{\"title\":\"Publicar un anuncio\",\"summary\":\"El panel de anuncios y la publicación\",\"topics\":[\"Panel de anuncios\",\"Publicación\"],\"outcomes\":[\"O1\"],\"hours\":40,\"activities\":[{\"title\":\"Exposición del panel\",\"kind\":\"THEORY\",\"description\":\"Recorrido por el panel\",\"hours\":30},{\"title\":\"Práctica guiada de publicación\",\"kind\":\"PRACTICE\",\"description\":\"Publicar un anuncio de prueba\"}],\"readings\":[{\"title\":\"Publicar un anuncio\",\"source\":\"acme/manuales@0123456789abcdef0123456789abcdef01234567:capitulos/anuncios.adoc#_publicar_un_anuncio\"},{\"title\":\"Guía inventada\",\"source\":\"acme/otro@0123456789abcdef0123456789abcdef01234567:guia.adoc#_x\"}]},{\"title\":\"Retirar un anuncio\",\"summary\":\"Retirar y comprobar\",\"topics\":[\"Retirada\"],\"outcomes\":[\"O2\",\"O5\"],\"activities\":[{\"title\":\"Lectura del capítulo\",\"kind\":\"AUTONOMOUS\"},{\"title\":\"Ejercicio de retirada\",\"kind\":\"AUTONOMOUS\"}],\"readings\":[{\"title\":\"Retirar un anuncio\",\"source\":\"acme/manuales@0123456789abcdef0123456789abcdef01234567:capitulos/anuncios.adoc#_retirar_un_anuncio\"}]}],\"assessments\":[{\"title\":\"Cuestionario de publicación\",\"kind\":\"QUIZ\",\"outcomes\":[\"O1\"]},{\"title\":\"Práctica final\",\"kind\":\"PRACTICAL\",\"outcomes\":[\"O1\",\"O2\"]},{\"title\":\"Examen sin resultado\",\"kind\":\"EXAM\",\"outcomes\":[\"O9\"]}],\"passingCriteria\":[\"Aprobar el cuestionario con al menos el 60 %\",\"Completar la práctica final\"],\"totalHours\":999,\"credits\":{\"ECTS\":40}}"
+    }
+  ],
+  "stop_reason": "end_turn",
+  "stop_sequence": null,
+  "usage": {
+    "input_tokens": 3200,
+    "output_tokens": 900
+  }
+}
