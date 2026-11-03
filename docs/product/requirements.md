@@ -383,6 +383,10 @@ el cuándo, en [`roadmap.md`](roadmap.md).
   _Aceptación:_ el responsable cambia el estado y el autor del feedback lo ve.
 - **RF-REP-04** · F6 · planificado — Moderación y privacidad de valoraciones y feedback.
   _Aceptación:_ contenido moderado no visible; la identidad del valorador no se muestra al valorado.
+  _Avance:_ comentarios `PENDIENTE` hasta que alguien con `MODERAR` los publica u oculta con motivo tasado, nunca lo
+  propio ni lo que lo tiene como destino; denuncias del valorado por ficha opaca y una apelación decidida por otro
+  moderador ([#324](https://github.com/wasichai/elearning-backend/issues/324), ADR-0038, `RatingModerationApiTest`). El
+  valorado no lee valoraciones ([#322](https://github.com/wasichai/elearning-backend/issues/322)).
 - **RF-REP-05** · F6 · planificado — Indicadores agregados solo con criterio publicado y muestra mínima configurable;
   cantidad o velocidad no se presentan como calidad.
   _Aceptación:_ por debajo de la muestra mínima el indicador no se muestra.
@@ -476,7 +480,8 @@ el cuándo, en [`roadmap.md`](roadmap.md).
 - **RNF-SEG-10** · F6 · planificado — Límites de abuso y spam en endpoints públicos y de valoración.
   _Aceptación:_ superar el límite configurado → `429`. Si Wasichai ofrece limitación de tasa está a verificar.
   _Avance:_ los cambios de valoraciones por persona y día (`lms.reputation.max-edits-per-day`) responden `429` con
-  `Retry-After` ([#322](https://github.com/wasichai/elearning-backend/issues/322), ADR-0038); el límite global, en el ingress (#73).
+  `Retry-After` ([#322](https://github.com/wasichai/elearning-backend/issues/322), ADR-0038), igual que las denuncias
+  (`max-reports-per-day`, [#324](https://github.com/wasichai/elearning-backend/issues/324)); el límite global, en el ingress (#73).
 - **RNF-SEG-11** · F6 · implementado — Privacidad por defecto, conservación y eliminación de datos personales.
   _Aceptación:_ política escrita y prueba de eliminación de un usuario de demostración.
   _Avance:_ política en [ADR-0030](../adr/0030-lgpl-definitiva-y-conservacion-segun-los-terminos.md) (se conserva lo que aprueban los términos de uso) y

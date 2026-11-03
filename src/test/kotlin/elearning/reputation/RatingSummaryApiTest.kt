@@ -123,7 +123,7 @@ class RatingSummaryApiTest : ClassroomApiTestSupport() {
         s.publish(s.students[0])
         s.endedDaysAgo(61)
         val first = ok(s.summary())
-        assertEquals(listOf("Comentario 1"), first["comments"].strings())
+        assertEquals(listOf("Comentario 1"), first["comments"].strings { it["text"] })
 
         // un cambio posterior (la plataforma, fuera de la ventana) no altera lo congelado
         platform {

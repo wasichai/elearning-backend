@@ -641,7 +641,8 @@ destino. Nunca traen estudiante, matrícula, fecha ni ids de valoraciones. Una d
   asignada (otra, `404`). `released: false` (sin cifras ni comentarios) hasta que la ventana cerró y todas las
   matrículas no retiradas tienen resultado, o pasado `lms.reputation.release-after-end` (60 días) del fin. Al liberarse,
   sus cifras se **congelan** (la primera lectura o el trabajo diario): un cambio posterior no las mueve. Los comentarios
-  `PUBLICADA` llegan solo con muestra suficiente, sin autor ni fecha y en orden aleatorio.
+  `PUBLICADA` llegan solo con muestra suficiente, sin autor ni fecha y en orden aleatorio, cada uno con su
+  `token` opaco para denunciarlo.
 - `GET /api/lms/ratings/resources` → `ResourceRatingSummary[]`: las versiones de recurso de las que la persona es
   autora, con sus cifras de todas las ediciones, recalculadas cada día por el trabajo `reputation.aggregate`
   (`calculatedAt`).
@@ -659,9 +660,29 @@ destino. Nunca traen estudiante, matrícula, fecha ni ids de valoraciones. Una d
     { "key": "docente_claridad", "name": "Explica con claridad", "sufficient": true, "mean": 4.2, "n": 6 },
     { "key": "docente_disponibilidad", "name": "Responde y está disponible", "sufficient": false, "mean": null, "n": null }
   ],
-  "comments": ["…"]
+  "comments": [{ "token": "…", "text": "…" }]
 }
 ```
+
+### Moderación, denuncias y apelación (ADR-0038 §13–§19)
+
+Los puntajes cuentan sin moderación; un comentario nace `PENDIENTE` y solo llega al valorado `PUBLICADA`.
+
+| Método | Ruta                                               | Quién                     | Resultado                                                  |
+| ------ | -------------------------------------------------- | ------------------------- | ---------------------------------------------------------- |
+| GET    | `/api/lms/moderation/ratings`                      | `MODERAR`                 | `ModerationItem[]`: pendientes, denunciados o apelados     |
+| POST   | `/api/lms/moderation/ratings/{id}/decision`        | `MODERAR`                 | `{ decision: PUBLISH \| HIDE, reason }` → `ModerationItem` |
+| POST   | `/api/lms/moderation/ratings/{id}/appeal-decision` | `MODERAR`, otro moderador | `{ decision: UPHOLD \| REVERSE }` → `ModerationItem`       |
+| POST   | `/api/lms/ratings/{id}/appeal`                     | el autor (`VALORAR`)      | `{ text }` → `{ ratingId, text, pending }`                 |
+| POST   | `/api/lms/ratings/comments/{token}/reports`        | el valorado (`DENUNCIAR`) | `{ reason }` → `201` `{ status: "ABIERTA" }`               |
+
+- Ocultar exige `reason` entre `ATAQUE_PERSONAL`, `DATOS_PERSONALES`, `SPAM`, `FUERA_DE_TEMA`, `CONFLICTO_DE_INTERES` e
+  `ILEGAL` (`400`). Nadie modera una valoración que escribió o que lo tiene como destino (`403`, también ADMIN); decidir
+  cierra las denuncias abiertas. `ModerationItem` no trae quién escribió ni quién denunció.
+- El autor apela una vez un comentario `OCULTA` (otro estado o una segunda vez, `409`; ajena, `404`), también con la
+  ventana cerrada. La decide un moderador distinto del que ocultó (`403` el mismo), una vez y es final (`409`).
+- El valorado denuncia por la ficha (`token`) de un comentario de su resumen; otra ficha, `404`. La denuncia no oculta
+  nada. Más de `lms.reputation.max-reports-per-day` (10) denuncias en el día UTC → `429` con `Retry-After`.
 
 ## Espacio docente (F3, ADR-0016)
 

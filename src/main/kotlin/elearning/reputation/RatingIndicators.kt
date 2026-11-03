@@ -75,18 +75,20 @@ class RatingIndicators(
         organization: UUID,
         offering: UUID,
         assignment: UUID,
-    ): List<String> {
+    ): List<RatingComment> {
         val v = facts.table(organization, RatingFacts.RATING)
         return db
             .sql(
-                "SELECT v.${v.column(RatingWriteGuard.COMMENT)} AS comment FROM ${v.name} v WHERE v.organization_id = :org " +
+                "SELECT v.${v.column(
+                    RatingWriteGuard.TOKEN,
+                )} AS token, v.${v.column(RatingWriteGuard.COMMENT)} AS comment FROM ${v.name} v WHERE v.organization_id = :org " +
                     "AND v.${v.column(RatingFacts.OFFERING_FIELD)} = :offering AND v.${v.column(RatingFacts.ASSIGNMENT)} = :assignment " +
                     "AND v.${v.column(RatingWriteGuard.MODERATION)} = :published AND v.${v.column(RatingWriteGuard.COMMENT)} IS NOT NULL ORDER BY random()",
             ).bind("org", organization)
             .bind("offering", offering)
             .bind("assignment", assignment)
             .bind("published", RatingWriteGuard.PUBLISHED)
-            .map { row, _ -> row.get("comment", String::class.java)!! }
+            .map { row, _ -> RatingComment(row.get("token", UUID::class.java)?.toString(), row.get("comment", String::class.java)!!) }
             .all()
             .collectList()
             .awaitSingle()

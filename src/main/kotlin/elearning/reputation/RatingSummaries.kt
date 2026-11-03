@@ -45,7 +45,13 @@ data class TeacherRatingSummary(
     val criterion: String,
     val criterionVersion: String,
     val dimensions: List<IndicatorView>,
-    val comments: List<String>,
+    val comments: List<RatingComment>,
+)
+
+// un comentario publicado, sin autor ni fecha; token: su ficha opaca, para denunciarlo
+data class RatingComment(
+    val token: String?,
+    val text: String,
 )
 
 // el resumen de una versión de recurso para su autor, de todas las ediciones, recalculado cada día

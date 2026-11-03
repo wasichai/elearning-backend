@@ -71,6 +71,7 @@ class RatingFacts(
         val target: String?,
         val assignment: UUID?,
         val resourceVersion: UUID?,
+        val state: String? = null,
     )
 
     // una tabla de datos de Wasichai con sus columnas por nombre de campo
@@ -229,16 +230,19 @@ class RatingFacts(
             .sortedWith(compareBy({ it.order }, { it.key }))
     }
 
+    // por su id o, con byToken, por su ficha opaca (la que ve el valorado)
     suspend fun rating(
         organization: UUID,
         id: UUID,
+        byToken: Boolean = false,
     ): Rating? {
         val v = table(organization, RATING)
         return db
             .sql(
                 "SELECT v.\"id\", v.${v.column(STUDENT)} AS student, v.${v.column(ENROLLMENT)} AS enrollment, " +
                     "v.${v.column(OFFERING_FIELD)} AS offering, v.${v.column(TARGET)} AS target, v.${v.column(ASSIGNMENT)} AS assignment, " +
-                    "v.${v.column(RESOURCE_VERSION)} AS rv FROM ${v.name} v WHERE v.organization_id = :org AND v.\"id\" = :id",
+                    "v.${v.column(RESOURCE_VERSION)} AS rv, v.${v.column(MODERATION)} AS state FROM ${v.name} v " +
+                    "WHERE v.organization_id = :org AND v.${if (byToken) v.column(TOKEN) else "\"id\""} = :id",
             ).bind("org", organization)
             .bind("id", id)
             .map { row, _ ->
@@ -250,6 +254,7 @@ class RatingFacts(
                     row.get("target", String::class.java),
                     row.get("assignment", UUID::class.java),
                     row.get("rv", UUID::class.java),
+                    row.get("state", String::class.java),
                 )
             }.one()
             .awaitSingleOrNull()
@@ -358,6 +363,9 @@ class RatingFacts(
             ?.orElse(null)
     }
 
+    // el id del objeto valoracion, para preguntar por sus acciones
+    suspend fun ratingObject(organization: UUID): UUID = (definition(organization, RATING) ?: throw MissingModel(RATING)).obj.id
+
     private suspend fun definition(
         organization: UUID,
         name: String,
@@ -398,6 +406,8 @@ class RatingFacts(
         const val ACTIVE = "activa"
         const val ORDER = "orden"
         const val CODE = "codigo"
+        const val MODERATION = "estado_moderacion"
+        const val TOKEN = "ficha"
         const val RESULT = "resultado"
         const val NO_RESULT = "SIN_RESULTADO"
         const val WITHDRAWN = "RETIRADA"

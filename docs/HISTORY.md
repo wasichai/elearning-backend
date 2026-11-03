@@ -2,6 +2,16 @@
 
 Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este archivo registra lo que se entregó.
 
+## 2026-11-03 — Moderación, denuncias y apelación de las valoraciones ([#324](https://github.com/wasichai/elearning-backend/issues/324), paso 3 de [#268](https://github.com/wasichai/elearning-backend/issues/268))
+
+- Cola y decisión de moderación con `MODERAR`: publicar u ocultar con un motivo tasado (`400` sin él); nadie modera lo
+  que escribió ni lo que lo tiene como destino (`403`, también ADMIN), y decidir cierra las denuncias abiertas.
+- El valorado (`DENUNCIAR`) denuncia por la ficha opaca de un comentario de su resumen (`denuncia_valoracion`, `apiOnly`),
+  sin ocultarlo; pasado `lms.reputation.max-reports-per-day` (10), `429`.
+- El autor apela una vez un comentario oculto, también con la ventana cerrada; lo decide otro moderador, una vez.
+- `RatingWriteGuard` lo exige para toda escritura; un moderador delegado no ve quién escribió (`fieldPermissions` sobre
+  `estudiante_id` y `matricula`), probado con un rol creado en la prueba. Pruebas: `RatingModerationApiTest`.
+
 ## 2026-11-03 — Resúmenes de valoraciones con muestra mínima y liberación tras las notas ([#323](https://github.com/wasichai/elearning-backend/issues/323), paso 2 de [#268](https://github.com/wasichai/elearning-backend/issues/268))
 
 - `GET /api/lms/teaching/offerings/{code}/ratings` (el docente asignado) y `GET /api/lms/ratings/resources` (el autor),

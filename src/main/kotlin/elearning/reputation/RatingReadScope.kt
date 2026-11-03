@@ -13,7 +13,7 @@ import java.util.UUID
 // quién lee las valoraciones y sus puntajes (ADR-0038 §7 y §24), además del READ que el valorado no tiene: el estudiante,
 // solo lo suyo; quien modera (MODERAR), las valoraciones salvo las que lo tienen como destino (docente de la asignación o
 // autor de la versión de recurso), por subconsultas como ADR-0025, y de los puntajes solo los suyos. Wasichai lo aplica a
-// listas, detalle, historial y auditoría: lo ajeno es 404. ADMIN no recibe alcances: no modera lo suyo por la guarda
+// listas, detalle, historial y auditoría: lo ajeno es 404. las denuncias, quien modera todas y el resto las suyas. ADMIN no recibe alcances: no modera lo suyo por la guarda
 @Component
 class RatingReadScope(
     private val currentUser: CurrentUser,
@@ -24,6 +24,7 @@ class RatingReadScope(
         definition: ObjectDefinition,
     ): RecordCriterion? {
         val name = definition.obj.name
+        if (name == RatingWriteGuard.REPORT) return ScopeMemo.of("ratings", caller, name) { reports(caller, definition) }
         if (name != RatingFacts.RATING && name != RatingFacts.SCORE) return null
         return ScopeMemo.of("ratings", caller, name) { compute(caller, definition) }
     }
@@ -54,6 +55,23 @@ class RatingReadScope(
         } catch (_: RatingFacts.MissingModel) {
             own
         }
+    }
+
+    // las denuncias: quien modera, todas; el resto, las suyas
+    private suspend fun reports(
+        caller: AuthenticatedUser,
+        definition: ObjectDefinition,
+    ): RecordCriterion? {
+        val ratings =
+            try {
+                facts.ratingObject(caller.organizationId)
+            } catch (_: RatingFacts.MissingModel) {
+                return NOTHING
+            }
+        if (currentUser.hasPermission(caller, RatingWriteGuard.MODERATE, ratings)) return null
+        val reporter = definition.fields.firstOrNull { it.name == RatingWriteGuard.REPORTER }?.let { SqlIdentifier.quote(it.columnName) } ?: return NOTHING
+        val me = caller.userId
+        return RecordCriterion { _, bind -> "$reporter = ${bind(me)}" }
     }
 
     private companion object {

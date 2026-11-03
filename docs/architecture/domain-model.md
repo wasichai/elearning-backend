@@ -423,6 +423,14 @@ por quien escribe, y el estudiante no lee asignaciones (`AssignmentReadScope`). 
 `uniqueConstraints: [[matricula, docente_edicion], [matricula, version_recurso]]` (con `NULL` distintos, cada par
 impide su duplicado sin chocar con el otro).
 
+Moderación (#324): `ficha · UUID único` (la ficha opaca con que el valorado denuncia un comentario) ·
+`motivo_moderacion · ENUM` (motivos tasados) · `moderada_por · UUID` · `moderada_en · DATETIME` · `apelacion · LONG_TEXT`
+· `apelada_en · DATETIME` · `apelacion_decidida_por · UUID` · `apelacion_resultado · ENUM(MANTENIDA, REVOCADA)`.
+
+**`denuncia_valoracion`** — F6, `apiOnly`. `valoracion_id · UUID` (no `RELATION`: el valorado no lee valoraciones) ·
+`denunciante_id · UUID` · `motivo · LONG_TEXT` · `estado · ENUM(ABIERTA, RESUELTA)` · `resuelta_por · UUID`. La lee quien
+modera y quien la hizo.
+
 **`puntaje_valoracion`** — F6, `apiOnly`. `valoracion · RELATION` · `dimension · RELATION` · `estudiante_id · UUID` ·
 `valor · INTEGER (1–5)`; `uniqueConstraints: [[valoracion, dimension]]`.
 
