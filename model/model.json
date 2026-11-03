@@ -352,6 +352,11 @@
           "name": "horas_estimadas",
           "label": "Horas estimadas",
           "type": "DECIMAL"
+        },
+        {
+          "name": "referencia_fuente",
+          "label": "Fuente (repo@sha:ruta#ancla)",
+          "type": "TEXT"
         }
       ],
       "uniqueConstraints": [["version_curso", "orden"]],

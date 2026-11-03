@@ -11,12 +11,51 @@ Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este
   el estudiante de la matrícula (`404` a otro y al docente). `AchievementsApiTest` y la semilla (`CORTO-101-A`) lo
   prueban; la interfaz los mostrará en front#154.
 
+## 2026-11-03 — Traza de origen en la unidad ([#263](https://github.com/wasichai/elearning-backend/issues/263), RF-IMP-03)
+
+- `unidad` gana `referencia_fuente` (`repo@sha:ruta#ancla`), como la lección: la importación la llena con la traza del
+  capítulo que propuso la unidad. Es contenido de la versión: `EditorialWorkflowGuard` la congela con lo demás, la copia de
+  versión la lleva y las diferencias la comparan.
+- El detalle del estudio devuelve `sourceRef` también en cada unidad. `ImportApiTest` comprueba la traza de cada unidad y
+  que la copia la conserva; `VersionDiffApiTest`, que cambiarla cambia la unidad. Con esto RF-IMP-03 queda implementado.
+
 ## 2026-11-03 — Gravedad en los problemas de importación ([#254](https://github.com/wasichai/elearning-backend/issues/254))
 
 - Cada problema del informe de importación trae `severity` (`GAP`: esa parte del manual no se leyó; `CHECK`: se leyó y queda
   algo que revisar), decidida por el servidor según su tipo, y el informe trae `problemsBySeverity` con todos los problemas,
   también los que pasan de los 500 que muestra. La interfaz deja de mantener su propia tabla (ADR-0029). Los informes
   guardados antes la reciben al leerlos.
+
+## 2026-11-02 — Rediseño UX/UI de la interfaz ([front#126](https://github.com/wasichai/elearning-frontend/issues/126))
+
+Solo en elearning-frontend ([#251](https://github.com/wasichai/elearning-backend/issues/251) registra aquí la decisión): ninguna API ni contrato de
+este repositorio cambió. La decisión está en [ADR-0029](adr/0029-sistema-de-diseno-quipu-aplicado.md), con lo que el rediseño pide al backend y no se
+hizo.
+
+- **Cimientos**: auditoría y dirección ([front#127](https://github.com/wasichai/elearning-frontend/pull/127)); piezas compartidas de `src/shared` y
+  recorrido visual ([front#128](https://github.com/wasichai/elearning-frontend/pull/128),
+  [front#132](https://github.com/wasichai/elearning-frontend/pull/132)); pestañas de sección y avisos con icono
+  ([front#137](https://github.com/wasichai/elearning-frontend/pull/137)); comparación de versiones con leyenda, cifras y antes y ahora
+  ([front#138](https://github.com/wasichai/elearning-frontend/pull/138)).
+- **Aprendizaje**: visor de lecciones ([front#129](https://github.com/wasichai/elearning-frontend/pull/129)), panel del estudiante con «Continuar
+  aprendiendo» ([front#130](https://github.com/wasichai/elearning-frontend/pull/130)), detalle del curso y navegación del aula
+  ([front#133](https://github.com/wasichai/elearning-frontend/pull/133)), evaluaciones
+  ([front#134](https://github.com/wasichai/elearning-frontend/pull/134)) y su resultado
+  ([front#135](https://github.com/wasichai/elearning-frontend/pull/135)).
+- **Docencia**: panel con bandeja y agenda ([front#139](https://github.com/wasichai/elearning-frontend/pull/139)), matriculados y marco común de la
+  edición ([front#145](https://github.com/wasichai/elearning-frontend/pull/145)), corrección en lote con rúbrica
+  ([front#149](https://github.com/wasichai/elearning-frontend/pull/149)), sesiones por fecha y asistencia
+  ([front#153](https://github.com/wasichai/elearning-frontend/pull/153)).
+- **Gestión editorial**: versiones por curso y detalle con línea de estados ([front#144](https://github.com/wasichai/elearning-frontend/pull/144)),
+  importación por pasos con informe por gravedad ([front#147](https://github.com/wasichai/elearning-frontend/pull/147)), bandeja y panel de decisión
+  ([front#151](https://github.com/wasichai/elearning-frontend/pull/151)).
+- **Descubrimiento**: catálogo con filtros progresivos ([front#143](https://github.com/wasichai/elearning-frontend/pull/143)), ficha de curso y
+  matrícula ([front#146](https://github.com/wasichai/elearning-frontend/pull/146)), finalización y certificado
+  ([front#148](https://github.com/wasichai/elearning-frontend/pull/148), [front#152](https://github.com/wasichai/elearning-frontend/pull/152)).
+- Pendiente de la épica: la sección de administración en una sola `WasichaiApp`
+  ([front#140](https://github.com/wasichai/elearning-frontend/issues/140) a [front#142](https://github.com/wasichai/elearning-frontend/issues/142)) y
+  el cierre ([front#125](https://github.com/wasichai/elearning-frontend/issues/125)). Lo que Wasichai no ofrece se pidió en
+  [wasichai-ui#122](https://github.com/wasichai/wasichai-ui/issues/122) a [wasichai-ui#130](https://github.com/wasichai/wasichai-ui/issues/130).
 
 ## 2026-11-01 — El laboratorio completo y sus entornos externos validados ([#250](https://github.com/wasichai/elearning-backend/pull/250), [front#106](https://github.com/wasichai/elearning-frontend/pull/106))
 
