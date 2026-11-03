@@ -2,6 +2,14 @@
 
 Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este archivo registra lo que se entregó.
 
+## 2026-11-03 — Primer borrador vacío de un curso sin versiones ([#257](https://github.com/wasichai/elearning-backend/issues/257))
+
+- `POST /api/lms/studio/courses/{courseId}/versions` sobre un curso sin versiones ya no responde `400`: crea la v1
+  `BORRADOR` vacía a nombre de quien llama, con la modalidad, la duración y el crédito mínimos válidos (el curso no los
+  tiene), y aparece en «Mis versiones». Con versiones, sigue copiando la última o la de `fromVersionId`.
+- La unicidad de `[curso, numero]` impide dos v1: de dos peticiones a la vez, una crea y la otra responde `409`.
+  `NewVersionApiTest` prueba el borrador vacío, la concurrencia y la autorización negativa.
+
 ## 2026-11-03 — Listado de mis importaciones ([#255](https://github.com/wasichai/elearning-backend/issues/255))
 
 - `GET /api/lms/studio/import` devuelve los trabajos de importación de quien llama, el más reciente primero, con la fuente,
