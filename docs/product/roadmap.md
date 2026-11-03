@@ -17,12 +17,12 @@ ejecutando las pruebas y los recorridos indicados, en local y en CI, y el result
 | F2   | LMS básico: aula, matrícula, unidades, lecciones, recursos y progreso                      | criterio cumplido (2026-10-28): épicas E12–E16; pendientes a F3/F4/F6 (#103) |
 | F3   | Evaluaciones y operación docente                                                           | cumplida (2026-10-31): épicas E18–E23; pendientes en #183 y #231             |
 | F4   | Estudio editorial e importador AsciiDoc                                                    | integrada (2026-10-31): épicas E24–E28; criterio pendiente (#179)            |
-| F5   | IA y multimedia                                                                            | planificada                                                                  |
+| F5   | IA y multimedia                                                                            | planificada: épicas E32–E38 (ADR-0033)                                       |
 | F6   | Calidad, reputación y despliegue                                                           | planificada                                                                  |
 
 Las épicas viven en [wasichai/elearning-backend](https://github.com/wasichai/elearning-backend/issues); los pasos de
 frontend, en [wasichai/elearning-frontend](https://github.com/wasichai/elearning-frontend/issues). Cada paso es un
-sub-issue que se cierra con su PR. Las fases F5 y F6 aún no tienen issues: sus épicas se crean al planificar cada fase.
+sub-issue que se cierra con su PR. La fase F6 aún no tiene issues: sus épicas se crean al planificar la fase.
 
 ## F0 — Investigación y arquitectura
 
@@ -235,20 +235,39 @@ Remotion asíncrono con validación del artefacto.
 
 **Requisitos.** RF-IA-01…10, RF-MED-01…04, RNF-SEG-09.
 
+**Épicas.** Decisiones de base en [ADR-0033](../adr/0033-fase-5-ia.md).
+
+- [E32 IA: fundamentos (#271)](https://github.com/wasichai/elearning-backend/issues/271): #272 ADR, #273 Embabel 1.5.4 con Anthropic y OpenAI opcionales,
+  #274 doble HTTP con WireMock, #275 registro `AgentRun`, #276 claves fuera de registros. Requisitos: RF-IA-03, RF-IA-08,
+  RNF-SEG-09.
+- [E33 IA: canalización editorial (#277)](https://github.com/wasichai/elearning-backend/issues/277): #278 brief, #279 trabajos en la cola, #280 permisos `GENERAR` y
+  `VALIDAR`, #281 análisis de fuentes, #282 diseño pedagógico, #283 borrador de lección, #284 prueba de inyección.
+  Requisitos: RF-IA-01, RF-IA-02, RF-IA-04, RF-IA-06, RF-IA-07, RF-IA-08.
+- [E34 IA: validaciones y revisión humana (#285)](https://github.com/wasichai/elearning-backend/issues/285): #286 informe de validación, #287 opinión de consistencia,
+  #288 intervenciones y distintivo del doble. Requisitos: RF-IA-05, RF-IA-03, RF-IA-08.
+- [E35 IA: comparación de modelos e indicadores (#289)](https://github.com/wasichai/elearning-backend/issues/289): #290 comparación reproducible, #291 indicadores.
+  Requisitos: RF-IA-09, RF-IA-10.
+- [E36 Multimedia: guion, diapositivas y subtítulos (#292)](https://github.com/wasichai/elearning-backend/issues/292): #293 guion por secciones, #294 lo publicado sin el
+  proveedor. Requisitos: RF-MED-01, RF-MED-04.
+- [E37 Multimedia: renderizado de vídeo (#295)](https://github.com/wasichai/elearning-backend/issues/295): #296 ADR del renderizador, #297 trabajador de render, #298
+  validación y previsualización. Requisitos: RF-MED-02, RF-MED-03. Bloqueada por la licencia de Remotion
+  ([#267](https://github.com/wasichai/elearning-backend/issues/267)).
+- [E38 Cierre de la Fase 5 (#299)](https://github.com/wasichai/elearning-backend/issues/299): #300 unidad de demostración de extremo a extremo, #302 revisión de seguridad.
+
 **Dependencias.** F4 (flujo editorial, bandeja y publicación: la IA solo produce borradores para ese flujo).
 
-**Reutiliza de Wasichai.** `wasichai-agent` (Embabel 1.5.3 y sus SPI `AgentAccessPolicy`, `AgentResultFilter`,
-`AgentRunListener`), `wasichai-automation` (trabajos persistentes, reintentos), `wasichai-files`, `wasichai-workflow`.
-**Nuevo.** La canalización editorial (el agente de Wasichai es de preguntas con herramientas de solo lectura), el
-registro extendido de ejecuciones, el trabajador de render Remotion (Node y navegador sin interfaz, fuera de la JVM)
-y los informes de comparación.
+**Reutiliza de Wasichai.** Embabel 1.5.4 en la misma versión que Wasichai 1.8.0, la cola `lms.trabajo` de F4,
+`wasichai-files`, acciones declaradas y auditoría. `wasichai-agent` (el asistente de preguntas) queda fuera de F5
+(ADR-0033 §8).
+**Nuevo.** La canalización editorial (el agente de Wasichai es de preguntas con herramientas de solo lectura), la
+compuerta de proveedores, el doble HTTP, el registro `lms.ejecucion_agente`, el trabajador de render de vídeo (fuera de la JVM; motor según
+[#267](https://github.com/wasichai/elearning-backend/issues/267)) y los informes de comparación.
 
 **Criterio de aceptación.** Una unidad de demostración generada con el doble determinista y, si hay credenciales,
 con un proveedor real, pasa las validaciones, la revisión humana y se publica; su vídeo se renderiza y valida; la
 suite completa pasa sin claves de proveedor.
 
-**Riesgos.** Inyección de instrucciones desde las fuentes; coste y no determinismo de los modelos; que los SPI de
-`wasichai-agent` encajen con una canalización editorial está a verificar; consumo de CPU y memoria del render;
+**Riesgos.** Inyección de instrucciones desde las fuentes; coste y no determinismo de los modelos (acotados por `max_tokens`, concurrencia y presupuesto, ADR-0033 §9); consumo de CPU y memoria del render;
 cambios de API en Embabel.
 
 ## F6 — Calidad, reputación y despliegue
