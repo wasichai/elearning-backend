@@ -55,6 +55,24 @@ Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este
   razonamiento, que `ModelCalls` envía como `output_config.effort` (pensamiento adaptativo) a Anthropic y como
   `reasoning.effort` a OpenAI. Sin él no se envía nada y la clave de idempotencia de los pasos no cambia.
 - En CI, `ModelEvaluationSmokeTest` corre contra el doble HTTP como prueba de humo, sin cifras. Sin migraciones.
+## 2026-11-03 — Validación del vídeo y previsualización: E37.3 ([#298](https://github.com/wasichai/elearning-backend/issues/298))
+
+- `RenderedVideoCheck` compara el informe de `ffprobe` del trabajador con el guion: MP4 (marca ISO, no QuickTime), una sola
+  pista H.264 `yuv420p` con su resolución y sus fps, sin audio ni otras pistas, duración de la suma de las secciones (± un
+  fotograma y 0,1 s) y tamaño del informe; y el VTT: bien formado, ordenado, sin solapes, dentro de la duración y con una
+  señal por subtítulo del guion en su tiempo. Probado con la salida real de `ffprobe` sobre vídeos hechos con ffmpeg y con
+  el VTT de `buildVtt` del trabajador. Lo que no cuadra es fallo permanente y no crea versión (RF-MED-03).
+- Lo validado se guarda como la plataforma: una `version_recurso` en `BORRADOR` con el MP4 en su campo nuevo `video`
+  (256 MB, una sola copia pasada de la respuesta del trabajador a `wasichai-files`, con el sha256 del informe) y los
+  `artefacto_generado` `MP4` (sin archivo: sha256, guion, generador, `parametros` e `informe`) y `VTT`. El trabajo
+  devuelve `versionId` y `versionNumber`; repetirlo devuelve lo ya escrito.
+- `RenderedVideoGuard`: `video` solo lo escribe el render (`403` para todos, ADMIN incluido) y una versión de un recurso
+  `VIDEO` sin vídeo validado ni archivo subido no pasa a revisión, aprobada ni publicada (`409`).
+- `GET /api/lms/studio/resource-versions/{id}/video`: el revisor (o quien publica, o su autor) previsualiza el MP4 antes de
+  decidir, como `video/mp4` `inline`; quien solo lee la versión, `403`. Sin `Range` hasta que Wasichai lo tenga.
+- Modelo: `formato_artefacto` gana `MP4` y `VTT`; `artefacto_generado` gana `parametros` e `informe` y deja de exigir
+  `archivo` y `fuente_recurso`. `model/apply.py` exige `maxBytes` en todo campo `FILE` y aplica dejar de exigir un campo o
+  una relación (lo demás que difiere sigue solo avisándose). Sin migraciones.
 
 ## 2026-11-03 — Opinión de consistencia contenido-evaluación: E34.2 ([#287](https://github.com/wasichai/elearning-backend/issues/287))
 

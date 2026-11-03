@@ -223,8 +223,12 @@ zip y texto solo si coinciden con el tipo declarado), aplica una lista blanca po
 - **R** Subidas y reemplazos quedan en el historial del registro.
 - **I** Metadatos (autor, GPS) en PDF e imágenes; nombres sensibles → limpieza de metadatos (a verificar, F2);
   `FileDescriptorReadPolicy` si hace falta.
-- **D** La subida se lee entera en memoria antes de comprobarse → `max-bytes` por campo; los vídeos van por otra vía
-  ([IA §12](../ai/README.md#12-remotion-sección-12)).
+- **D** La subida se lee entera en memoria antes de comprobarse → `max-bytes` por campo: `model/apply.py` exige `maxBytes`
+  en todo campo `FILE`, y el único por encima de 25 MB es `version_recurso.video` (256 MB), que solo escribe el render
+  (`RenderedVideoGuard`, `403` para cualquier persona, ADR-0040 §4). Subida en streaming y `Range`, pedidos a Wasichai.
+- **T** Un render que no es el del guion (otro archivo, cortado, con audio) → `ffprobe` contra el guion y sha256 contra el
+  informe antes de guardar; lo que no cuadra no crea versión (RF-MED-03). La previsualización
+  (`/api/lms/studio/resource-versions/{id}/video`) la ven el autor y quien decide o publica, y se sirve `nosniff`.
 - **E** Contenido activo subido (HTML, SVG con script) → no se sirve con su tipo; `Content-Disposition: attachment` y
   `nosniff` (a verificar en `wasichai-files`).
 

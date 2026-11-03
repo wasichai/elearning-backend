@@ -7,12 +7,15 @@ import com.github.tomakehurst.wiremock.client.WireMock.deleteRequestedFor
 import com.github.tomakehurst.wiremock.client.WireMock.equalTo
 import com.github.tomakehurst.wiremock.client.WireMock.equalToJson
 import com.github.tomakehurst.wiremock.client.WireMock.get
+import com.github.tomakehurst.wiremock.client.WireMock.getRequestedFor
 import com.github.tomakehurst.wiremock.client.WireMock.put
 import com.github.tomakehurst.wiremock.client.WireMock.putRequestedFor
 import com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration.options
+import kotlinx.coroutines.reactor.awaitSingle
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.AfterAll
+import org.junit.jupiter.api.Assertions.assertArrayEquals
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -20,10 +23,9 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import org.junit.jupiter.api.assertThrows
+import org.springframework.core.io.buffer.DataBufferUtils
 import java.net.ServerSocket
-import java.security.MessageDigest
 import java.time.Duration
-import java.util.HexFormat
 import java.util.UUID
 
 // el cliente del trabajador contra un WireMock que hace de render-worker: qué errores son permanentes y cuáles se
@@ -114,19 +116,30 @@ class RenderWorkerClientTest {
     }
 
     @Test
-    fun `a download is hashed on the fly and capped`() {
+    fun `a download streams the bytes and is capped`() {
         val bytes = ByteArray(100_000) { (it % 251).toByte() }
         worker.stubFor(get(urlPathEqualTo("/renders/$job/video.mp4")).willReturn(aResponse().withStatus(200).withBody(bytes)))
 
-        val file = runBlocking { client().download(job, "video.mp4", 200_000) }
-
-        assertEquals(WorkerFile(HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(bytes)), 100_000), file)
-        val tooLarge = failure { client().download(job, "video.mp4", 50_000) }
+        assertArrayEquals(bytes, runBlocking { client().fetch(job, "video.mp4", 200_000) })
+        val streamed =
+            runBlocking {
+                DataBufferUtils.join(client().stream(job, "video.mp4", 200_000)).awaitSingle().let { buffer ->
+                    ByteArray(buffer.readableByteCount()).also { buffer.read(it) }.also { DataBufferUtils.release(buffer) }
+                }
+            }
+        assertArrayEquals(bytes, streamed)
+        val tooLarge = failure { client().fetch(job, "video.mp4", 50_000) }
         assertTrue(tooLarge.permanent)
         assertEquals("The rendered video.mp4 is larger than 50000 bytes", tooLarge.message)
+        worker.verify(3, getRequestedFor(urlPathEqualTo("/renders/$job/video.mp4")).withHeader("Authorization", equalTo("Bearer $token")))
+
+        worker.stubFor(get(urlPathEqualTo("/renders/$job/subtitulos.vtt")).willReturn(aResponse().withStatus(200)))
+        assertEquals(0, runBlocking { client().fetch(job, "subtitulos.vtt", 1000) }.size)
 
         worker.stubFor(get(urlPathEqualTo("/renders/$job/video.mp4")).willReturn(aResponse().withStatus(404).withBody("""{"error": "not finished"}""")))
-        assertFalse(failure { client().download(job, "video.mp4", 200_000) }.permanent, "el trabajador se reinició: otro intento lo vuelve a pedir")
+        val missing = failure { client().fetch(job, "video.mp4", 200_000) }
+        assertFalse(missing.permanent, "el trabajador se reinició: otro intento lo vuelve a pedir")
+        assertEquals("The render worker answered 404: not finished", missing.message)
     }
 
     @Test

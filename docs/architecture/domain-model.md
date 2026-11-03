@@ -216,7 +216,8 @@ de salida. F2 (subida de archivos) · F4 (flujo editorial).
   `responsable_editorial_id · UUID`. Una misma `version_recurso` publicada sirve a lecciones de cursos distintos (RF-CON-01).
 - `version_recurso`: `recurso · RELATION → recurso` · `numero · INTEGER` · `estado · ENUM` (mismo ciclo que
   `version_curso`) · `archivo · FILE` · `origen · TEXT · repo@sha:ruta#ancla` · `referencias · LONG_TEXT` · `autor_id ·
-UUID` · `revisada_en · DATETIME`;
+UUID` · `revisada_en · DATETIME` · `video · FILE · máx. 256 MB` (el MP4 renderizado y validado, que solo escribe la
+  plataforma: `RenderedVideoGuard`, ADR-0040 §4);
   `uniqueConstraints: [[recurso, numero]]`. Su archivo es de un tipo que admite el `tipo` de su recurso, sobre lo que
   detecta `wasichai-files` (`FileTypeGuard`, RNF-SEG-07; lista en [seguridad §4.4](../security/README.md#44-archivos-f2-en-adelante)).
 - `fuente_recurso` (F4, `appendOnly`): `recurso · RELATION → recurso` · `numero · INTEGER` · `archivo · FILE · text/plain,
@@ -398,14 +399,17 @@ Invariantes: sin secretos en ningún campo [servicio]; repetir con la misma clav
 ejecución nunca publica [diseño]; no se edita salvo su cierre, una vez, y las intervenciones, que se añaden, y no se borra
 [disparador]; no se purga con los trabajos [servicio]. Se lee por `/api/lms/ai/**` con el alcance del curso.
 
-**`artefacto_generado`** (GeneratedArtifact) — F4 (HTML/PDF, implementado) · F5 (vídeo). `appendOnly` y `apiOnly`.
-`version_recurso · RELATION` · `fuente_recurso · RELATION` · `formato · ENUM formato_artefacto(HTML, PDF)` · `archivo ·
-FILE · máx. 25 MB` · `sha256 · TEXT` (de lo generado) · `hash_fuente · TEXT` (de los bytes de la fuente que se generaron) ·
-`generador · TEXT` · `version_generador · TEXT` · `trabajo_id · UUID` (el de `lms.trabajo`);
+**`artefacto_generado`** (GeneratedArtifact) — F4 (HTML/PDF, implementado) · F5 (MP4/VTT, implementado). `appendOnly` y
+`apiOnly`. `version_recurso · RELATION` · `fuente_recurso · RELATION` (opcional: un render sale de un guion) · `formato ·
+ENUM formato_artefacto(HTML, PDF, MP4, VTT)` · `archivo · FILE · máx. 25 MB` (opcional: el MP4 no lo lleva) · `sha256 ·
+TEXT` (de lo generado) · `hash_fuente · TEXT` (de los bytes de la fuente, o del guion) · `generador · TEXT` ·
+`version_generador · TEXT` · `trabajo_id · UUID` (el de `lms.trabajo`) · `parametros · LONG_TEXT` (JSON de salida) ·
+`informe · LONG_TEXT` (JSON: `ffprobe`, sha256 y tamaños, versiones);
 `uniqueConstraints: [[trabajo_id, formato]]`. Lo escribe solo el trabajo de generación ([ADR-0018 §7](../adr/0018-fase-4-estudio-revision-e-importador.md)):
 de una `fuente_recurso` saca un HTML y un PDF y crea una `version_recurso` nueva en `BORRADOR`, en nombre de quien lo
-pidió, con el artefacto del tipo de su recurso como `archivo`. F5 añadirá `MP4`, `VTT`, `PNG`, `SVG`, `parametros` y
-`ejecucion_agente_id` (el de `lms.ejecucion_agente`).
+pidió, con el artefacto del tipo de su recurso como `archivo`. El render de vídeo (RF-MED-03, ADR-0040) crea la versión con
+el MP4 en `video` y dos artefactos: `MP4` sin archivo (una sola copia de los bytes) y `VTT` con el suyo, solo si el informe
+de `ffprobe` y los subtítulos cuadran con el guion. Quedan para después `PNG`, `SVG` y `ejecucion_agente_id`.
 Invariantes: cada artefacto identifica su fuente exacta (relación y hash) y su generador [modelo, RF-CON-03]; un
 artefacto nunca se sobrescribe y regenerar crea otra versión [`appendOnly`, servicio]; repetir el trabajo no duplica
 [`unique`]. Mientras un artefacto apunte a una `version_recurso`, esa versión no se puede borrar (regla de Wasichai para

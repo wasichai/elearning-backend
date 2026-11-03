@@ -232,8 +232,9 @@ class RealModelTest(unittest.TestCase):
         fields = {f["name"] for f in artifact["fields"]}
         self.assertLessEqual({"formato", "archivo", "sha256", "hash_fuente", "generador", "version_generador", "trabajo_id"}, fields)
         links = {r["fieldName"]: (r["target"], r.get("required", False)) for r in MODEL["relationships"] if r["source"] == "artefacto_generado"}
-        self.assertEqual({"version_recurso": ("version_recurso", True), "fuente_recurso": ("fuente_recurso", True)}, links)
-        self.assertEqual(["HTML", "PDF"], MODEL["enums"]["formato_artefacto"])
+        # el de un render de vídeo no sale de una fuente_recurso sino de un guion (RF-MED-03): la fuente es opcional
+        self.assertEqual({"version_recurso": ("version_recurso", True), "fuente_recurso": ("fuente_recurso", False)}, links)
+        self.assertEqual(["HTML", "PDF", "MP4", "VTT"], MODEL["enums"]["formato_artefacto"])
         self.assertTrue(holds("CREADOR", "fuente_recurso", "CREATE"))
         for role in ROLES["roles"]:
             for action in ("CREATE", "UPDATE", "DELETE"):
@@ -258,6 +259,22 @@ class RealModelTest(unittest.TestCase):
         self.assertTrue(holds("CREADOR", "guion_video", "READ") and holds("REVISOR", "guion_video", "READ"))
         for role in ("ESTUDIANTE", "DOCENTE"):
             self.assertFalse(holds(role, "guion_video", "READ"), role)
+
+    # RF-MED-03, ADR-0040 §4: el vídeo renderizado vive una sola vez, en su versión de recurso, con su propio tope de 256 MB;
+    # su artefacto MP4 no lleva archivo y guarda el sha256, los parámetros y el informe de ffprobe. Todo campo FILE declara su
+    # tope, y ninguno más que el del vídeo pasa de 25 MB: subir el techo de wasichai-files no cambia lo que sube una persona
+    def test_the_rendered_video_is_stored_once_in_its_resource_version(self):
+        version = next(o for o in MODEL["objects"] if o["name"] == "version_recurso")
+        video = next(f for f in version["fields"] if f["name"] == "video")
+        self.assertEqual(("FILE", 256 * 1024 * 1024), (video["type"], video["maxBytes"]))
+        self.assertNotIn("contentTypes", video, "Wasichai detecta un MP4 como octet-stream: lo garantiza la validación")
+        artifact = {f["name"]: f for f in next(o for o in MODEL["objects"] if o["name"] == "artefacto_generado")["fields"]}
+        self.assertFalse(artifact["archivo"].get("required", False), "el MP4 no se copia en su artefacto")
+        self.assertTrue(artifact["sha256"]["required"])
+        self.assertLessEqual({"parametros", "informe"}, set(artifact))
+        files = [(o["name"], f) for o in MODEL["objects"] for f in o["fields"] if f["type"] == "FILE"]
+        self.assertTrue(all("maxBytes" in f for _, f in files), [n for n, f in files if "maxBytes" not in f])
+        self.assertEqual([("version_recurso", "video")], [(n, f["name"]) for n, f in files if f["maxBytes"] > 25 * 1024 * 1024])
 
     def test_versions_start_as_draft_and_illustrative(self):
         version = next(o for o in MODEL["objects"] if o["name"] == "version_curso")

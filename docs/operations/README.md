@@ -271,15 +271,21 @@ Para activarlo ([ADR-0040](../adr/0040-renderizador-de-video-en-un-trabajador-no
 5. `LMS_RENDER_MAX_CONCURRENT` (1, entre todas las réplicas: los demás esperan en la cola), `LMS_RENDER_MAX_SECONDS` (900)
    y `LMS_RENDER_MAX_BYTES` (256 MB).
 
-| Síntoma                                                               | Qué mirar                                                                  |
-| --------------------------------------------------------------------- | -------------------------------------------------------------------------- |
-| Render `FALLIDO`: `The render worker at … cannot be reached`          | el contenedor `render-worker` en marcha y `LMS_RENDER_WORKER_URL` hacia él |
-| Render `FALLIDO`: `refused the shared secret`                         | `LMS_RENDER_WORKER_TOKEN` del backend igual a `RENDER_WORKER_TOKEN`        |
-| Render `FALLIDO`: `rejected the video (422): … could not be rendered` | el registro del trabajador (Chrome, memoria, `ffprobe`)                    |
-| Renders `PENDIENTE` mucho tiempo                                      | uno `EN_CURSO` ocupa `LMS_RENDER_MAX_CONCURRENT`; el trabajador está vivo  |
-| `409 Video rendering is not enabled`                                  | `LMS_RENDER_ENABLED=true` en el backend                                    |
+| Síntoma                                                               | Qué mirar                                                                   |
+| --------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| Render `FALLIDO`: `The render worker at … cannot be reached`          | el contenedor `render-worker` en marcha y `LMS_RENDER_WORKER_URL` hacia él  |
+| Render `FALLIDO`: `refused the shared secret`                         | `LMS_RENDER_WORKER_TOKEN` del backend igual a `RENDER_WORKER_TOKEN`         |
+| Render `FALLIDO`: `rejected the video (422): … could not be rendered` | el registro del trabajador (Chrome, memoria, `ffprobe`)                     |
+| Renders `PENDIENTE` mucho tiempo                                      | uno `EN_CURSO` ocupa `LMS_RENDER_MAX_CONCURRENT`; el trabajador está vivo   |
+| `409 Video rendering is not enabled`                                  | `LMS_RENDER_ENABLED=true` en el backend                                     |
+| Render `FALLIDO`: `does not match its script: …`                      | el vídeo no es el del guion (fps, resolución, duración, pistas, subtítulos) |
 
 Apagar el render con renders en cola los deja `PENDIENTE`: ninguna réplica los reclama hasta que se vuelva a encender.
+
+Un despliegue con el modelo anterior a #298 lo actualiza `model/apply.py` sin pasos a mano: añade `version_recurso.video`
+(256 MB) y `MP4`/`VTT` a `formato_artefacto`, y deja de exigir `archivo` y `fuente_recurso` en `artefacto_generado` (el MP4
+no lleva archivo ni sale de una fuente). Dejar de exigir un campo es lo único que el script cambia en un campo existente:
+volver a exigirlo, o hacerlo único, se avisa y no se escribe.
 
 ## Despliegue objetivo (k3s)
 

@@ -25,7 +25,8 @@ data class VideoRenderRequest(
     val guion: JsonNode?,
 )
 
-// un render tal como lo ve quien lo pidió (docs/api/lms.md). video y subtitles: sha256 y tamaño de lo renderizado
+// un render tal como lo ve quien lo pidió (docs/api/lms.md). video y subtitles: sha256 y tamaño de lo renderizado y
+// validado; versionId y versionNumber, la version_recurso en BORRADOR que lo guarda (RF-MED-03). Mientras no está HECHO, nulos
 data class VideoRenderJob(
     val id: UUID,
     val resourceId: UUID,
@@ -36,6 +37,8 @@ data class VideoRenderJob(
     val durationSeconds: Int,
     val video: WorkerFile?,
     val subtitles: WorkerFile?,
+    val versionId: String?,
+    val versionNumber: Int?,
     val createdAt: Instant,
     val finishedAt: Instant?,
 )
@@ -122,6 +125,8 @@ class VideoRenderService(
             durationSeconds = ScriptSchema.durationOf(payload.get(VideoRenders.SCRIPT)),
             video = result?.get("video")?.let(::file),
             subtitles = result?.get("subtitles")?.let(::file),
+            versionId = result?.get("versionId")?.asString(),
+            versionNumber = result?.get("versionNumber")?.asInt(),
             createdAt = status.createdAt,
             finishedAt = status.finishedAt,
         )
