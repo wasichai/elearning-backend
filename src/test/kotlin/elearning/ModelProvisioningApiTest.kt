@@ -81,6 +81,17 @@ class ModelProvisioningApiTest : LmsApiTest() {
         assertTrue("ENVIAR_A_REVISION" in creator && "APROBAR" !in creator, creator.toString())
     }
 
+    // RF-CRE-08 (ADR-0035): aprobar créditos no es aprobar contenido; solo la autoridad académica de la demo lo tiene
+    @Test
+    fun `only the academic authority approves credits, and it approves no content`() {
+        for (role in listOf("estudiante", "docente", "creador", "revisor", "docente.revisor")) {
+            val actions = get("/api/auth/me/permissions", demoUser(role))["objects"]["version_curso"]?.strings().orEmpty()
+            assertTrue("APROBAR_CREDITOS" !in actions, "$role: $actions")
+        }
+        val authority = get("/api/auth/me/permissions", demoUser("autoridad"))["objects"]["version_curso"].strings()
+        assertTrue("APROBAR_CREDITOS" in authority && listOf("APROBAR", "PUBLICAR", "ENVIAR_A_REVISION").none { it in authority }, authority.toString())
+    }
+
     // #65: el personal ve el perfil docente pero no la cuenta que lo respalda; el administrador sí
     @Test
     fun `staff read teacher profiles without the account behind them`() {

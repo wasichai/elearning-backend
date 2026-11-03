@@ -91,7 +91,8 @@ ejecución.
   revisa y publica otra versión, y matricula a un estudiante nuevo en `TRAMITE-101-A`. Publicar saca del catálogo las
   ediciones de la versión anterior, así que ningún otro recorrido ni la matrícula de la demo lo usan.
 - C usa la carga de ejemplo de la especificación: 6 semanas × (12 h de teoría + 12 h de práctica o laboratorio + 12 h
-  autónomas), sistema ECTS y **sin** `creditos_aprobados`: los créditos los aprueba una persona con su regla.
+  autónomas), sistema ECTS y **sin** `creditos_aprobados`: los créditos los aprueba una autoridad académica con su
+  comando (`autoridad@demo.wasichai-learning.test`, ADR-0035).
 - Ediciones en `America/Lima`, entre noviembre de 2026 y junio de 2027, con periodo de inscripción y capacidad.
 
 ### Fuentes de A y B

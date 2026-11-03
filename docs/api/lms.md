@@ -121,7 +121,8 @@ Respuesta 200 `CourseDetail` = todos los campos de `CourseSummary` (salvo `nextO
   },
   "credits": {
     "system": "ECTS", // "ECTS" | "SCH" | null (NINGUNO)
-    "approved": null, // número si una persona los aprobó
+    "approved": null, // número solo con una aprobación vigente (RF-CRE-08)
+    "approval": null, // { credits, policyId, policyVersion, approvingBody, documentReference, documentDate, approvedAt } o null
     "proposal": {
       // null si system es null
       "system": "ECTS",
@@ -176,7 +177,8 @@ edición no está en `INSCRIPCION_ABIERTA` o la fecha de hoy (en la zona de la e
 dice solo eso, nunca cuántos ni quiénes se matricularon; llega con el refresco de la proyección, así que el comando de
 matrícula puede responder «sin cupo» antes de que la ficha lo diga. `full`, `enrollmentStatus` y el `enrollmentStatus`
 de `nextOffering` son campos añadidos: un cliente que no los lee sigue funcionando. Los créditos son siempre una **propuesta**: la interfaz debe decir
-«créditos propuestos, no oficiales» salvo que `approved` tenga valor.
+«créditos propuestos, no oficiales» salvo que `approved` tenga valor, y entonces citar el órgano y el documento de
+`approval`: la plataforma solo registra el reconocimiento de la institución (ADR-0035).
 
 ## Valores y nulos
 
@@ -186,7 +188,7 @@ de `nextOffering` son campos añadidos: un cliente que no los lee sigue funciona
   catálogo, no del modelo); lección `type` `LECTURA` \| `VIDEO` \| `PRESENTACION` \| `LABORATORIO` \|
   `EVALUACION` \| `SESION`; docente `role` `TITULAR` \| `ASISTENTE`. Un valor nuevo llega primero al modelo y aquí.
 - **Pueden ser `null`**: `summary`, `category`, `nextOffering`, `prerequisiteKnowledge`, `version.publishedAt`,
-  `requirements`, `assessment`, `certification`, `credits.system`, `credits.approved`, `credits.proposal`;
+  `requirements`, `assessment`, `certification`, `credits.system`, `credits.approved`, `credits.approval`, `credits.proposal`;
   en unidades `description` y `estimatedHours`; en lecciones `durationMinutes`, `summary` y `source`; en ediciones
   `enrollmentFrom`, `enrollmentUntil`, `capacity` y `schedule`; en docentes `professionalTitle`, `bio` y `specialties`.
   Las listas nunca son `null` (como mucho, vacías).
@@ -764,3 +766,44 @@ pasajero (almacenamiento, interrupción) vuelve a `PENDIENTE` hasta agotar `lms.
   REVISOR): `formato`, `archivo`, `sha256`, `hash_fuente`, `generador`, `version_generador`, `trabajo_id` y las relaciones
   `version_recurso` y `fuente_recurso`. Se descargan con `GET /api/objects/artefacto_generado/records/{id}/files/archivo`,
   siempre como adjunto. La API de registros no los escribe (`403`).
+
+## Créditos aprobados (RF-CRE-08, ADR-0035)
+
+La plataforma calcula y **propone** créditos ([ADR-0007](../adr/0007-carga-academica-y-creditos-como-politica-versionada.md));
+reconocerlos es un acto de la institución que una persona con `APROBAR_CREDITOS` sobre `version_curso` (rol
+`AUTORIDAD_ACADEMICA`) registra en nombre de un órgano y con un documento
+([ADR-0035](../adr/0035-aprobacion-de-creditos-por-una-autoridad-academica.md)).
+
+| Método | Ruta                                       | Resultado                                                         |
+| ------ | ------------------------------------------ | ----------------------------------------------------------------- |
+| GET    | `/api/lms/credits/versions/{id}/proposal`  | propuesta de hoy y aprobación vigente → `VersionCredits`          |
+| GET    | `/api/lms/credits/versions/{id}/approvals` | historial, lo más antiguo primero → `CreditApproval[]`            |
+| POST   | `/api/lms/credits/versions/{id}/approvals` | `CreditApprovalRequest` → `201` `CreditApproval` (`APROBACION`)   |
+| POST   | `/api/lms/credits/approvals/{id}/revoke`   | `CreditRevocationRequest` → `201` `CreditApproval` (`REVOCACION`) |
+
+- **Quién**: aprobar y revocar exigen `APROBAR_CREDITOS` (`403`; un REVISOR con `APROBAR` tampoco la tiene). Leer exige leer
+  la versión (`404` si no) y `READ` sobre `aprobacion_creditos` (`403`; el estudiante nunca).
+- **Separación de funciones**, también para ADMIN (`403`): no aprueba ni revoca el autor de la versión, su revisor asignado,
+  quien la aprobó en la bandeja ni quien tiene una asignación docente en una edición de alguna versión del curso.
+- **Cuándo**: solo una versión `APROBADA` o `PUBLICADA`, con sistema de crédito (`409`), sin otra aprobación vigente (`409`:
+  primero se revoca). Solo se revoca la aprobación vigente (`409`).
+- `CreditApprovalRequest`: `{ "approvedCredits": 8, "reason": null, "approvingBody": "Consejo de Facultad",
+"documentReference": "Resolución 045-2026-CF", "documentDate": "2026-10-30" }`. `approvedCredits` es opcional (por
+  omisión, lo propuesto), positivo y con hasta 2 decimales; si difiere de lo propuesto, `reason` es obligatorio (`400`).
+  `approvingBody` y `documentReference` son obligatorios, hasta 200 caracteres; `reason`, hasta 4000; `documentDate`,
+  opcional. `CreditRevocationRequest` es igual sin `approvedCredits`, con `reason` obligatorio.
+- El servidor **recalcula** con la política del sistema de la versión y guarda su instantánea. Hasta que existan políticas
+  en datos (RF-CRE-07) es la de referencia: `ects-carga-total@1` o `sch-34cfr600.2-trabajo-equivalente@1`.
+- `CreditApproval`: `{ "id", "versionId", "type": "APROBACION" | "REVOCACION", "revokes", "system", "policyId",
+"policyVersion", "method", "parameters": { "horasPorCredito": "27" }, "source", "totalHours", "calculated", "proposed",
+"approvedCredits", "reason", "approvingBody", "documentReference", "documentDate", "approvedBy", "approvedAt" }`. En una
+  revocación, `revokes` es la aprobación revocada y la instantánea va vacía.
+- `VersionCredits`: `{ "versionId", "versionStatus", "system", "proposal": { …como la del catálogo… }, "current":
+CreditApproval | null }`.
+- Las filas son `aprobacion_creditos` (`appendOnly`, `apiOnly`): la API de registros las lee pero no las crea, cambia ni
+  borra; quedan en `/api/audit?objectName=aprobacion_creditos&recordId=…` con la persona y la hora. El comando copia lo
+  aprobado a `version_curso.creditos_aprobados` y `politica_creditos` (`id@versión`) y lo borra al revocar; esos dos campos
+  no se escriben por la API de registros (`403` para todos). Una versión nueva no los hereda.
+- En el catálogo, `credits.approved` y `credits.approval` (`{ "credits", "policyId", "policyVersion", "approvingBody",
+"documentReference", "documentDate", "approvedAt" }`) solo existen con una aprobación vigente; tras una revocación vuelven
+  a `null` en el refresco siguiente de la proyección.

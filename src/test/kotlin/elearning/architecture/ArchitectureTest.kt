@@ -74,6 +74,8 @@ class ArchitectureTest {
                 // el barrido de intentos vencidos corre en la cola persistente (L4 de #183)
                 "assessment" to setOf("common", "learning", "enrollment", "jobs"),
                 "authoring" to setOf("common", "course"),
+                // la aprobación de créditos lee las decisiones de la bandeja para la separación de funciones (ADR-0035)
+                "credits" to setOf("common", "course", "workload", "authoring"),
                 "importer" to setOf("common", "jobs"),
                 "ai" to setOf("common", "authoring"),
                 // la generación encola y maneja sus trabajos en la cola persistente (ADR-0018 §7)

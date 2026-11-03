@@ -176,6 +176,51 @@ class CatalogBuilderTest {
         assertNull(detail.credits.proposal)
     }
 
+    private fun approval(
+        id: String,
+        type: String,
+        at: String,
+        vararg extra: Pair<String, Any?>,
+    ) = record(id, "version_curso" to "v1", "tipo" to type, "aprobada_en" to at, *extra)
+
+    // ADR-0035: «aprobados» solo con una aprobación vigente, con su órgano, su documento y su política
+    @Test
+    fun `approved credits come only from a current approval, never from the version alone`() {
+        val approved =
+            approval(
+                "a1",
+                "APROBACION",
+                "2026-11-03T10:00:00Z",
+                "creditos_aprobados" to BigDecimal("8.00"),
+                "politica_id" to "ects-carga-total",
+                "politica_version" to "1",
+                "organo" to "Consejo de Facultad",
+                "documento_referencia" to "Resolución 045-2026-CF",
+                "documento_fecha" to "2026-10-30",
+                "aprobada_por" to "00000000-0000-0000-0000-000000000077",
+            )
+        // una copia en la versión sin aprobación detrás no vale como aprobación
+        val alone = CatalogBuilder().build(records(version("v1", 1, "PUBLICADA", "creditos_aprobados" to BigDecimal("9")))).single().detail
+        assertNull(alone.credits.approved)
+        assertNull(alone.credits.approval)
+
+        val built = CatalogBuilder().build(records(version("v1", 1, "PUBLICADA")).copy(approvals = listOf(approved))).single()
+        assertEquals(0, BigDecimal("8").compareTo(built.detail.credits.approved))
+        val summary = built.detail.credits.approval!!
+        assertEquals("Consejo de Facultad", summary.approvingBody)
+        assertEquals("Resolución 045-2026-CF", summary.documentReference)
+        assertEquals(LocalDate.parse("2026-10-30"), summary.documentDate)
+        assertEquals("ects-carga-total", summary.policyId)
+        // quién la registró no se publica
+        assertFalse(built.json().contains("000000000077"))
+
+        val revoked = approval("a2", "REVOCACION", "2026-11-03T11:00:00Z", "sustituye" to "a1", "motivo" to "Error en la resolución")
+        val after = CatalogBuilder().build(records(version("v1", 1, "PUBLICADA")).copy(approvals = listOf(revoked, approved))).single().detail
+        assertNull(after.credits.approved)
+        assertNull(after.credits.approval)
+        assertEquals("PROPUESTO", after.credits.proposal!!.status)
+    }
+
     @Test
     fun `one broken course is left out and the rest still build`() {
         val other = record("c2", "codigo" to "OTRO", "slug" to "otro", "titulo" to "Otro", "nivel" to "INICIAL")

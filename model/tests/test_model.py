@@ -21,8 +21,23 @@ class RealModelTest(unittest.TestCase):
     def test_model_and_roles_are_valid(self):
         apply.validate(MODEL, ROLES)
 
-    def test_the_four_lms_roles_exist(self):
-        self.assertEqual({"ESTUDIANTE", "DOCENTE", "CREADOR", "REVISOR"}, {r["name"] for r in ROLES["roles"]})
+    def test_the_five_lms_roles_exist(self):
+        self.assertEqual({"ESTUDIANTE", "DOCENTE", "CREADOR", "REVISOR", "AUTORIDAD_ACADEMICA"}, {r["name"] for r in ROLES["roles"]})
+
+    # RF-CRE-08 (ADR-0035): aprobar créditos es otra acción que aprobar contenido, y solo la tiene la autoridad académica;
+    # su registro es de solo inserción, lo escribe solo el comando y nunca lo lee un estudiante
+    def test_only_the_academic_authority_approves_credits(self):
+        for role in ROLES["roles"]:
+            self.assertEqual(role["name"] == "AUTORIDAD_ACADEMICA", holds(role["name"], "version_curso", "APROBAR_CREDITOS"), role["name"])
+            self.assertFalse(holds(role["name"], "aprobacion_creditos", "UPDATE") or holds(role["name"], "aprobacion_creditos", "DELETE"), role["name"])
+        for action in ("APROBAR", "PUBLICAR", "ENVIAR_A_REVISION", "CREATE", "DELETE"):
+            self.assertFalse(holds("AUTORIDAD_ACADEMICA", "version_curso", action), action)
+        self.assertFalse(holds("ESTUDIANTE", "aprobacion_creditos", "READ"))
+        approval = next(o for o in MODEL["objects"] if o["name"] == "aprobacion_creditos")
+        self.assertTrue(approval["appendOnly"] and approval["apiOnly"])
+        fields = {f["name"]: f for f in approval["fields"]}
+        for name in ("tipo", "organo", "documento_referencia", "aprobada_por", "aprobada_en"):
+            self.assertTrue(fields[name].get("required"), name)
 
     def test_nobody_but_admin_publishes_or_retires(self):
         for role in ROLES["roles"]:

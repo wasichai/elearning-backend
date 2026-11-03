@@ -138,6 +138,6 @@ class NewVersionService(
         val FIRST_DRAFT = mapOf("modalidad" to "ASINCRONA", "duracion" to "SEMANAS", "semanas" to 1, "sistema_credito" to "NINGUNO")
 
         // lo decidido en la versión de origen no se hereda: ni su estado, ni su publicación, ni sus créditos aprobados
-        val DRAFT_DROPS = setOf(COURSE, "numero", "autor_id", "estado", "publicada_en", "creditos_aprobados", "revisor_id")
+        val DRAFT_DROPS = setOf(COURSE, "numero", "autor_id", "estado", "publicada_en", "creditos_aprobados", "politica_creditos", "revisor_id")
     }
 }
