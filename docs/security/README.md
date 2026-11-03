@@ -364,6 +364,7 @@ aplicación se conecta con un rol que no es dueño de las tablas, para que nadie
   | Certificados                                                            | Se disocian: seudónimo y sin nombre; el código sigue verificando el impreso         |
   | Perfil docente                                                          | Se vacía y deja de publicarse; sigue enlazado a la cuenta por sus asignaciones      |
   | Trabajos que pidió y la aceptación misma                                | Se suprimen                                                                         |
+  | Ejecuciones de agente que pidió o en las que intervino                  | Se disocian: seudónimo como solicitante y en sus intervenciones; la ejecución queda |
   | Autoría, revisiones, notas puestas, sesiones y asistencias que registró | Se conservan con el id de cuenta: son actos de la organización                      |
 
   Queda en Wasichai: la cuenta (nombre, correo, roles), que deshabilita o elimina el administrador; las notificaciones;
