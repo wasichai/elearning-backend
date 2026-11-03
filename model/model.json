@@ -177,6 +177,10 @@
           "label": "Validar lo generado con IA"
         },
         {
+          "name": "VER_INDICADORES_IA",
+          "label": "Ver los indicadores de proceso de la canalización de IA"
+        },
+        {
           "name": "VER_TODAS",
           "label": "Ver todo el contenido, no solo el de las matrículas propias"
         }
