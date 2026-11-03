@@ -1,0 +1,6 @@
+= Manual de anuncios
+
+Fuente propia y sintética de la unidad de demostración de la Fase 5 (docs/ai/evaluations/demo-unit). No copia ningún
+manual de terceros.
+
+include::capitulos/anuncios.adoc[]
