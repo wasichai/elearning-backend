@@ -48,7 +48,8 @@ class TeachingReader(
                 .filter { it.attributes[STATE]?.toString() != WITHDRAWN }
                 .groupingBy { it.attributes.ref(ENROLLMENT_OFFERING).orEmpty() }
                 .eachCount()
-        val pending = facts.pendingAttempts(currentUser.require().organizationId, found.map { UUID.fromString(it.id) })
+        val user = currentUser.require()
+        val pending = facts.pendingAttempts(user.organizationId, found.map { UUID.fromString(it.id) }, user.userId)
         return found.map { record ->
             val a = record.attributes
             val course = courses.getValue(versions.getValue(a.ref(VERSION)!!).attributes.ref(COURSE)!!)

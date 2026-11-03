@@ -29,10 +29,12 @@ data class LessonAssessment(
 
 // lo que learning necesita saber de las evaluaciones, que dependen de learning y no al revés: lo implementa assessment
 interface AssessmentFacts {
-    // por id de edición, sus intentos que esperan corrección, en una lectura (#261); sin ninguno, la edición no aparece
+    // por id de edición, sus intentos que [viewer] puede corregir (no los suyos, #338), en una lectura (#261); sin ninguno,
+    // la edición no aparece
     suspend fun pendingAttempts(
         organization: UUID,
         offerings: Collection<UUID>,
+        viewer: UUID,
     ): Map<String, Int>
 
     // por matrícula de la edición, sus evaluaciones con algún intento enviado: una lectura para todo el roster (M4 de #183)

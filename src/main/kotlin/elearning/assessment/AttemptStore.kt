@@ -267,18 +267,22 @@ class AttemptStore(
             .awaitSingle()
     }
 
-    // los intentos que esperan corrección, por edición y en una lectura (#261): antes, una por edición. sin la edición, 0
+    // los intentos que [viewer] puede corregir, por edición y en una lectura (#261): antes, una por edición. sin la edición, 0.
+    // como queueOfOffering y oldestPending, sin los suyos (#338): el total es el de su cola
     suspend fun countPending(
         organization: UUID,
         offerings: Collection<UUID>,
+        viewer: UUID,
     ): Map<UUID, Int> {
         if (offerings.isEmpty()) return emptyMap()
         return db
             .sql(
                 "SELECT edicion_id, count(*) AS n FROM lms.intento " +
-                    "WHERE organizacion_id = :org AND edicion_id = ANY(:offerings) AND estado = 'SUBMITTED' GROUP BY edicion_id",
+                    "WHERE organizacion_id = :org AND edicion_id = ANY(:offerings) AND estado = 'SUBMITTED' " +
+                    "AND estudiante_id <> :viewer GROUP BY edicion_id",
             ).bind("org", organization)
             .bind("offerings", offerings.distinct().toTypedArray())
+            .bind("viewer", viewer)
             .map { row, _ -> row.get("edicion_id", UUID::class.java)!! to row.get("n", Number::class.java)!!.toInt() }
             .all()
             .collectList()
