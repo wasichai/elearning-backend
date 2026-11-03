@@ -217,8 +217,10 @@ Posterior (F6); nada de esto existe aún.
   ([almacén de archivos](#almacén-de-archivos)).
 - **Asciidoctor en la imagen** para la generación de HTML y PDF (ADR-0018 §7): `asciidoctor` y `asciidoctor-pdf` en el
   `PATH`, sin extensiones. Sin ellos la aplicación arranca y el trabajo de generación falla con un error claro
-  (`… is not available on this server …`). Comprobación manual, que CI no hace: `asciidoctor --version`,
-  `asciidoctor-pdf --version` y generar una fuente de prueba desde el estudio.
+  (`… is not available on this server …`). CI genera una fuente propia con Asciidoctor real en versiones fijas
+  (`gem install asciidoctor:2.0.26 asciidoctor-pdf:2.3.27`, [ADR-0031](../adr/0031-aceptacion-de-la-generacion-con-una-fuente-propia.md));
+  la imagen se comprueba a mano: `asciidoctor --version`, `asciidoctor-pdf --version` y generar una fuente de prueba
+  desde el estudio.
 
 ## Correo
 

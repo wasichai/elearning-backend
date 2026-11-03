@@ -55,6 +55,8 @@ class DecisionStore(
                     decision = row.get("decision", String::class.java)!!,
                     reason = row.get("motivo", String::class.java),
                     authorId = row.get("autor_id", UUID::class.java).toString(),
+                    // el nombre lo pone quien la muestra (StudioReader), en la lectura de nombres de la versión
+                    authorName = null,
                     at = row.get("decidida_en", OffsetDateTime::class.java)!!.toInstant(),
                 )
             }.all()

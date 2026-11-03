@@ -51,6 +51,8 @@ FIELD_KEYS = ("name", "label", "type", "required", "unique", "enumOptions", "def
 DEMO_DOMAIN = "demo.wasichai-learning.test"
 DEMO_EMAIL = re.compile(r"^[a-z0-9][a-z0-9._-]*@" + re.escape(DEMO_DOMAIN) + "$")
 ALIAS = re.compile(r"^[a-z0-9][a-z0-9-]{0,79}$")
+# el plazo de conservación más largo que unos términos de uso pueden ofrecer, en días (ADR-0037): el tope del servidor
+MAX_RETENTION_DAYS = 36500
 # una fecha relativa al día en que se aplica la demo ("hoy", "hoy+12", "hoy-2"): las ediciones no envejecen (#96)
 RELATIVE_DATE = re.compile(r"^hoy(?:([+-]\d{1,4}))?$")
 UUID = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
@@ -273,7 +275,7 @@ def validate_demo(data: dict, model: dict, roles: dict | None = None, base: Path
     known_roles = {"ADMIN"} | {r["name"] for r in (roles or {}).get("roles", [])}
 
     for key in data:
-        if key not in ("users", "records", "workflows", "enrollments", "sessions", "attempts") and not key.startswith("_"):
+        if key not in ("users", "records", "workflows", "enrollments", "sessions", "attempts", "terms") and not key.startswith("_"):
             problems.append(f"clave desconocida '{key}' en los datos de demostración")
 
     # workflows: el camino de estados que un registro recorre hasta su estado final, como lo haría una persona
@@ -320,6 +322,20 @@ def validate_demo(data: dict, model: dict, roles: dict | None = None, base: Path
         for role in user.get("roles", []):
             if role not in known_roles:
                 problems.append(f"usuario '{email}': rol desconocido {role!r}")
+
+    # términos de uso (ADR-0037): sin aceptación vigente nadie se matricula, así que quien se matricula los acepta antes
+    terms = data.get("terms") or {}
+    for key in terms:
+        if key not in ("text", "retentionDays", "acceptedBy"):
+            problems.append(f"términos de uso: clave desconocida '{key}'")
+    if "terms" in data and not str(terms.get("text", "")).strip():
+        problems.append("términos de uso: falta el texto")
+    days = terms.get("retentionDays")
+    if "terms" in data and (not isinstance(days, int) or isinstance(days, bool) or not 1 <= days <= MAX_RETENTION_DAYS):
+        problems.append(f"términos de uso: retentionDays es el plazo de conservación en días, entre 1 y {MAX_RETENTION_DAYS}")
+    accepted = set(terms.get("acceptedBy", []))
+    for email in sorted(accepted - emails):
+        problems.append(f"términos de uso: {email!r} no está en 'users'")
 
     aliases: dict[str, str] = {}
     keys_seen: set[tuple] = set()
@@ -397,6 +413,8 @@ def validate_demo(data: dict, model: dict, roles: dict | None = None, base: Path
         where = f"matrícula #{i + 1}"
         if enrollment.get("user") not in emails:
             problems.append(f"{where}: el usuario {enrollment.get('user')!r} no está en 'users'")
+        if enrollment.get("user") not in accepted:
+            problems.append(f"{where}: {enrollment.get('user')!r} no acepta los términos de uso ('terms.acceptedBy'): sin aceptación no se matricula")
         offering = records_by_ref.get(enrollment.get("offering"))
         if offering is None or offering.get("object") != "edicion_curso":
             problems.append(f"{where}: {enrollment.get('offering')!r} no es una edicion_curso del archivo")
@@ -802,6 +820,7 @@ def apply_demo(client: Client, data: dict, password: str, report: Report, base: 
     # después de todo lo demás: cada registro recorre su camino hasta el estado final, una transición por vez
     for record, record_id, final in pending:
         _walk(client, record, record_id, workflows[record["object"]], final, report)
+    _terms(client, data, password, report)
     _enroll(client, data, ids, user_ids, password, report)
     _sessions(client, data, ids, password, today, report)
     _attempts(client, data, ids, user_ids, password, report)
@@ -825,6 +844,27 @@ def _walk(client: Client, record: dict, record_id: str, flow: dict, final: dict,
         else:
             client.call("PATCH", f"/api/objects/{record['object']}/records/{record_id}", {"attributes": {field: step} | later})
     report.add(f"{record['object']} {record['ref']}: {' → '.join([current, *steps])}")
+
+
+def _terms(client: Client, data: dict, password: str, report: Report) -> None:
+    """Términos de uso de la demo (ADR-0037). Si la organización no tiene, los publica el administrador; los que ya tiene
+    no se tocan. Cada usuario de acceptedBy acepta los vigentes iniciando sesión como él, si no tiene una aceptación
+    vigente: sin ella no se matricula."""
+    terms = data.get("terms")
+    if not terms:
+        return
+    current = (client.call("GET", "/api/lms/terms") or {}).get("current")
+    if current is None:
+        current = client.call("POST", "/api/lms/terms", {"text": terms["text"], "retentionDays": terms["retentionDays"]})
+        report.add(f"términos de uso, versión {current['version']}")
+    for email in terms.get("acceptedBy", []):
+        person = Client(client.base)
+        person.login(email, password)
+        acceptance = (person.call("GET", "/api/lms/terms") or {}).get("acceptance") or {}
+        if acceptance.get("valid"):
+            continue
+        person.call("POST", "/api/lms/terms/acceptance", {"version": current["version"]})
+        report.add(f"aceptación de los términos de uso de {email}")
 
 
 def _enroll(client: Client, data: dict, ids: dict, user_ids: dict, password: str, report: Report) -> None:
