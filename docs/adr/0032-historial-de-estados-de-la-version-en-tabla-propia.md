@@ -17,7 +17,7 @@ CLAUDE.md prohíbe leer sus tablas y clases internas (`AuditService`).
 
 ## Decisión
 
-1. **Tabla fija propia `lms.transicion_version`** (migración V15, ADR-0004): organización, versión, estado anterior (nulo
+1. **Tabla fija propia `lms.transicion_version`** (migración V16, ADR-0004): organización, versión, estado anterior (nulo
    en la creación), estado nuevo, quién (nulo es la plataforma) y cuándo (`clock_timestamp()`). Un disparador impide
    `UPDATE` y `DELETE`, como en `lms.decision_revision`. Un `id` de identidad da el orden en que se escribieron.
 2. **La escribe un `RecordChangeListener`** (`VersionTransitionListener`), el SPI con el que Wasichai avisa de cada
@@ -48,6 +48,8 @@ CLAUDE.md prohíbe leer sus tablas y clases internas (`AuditService`).
   y la del historial se confirman cada una por su lado. Si la inserción del historial fallara tras el cambio, la petición
   responde `500` y el cambio queda sin su fila, con la misma garantía que Wasichai da a su propio `audit_log`. Las vías
   propias (estudio, bandeja, importación) sí son atómicas.
+- La supresión de datos personales ([ADR-0037](0037-terminos-de-uso-y-supresion-de-datos-personales.md)) no la toca,
+  como a las decisiones de revisión: es el registro de quién movió qué, que la organización debe poder rendir.
 - Una versión borrada (solo en borrador) deja sus filas, como sus decisiones: nadie las lee sin la versión.
 - `version_recurso` no tiene historial: no tiene estudio ni bandeja que lo muestre. Si llega una vista que lo pida, se
   extiende el mismo listener.

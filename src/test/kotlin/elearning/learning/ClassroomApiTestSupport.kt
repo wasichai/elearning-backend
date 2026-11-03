@@ -103,7 +103,7 @@ abstract class ClassroomApiTestSupport : LmsApiTest() {
                 val assessment = lesson(3, if (lab) "LABORATORIO" else assessmentLessonType)
                 val environment = if (lab) labOf(assessment.id) else null
                 records.create("recurso_leccion", RecordRequest(mapOf("leccion" to reading.id, "version_recurso" to resource, "orden" to 1)))
-                val (evaluation, questions) = if (withEvaluation) evaluation(assessment.id, withFileQuestion) else null to emptyMap()
+                val (evaluation, questions) = if (withEvaluation) evaluation(assessment.id, reading.id, withFileQuestion) else null to emptyMap()
                 records.patch("version_curso", UUID.fromString(version.id), RecordRequest(mapOf("estado" to "PUBLICADA")), null, null)
                 published += version.id
                 val today = LocalDate.now(ZoneId.of("America/Lima"))
@@ -136,9 +136,11 @@ abstract class ClassroomApiTestSupport : LmsApiTest() {
     }
 
     // una evaluación de 10 puntos (aprueba con 60 %, dos intentos, soluciones al enviar): una pregunta de cada tipo que se
-    // corrige sola (7 puntos) y una abierta con rúbrica (3 puntos). la escribe la plataforma mientras el temario es borrador
+    // corrige sola (7 puntos) y una abierta con rúbrica (3 puntos). la escribe la plataforma mientras el temario es borrador.
+    // la de opción única se repasa en la lectura (leccion_repaso, #260)
     private suspend fun evaluation(
         lesson: String,
+        review: String,
         withFileQuestion: Boolean,
     ): Pair<String, Map<String, String>> {
         val evaluation =
@@ -175,7 +177,7 @@ abstract class ClassroomApiTestSupport : LmsApiTest() {
             text: String,
             correct: Boolean,
         ) = records.create("opcion", RecordRequest(mapOf("pregunta" to question, "orden" to order, "texto" to text, "correcta" to correct))).id
-        val single = question(1, "UNICA", 2)
+        val single = question(1, "UNICA", 2, mapOf("leccion_repaso" to review))
         option(single, 1, "Correcta", true)
         option(single, 2, "Incorrecta", false)
         val multiple = question(2, "MULTIPLE", 2)
@@ -226,7 +228,8 @@ abstract class ClassroomApiTestSupport : LmsApiTest() {
         return version
     }
 
-    protected fun newStudent(): String {
+    // con los términos de uso aceptados, salvo acceptingTerms = false (ADR-0037)
+    protected fun newStudent(acceptingTerms: Boolean = true): String {
         val email = "${uniqueName("est")}@demo.wasichai-learning.test"
         client
             .post()
@@ -236,7 +239,8 @@ abstract class ClassroomApiTestSupport : LmsApiTest() {
             .exchange()
             .expectStatus()
             .isCreated
-        return bearer(email, DEMO_PASSWORD)
+        val token = bearer(email, DEMO_PASSWORD)
+        return if (acceptingTerms) acceptTerms(token) else token
     }
 
     protected fun userId(token: String): String = get("/api/auth/me", token)["userId"].asString()
@@ -255,7 +259,8 @@ abstract class ClassroomApiTestSupport : LmsApiTest() {
         return bearer(email, DEMO_PASSWORD)
     }
 
-    // la asignación que da al docente el alcance sobre la edición (ADR-0016): su perfil y su cuenta
+    // la asignación que da al docente el alcance sobre la edición (ADR-0016): su perfil y su cuenta. el perfil es uno por
+    // cuenta: la segunda asignación reutiliza el de la primera
     protected fun assign(
         teacher: String,
         course: Course,
@@ -263,12 +268,13 @@ abstract class ClassroomApiTestSupport : LmsApiTest() {
         val account = userId(teacher)
         val offering = get("/api/objects/edicion_curso/records?codigo=${course.offering}", admin)["content"][0]["id"].asString()
         val profile =
-            call(
-                admin,
-                "/api/objects/perfil_docente/records",
-                mapOf("attributes" to mapOf("nombre_publico" to "Docente", "usuario_id" to account, "perfil_publico" to false)),
-            ).second!!["id"]
-                .asString()
+            get("/api/objects/perfil_docente/records?usuario_id=$account", admin)["content"].firstOrNull()?.get("id")?.asString()
+                ?: call(
+                    admin,
+                    "/api/objects/perfil_docente/records",
+                    mapOf("attributes" to mapOf("nombre_publico" to "Docente", "usuario_id" to account, "perfil_publico" to false)),
+                ).second!!["id"]
+                    .asString()
         val (status, body) =
             call(
                 admin,

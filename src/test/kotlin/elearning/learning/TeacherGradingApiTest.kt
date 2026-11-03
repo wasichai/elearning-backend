@@ -175,7 +175,7 @@ class TeacherGradingApiTest : ClassroomApiTestSupport() {
             ).exchange()
             .expectStatus()
             .isCreated
-        val both = bearer(email, DEMO_PASSWORD)
+        val both = acceptTerms(bearer(email, DEMO_PASSWORD))
         assign(both, course)
         val enrollment = enroll(both, course)["id"].asString()
         val attempt = call(both, "/api/lms/classroom/enrollments/$enrollment/lessons/${course.assessment}/attempts", emptyMap()).second!!["id"].asString()

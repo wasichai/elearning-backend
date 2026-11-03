@@ -62,12 +62,16 @@ los campos y relaciones obligatorios y que ninguna clave natural se repita.
 Lo que en el producto es un comando del LMS, la demo lo hace por ese comando e iniciando sesión como quien lo haría, así
 que pasa por las mismas reglas (ventana de inscripción, asignación del docente, plazos, motivo al cambiar una nota):
 
-| Clave         | Qué hace                                                                                                                 |
-| ------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| `workflows`   | El camino de estados de cada objeto; `commands` da un paso por una ruta `/api/lms/` (aprobar por la bandeja).            |
-| `enrollments` | `{ user, offering }`: el estudiante se matricula con `POST /api/lms/enrollments`, en una edición abierta hoy.            |
-| `sessions`    | Las crea el docente asignado a la edición con el comando de sesiones.                                                    |
-| `attempts`    | `{ student, offering, lesson, teacher, answers, grades }`: el estudiante responde y envía; el docente asignado califica. |
+| Clave         | Qué hace                                                                                                                                |
+| ------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `workflows`   | El camino de estados de cada objeto; `commands` da un paso por una ruta `/api/lms/` (aprobar por la bandeja).                           |
+| `terms`       | `{ text, retentionDays, acceptedBy }`: si faltan, el administrador publica los términos de uso; cada correo de `acceptedBy` los acepta. |
+| `enrollments` | `{ user, offering }`: el estudiante se matricula con `POST /api/lms/enrollments`, en una edición abierta hoy.                           |
+| `sessions`    | Las crea el docente asignado a la edición con el comando de sesiones.                                                                   |
+| `attempts`    | `{ student, offering, lesson, teacher, answers, grades }`: el estudiante responde y envía; el docente asignado califica.                |
+
+Sin aceptación vigente de los términos nadie se matricula (ADR-0037): quien aparece en `enrollments` debe estar en
+`terms.acceptedBy`. Unos términos ya publicados no se tocan y una aceptación vigente no se renueva.
 
 En `attempts`, `answers` y `grades` nombran preguntas y opciones por su `ref`. El estudiante debe estar en `enrollments`
 para esa edición, el docente asignado a ella (`docente_edicion`), la lección tener evaluación y cada nota ir a una

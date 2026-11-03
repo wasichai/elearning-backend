@@ -113,6 +113,8 @@ object AttemptViews {
                                     g.correct,
                                     g.comment,
                                     if (solutions) solution(questions.getValue(g.questionId)) else null,
+                                    // el repaso no es una solución: sale con el resultado, nunca con el intento abierto
+                                    questions.getValue(g.questionId).reviewLessonId,
                                 )
                             },
                     )

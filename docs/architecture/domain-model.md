@@ -280,6 +280,10 @@ Custom Object: `evaluacion · RELATION` · `numero · INTEGER` · `estado · ENU
 Invariante: publicada, ni la cabecera ni el contenido cambian; corregir una pregunta es una versión nueva [guarda +
 repositorio sin `UPDATE`].
 
+**`pregunta`** — F3. Lleva `leccion_repaso · RELATION → leccion · opcional` (#260): la lección que la repasa, siempre de la
+misma versión [guarda]. Se congela con la versión publicada, la copia de versión la re-apunta a la lección copiada y la
+instantánea del intento la guarda; el resultado la muestra como `reviewLessonId`.
+
 **`intento_evaluacion`** (AssessmentAttempt) — F3. `apiOnly`.
 `matricula · RELATION` · `version_evaluacion · RELATION · la instantánea exacta` · `numero · INTEGER` · `estado ·
 ENUM` (§5.2) · `iniciado_en · DATETIME` · `limite_en · DATETIME` · `enviado_en · DATETIME` · `semilla_orden · INTEGER`;

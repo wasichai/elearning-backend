@@ -5,14 +5,73 @@ Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este
 ## 2026-11-03 — Historial de estados de una versión ([#259](https://github.com/wasichai/elearning-backend/issues/259))
 
 - [ADR-0032](adr/0032-historial-de-estados-de-la-version-en-tabla-propia.md): cada cambio de `estado` de una
-  `version_curso`, y su creación, deja una fila en la tabla nueva `lms.transicion_version` (V15) con el estado anterior,
+  `version_curso`, y su creación, deja una fila en la tabla nueva `lms.transicion_version` (V16) con el estado anterior,
   el nuevo, quién y cuándo. Es de solo inserción (un disparador impide cambiarla o borrarla) y la escribe un
   `RecordChangeListener` en la transacción de quien escribe, sea por el estudio, la bandeja, la API de registros o la
   plataforma. No se lee el `audit_log` de Wasichai.
 - El detalle del estudio y de la bandeja (`StudioVersionDetail`) gana `history: [{ from, to, by, byName, at }]`, con las
-  mismas reglas de lectura. Enviar a revisión y crear la primera versión vacía pasan a escribir en una transacción.
-  `VersionHistoryApiTest` recorre BORRADOR → EN_REVISION → BORRADOR → EN_REVISION → APROBADA → PUBLICADA, la API de
-  registros, la plataforma y el disparador.
+  mismas reglas de lectura; `byName` se lee junto con los demás nombres de la versión (ADR-0034). Enviar a revisión y
+  crear la primera versión vacía pasan a escribir en una transacción. `VersionHistoryApiTest` recorre BORRADOR →
+  EN_REVISION → BORRADOR → EN_REVISION → APROBADA → PUBLICADA, la API de registros, la plataforma y el disparador.
+
+## 2026-11-03 — Nombres de autor, revisor y de quien decide ([#258](https://github.com/wasichai/elearning-backend/issues/258))
+
+- `StudioVersion` (estudio y bandeja), `ReviewComment` y `ReviewDecision` traen `authorName` / `reviewerName` junto a su id:
+  el nombre para mostrar de la persona, nunca su correo; `null` si está deshabilitada o fue borrada. Solo van donde ya iba el
+  id y a quien ya puede leer la versión.
+- Wasichai 1.8.0 no da nombres en `UserDirectory`: `DisplayNames` los lee de su tabla de personas en una sentencia por
+  respuesta, con las condiciones de `UserDirectory.existing` ([ADR-0034](adr/0034-nombres-para-mostrar-desde-la-tabla-de-personas-de-wasichai.md),
+  provisional). `AuthoringNamesApiTest` prueba los nombres, el `null` de quien se deshabilita y que lo ajeno sigue siendo
+  `404`/`403`; `AuthoringCostApiTest`, que la bandeja y el detalle no suman sentencias por persona.
+
+## 2026-11-03 — Generación de HTML y PDF aceptada con una fuente propia ([#264](https://github.com/wasichai/elearning-backend/issues/264), RF-CON-07)
+
+- [ADR-0031](adr/0031-aceptacion-de-la-generacion-con-una-fuente-propia.md): la aceptación de RF-CON-07 deja de pedir una
+  lección importada (la importación no copia el texto de los manuales, ADR-0018 §6) y pide una `fuente_recurso` propia con
+  `include::`, una imagen y una tabla que produzca en la cola HTML y PDF validados, sin generar en la petición.
+- `RenderApiTest` lo prueba con el doble y con Asciidoctor real: HTML saneado con título, texto, tabla e imagen por su
+  texto alternativo, el `include::` (también `/etc/passwd`) como enlace sin leer nada, y un PDF bien formado con la imagen
+  incrustada y el generador real en cada artefacto. CI instala `asciidoctor` 2.0.26 y `asciidoctor-pdf` 2.3.27 con
+  `gem install` y exige la prueba (`LMS_TEST_ASCIIDOCTOR=required`). RF-CON-07 pasa a implementado; el binario en la
+  imagen de despliegue sigue en F6 (RNF-OPS-04).
+
+## 2026-11-03 — Términos de uso con plazo y supresión de datos personales ([#304](https://github.com/wasichai/elearning-backend/issues/304), RNF-SEG-11)
+
+- [ADR-0037](adr/0037-terminos-de-uso-y-supresion-de-datos-personales.md) implementa ADR-0030: términos de uso
+  versionados e inmutables (`lms.terminos_uso`, V15) que publica quien tiene `MANAGE_ORGANIZATION`, y una aceptación por
+  persona con la versión y el plazo que aprobó (`lms.aceptacion_terminos`). `GET`/`POST /api/lms/terms` y
+  `POST`/`DELETE /api/lms/terms/acceptance`. Publicar otra versión no altera las aceptaciones previas.
+- **Sin aceptación vigente, matricularse y registrar progreso dan `403`** con el motivo; el catálogo público sigue
+  abierto. Sin términos publicados nadie se matricula: una organización existente debe publicar los suyos.
+- Al retirar la aceptación o vencer su plazo (barrido cada `lms.privacy.sweep-every`, 1 h), el trabajo `privacy.erase`
+  de la cola suprime eventos, progreso, asistencias, entregas, intentos sin calificar, trabajos y la aceptación, y
+  disocia matrículas, intentos calificados y certificados (seudónimo aleatorio, sin correo, respuestas ni nombre; el
+  código del certificado sigue verificando) y vacía el perfil docente. Una transacción, idempotente, con constancia sin
+  datos personales en `lms.supresion`. Los disparadores de solo inserción ceden solo dentro de esa transacción.
+- `Certificate.holderName` puede ser `null` (titular suprimido). La semilla publica unos términos ficticios y el
+  estudiante demo los acepta antes de matricularse (`terms` en `model/demo/data.json`, validado por `apply.py`).
+- `TermsApiTest` (puerta `403`, catálogo abierto, versiones y permisos) y `PersonalDataErasureApiTest` (supresión por
+  retirada y por vencimiento, lo disociado, la constancia y la idempotencia) lo prueban; `test_demo`, la semilla.
+
+## 2026-11-03 — Paneles del estudiante y del docente en una lectura ([#261](https://github.com/wasichai/elearning-backend/issues/261))
+
+- `GET /api/lms/classroom/panel` y `GET /api/lms/teaching/panel`, paginados con `page` y `size`, devuelven por elemento
+  lo que la interfaz armaba con hasta dos peticiones por matrícula o edición: «Mis cursos» con sus próximas sesiones y sus
+  evaluaciones pendientes; «Mis ediciones» con sus próximas sesiones y los 5 intentos más antiguos de su cola. Sin el
+  tope de 8 ediciones: la interfaz los usará en [front#158](https://github.com/wasichai/elearning-frontend/issues/158).
+- Se leen por lotes: temarios, progreso, intentos, sesiones, asistencia y certificados (estudiante), y versiones, cursos,
+  matrículas, conteo y principio de la cola (docente), en una lectura cada uno. `GET /teaching/offerings` usa el mismo
+  armado y deja de leer cuatro veces por edición. `ClassroomPanelApiTest` y `TeachingPanelApiTest` prueban el contenido,
+  la paginación, el alcance (solo lo propio; solo lo asignado) y que el coste no crece con la página (`StatementCount`).
+
+## 2026-11-03 — Lección de repaso de una pregunta ([#260](https://github.com/wasichai/elearning-backend/issues/260))
+
+- `pregunta` gana `leccion_repaso`, una relación opcional a la lección que la repasa. `EditorialWorkflowGuard` exige que sea
+  de la misma versión (`400` si no) y la congela con lo publicado; la copia de versión la re-apunta a la lección copiada.
+- La copia de las evaluaciones (`lms.contenido_evaluacion`) y la instantánea del intento la guardan: el resultado trae
+  `reviewLessonId` por pregunta, una vez enviado y sin depender de las soluciones (ADR-0019); el intento abierto no la trae.
+  Las instantáneas anteriores la dan como `null`. Las diferencias de versión no comparan evaluaciones: no aplica.
+- `ReviewLessonApiTest` (guarda, inmutabilidad y copia) y `AttemptApiTest` lo comprueban; `test_model`, el campo.
 
 ## 2026-11-03 — Logros derivados en el aula ([#265](https://github.com/wasichai/elearning-backend/issues/265), RF-AUL-08)
 

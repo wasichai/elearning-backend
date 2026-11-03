@@ -185,8 +185,20 @@ class AttemptFacts(
 
     override suspend fun pendingAttempts(
         organization: UUID,
-        offering: UUID,
-    ): Int = attempts.countPending(organization, offering)
+        offerings: Collection<UUID>,
+    ): Map<String, Int> = attempts.countPending(organization, offerings).mapKeys { it.key.toString() }
+
+    override suspend fun enrollmentsLessonAssessments(
+        organization: UUID,
+        enrollments: List<UUID>,
+        lessons: List<UUID>,
+    ): Map<String, Map<String, LessonAssessment>> {
+        if (enrollments.isEmpty()) return emptyMap()
+        val evaluations = content.summaries(organization, lessons)
+        if (evaluations.isEmpty()) return enrollments.associate { it.toString() to emptyMap() }
+        val tries = attempts.linesOfEnrollments(organization, enrollments).groupBy { it.enrollmentId }
+        return enrollments.associate { it.toString() to summarize(evaluations, tries[it].orEmpty()) }
+    }
 
     // el título es el de la evaluación, el mismo que copia la instantánea: lo publicado no cambia
     override suspend fun offeringAssessments(

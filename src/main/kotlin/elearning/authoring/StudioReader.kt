@@ -1,5 +1,6 @@
 package elearning.authoring
 
+import elearning.common.DisplayNames
 import elearning.common.listAll
 import elearning.common.listAllIn
 import elearning.common.listByIds
@@ -17,7 +18,8 @@ import wasichai.core.identity.CurrentUser
 import java.time.Instant
 import java.util.UUID
 
-// el contrato del estudio (docs/api/lms.md, ADR-0018)
+// el contrato del estudio (docs/api/lms.md, ADR-0018). cada id de una persona va con su nombre para mostrar, null si está
+// deshabilitada o se borró (#258, ADR-0034); nunca su correo
 
 data class StudioCourse(
     val id: String,
@@ -31,7 +33,9 @@ data class StudioVersion(
     val status: String,
     val course: StudioCourse,
     val authorId: String?,
+    val authorName: String?,
     val reviewerId: String?,
+    val reviewerName: String?,
     val updatedAt: Instant?,
     val openComments: Int,
 )
@@ -60,7 +64,9 @@ data class StudioVersionDetail(
     val status: String,
     val course: StudioCourse,
     val authorId: String?,
+    val authorName: String?,
     val reviewerId: String?,
+    val reviewerName: String?,
     val updatedAt: Instant?,
     val openComments: Int,
     val units: List<StudioUnit>,
@@ -74,6 +80,7 @@ data class ReviewComment(
     val section: String,
     val text: String,
     val authorId: String?,
+    val authorName: String?,
     val createdAt: Instant?,
     val resolved: Boolean,
 )
@@ -82,6 +89,7 @@ data class ReviewDecision(
     val decision: String,
     val reason: String?,
     val authorId: String,
+    val authorName: String?,
     val at: Instant,
 )
 
@@ -92,6 +100,7 @@ class StudioReader(
     private val currentUser: CurrentUser,
     private val records: RecordService,
     private val decisions: DecisionStore,
+    private val names: DisplayNames,
     private val history: VersionHistory,
     private val transactions: TransactionalOperator,
 ) {
@@ -111,8 +120,9 @@ class StudioReader(
     // el detalle de una versión que quien llama ya puede ver aquí: su temario, sus comentarios, sus decisiones y su
     // historial de estados (ADR-0032). el temario se lee por niveles, no lección a lección (L4 de #216)
     suspend fun detailOf(version: RecordResponse): StudioVersionDetail {
-        val notes = comments(version.id)
-        val s = summary(version, notes)
+        val organization = currentUser.require().organizationId
+        val course = records.get(COURSE, UUID.fromString(version.attributes.ref(COURSE)!!))
+        val notes = comments(listOf(version.id))[version.id].orEmpty()
         val unitRecords = records.listAll(UNIT, mapOf(VERSION to version.id))
         val lessonRecords = records.listAllIn(LESSON, UNIT, unitRecords.map { it.id }).groupBy { it.attributes.ref(UNIT) }
         val lessonIds = lessonRecords.values.flatten().map { it.id }
@@ -139,10 +149,31 @@ class StudioReader(
                         },
                 )
             }
-        val organization = currentUser.require().organizationId
         val decided = decisions.ofVersion(organization, UUID.fromString(version.id))
         val moves = history.ofVersion(organization, UUID.fromString(version.id))
-        return StudioVersionDetail(s.id, s.number, s.status, s.course, s.authorId, s.reviewerId, s.updatedAt, s.openComments, units, notes, decided, moves)
+        // los nombres de la versión, de sus comentarios, de sus decisiones y de su historial, en una sola lectura (#258)
+        val named =
+            names.of(
+                organization,
+                people(version) + notes.map { it.attributes[AUTHOR]?.toString() } + decided.map { it.authorId } + moves.map { it.by },
+            )
+        val s = summaryOf(version, course, notes, named)
+        return StudioVersionDetail(
+            s.id,
+            s.number,
+            s.status,
+            s.course,
+            s.authorId,
+            s.authorName,
+            s.reviewerId,
+            s.reviewerName,
+            s.updatedAt,
+            s.openComments,
+            units,
+            notes.map { comment(it, named) },
+            decided.map { it.copy(authorName = named[it.authorId]) },
+            moves.map { it.copy(byName = it.by?.let { by -> named[by] }) },
+        )
     }
 
     suspend fun submit(id: UUID): StudioVersion {
@@ -169,62 +200,77 @@ class StudioReader(
         return version
     }
 
-    suspend fun summary(
-        version: RecordResponse,
-        known: List<ReviewComment>? = null,
-    ): StudioVersion {
-        val course = records.get(COURSE, UUID.fromString(version.attributes.ref(COURSE)!!))
-        return summaryOf(version, course, known ?: comments(version.id))
-    }
+    suspend fun summary(version: RecordResponse): StudioVersion = summaries(listOf(version)).single()
 
-    // el resumen de varias versiones con sus cursos y sus comentarios leídos de una vez, no por versión (L4 de #216)
+    // el resumen de varias versiones con sus cursos, sus comentarios y los nombres de sus autores y revisores leídos de una
+    // vez, no por versión ni por persona (L4 de #216, #258)
     suspend fun summaries(versions: List<RecordResponse>): List<StudioVersion> {
         if (versions.isEmpty()) return emptyList()
         val courses = records.listByIds(COURSE, versions.mapNotNull { it.attributes.ref(COURSE) }).associateBy { it.id }
         val notes = comments(versions.map { it.id })
+        val named = names.of(currentUser.require().organizationId, versions.flatMap { people(it) })
         return versions.map { version ->
             val course = courses[version.attributes.ref(COURSE)] ?: records.get(COURSE, UUID.fromString(version.attributes.ref(COURSE)!!))
-            summaryOf(version, course, notes[version.id].orEmpty())
+            summaryOf(version, course, notes[version.id].orEmpty(), named)
         }
     }
 
     private fun summaryOf(
         version: RecordResponse,
         course: RecordResponse,
-        notes: List<ReviewComment>,
-    ) = StudioVersion(
-        id = version.id,
-        number = int(version, "numero"),
-        status = version.attributes[STATE].toString(),
-        course = StudioCourse(course.id, course.attributes["codigo"].toString(), course.attributes[TITLE].toString()),
-        authorId = version.attributes[AUTHOR]?.toString(),
-        reviewerId = version.attributes["revisor_id"]?.toString(),
-        updatedAt = version.updatedAt,
-        openComments = notes.count { !it.resolved },
-    )
+        notes: List<RecordResponse>,
+        named: Map<String, String>,
+    ): StudioVersion {
+        val author = version.attributes[AUTHOR]?.toString()
+        val reviewer = version.attributes[REVIEWER]?.toString()
+        return StudioVersion(
+            id = version.id,
+            number = int(version, "numero"),
+            status = version.attributes[STATE].toString(),
+            course = StudioCourse(course.id, course.attributes["codigo"].toString(), course.attributes[TITLE].toString()),
+            authorId = author,
+            authorName = author?.let { named[it] },
+            reviewerId = reviewer,
+            reviewerName = reviewer?.let { named[it] },
+            updatedAt = version.updatedAt,
+            openComments = notes.count { !resolved(it) },
+        )
+    }
 
-    // los comentarios de una versión, en el orden en que se hicieron. quien no los puede leer no ve ninguno
-    suspend fun comments(version: String): List<ReviewComment> = comments(listOf(version))[version].orEmpty()
+    private fun people(version: RecordResponse) = listOf(version.attributes[AUTHOR]?.toString(), version.attributes[REVIEWER]?.toString())
 
-    private suspend fun comments(versions: List<String>): Map<String, List<ReviewComment>> =
+    // los comentarios de cada versión, en el orden en que se hicieron. quien no los puede leer no ve ninguno
+    private suspend fun comments(versions: List<String>): Map<String, List<RecordResponse>> =
         try {
             records
                 .listAllIn(COMMENT, VERSION, versions)
                 .groupBy { it.attributes.ref(VERSION).orEmpty() }
-                .mapValues { (_, notes) -> notes.map { comment(it) }.sortedBy { it.createdAt } }
+                .mapValues { (_, notes) -> notes.sortedBy { it.createdAt } }
         } catch (_: ForbiddenException) {
             emptyMap()
         }
 
-    fun comment(record: RecordResponse) =
-        ReviewComment(
+    // un comentario recién escrito o resuelto, con el nombre de quien lo escribió
+    suspend fun comment(record: RecordResponse): ReviewComment =
+        comment(record, names.of(currentUser.require().organizationId, listOf(record.attributes[AUTHOR]?.toString())))
+
+    private fun comment(
+        record: RecordResponse,
+        named: Map<String, String>,
+    ): ReviewComment {
+        val author = record.attributes[AUTHOR]?.toString()
+        return ReviewComment(
             id = record.id,
             section = record.attributes["seccion"].toString(),
             text = record.attributes["texto"].toString(),
-            authorId = record.attributes[AUTHOR]?.toString(),
+            authorId = author,
+            authorName = author?.let { named[it] },
             createdAt = record.createdAt,
-            resolved = record.attributes["resuelto"]?.toString() == "true",
+            resolved = resolved(record),
         )
+    }
+
+    private fun resolved(record: RecordResponse) = record.attributes["resuelto"]?.toString() == "true"
 
     private fun int(
         record: RecordResponse,
@@ -240,6 +286,7 @@ class StudioReader(
         const val EVALUATION = "evaluacion"
         const val COMMENT = "comentario_revision"
         const val AUTHOR = "autor_id"
+        const val REVIEWER = "revisor_id"
         const val STATE = "estado"
         const val ORDER = "orden"
         const val TITLE = "titulo"
