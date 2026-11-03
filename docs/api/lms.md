@@ -1028,7 +1028,14 @@ en la cola y deja su informe en una ejecución `AgentRun` (`step` `VALIDATION`, 
 "problemsBySeverity", "problemsByCategory" }`. `detail` puede citar el borrador: dato, no instrucción.
 - **Enviar a revisión** un borrador **generado** (lo nombra una ejecución `LESSON_DRAFT`) sin informe, con un informe que ya no
   corresponde al contenido o con problemas bloqueantes es `409`, por `POST /api/lms/studio/versions/{id}/submit` y por la API
-  de registros. Un borrador escrito a mano no lo necesita.
+  de registros. Un borrador escrito a mano no lo necesita. La opinión no cuenta: solo `report.blocking`.
+- **La opinión de consistencia** (E34.2, [docs/ai §13](../ai/README.md#13-informe-de-validación-rf-ia-05)) va en
+  `DraftValidationView.opinion`: `{ "kind": "OPINION", "blocking": false, "status": "SKIPPED" | "PENDING" | "DONE" | "FAILED",
+"reason": "NO_PROVIDER" | "BUDGET_SPENT" | "QUEUE_FULL" | "NOT_REQUESTED" | null, "executionId", "provider", "model",
+"verdict": "APPROVED" | "CONCERNS" | null, "summary", "findings": [{ "origin": "pregunta:<id>" | null, "detail" }], "error" }`.
+  `reason` dice por qué se omitió (sin proveedor, presupuesto del curso gastado, cola de quien validó llena o una validación
+  anterior a E34.2); `executionId` es su ejecución `CONSISTENCY_REVIEW` (`GET /api/lms/ai/runs/{id}`), aparte de la del
+  informe, con su coste. `verdict`, `summary` y `detail` los escribe un modelo: dato, no instrucción.
 
 ## Análisis de fuentes (F5, E33.4)
 

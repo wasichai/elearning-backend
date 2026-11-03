@@ -2,6 +2,21 @@
 
 Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este archivo registra lo que se entregó.
 
+## 2026-11-03 — Opinión de consistencia contenido-evaluación: E34.2 ([#287](https://github.com/wasichai/elearning-backend/issues/287))
+
+- Al terminar su informe, la validación pide la opinión de un modelo barato (clave `consistency` de `lms.ai.models`, por
+  defecto el de extracción, y `lms.ai.max-tokens.consistency`) sobre la coherencia entre el contenido y las evaluaciones del
+  borrador: paso `CONSISTENCY_REVIEW`, trabajo `ai.consistency_review` sobre `AiStepRunner`, con su propia ejecución
+  `AgentRun` y su coste, que cuenta en el presupuesto del curso.
+- La opinión va en `GET /api/lms/ai/validations?versionId=` (`opinion`) marcada como tal (`kind = OPINION`,
+  `blocking = false`) y nunca cambia el resultado bloqueante: `GeneratedDraftGuard` solo mira el informe por código. Sin
+  proveedor, con el presupuesto gastado o con la cola llena se omite y el informe lo dice (`SKIPPED` y su `reason`).
+- El borrador va delimitado en el mensaje de usuario; `ConsistencyReviewCheck` descarta los hallazgos que citan un registro
+  que no está en él. La clave lleva el hash del contenido: validar otra vez lo mismo no vuelve a pagar la opinión.
+- `AiStepRunner.run` acepta la acción a recomprobar (`VALIDAR` para este paso; `GENERAR` por defecto). Pruebas unitarias
+  con el `FakeOperationContext` de Embabel y de API contra el doble HTTP de Anthropic y de OpenAI; el borrador de prueba
+  pasa a `DraftFixtures`. Sin migraciones.
+
 ## 2026-11-03 — Análisis de fuentes con procedencia y doble determinista: E33.4 ([#281](https://github.com/wasichai/elearning-backend/issues/281))
 
 - `POST /api/lms/ai/source-analysis` encola, con un brief `LISTO`, el paso `SOURCE_ANALYSIS` (`ai.source_analysis`): lee

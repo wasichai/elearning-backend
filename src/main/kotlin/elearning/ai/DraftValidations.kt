@@ -37,7 +37,8 @@ data class ValidationJob(
     val finishedAt: Instant?,
 )
 
-// el último informe de una versión: current dice si sigue correspondiendo al contenido (el mismo hash)
+// el último informe de una versión: current dice si sigue correspondiendo al contenido (el mismo hash). opinion: la de
+// consistencia contenido-evaluación de un modelo (E34.2), marcada como tal; nunca cambia report.blocking
 data class DraftValidationView(
     val executionId: UUID,
     val versionId: UUID,
@@ -45,6 +46,7 @@ data class DraftValidationView(
     val validatedAt: Instant?,
     val current: Boolean,
     val report: JsonNode,
+    val opinion: OpinionView,
 )
 
 // lo que la cola guarda: quién la pidió y de qué versión
@@ -73,6 +75,7 @@ class DraftValidations(
     private val store: DraftValidationStore,
     private val executions: AgentExecutionStore,
     private val snapshots: DraftSnapshots,
+    private val opinions: ConsistencyReviews,
 ) {
     suspend fun start(request: ValidationRequest): ValidationJob {
         val user = permissions.requireToEnqueue(AiAction.VALIDAR)
@@ -108,7 +111,8 @@ class DraftValidations(
                 ?: throw NotFoundException("This version has no validation report")
         val report = run.validations ?: throw NotFoundException("This version has no validation report")
         val current = report.path("contentHash").asString() == DraftValidator.hash(snapshots.of(version))
-        return DraftValidationView(run.id, versionId, run.requestedBy, run.finishedAt, current, report)
+        val opinion = opinions.view(user.organizationId, run.output?.get(OPINION))
+        return DraftValidationView(run.id, versionId, run.requestedBy, run.finishedAt, current, report, opinion)
     }
 
     // una versión que quien llama no ve no existe (404)
@@ -140,6 +144,9 @@ class DraftValidations(
         const val REVIEWER = "revisor_id"
         const val STATE = "estado"
         const val DRAFT = "BORRADOR"
+
+        // dónde deja la validación, en su salida, lo que pidió de la opinión (OpinionRequest)
+        const val OPINION = "consistencyReview"
         private const val JOB_NOT_FOUND = "Validation not found"
         private const val VERSION_NOT_FOUND = "Version not found"
         internal val MAPPER = AgentExecutionStore.MAPPER
@@ -149,13 +156,15 @@ class DraftValidations(
 // la validación como trabajo de la cola: vuelve a mirar VALIDAR con los roles guardados de quien la pidió (ADR-0022), lee
 // el borrador como la plataforma, lo valida y deja el informe en una ejecución AgentRun (paso VALIDATION, generator
 // DETERMINISTIC, sin modelo ni coste) con la versión en version_curso_id. Una validación con problemas bloqueantes también
-// termina SUCCEEDED: lo que falla es el borrador, no la validación
+// termina SUCCEEDED: lo que falla es el borrador, no la validación. Después pide la opinión de consistencia (E34.2), que es
+// otro trabajo con su propia ejecución, o deja dicho por qué se omite; lo que pidió queda en output.consistencyReview
 @Component
 class DraftValidationJobHandler(
     private val permissions: AiPermissions,
     private val records: RecordService,
     private val snapshots: DraftSnapshots,
     private val log: AgentExecutionLog,
+    private val opinions: ConsistencyReviews,
 ) : JobHandler {
     override val type = DraftValidations.JOB_TYPE
 
@@ -191,7 +200,14 @@ class DraftValidationJobHandler(
                     attempt = job.attempt,
                 ),
             )
-        val summary = mapOf("blocking" to report.blocking, "problemCount" to report.problemCount, "problemsBySeverity" to report.problemsBySeverity)
+        val opinion = opinions.request(job.organizationId, payload.requester, payload.courseId, payload.versionId, report.contentHash)
+        val summary =
+            mapOf(
+                "blocking" to report.blocking,
+                "problemCount" to report.problemCount,
+                "problemsBySeverity" to report.problemsBySeverity,
+                DraftValidations.OPINION to opinion,
+            )
         log.finish(job.organizationId, run, AgentExecutionOutcome(AgentExecutionStatus.SUCCEEDED, output = summary, validations = report))
         return DraftValidations.MAPPER.writeValueAsString(ValidationOutcome(run))
     }

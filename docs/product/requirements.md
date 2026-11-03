@@ -340,8 +340,9 @@ el cuándo, en [`roadmap.md`](roadmap.md).
   _Aceptación:_ un borrador con defectos sembrados no llega a la bandeja sin su informe.
   _Avance:_ validación por código e informe en `AgentRun` (E34.1, [#286](https://github.com/wasichai/elearning-backend/issues/286)):
   `DraftValidator` y `POST /api/lms/ai/validations` (`VALIDAR`); `GeneratedDraftGuard` da `409` al enviar a revisión un
-  borrador generado sin informe vigente o con problemas bloqueantes. Falta el paso que genera borradores (#283) y la opinión
-  de consistencia (#287).
+  borrador generado sin informe vigente o con problemas bloqueantes. La opinión de consistencia de un modelo barato
+  (E34.2, [#287](https://github.com/wasichai/elearning-backend/issues/287)) va al informe marcada como opinión y no bloquea.
+  Falta el paso que genera borradores (#283).
 - **RF-IA-06** · F5 · planificado — Los agentes no publican, no ejecutan código ni leen archivos arbitrarios; el texto
   de las fuentes es dato no confiable.
   _Aceptación:_ prueba con una fuente que contiene instrucciones inyectadas: no cambia herramientas, permisos ni

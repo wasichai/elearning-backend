@@ -163,6 +163,8 @@ lms:
         review: ${LMS_AI_ANTHROPIC_MODEL_REVIEW:claude-sonnet-5-5}
         # referencia en la comparación de modelos (RF-IA-09)
         reference: ${LMS_AI_ANTHROPIC_MODEL_REFERENCE:claude-opus-5-5}
+        # la opinión de consistencia contenido-evaluación (E34.2): un modelo barato, el de extracción
+        consistency: ${LMS_AI_ANTHROPIC_MODEL_CONSISTENCY:claude-haiku-5-5}
       openai:
         default: ${LMS_AI_OPENAI_MODEL_DEFAULT:gpt-6.1-sol}
         extraction: ${LMS_AI_OPENAI_MODEL_EXTRACTION:gpt-6-luna}
@@ -171,9 +173,11 @@ lms:
         script: ${LMS_AI_OPENAI_MODEL_SCRIPT:gpt-6.1-sol}
         review: ${LMS_AI_OPENAI_MODEL_REVIEW:gpt-6.1-sol}
         reference: ${LMS_AI_OPENAI_MODEL_REFERENCE:gpt-6-astra}
+        consistency: ${LMS_AI_OPENAI_MODEL_CONSISTENCY:gpt-6-luna}
     # max_tokens de cada paso, por la clave de su modelo (§9); siempre se envía al proveedor
     max-tokens:
       extraction: ${LMS_AI_MAX_TOKENS_EXTRACTION:8000}
+      consistency: ${LMS_AI_MAX_TOKENS_CONSISTENCY:2000}
     # límites de los pasos de IA (ADR-0033 §9): pasos pendientes o en curso por organización y presupuesto por curso (la
     # suma del coste de sus ejecuciones en currency, con lms.ai.rates; vacío: sin tope). superarlos al encolar es 429 con
     # Retry-After; agotado el presupuesto, el paso que ya estaba en cola falla sin reintento

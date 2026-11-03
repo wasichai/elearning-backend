@@ -33,7 +33,8 @@ que es lógica determinista del módulo `elearning.ai` o de `authoring`; «perso
 6. **Validaciones automáticas** — _código_: estructura, referencias, enlaces, recursos, duplicidad (hashes),
    accesibilidad y metadatos → `ValidationReport`. _Embabel_ solo aporta una **opinión** sobre la coherencia
    contenido-evaluación, que nunca aprueba ni bloquea por sí sola. La parte de código está implementada en E34.1
-   ([#286](https://github.com/wasichai/elearning-backend/issues/286)): ver §13.
+   ([#286](https://github.com/wasichai/elearning-backend/issues/286)) y la opinión en E34.2
+   ([#287](https://github.com/wasichai/elearning-backend/issues/287)): ver §13.
 7. **Revisión humana** — aprobar, pedir cambios, comentar fragmentos, rechazar. _Persona_ (REVISOR asignado) →
    `ContentReview` y `ReviewComment` ligados a la versión, en la bandeja del revisor.
 8. **Correcciones** — _persona_ (CREADOR), con ayuda opcional de Embabel → nueva versión. No borra versiones anteriores
@@ -419,3 +420,29 @@ plataforma y no se edita, así que el autor no puede quitárselo a su borrador. 
 registros) responde `409` al llevar un borrador generado de `BORRADOR` a `EN_REVISION` si no tiene informe, si el último no
 corresponde al contenido actual (otro `contentHash`: se editó después de validarlo) o si tiene problemas bloqueantes. Los
 avisos no bloquean. Un borrador escrito a mano no pasa por aquí. Índices de la búsqueda por versión: `V23`.
+
+**Opinión de consistencia** (E34.2, [#287](https://github.com/wasichai/elearning-backend/issues/287)). Al terminar su
+informe, la validación pide la opinión de un modelo sobre la coherencia contenido-evaluación: si cada pregunta se responde
+con lo que enseñan su unidad y sus lecciones, si las opciones correctas lo son según ese contenido y si las evaluaciones
+comprueban sus objetivos. Es el paso `CONSISTENCY_REVIEW` (trabajo `ai.consistency_review`, `ConsistencyReviewJobHandler`
+sobre `AiStepRunner`), con el patrón de §5:
+
+- **Modelo barato y configurable**: la clave `consistency` de `lms.ai.models` (por defecto el de extracción,
+  `claude-haiku-5-5` · `gpt-6-luna`, en lugar del de la tabla propuesta en ADR-0033 §3: lo pide el issue) y
+  `lms.ai.max-tokens.consistency` (2000). Instrucciones y plantilla `consistency-review@1`.
+- **Una opinión, nunca un resultado**: su salida (`ConsistencyOpinion`) lleva `kind = OPINION` y `blocking = false`, y
+  `GeneratedDraftGuard` solo mira el informe de `DraftValidator`. Un «APPROVED» sobre un borrador con errores bloqueantes no
+  lo deja entrar en revisión; un «CONCERNS» sobre uno limpio no se lo impide.
+- **Independiente**: otro trabajo y otra ejecución `AgentRun` (`MODEL`, con la versión en `version_curso_id`), que cuenta en
+  el gasto del curso y en su presupuesto (`lms.ai.limits.course-budget`). Su fallo o una salida inválida (`INVALID_OUTPUT`)
+  no cambian el informe. La pide quien validó: `AiStepRunner` recomprueba `VALIDAR`, no `GENERAR`.
+- **Se omite y el informe lo dice** (`opinion.status = SKIPPED` con su `reason`): sin proveedor (`NO_PROVIDER`; no hay doble
+  determinista, una opinión sin modelo no aporta nada), con el presupuesto del curso gastado (`BUDGET_SPENT`) o con la cola
+  de quien validó llena (`QUEUE_FULL`). Lo que pidió la validación queda en `output.consistencyReview` de su ejecución.
+- **Idempotente por contenido**: la clave lleva el `contentHash` del informe; validar otra vez lo mismo reutiliza la opinión
+  sin llamar al proveedor. El trabajo lee el borrador como la plataforma y, si cambió desde que se validó (otro hash), falla
+  sin llamar.
+- **Dato no confiable**: el borrador va como JSON, delimitado por un marcador que sale de su hash, en el mensaje de usuario y
+  nunca en las instrucciones de sistema. Cada registro lleva su `origin` (`objeto:id`); `ConsistencyReviewCheck` descarta,
+  con su motivo en `validations`, el hallazgo vacío (`BLANK`) o que cita un registro que no está en el borrador
+  (`UNKNOWN_ORIGIN`). Sin resumen o con más de 50 hallazgos, `INVALID_OUTPUT`.

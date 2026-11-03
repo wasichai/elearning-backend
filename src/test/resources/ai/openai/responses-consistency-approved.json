@@ -1,0 +1,33 @@
+{
+  "id": "resp_double_consistency-approved",
+  "object": "response",
+  "created_at": 1793700000,
+  "status": "completed",
+  "model": "gpt-6-luna",
+  "output": [
+    {
+      "type": "message",
+      "id": "msg_double_consistency-approved",
+      "status": "completed",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "output_text",
+          "text": "{\"verdict\": \"APPROVED\", \"summary\": \"Las preguntas se responden con lo que enseñan las lecciones.\", \"findings\": [{\"origin\": \"pregunta:00000000-0000-0000-0000-000000000000\", \"detail\": \"Una pregunta que el borrador no tiene.\"}]}",
+          "annotations": []
+        }
+      ]
+    }
+  ],
+  "usage": {
+    "input_tokens": 850,
+    "input_tokens_details": {
+      "cached_tokens": 0
+    },
+    "output_tokens": 110,
+    "output_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "total_tokens": 960
+  }
+}

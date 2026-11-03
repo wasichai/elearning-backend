@@ -10,7 +10,6 @@ import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
 import tools.jackson.databind.JsonNode
-import wasichai.core.data.RecordRequest
 import java.util.UUID
 
 // RF-IA-05 (E34.1): la validación por código de un borrador. La lanza quien tiene VALIDAR y no es su autor; corre en la
@@ -23,9 +22,6 @@ class DraftValidationApiTest : ClassroomApiTestSupport() {
 
     @Autowired
     private lateinit var log: AgentExecutionLog
-
-    private val sha = "c".repeat(40)
-    private val trace = "wasichai/manual@$sha:capitulo.adoc#intro"
 
     private fun account(vararg roles: String): String {
         val email = "${uniqueName("val")}@demo.wasichai-learning.test"
@@ -40,170 +36,13 @@ class DraftValidationApiTest : ClassroomApiTestSupport() {
         return bearer(email, DEMO_PASSWORD)
     }
 
-    private class Draft(
-        val course: String,
-        val version: String,
-        val lesson: String,
-    )
+    private val fixtures by lazy { DraftFixtures(records, log) }
 
-    // un borrador de un curso nuevo escrito por author, como lo dejaría la plataforma. defective: un defecto por categoría
     private fun draft(
         author: String,
         defective: Boolean = false,
         generated: Boolean = true,
-    ): Draft {
-        val authorId = userId(author)
-        val draft =
-            runBlocking {
-                records.asPlatform(ORG) {
-                    val code = uniqueName("VAL-").uppercase()
-                    val course =
-                        records.create(
-                            "curso",
-                            RecordRequest(
-                                mapOf(
-                                    "codigo" to code,
-                                    "slug" to code.lowercase(),
-                                    "titulo" to "Curso generado",
-                                    "idioma" to "es",
-                                    "nivel" to "INICIAL",
-                                ),
-                            ),
-                        )
-                    val outcomes =
-                        if (defective) {
-                            emptyMap()
-                        } else {
-                            mapOf("objetivos" to "Usar el padrón", "resultados_aprendizaje" to "Consulta el padrón", "sistema_evaluacion" to "Una evaluación")
-                        }
-                    val version =
-                        records.create(
-                            "version_curso",
-                            RecordRequest(
-                                mapOf(
-                                    "curso" to course.id,
-                                    "numero" to 1,
-                                    "estado" to "BORRADOR",
-                                    "modalidad" to "ASINCRONA",
-                                    "semanas" to 1,
-                                    "sistema_credito" to "NINGUNO",
-                                    "contenido_ilustrativo" to true,
-                                    "autor_id" to authorId,
-                                    "fuentes" to "wasichai/manual@$sha:manual.adoc",
-                                ) + outcomes,
-                            ),
-                        )
-                    val unit =
-                        records.create(
-                            "unidad",
-                            RecordRequest(
-                                mapOf(
-                                    "version_curso" to version.id,
-                                    "orden" to 1,
-                                    "titulo" to "Unidad 1",
-                                    "objetivos" to "Explicar el padrón",
-                                    "referencia_fuente" to trace,
-                                ) +
-                                    (if (defective) emptyMap() else mapOf("horas_estimadas" to 2)),
-                            ),
-                        )
-                    val summary =
-                        if (defective) {
-                            "= Padrón\n\n=== Detalle\n\nimage::flujo.png[]\n\nVer http://docs.example.org/guia"
-                        } else {
-                            "== Padrón\n\n=== Detalle\n\nimage::flujo.png[Flujo de la consulta]\n\nVer https://docs.example.org/guia"
-                        }
-                    val lesson =
-                        records.create(
-                            "leccion",
-                            RecordRequest(
-                                mapOf(
-                                    "unidad" to unit.id,
-                                    "orden" to 1,
-                                    "titulo" to "Lección 1",
-                                    "tipo" to "EVALUACION",
-                                    "duracion_minutos" to 30,
-                                    "resumen" to summary,
-                                    "referencia_fuente" to trace,
-                                ),
-                            ),
-                        )
-                    if (defective) {
-                        records.create(
-                            "leccion",
-                            RecordRequest(
-                                mapOf(
-                                    "unidad" to unit.id,
-                                    "orden" to 2,
-                                    "titulo" to "Lección 2",
-                                    "tipo" to "LECTURA",
-                                    "duracion_minutos" to 30,
-                                    "resumen" to summary,
-                                    "referencia_fuente" to "no es una traza",
-                                ),
-                            ),
-                        )
-                    }
-                    val evaluation =
-                        records.create(
-                            "evaluacion",
-                            RecordRequest(
-                                mapOf(
-                                    "leccion" to lesson.id,
-                                    "titulo" to "Evaluación",
-                                    "intentos_max" to 2,
-                                    "nota_minima" to 60,
-                                    "mostrar_soluciones" to "AL_ENVIAR",
-                                ),
-                            ),
-                        )
-                    val question =
-                        records.create(
-                            "pregunta",
-                            RecordRequest(
-                                mapOf(
-                                    "evaluacion" to evaluation.id,
-                                    "orden" to 1,
-                                    "tipo" to "UNICA",
-                                    "enunciado" to "¿Qué es el padrón?",
-                                    "puntos" to 2,
-                                ),
-                            ),
-                        )
-                    records.create("opcion", RecordRequest(mapOf("pregunta" to question.id, "orden" to 1, "texto" to "Un registro", "correcta" to !defective)))
-                    records.create("opcion", RecordRequest(mapOf("pregunta" to question.id, "orden" to 2, "texto" to "Otra cosa", "correcta" to false)))
-                    Draft(course.id, version.id, lesson.id)
-                }
-            }
-        if (generated) seedGenerated(draft, UUID.fromString(authorId))
-        return draft
-    }
-
-    // el vínculo que dejará el paso de borrador (#283): una ejecución LESSON_DRAFT que nombra la versión en su salida
-    private fun seedGenerated(
-        draft: Draft,
-        author: UUID,
-    ) = runBlocking {
-        val run =
-            log.start(
-                NewAgentExecution(
-                    organizationId = ORG,
-                    jobId = UUID.randomUUID(),
-                    step = AgentStep.LESSON_DRAFT,
-                    requestedBy = author,
-                    courseId = UUID.fromString(draft.course),
-                    objective = "Redactar el borrador",
-                    inputs = mapOf("brief" to "padrón"),
-                    generator = Generator.DETERMINISTIC,
-                    model = null,
-                    promptVersion = "test",
-                    templateVersion = "test",
-                    idempotencyKey = UUID.randomUUID().toString(),
-                    attempt = 1,
-                ),
-            )
-        log.finish(ORG, run, AgentExecutionOutcome(AgentExecutionStatus.SUCCEEDED, output = mapOf("versionId" to draft.version)))
-    }
+    ) = fixtures.draft(uniqueName("VAL-").uppercase(), userId(author), defective, generated)
 
     private fun drain() =
         runBlocking {
@@ -303,6 +142,14 @@ class DraftValidationApiTest : ClassroomApiTestSupport() {
         }
         assertTrue(body["problemsBySeverity"]["BLOCKING"].asInt() > 0)
 
+        // sin proveedor, la opinión de consistencia (E34.2) se omite y el informe lo dice; no hay ningún paso de IA más
+        val opinion = view["opinion"]
+        assertEquals("OPINION", opinion["kind"].asString(), opinion.toString())
+        assertFalse(opinion["blocking"].asBoolean())
+        assertEquals("SKIPPED", opinion["status"].asString())
+        assertEquals("NO_PROVIDER", opinion["reason"].asString())
+        assertTrue(opinion["verdict"].isNull, opinion.toString())
+
         // con errores bloqueantes, tampoco por la API de registros
         assertEquals(HttpStatus.CONFLICT, submit(author, draft.version).first)
         assertEquals(HttpStatus.CONFLICT.value(), patch(author, "version_curso", draft.version, mapOf("estado" to "EN_REVISION")))
@@ -314,6 +161,9 @@ class DraftValidationApiTest : ClassroomApiTestSupport() {
         assertEquals("SUCCEEDED", run["status"].asString())
         assertEquals(draft.version, run["versionId"].asString())
         assertEquals(body["contentHash"].asString(), run["validations"]["contentHash"].asString())
+        assertEquals("SKIPPED", run["output"]["consistencyReview"]["status"].asString())
+        val steps = ok(call(reviewer, "/api/lms/ai/runs?courseId=${draft.course}")).values().map { it["step"].asString() }
+        assertFalse("CONSISTENCY_REVIEW" in steps, steps.toString())
     }
 
     @Test
