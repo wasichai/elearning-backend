@@ -151,6 +151,14 @@ class AiStatusTest {
         // la moneda del presupuesto manda
         rated.setProperty("lms.ai.limits.currency", "EUR")
         assertThatThrownBy { AiStatus.verified(rated, registered, day) }.hasMessageContaining("has no rate in EUR")
+
+        // el presupuesto de la organización (#368) pide lo mismo: sin tarifa, su coste tampoco sumaría
+        val unrated = environment(*base, "lms.ai.limits.organization-budget" to "100", *rate(0, "claude-haiku-5-5"))
+        assertThatThrownBy { AiStatus.verified(unrated, registered, day) }
+            .isInstanceOf(IllegalStateException::class.java)
+            .hasMessageContaining("lms.ai.limits.organization-budget is set, but anthropic 'claude-sonnet-5-5' has no rate in USD on 2026-11-03")
+        val organization = environment(*base, "lms.ai.limits.organization-budget" to "100", *rate(0, "claude-haiku-5-5"), *rate(1, "claude-sonnet-5-5"))
+        assertThat(AiStatus.verified(organization, registered, day).available).isTrue()
     }
 
     @Test

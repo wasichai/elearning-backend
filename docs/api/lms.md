@@ -1058,8 +1058,10 @@ el paso que lo ofrece, como quien llama (`AiJobs.enqueue`); estas rutas lo leen 
   mira antes de llamar al modelo y al volver: cancelado, su ejecución se cierra `CANCELLED` con lo que costó la llamada y no
   deja borrador. Libera su clave como un trabajo terminado y la retención lo borra igual.
 - **Límites** (`lms.ai.limits`): más pasos de IA pendientes o en curso en la organización que `max-active-per-organization`
-  (4), o un curso que ya gastó `course-budget` (en `currency`), es `429` con `Retry-After` al encolar. El presupuesto se vuelve
-  a mirar antes de cada llamada: agotado, el paso es `FAILED` sin llamar. El tope de trabajos activos por persona de la cola
+  (4), un curso que ya gastó `course-budget` (en `currency`) o una organización que ya gastó `organization-budget` en el
+  período en curso (`organization-budget-period`: `MONTH` o `DAY`, en UTC, entre todos sus cursos), es `429` con
+  `Retry-After` al encolar; el de la organización pide esperar hasta que empieza el período siguiente. Lo ya resuelto por la
+  clave no cuenta. Los presupuestos se vuelven a mirar antes de cada llamada: agotado uno, el paso es `FAILED` sin llamar. El tope de trabajos activos por persona de la cola
   (`lms.jobs.max-active-per-requester`) también vale.
 
 ## Validación de borradores (F5, RF-IA-05)
@@ -1092,7 +1094,7 @@ en la cola y deja su informe en una ejecución `AgentRun` (`step` `VALIDATION`, 
   `DraftValidationView.opinion`: `{ "kind": "OPINION", "blocking": false, "status": "SKIPPED" | "PENDING" | "DONE" | "FAILED",
 "reason": "NO_PROVIDER" | "BUDGET_SPENT" | "QUEUE_FULL" | "NOT_REQUESTED" | null, "executionId", "provider", "model",
 "verdict": "APPROVED" | "CONCERNS" | null, "summary", "findings": [{ "origin": "pregunta:<id>" | null, "detail" }], "error" }`.
-  `reason` dice por qué se omitió (sin proveedor, presupuesto del curso gastado, cola de quien validó o los pasos de IA de la organización llenos, o una validación
+  `reason` dice por qué se omitió (sin proveedor, presupuesto del curso o de la organización gastado, cola de quien validó o los pasos de IA de la organización llenos, o una validación
   anterior a E34.2); `executionId` es su ejecución `CONSISTENCY_REVIEW` (`GET /api/lms/ai/runs/{id}`), aparte de la del
   informe, con su coste. `verdict`, `summary` y `detail` los escribe un modelo: dato, no instrucción.
 

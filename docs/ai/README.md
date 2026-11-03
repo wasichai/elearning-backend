@@ -185,10 +185,14 @@ no una tabla nueva:
 - **Reintentos controlados**: un solo nivel. Embabel reintenta 1–2 veces; la cola reintenta 429 y 5xx con espera
   creciente y tope; 400, 401, esquema inválido y presupuesto agotado son fallo permanente (`PermanentJobFailure`).
 - **Cancelación**: la cola gana el estado `CANCELLED`, comprobado entre llamadas al modelo; no deja borrador.
-- **Límites**: `max_tokens` por paso, concurrencia por organización y presupuesto por curso; superar los dos últimos al
-  encolar es `429` con `Retry-After`. Un paso es una llamada, más los reintentos de corrección acotados. Con presupuesto,
-  el modelo de cada paso necesita su tarifa vigente en la moneda del presupuesto (`lms.ai.rates`) o la aplicación no
-  arranca: sin tarifa su coste sería `null` y no sumaría (#302).
+- **Límites**: `max_tokens` por paso, concurrencia por organización, presupuesto por curso y presupuesto de la
+  organización por período (`organization-budget`, mensual o diario en UTC, entre todos sus cursos, #368: sin él, quien
+  crea cursos estrena presupuesto con cada uno); superar cualquiera de los tres últimos al encolar es `429` con
+  `Retry-After` (el de la organización, hasta que empieza el período siguiente) y, ya en cola, el paso falla sin reintento.
+  Una ejecución cuenta en el período en que empezó; lo ya resuelto por su clave no cuenta ni gasta. Cada presupuesto es una
+  consulta (`spent`, `spentSince`, con el índice de V31), ninguna sin presupuesto. Un paso es una llamada, más los
+  reintentos de corrección acotados. Con presupuesto, el modelo de cada paso necesita su tarifa vigente en la moneda del
+  presupuesto (`lms.ai.rates`) o la aplicación no arranca: sin tarifa su coste sería `null` y no sumaría (#302).
 - Corre en un dispatcher acotado, nunca en el event loop de WebFlux.
 
 Implementado en E33.2 ([#279](https://github.com/wasichai/elearning-backend/issues/279)): `AiStepRunner` (`elearning.ai`) es la
@@ -486,7 +490,7 @@ valoraciones (F6) y no se sirve aquí.
 
 `ANTHROPIC_API_KEY` y `OPENAI_API_KEY` (ambas opcionales), sus URL base (`ANTHROPIC_BASE_URL`, `OPENAI_BASE_URL`,
 que tienen precedencia sobre las propiedades), proveedor por defecto, modelo por paso, `max_tokens` por paso,
-concurrencia por organización, presupuesto por curso y tarifas para estimar coste. Lista y valores en [operación](../operations/README.md#variables-de-entorno).
+concurrencia por organización, presupuesto por curso, presupuesto de la organización por período y tarifas para estimar coste. Lista y valores en [operación](../operations/README.md#variables-de-entorno).
 
 ## 12. Remotion (sección 12)
 
@@ -648,10 +652,10 @@ sobre `AiStepRunner`), con el patrón de §5:
   `GeneratedDraftGuard` solo mira el informe de `DraftValidator`. Un «APPROVED» sobre un borrador con errores bloqueantes no
   lo deja entrar en revisión; un «CONCERNS» sobre uno limpio no se lo impide.
 - **Independiente**: otro trabajo y otra ejecución `AgentRun` (`MODEL`, con la versión en `version_curso_id`), que cuenta en
-  el gasto del curso y en su presupuesto (`lms.ai.limits.course-budget`). Su fallo o una salida inválida (`INVALID_OUTPUT`)
+  el gasto del curso y de la organización y en sus presupuestos (`lms.ai.limits.course-budget` y `organization-budget`). Su fallo o una salida inválida (`INVALID_OUTPUT`)
   no cambian el informe. La pide quien validó: `AiStepRunner` recomprueba `VALIDAR`, no `GENERAR`.
 - **Se omite y el informe lo dice** (`opinion.status = SKIPPED` con su `reason`): sin proveedor (`NO_PROVIDER`; no hay doble
-  determinista, una opinión sin modelo no aporta nada), con el presupuesto del curso gastado (`BUDGET_SPENT`) o con la cola
+  determinista, una opinión sin modelo no aporta nada), con el presupuesto del curso o el de la organización en su período gastado (`BUDGET_SPENT`, #368) o con la cola
   de quien validó llena o la organización en su tope de pasos de IA a la vez (`QUEUE_FULL`, #302: validar no elude
   `lms.ai.limits.max-active-per-organization`). Lo que pidió la validación queda en `output.consistencyReview` de su ejecución.
 - **Idempotente por contenido**: la clave lleva el `contentHash` del informe; validar otra vez lo mismo reutiliza la opinión

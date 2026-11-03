@@ -13,6 +13,8 @@ import wasichai.core.common.RetryLaterException
 import wasichai.core.data.RecordService
 import wasichai.core.identity.AuthenticatedUser
 import java.security.MessageDigest
+import java.time.Clock
+import java.time.Duration
 import java.time.Instant
 import java.util.HexFormat
 import java.util.TreeMap
@@ -36,6 +38,12 @@ data class AiStepRequest(
         require(promptVersion.isNotBlank() && templateVersion.isNotBlank()) { "the prompt and template versions must not be blank" }
     }
 }
+
+// un presupuesto de IA gastado (lms.ai.limits): lo que se dice a quien encola y cuánto debe esperar
+data class SpentBudget(
+    val message: String,
+    val retryAfter: Duration,
+)
 
 // los datos del trabajo en lms.trabajo: lo pedido, quién lo pidió y su clave
 data class AiStepPayload(
@@ -77,6 +85,7 @@ class AiJobs(
     private val queue: JobQueue,
     private val store: AgentExecutionStore,
     private val limits: AiLimits,
+    private val clock: Clock,
 ) {
     suspend fun enqueue(request: AiStepRequest): UUID {
         val user = permissions.requireToEnqueue(AiAction.GENERAR)
@@ -90,12 +99,8 @@ class AiJobs(
         // lo ya resuelto no llama al proveedor: no cuenta para los límites
         if (store.succeededWithKey(organization, digest) == null) {
             requireConcurrency(organization)
-            if (budgetExhausted(organization, request.courseId)) {
-                throw RetryLaterException(
-                    "The AI budget of this course is spent: ask an administrator to raise lms.ai.limits.course-budget",
-                    limits.budgetRetryAfter,
-                    status = HttpStatus.TOO_MANY_REQUESTS,
-                )
+            spentBudget(organization, request.courseId)?.let { spent ->
+                throw RetryLaterException(spent.message, spent.retryAfter, status = HttpStatus.TOO_MANY_REQUESTS)
             }
         }
         val payload =
@@ -133,13 +138,39 @@ class AiJobs(
         return view(queue.find(user.organizationId, id) ?: throw NotFoundException("AI job $id not found"))
     }
 
-    // el presupuesto del curso, si hay, está gastado
+    // el presupuesto del curso o el de la organización en su período, si hay, está gastado
     suspend fun budgetExhausted(
         organization: UUID,
         course: UUID,
-    ): Boolean {
-        val budget = limits.courseBudget ?: return false
-        return store.spent(organization, course, limits.currency) >= budget
+    ): Boolean = spentBudget(organization, course) != null
+
+    // el presupuesto gastado, si alguno: primero el del curso, después el de la organización en el período en curso. Una
+    // consulta por presupuesto configurado, ninguna sin presupuestos
+    suspend fun spentBudget(
+        organization: UUID,
+        course: UUID,
+    ): SpentBudget? {
+        limits.courseBudget?.let { budget ->
+            if (store.spent(organization, course, limits.currency) >= budget) {
+                return SpentBudget(
+                    "The AI budget of this course is spent: ask an administrator to raise lms.ai.limits.course-budget",
+                    limits.budgetRetryAfter,
+                )
+            }
+        }
+        limits.organizationBudget?.let { budget ->
+            val now = clock.instant()
+            val period = limits.organizationBudgetPeriod
+            if (store.spentSince(organization, period.start(now), limits.currency) >= budget) {
+                // hasta que empiece el período siguiente, y nunca 0: Retry-After en segundos enteros
+                val wait = Duration.between(now, period.next(now)).withNanos(0).plusSeconds(1)
+                return SpentBudget(
+                    "The AI budget of the organization for this ${period.name.lowercase()} is spent: it is available again at ${period.next(now)}",
+                    wait,
+                )
+            }
+        }
+        return null
     }
 
     // la organización ya tiene lms.ai.limits.max-active-per-organization pasos de IA pendientes o en curso. Lo mira también

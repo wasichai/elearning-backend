@@ -25,7 +25,7 @@ import java.util.UUID
 // - cancelación: se mira antes de llamar y al volver; cancelado, la ejecución se cierra CANCELLED (con lo que costó) y no
 //   hay borrador. El borrador y el cierre del trabajo van en una transacción: si la cancelación llega entre medias, complete
 //   no escribe y el borrador se deshace
-// - límites: el presupuesto del curso se vuelve a mirar antes de cada llamada
+// - límites: los presupuestos del curso y de la organización (lms.ai.limits) se vuelven a mirar antes de cada llamada
 // - lectura: lo que el paso lee antes de llamar (sus fuentes, la salida de un paso anterior) se lee después de todo lo
 //   anterior, así que lo ya resuelto o cancelado no gasta lecturas. Un fallo al leer sale tal cual, sin ejecución: no se
 //   llamó a ningún modelo. Las fuentes leídas, con su hash, son las de la ejecución
@@ -158,7 +158,7 @@ class AiStepRunner(
             log.finish(organization, lost, AgentExecutionOutcome(AgentExecutionStatus.FAILED, error = LOST))
         }
         if (queue.cancelled(job)) throw JobCancelled(job)
-        if (jobs.budgetExhausted(organization, request.courseId)) throw PermanentJobFailure("The AI budget of this course is spent")
+        jobs.spentBudget(organization, request.courseId)?.let { throw PermanentJobFailure(it.message) }
         val input = read(request)
         if (queue.cancelled(job)) throw JobCancelled(job)
         val id = log.start(execution(job, request, input.sources))

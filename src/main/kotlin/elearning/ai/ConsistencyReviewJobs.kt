@@ -16,8 +16,8 @@ import java.util.UUID
 // SKIPPED: no se pidió (reason); PENDING: en la cola; DONE: la opinión está; FAILED: se pidió y no salió
 enum class OpinionStatus { SKIPPED, PENDING, DONE, FAILED }
 
-// por qué se omitió: sin proveedor, con el presupuesto del curso gastado, con la cola de quien validó o los pasos de IA de la
-// organización llenos, o una validación anterior a E34.2
+// por qué se omitió: sin proveedor, con el presupuesto del curso o el de la organización en su período gastado, con la
+// cola de quien validó o los pasos de IA de la organización llenos, o una validación anterior a E34.2
 enum class OpinionSkipReason { NO_PROVIDER, BUDGET_SPENT, QUEUE_FULL, NOT_REQUESTED }
 
 // lo que la validación deja en su salida (output.consistencyReview): si pidió la opinión, con qué trabajo y con qué clave,
@@ -48,10 +48,10 @@ data class OpinionView(
 // pedir y leer la opinión de consistencia de un borrador validado (E34.2). La pide la validación (DraftValidationJobHandler)
 // al terminar su informe, como trabajo ai.consistency_review aparte, con su propia ejecución AgentRun: su fallo no toca el
 // informe ni su resultado. Con el modelo de la clave consistency (uno barato, configurable) y su max_tokens; sin proveedor,
-// con el presupuesto del curso gastado o con la organización en su tope de pasos de IA a la vez (lms.ai.limits, como al
-// encolar cualquier otro paso: la validación no lo elude, revisión de seguridad de la F5, #302) se omite y el informe lo
-// dice. La clave de idempotencia lleva el hash del contenido: validar otra vez lo mismo reutiliza la opinión sin volver a
-// pagarla, y eso no cuenta para el tope
+// con el presupuesto del curso o el de la organización gastado (#368) o con la organización en su tope de pasos de IA a la
+// vez (lms.ai.limits, como al encolar cualquier otro paso: la validación no lo elude, revisión de seguridad de la F5, #302)
+// se omite y el informe lo dice. La clave de idempotencia lleva el hash del contenido: validar otra vez lo mismo reutiliza
+// la opinión sin volver a pagarla, y eso no cuenta ni para los presupuestos ni para el tope
 @Service
 class ConsistencyReviews(
     private val queue: JobQueue,
@@ -67,7 +67,6 @@ class ConsistencyReviews(
         contentHash: String,
     ): OpinionRequest {
         val model = models.choice(MODEL_KEY) ?: return OpinionRequest(OpinionStatus.SKIPPED, OpinionSkipReason.NO_PROVIDER)
-        if (jobs.budgetExhausted(organization, course)) return OpinionRequest(OpinionStatus.SKIPPED, OpinionSkipReason.BUDGET_SPENT)
         val inputs = ConsistencyReviewInputs(version.toString(), contentHash)
         val request =
             AiStepRequest(
@@ -82,9 +81,11 @@ class ConsistencyReviews(
             )
         val key = AiJobs.keyOf(request)
         val type = AiJobs.typeOf(request.step)
-        // lo ya resuelto o ya en la cola no llama otra vez al proveedor: solo un trabajo nuevo cuenta para el tope
-        if (executions.succeededWithKey(organization, key) == null && queue.active(organization, type, key) == null && jobs.concurrencyFull(organization)) {
-            return OpinionRequest(OpinionStatus.SKIPPED, OpinionSkipReason.QUEUE_FULL)
+        // lo ya resuelto o ya en la cola no llama otra vez al proveedor: solo un trabajo nuevo cuenta para los presupuestos (del
+        // curso y de la organización en su período, #368) y para el tope
+        if (executions.succeededWithKey(organization, key) == null && queue.active(organization, type, key) == null) {
+            if (jobs.budgetExhausted(organization, course)) return OpinionRequest(OpinionStatus.SKIPPED, OpinionSkipReason.BUDGET_SPENT)
+            if (jobs.concurrencyFull(organization)) return OpinionRequest(OpinionStatus.SKIPPED, OpinionSkipReason.QUEUE_FULL)
         }
         val payload =
             AiStepPayload(
