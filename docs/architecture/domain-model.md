@@ -362,15 +362,18 @@ solo en una versión `EN_REVISION` y solo quien la revisa; el creador lo lee en 
 `decidida_en`. Se escribe en la misma transacción que la transición de la versión. La revisión asignada es
 `version_curso.revisor_id` (ADR-0018 §2); `revision_contenido` queda sin implementar mientras no haga falta más.
 
-**`ejecucion_agente`** (AgentRun) — F5. `apiOnly`.
-`usuario_id · UUID` · `version_curso · RELATION` · `unidad · RELATION` · `objetivo · TEXT` · `entradas · LONG_TEXT` ·
-`fuentes · LONG_TEXT` · `proveedor · TEXT` · `modelo · TEXT` · `version_instrucciones · TEXT` · `version_plantilla ·
-TEXT` · `resultado · LONG_TEXT · JSON validado` · `validaciones · LONG_TEXT` · `estado · ENUM(EN_COLA, EN_PROCESO,
-COMPLETADA, REQUIERE_CORRECCION, FALLIDA, CANCELADA)` · `error · LONG_TEXT` · `tokens_entrada · INTEGER` ·
-`tokens_salida · INTEGER` · `coste · DECIMAL` · `duracion_ms · INTEGER` · `intentos · INTEGER` ·
-`clave_idempotencia · TEXT · unique`.
-Invariantes: sin secretos en ningún campo [servicio]; repetir con la misma clave no crea otra ejecución [`unique`]; una
-ejecución nunca publica [diseño]. Diseño completo en [docs/ai](../ai/README.md).
+**`lms.ejecucion_agente`** (AgentRun) — F5, tabla fija del esquema `lms` (`ModuleMigration` orden 200), no un Custom
+Object: sus entradas, salida y validaciones son JSON ([ADR-0033](../adr/0033-fase-5-ia.md) §7, ADR-0004).
+`id` · `organizacion_id` · `trabajo_id` (el de `lms.trabajo`) · `paso` · `usuario_id` · `curso_id`, `version_curso_id`,
+`unidad_id` · `objetivo` · `entradas · jsonb` · `fuentes · jsonb · referencias y hashes` · `proveedor` · `modelo` ·
+`parametros · jsonb` · `version_instrucciones` · `version_plantilla` · `resultado · jsonb · validado` ·
+`validaciones · jsonb` · `estado · PENDING | RUNNING | SUCCEEDED | INVALID_OUTPUT | FAILED | CANCELLED` · `error` ·
+`tokens_entrada` · `tokens_salida` · `coste`, `tarifa`, `tarifa_fecha` · `iniciada_en`, `terminada_en` ·
+`intervenciones · jsonb` · `clave_idempotencia` · `intento` · `generador · MODEL | DETERMINISTIC`. Nombres de columna
+definitivos en la migración (E32.4); los campos son los de [docs/ai §4](../ai/README.md#4-registro-agentrun).
+Invariantes: sin secretos en ningún campo [servicio]; repetir con la misma clave no crea otra ejecución [cola]; una
+ejecución nunca publica [diseño]; no se edita salvo su cierre y las intervenciones, que se añaden, y no se purga con los
+trabajos [servicio]. Se lee por `/api/lms/ai/**` con el alcance del curso.
 
 **`artefacto_generado`** (GeneratedArtifact) — F4 (HTML/PDF, implementado) · F5 (vídeo). `appendOnly` y `apiOnly`.
 `version_recurso · RELATION` · `fuente_recurso · RELATION` · `formato · ENUM formato_artefacto(HTML, PDF)` · `archivo ·
@@ -379,7 +382,7 @@ FILE · máx. 25 MB` · `sha256 · TEXT` (de lo generado) · `hash_fuente · TEX
 `uniqueConstraints: [[trabajo_id, formato]]`. Lo escribe solo el trabajo de generación ([ADR-0018 §7](../adr/0018-fase-4-estudio-revision-e-importador.md)):
 de una `fuente_recurso` saca un HTML y un PDF y crea una `version_recurso` nueva en `BORRADOR`, en nombre de quien lo
 pidió, con el artefacto del tipo de su recurso como `archivo`. F5 añadirá `MP4`, `VTT`, `PNG`, `SVG`, `parametros` y
-`ejecucion → ejecucion_agente`.
+`ejecucion_agente_id` (el de `lms.ejecucion_agente`).
 Invariantes: cada artefacto identifica su fuente exacta (relación y hash) y su generador [modelo, RF-CON-03]; un
 artefacto nunca se sobrescribe y regenerar crea otra versión [`appendOnly`, servicio]; repetir el trabajo no duplica
 [`unique`]. Mientras un artefacto apunte a una `version_recurso`, esa versión no se puede borrar (regla de Wasichai para

@@ -32,6 +32,29 @@ Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este
   `CreditApprovalApiTest`, `CatalogBuilderTest`, `EditorialWorkflowGuardApiTest`, `ModelProvisioningApiTest` y las pruebas
   de `model/` lo comprueban.
 
+## 2026-11-03 — ADR de la Fase 5: Embabel 1.5.4, proveedores, límites y `AgentRun` ([#272](https://github.com/wasichai/elearning-backend/issues/272))
+
+Solo documentación, primer paso de la épica E32 ([#271](https://github.com/wasichai/elearning-backend/issues/271)).
+
+- [ADR-0033](adr/0033-fase-5-ia.md): Embabel 1.5.4 (no la 1.5.3, que falla con Claude 5) con Anthropic y OpenAI (Responses
+  API) opcionales y Anthropic por defecto; modelo por paso como configuración; una llamada tipada por paso, sin
+  planificador, herramientas ni MCP; los trabajos de IA en `lms.trabajo` con el estado nuevo `CANCELLED` y el reintento
+  interno de Embabel a 1–2; `AgentRun` en la tabla fija `lms.ejecucion_agente`; `max_tokens` por paso, concurrencia por
+  organización y presupuesto por curso; permisos `GENERAR` y `VALIDAR`; ninguna prueba de CI llama a un proveedor real
+  (doble determinista y doble HTTP con WireMock).
+- `docs/ai`, RF-IA-08, `domain-model.md`, `docs/operations` (claves, URL base y modelos por paso) y el roadmap (épicas
+  E32–E38) se alinean con él.
+
+## 2026-11-03 — Nombres de autor, revisor y de quien decide ([#258](https://github.com/wasichai/elearning-backend/issues/258))
+
+- `StudioVersion` (estudio y bandeja), `ReviewComment` y `ReviewDecision` traen `authorName` / `reviewerName` junto a su id:
+  el nombre para mostrar de la persona, nunca su correo; `null` si está deshabilitada o fue borrada. Solo van donde ya iba el
+  id y a quien ya puede leer la versión.
+- Wasichai 1.8.0 no da nombres en `UserDirectory`: `DisplayNames` los lee de su tabla de personas en una sentencia por
+  respuesta, con las condiciones de `UserDirectory.existing` ([ADR-0034](adr/0034-nombres-para-mostrar-desde-la-tabla-de-personas-de-wasichai.md),
+  provisional). `AuthoringNamesApiTest` prueba los nombres, el `null` de quien se deshabilita y que lo ajeno sigue siendo
+  `404`/`403`; `AuthoringCostApiTest`, que la bandeja y el detalle no suman sentencias por persona.
+
 ## 2026-11-03 — Generación de HTML y PDF aceptada con una fuente propia ([#264](https://github.com/wasichai/elearning-backend/issues/264), RF-CON-07)
 
 - [ADR-0031](adr/0031-aceptacion-de-la-generacion-con-una-fuente-propia.md): la aceptación de RF-CON-07 deja de pedir una
