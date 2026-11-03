@@ -22,8 +22,9 @@ import java.math.BigDecimal
 // tres pasos (análisis, diseño y borrador con el modelo draft y su max_tokens), el diseño y las fuentes delimitados en el
 // mensaje de usuario y nunca en las instrucciones de sistema. La respuesta del doble trae un bloque ++++ con un script, que no
 // llega al HTML guardado (ADR-0022), un enlace que no está en las fuentes y otro que no es https público, que quedan para
-// revisión, una fuente que el paso no leyó y una duración imposible, que se descartan. Un borrador con menos unidades que el
-// diseño deja INVALID_OUTPUT con lo que costó y sin versión. lms.ai.rates suma una tarifa de cada modelo de diseño y borrador
+// revisión, una fuente que el paso no leyó y una duración imposible, que se descartan, y las preguntas de cada evaluación del
+// diseño (#367). Un borrador con menos unidades que el diseño, o con una pregunta mal formada, deja INVALID_OUTPUT con lo que
+// costó y sin versión. lms.ai.rates suma una tarifa de cada modelo de diseño y borrador
 @Import(SourceAnalysisFixtures.FakeSource::class, LessonDraftFixtures.FakeRenderer::class)
 @TestPropertySource(
     properties = [
@@ -170,7 +171,8 @@ abstract class LessonDraftProviderApiTest(
         assertEquals("BORRADOR", version["attributes"]["estado"].asString())
         assertEquals(LessonTemplate.VERSION, version["attributes"]["plantilla_ia"].asString())
         val units = records("unidad", "version_curso", versionId).sortedBy { it["attributes"]["orden"].asInt() }
-        val lessons = units.map { records("leccion", "unidad", it["id"].asString()).single() }
+        val byUnit = units.map { u -> records("leccion", "unidad", u["id"].asString()).sortedBy { it["attributes"]["orden"].asInt() } }
+        val lessons = byUnit.map { unit -> unit.single { it["attributes"]["tipo"].asString() == "LECTURA" } }
         assertEquals(PUBLISH, lessons[0]["attributes"]["referencia_fuente"].asString())
         assertEquals(45, lessons[0]["attributes"]["duracion_minutos"].asInt())
         // la fuente que el paso no leyó y la duración imposible se descartaron: la lección queda sin ellas
@@ -199,6 +201,31 @@ abstract class LessonDraftProviderApiTest(
         val references = get("/api/objects/version_recurso/records/$resourceVersion", creator)["attributes"]["referencias"].asString()
         assertTrue(references.contains("REVISAR (NOT_IN_SOURCES): https://ayuda.example.org/anuncios"), references)
 
+        // #367: cada evaluación del diseño en la última unidad que trabaja sus resultados, detrás de su lectura, con las
+        // preguntas, las opciones y las respuestas aceptadas del modelo; la clave no está en la salida de la ejecución
+        val evaluations = byUnit.map { unit -> unit.single { it["attributes"]["tipo"].asString() == "EVALUACION" } }
+        assertEquals(listOf("Cuestionario de publicación", "Práctica final"), evaluations.map { it["attributes"]["titulo"].asString() })
+        assertEquals(listOf(2, 2), evaluations.map { it["attributes"]["orden"].asInt() })
+        assertEquals("Publicar un anuncio para toda la organización", evaluations[0]["attributes"]["objetivo"].asString())
+        val questions =
+            evaluations.map { lesson ->
+                val evaluation = records("evaluacion", "leccion", lesson["id"].asString()).single()
+                records("pregunta", "evaluacion", evaluation["id"].asString()).sortedBy { it["attributes"]["orden"].asInt() }
+            }
+        assertEquals(
+            listOf(listOf("UNICA", "CORTA"), listOf("VERDADERO_FALSO", "MULTIPLE", "ABIERTA")),
+            questions.map { q -> q.map { it["attributes"]["tipo"].asString() } },
+        )
+        assertEquals("Panel de anuncios\nanuncios", questions[0][1]["attributes"]["respuestas_aceptadas"].asString())
+        val options = records("opcion", "pregunta", questions[0][0]["id"].asString()).sortedBy { it["attributes"]["orden"].asInt() }
+        assertEquals(
+            listOf("Publicar" to true, "Retirar" to false, "Guardar borrador" to false),
+            options.map { it["attributes"]["texto"].asString() to it["attributes"]["correcta"].asBoolean() },
+        )
+        assertEquals(0, BigDecimal("2").compareTo(BigDecimal(questions[1][2]["attributes"]["puntos"].asString())))
+        assertEquals(5, validations["questions"].asInt(), validations.toString())
+        for (key in listOf("\"correct\"", "acceptedAnswers", "Panel de anuncios")) assertFalse(run["output"].toString().contains(key), "$key en la salida")
+
         val request = requests().last()
         assertEquals(model, request["model"].asString())
         val instructions = system(request).toString()
@@ -222,6 +249,23 @@ abstract class LessonDraftProviderApiTest(
         assertTrue(run["output"].isNull, run.toString())
         assertEquals(usage.inputTokens, run["inputTokens"].asInt())
         assertEquals(listOf("UNITS_MISMATCH"), run["validations"]["problems"].values().map { it["code"].asString() })
+        assertTrue(versions(course).isEmpty())
+    }
+
+    @Test
+    fun `an ill formed question of the provider is INVALID_OUTPUT with its code, and no version`() {
+        val (course, design) = designed()
+
+        val job = step("/api/lms/ai/lesson-draft", mapOf("executionId" to design), "$prefix-lesson-draft-bad-question.json")
+
+        assertEquals("FAILED", job["status"].asString(), job.toString())
+        val line = get("/api/lms/ai/runs?courseId=$course", creator).values().single { it["step"].asString() == "LESSON_DRAFT" }
+        assertEquals("INVALID_OUTPUT", line["status"].asString())
+        val problems = get("/api/lms/ai/runs/${line["id"].asString()}", creator)["validations"]["problems"].values()
+        assertEquals(
+            listOf("INVALID_OPTIONS" to "assessments[0].questions[0]", "MISSING_ACCEPTED_ANSWERS" to "assessments[0].questions[1]"),
+            problems.map { it["code"].asString() to it["at"].asString() },
+        )
         assertTrue(versions(course).isEmpty())
     }
 

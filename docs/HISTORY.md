@@ -35,6 +35,18 @@ Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este
   `ModelCalls` lo clasifica como `INVALID_OUTPUT`, con lo que costó. `ArchitectureTest` vigila que nada en `src/main` dé
   herramientas al modelo. La prueba encontró que `AiStepRunner.runWriting` (el borrador de lecciones, #283) no llevaba la
   marca `AiWork` de #288: ahora sí, y `AiWorkGuard` también le niega aprobar o publicar. Docs: `docs/security` §4.5 (qué prueba cubre qué amenaza), `docs/ai` §6. Sin migraciones.
+## 2026-11-03 — El borrador de lección propone también las evaluaciones del diseño ([#367](https://github.com/wasichai/elearning-backend/issues/367))
+
+- `LessonDraft` trae una entrada por evaluación del diseño con sus preguntas (`UNICA`, `MULTIPLE`, `VERDADERO_FALSO`,
+  `CORTA`, `ABIERTA`), opciones y respuestas aceptadas; instrucciones `lesson-draft@2`. Título, tipo, resultados alineados y
+  unidad (la última que trabaja alguno de sus resultados) los pone el código con el diseño.
+- `LessonDraftCheck` comprueba por código alineación, tipos, puntos, una opción correcta en `UNICA` y `VERDADERO_FALSO`,
+  alguna en `MULTIPLE` y respuestas aceptadas en `CORTA`; una salida inválida es `INVALID_OUTPUT` con su código.
+- `LessonDraftWriter` escribe en la misma transacción su lección `EVALUACION`, su `evaluacion`, sus `pregunta` y sus `opcion`
+  en la versión `BORRADOR`. La clave no está en la salida ni en el informe de la ejecución (ADR-0019).
+- El doble determinista hace una `UNICA` y una `ABIERTA` por resultado alineado: un borrador generado de punta a punta ya no
+  da `NO_ASSESSMENT` y entra en revisión con su informe. Pruebas contra el doble HTTP de Anthropic y OpenAI y fixtures
+  `*-lesson-draft*.json` (uno nuevo con una pregunta mal formada). Sin migraciones. Docs: `docs/ai` §5, `docs/api`.
 
 ## 2026-11-03 — Revisión de seguridad de la Fase 5: E38.2 ([#302](https://github.com/wasichai/elearning-backend/issues/302))
 

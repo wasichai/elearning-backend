@@ -1,14 +1,15 @@
 package elearning.ai
 
 import org.springframework.stereotype.Component
+import java.math.BigDecimal
 import java.security.MessageDigest
 import java.util.HexFormat
 
 // las instrucciones y la plantilla del borrador, con su versión (quedan en AgentRun y en la clave). VERSION es la de las
 // instrucciones; TEMPLATE, la de la plantilla que junta cada lección (LessonTemplate). Cambiar el texto de cualquiera de las
-// dos es subir su versión
+// dos es subir su versión. @2 (#367): también las preguntas de cada evaluación del diseño
 object LessonDraftPrompt {
-    const val VERSION = "lesson-draft@1"
+    const val VERSION = "lesson-draft@2"
     const val TEMPLATE = LessonTemplate.VERSION
 
     // las de sistema: fijas, sin nada del diseño ni de las fuentes
@@ -24,6 +25,13 @@ object LessonDraftPrompt {
           sections: the body has no document title and uses level 2 sections (==) or deeper.
         - source is the exact ref of the source section the lesson comes from; do not invent refs.
         - Do not add links that are not in the sources: any other link is flagged for review.
+        - Return one entry in assessments for each assessment of the design, in the same order: its instructions, its duration in
+          minutes, the exact ref of the source section its questions come from and its questions, which check the outcomes the
+          assessment is aligned with. Each question has a type, a statement and its points (more than 0, at most 100):
+          UNICA has two or more options and exactly one correct; MULTIPLE has two or more options and at least one correct;
+          VERDADERO_FALSO has two options and exactly one correct; CORTA has no options and the acceptedAnswers that are correct;
+          ABIERTA has no options and is graded by a person.
+        - The answer key only goes in correct and acceptedAnswers: never in a statement, an option text or the instructions.
         - No raw HTML, no passthrough blocks, no include directives.
         Write every text in the language of the course.
         """.trimIndent()
@@ -39,7 +47,8 @@ object LessonDraftPrompt {
         val sources = AiJobs.MAPPER.writeValueAsString(material.sections)
         val marker = marker(design, sources)
         return buildString {
-            append("Objective: write the lessons of every unit of the design from the sections of its sources.\n")
+            append("Objective: write the lessons of every unit of the design and the questions of every assessment of the design ")
+            append("from the sections of its sources.\n")
             append("Marker: ").append(marker).append("\n\n")
             block("DESIGN", marker, design)
             append('\n')
@@ -95,8 +104,9 @@ class ModelLessonDrafter(
 
 // el doble determinista (docs/ai §7): sin red ni claves, el mismo borrador para el mismo diseño. Una lección por lectura de
 // cada unidad, con el texto de su sección como cuerpo (o una con el resumen y los temas de la unidad si no tiene ninguna), su
-// Objetivo (el primer resultado de la unidad) y su Verificación (una por actividad). Es ilustrativo: no sustituye al modelo
-// ni cuenta en sus indicadores
+// Objetivo (el primer resultado de la unidad) y su Verificación (una por actividad). Por cada evaluación del diseño, dos
+// preguntas por resultado alineado: una UNICA cuya opción correcta es su enunciado y una ABIERTA con su evidencia, de la
+// primera lectura de la unidad donde va. Es ilustrativo: no sustituye al modelo ni cuenta en sus indicadores
 @Component
 class DeterministicLessonDrafter : LessonDrafter {
     override fun draft(
@@ -143,11 +153,50 @@ class DeterministicLessonDrafter : LessonDrafter {
                         }
                 LessonDraftUnit(lessons)
             }
-        return ModelReply(LessonDraft(units), null)
+        val outcomes = design.outcomes.associateBy { it.id }
+        val assessments =
+            design.assessments.map { assessment ->
+                val unit = design.units.getOrNull(LessonDraftCheck.unitOf(assessment, design))
+                val aligned = assessment.outcomes.mapNotNull { outcomes[it] }
+                LessonDraftAssessment(
+                    instructions =
+                        (if (spanish) "Responde a las preguntas sobre: " else "Answer the questions about: ") + aligned.joinToString("; ") { it.statement },
+                    durationMinutes = ASSESSMENT_MINUTES,
+                    source = unit?.readings?.firstNotNullOfOrNull { reading -> reading.source?.takeIf { it in texts } },
+                    questions = aligned.flatMap { questions(assessment.title, it, spanish) },
+                )
+            }
+        return ModelReply(LessonDraft(units, assessments), null)
+    }
+
+    private fun questions(
+        assessment: String,
+        outcome: LearningOutcome,
+        spanish: Boolean,
+    ): List<LessonDraftQuestion> {
+        val prefix = "$assessment (${outcome.id}): "
+        return listOf(
+            LessonDraftQuestion(
+                type = LessonDraftCheck.SINGLE,
+                statement = prefix + (if (spanish) "¿qué sabrás hacer al terminar?" else "what will you be able to do at the end?"),
+                options =
+                    listOf(
+                        LessonDraftOption(outcome.statement, correct = true),
+                        LessonDraftOption(if (spanish) "Ninguna de las anteriores" else "None of the above"),
+                    ),
+            ),
+            LessonDraftQuestion(
+                type = LessonDraftCheck.OPEN,
+                statement = prefix + (if (spanish) "explica cómo lo demostrarías: " else "explain how you would show it: ") + outcome.evidence,
+                points = OPEN_POINTS,
+            ),
+        )
     }
 
     private companion object {
         const val SUMMARY = 300
         const val MINUTES = 30
+        const val ASSESSMENT_MINUTES = 15
+        val OPEN_POINTS = BigDecimal(2)
     }
 }
