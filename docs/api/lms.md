@@ -294,10 +294,24 @@ legible. Lo mismo vale para sus sesiones y su finalización.
         }
       ]
     }
+  ],
+  "achievements": [
+    { "kind": "UNIT_COMPLETED", "at": "2026-11-03T15:20:00Z", "ref": "<id de la unidad>" },
+    { "kind": "ASSESSMENT_PASSED", "at": "2026-11-04T10:05:00Z", "ref": "<id de la evaluación>" },
+    { "kind": "CERTIFICATE_ISSUED", "at": "2026-11-05T09:00:00Z", "ref": "K7Q2-M9XW-4RTB" }
   ]
 }
 ```
 
+- `achievements` (RF-AUL-08): los logros de la matrícula, derivados al leer el aula de lo que ella misma muestra; no se
+  guardan ni se escriben, y no cuestan otra lectura. Del más antiguo al más reciente (uno sin `at`, al final):
+  - `UNIT_COMPLETED`: la unidad tiene completadas todas sus lecciones contables (las que no son `NOT_YET`; su `progress`
+    es `completedLessons == totalLessons > 0`). `ref` es el `id` de la unidad; `at`, el `completedAt` más reciente de esas
+    lecciones.
+  - `ASSESSMENT_PASSED`: la evaluación está aprobada por un intento calificado (`GRADED`), el que muestra su calificación
+    en `assessment.best`; un intento enviado con preguntas por corregir no cuenta. `ref` es el `id` de la evaluación
+    (`assessment.id` de su lección); `at`, el envío del primer intento que aprobó.
+  - `CERTIFICATE_ISSUED`: hay certificado emitido. `ref` es su código (`certificateCode`); `at`, su `issuedAt`.
 - `completion`: cómo se completa la lección — `EXPLICIT` (el estudiante la marca: `LECTURA`, `PRESENTACION`,
   `LABORATORIO`), `VIDEO_END` (al terminar el vídeo), `NOT_YET` (`EVALUACION`, `SESION`: llegan en F3).
 - `progress.status`: `NO_INICIADA` · `INICIADA` · `COMPLETADA` · `APROBADA` (F3). `evidence` solo cuando está completada:

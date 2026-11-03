@@ -146,7 +146,11 @@ el cuándo, en [`roadmap.md`](roadmap.md).
   intentos, retroalimentación, logros y certificados.
   _Aceptación:_ prueba E2E con los datos de demostración.
   _Avance:_ el aula muestra sesiones, plazos, evaluaciones, intentos, calificaciones, retroalimentación y certificado
-  (#153, front#42, front#45, recorrido real de front#61); faltan los «logros», que aún no tienen definición.
+  (#153, front#42, front#45, recorrido real de front#61). Los «logros» se derivan al leer el aula, sin modelo propio
+  (#265): `UNIT_COMPLETED` (unidad con todas sus lecciones contables completadas), `ASSESSMENT_PASSED` (evaluación
+  aprobada por un intento calificado, con su calificación visible) y `CERTIFICATE_ISSUED` (certificado emitido), en
+  `achievements` del aula ([docs/api/lms.md](../api/lms.md)), solo para el estudiante de la matrícula. Falta que la
+  interfaz los muestre y que el e2e los vea (front#154).
 - **RF-AUL-09** · F3 · implementado ([#155](https://github.com/wasichai/elearning-backend/pull/155), [#238](https://github.com/wasichai/elearning-backend/pull/238), [front#61](https://github.com/wasichai/elearning-frontend/pull/61)) — Notificaciones de publicación de contenido y de cambios de calendario.
   _Aceptación:_ reprogramar una sesión notifica a los matriculados de esa edición y a nadie más (prueba con el canal de
   correo local).
