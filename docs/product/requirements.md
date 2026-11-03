@@ -449,6 +449,8 @@ el cuándo, en [`roadmap.md`](roadmap.md).
   _Aceptación:_ superar el límite configurado → `429`. Si Wasichai ofrece limitación de tasa está a verificar.
 - **RNF-SEG-11** · F6 · planificado — Privacidad por defecto, conservación y eliminación de datos personales.
   _Aceptación:_ política escrita y prueba de eliminación de un usuario de demostración.
+  _Avance:_ política escrita en [ADR-0030](../adr/0030-lgpl-definitiva-y-conservacion-segun-los-terminos.md): se conserva lo que aprueban los términos de uso;
+  la aceptación con plazo y la supresión, en [#304](https://github.com/wasichai/elearning-backend/issues/304).
 - **RNF-SEG-12** · F6 · planificado — Copias de seguridad con restauración verificada.
   _Aceptación:_ ensayo de restauración documentado con fecha y resultado.
 
@@ -500,7 +502,7 @@ el cuándo, en [`roadmap.md`](roadmap.md).
   _Avance:_ la semilla tiene perfiles de todos los roles, matrículas y el curso corto `CORTO-101` (#161), y los recorridos
   de §20 corren sobre ella. Trae además un intento del estudiante demo en `CORTO-101-A`, enviado por el aula y calificado
   por su docente asignado (clave `attempts` de `model/demo/data.json`, #240). Las valoraciones llegan en F6.
-- **RNF-OSS-07** · F6 · planificado — Licencia del proyecto elegida y publicada solo con autorización expresa
+- **RNF-OSS-07** · F6 · implementado ([ADR-0030](../adr/0030-lgpl-definitiva-y-conservacion-segun-los-terminos.md)) — Licencia del proyecto elegida y publicada solo con autorización expresa
   (ADR-0009).
   _Aceptación:_ archivo `LICENSE` fusionado por decisión registrada del titular.
 
