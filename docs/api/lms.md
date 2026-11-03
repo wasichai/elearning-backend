@@ -560,6 +560,12 @@ Con sesión. Los permisos son las acciones declaradas sobre `version_curso`; lo 
 | POST   | `/api/lms/studio/versions/{id}/submit`        | envía a revisión → `StudioVersion`                           |
 | GET    | `/api/lms/studio/versions/{id}/diff`          | contra la versión anterior → `VersionDiff`                   |
 
+Una versión nueva copia la última del curso, o la de `fromVersionId` (`400` si no es de ese curso), a un `BORRADOR` de quien
+llama con el número siguiente. Un curso sin versiones recibe la v1 `BORRADOR` vacía, sin unidades, con `modalidad: ASINCRONA`,
+`duracion: SEMANAS` y `semanas: 1`, que el creador ajusta (#257). Exige `CREATE` sobre `version_curso` (`403`); un curso
+inexistente o que no puedo leer, `404`. El número es único por curso: dos peticiones a la vez no crean dos versiones con el
+mismo número, y la que pierde responde `409`.
+
 El contenido (unidades, lecciones, evaluaciones) se edita con la API de registros de Wasichai, que la guarda deja solo al autor y
 en borrador.
 
