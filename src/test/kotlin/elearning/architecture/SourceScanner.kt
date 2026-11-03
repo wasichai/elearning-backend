@@ -129,7 +129,7 @@ class SourceScanner(
         private val WASICHAI_INTERNALS = Regex("""\b(RecordStore|PhysicalTableRecordStore|ObjectSchemaManager|AuditService)\b""")
 
         // entre comillas dobles (Kotlin) o simples (SQL dentro de una cadena), con o sin ROLE_ de Spring Security
-        private val ROLE_NAME_LITERAL = Regex("""(["'])(?:ROLE_)?(ESTUDIANTE|DOCENTE|CREADOR|REVISOR|ADMIN)\1""", RegexOption.IGNORE_CASE)
+        private val ROLE_NAME_LITERAL = Regex("""(["'])(?:ROLE_)?(ESTUDIANTE|DOCENTE|CREADOR|REVISOR|AUTORIDAD_ACADEMICA|ADMIN)\1""", RegexOption.IGNORE_CASE)
 
         // SDK concretos (por paquete) y hosts de sus API (en cadenas, para quien llamara con WebClient): IA, almacenamiento
         // de objetos, videoconferencia y fuentes del importador. Solo sus adaptadores, previstos en docs/architecture/overview.md §2.3, los usan

@@ -24,6 +24,7 @@ class CatalogSource(
             profiles = all("perfil_docente"),
             assignments = all("docente_edicion"),
             knowledge = all(PrerequisiteKnowledgeGuard.VOCABULARY),
+            approvals = all(CREDIT_APPROVAL),
         )
 
     private suspend fun all(
@@ -43,5 +44,6 @@ class CatalogSource(
 
     companion object {
         private const val PAGE = PageRequest.MAX_SIZE
+        const val CREDIT_APPROVAL = "aprobacion_creditos"
     }
 }

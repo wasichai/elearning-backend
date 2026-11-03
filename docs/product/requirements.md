@@ -119,8 +119,13 @@ el cuándo, en [`roadmap.md`](roadmap.md).
 - **RF-CRE-07** · F6 · planificado — Políticas de crédito configurables por programa, institución y jurisdicción, y
   versionadas.
   _Aceptación:_ cambiar una política crea una versión nueva y las propuestas anteriores conservan la suya.
-- **RF-CRE-08** · F6 · planificado — Aprobación humana de créditos por una persona autorizada, auditada.
+- **RF-CRE-08** · F6 · implementado ([#315](https://github.com/wasichai/elearning-backend/issues/315), ADR-0035) —
+  Aprobación humana de créditos por una persona autorizada, auditada.
   _Aceptación:_ sin el permiso → `403`; la aprobación queda en la auditoría con la política y versión usadas.
+  Implementado: acción `APROBAR_CREDITOS` (rol `AUTORIDAD_ACADEMICA`), distinta de la editorial `APROBAR`; separación de
+  funciones por datos (ni autor, ni revisor asignado, ni quien aprobó en la bandeja, ni docente del curso, tampoco ADMIN);
+  `aprobacion_creditos` de solo inserción con la instantánea de la política, el órgano y el documento; revocar es otra
+  fila; `creditos_aprobados` solo lo escribe el comando.
 
 ### RF-AUL — Aula del estudiante y progreso (§6.4)
 

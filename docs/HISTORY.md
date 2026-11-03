@@ -14,6 +14,23 @@ Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este
   crear la primera versión vacía pasan a escribir en una transacción. `VersionHistoryApiTest` recorre BORRADOR →
   EN_REVISION → BORRADOR → EN_REVISION → APROBADA → PUBLICADA, la API de registros, la plataforma y el disparador.
 
+## 2026-11-03 — Aprobación de créditos por una autoridad académica ([#315](https://github.com/wasichai/elearning-backend/issues/315), RF-CRE-08)
+
+- **Corrige un fallo** que encontró la investigación de [#269](https://github.com/wasichai/elearning-backend/issues/269):
+  `EditorialWorkflowGuard` dejaba escribir `version_curso.creditos_aprobados` a quien tenía `APROBAR`, la acción editorial
+  del revisor. Ahora ese campo y `politica_creditos` solo los escribe el comando de aprobación (`403` por la API de
+  registros para todos, ADMIN incluido) y una versión nueva no los hereda.
+- [ADR-0035](adr/0035-aprobacion-de-creditos-por-una-autoridad-academica.md): acción `APROBAR_CREDITOS` sobre
+  `version_curso` y rol `AUTORIDAD_ACADEMICA` (demo: `autoridad@demo.wasichai-learning.test`). `aprobacion_creditos`
+  (`appendOnly`, `apiOnly`) guarda cada acto con la instantánea de la política de referencia (id@versión, método,
+  parámetros, fuente), horas, créditos calculados, propuestos y aprobados, motivo, órgano, documento, persona y hora.
+- `/api/lms/credits/**`: propuesta y aprobación vigente, historial, aprobar (versión `APROBADA` o `PUBLICADA` con sistema
+  de crédito, recálculo en el servidor, motivo si difiere) y revocar (otra fila, con motivo). Separación de funciones por
+  datos, también para ADMIN: ni el autor, ni el revisor asignado, ni quien aprobó en la bandeja, ni un docente del curso.
+- El catálogo dice «aprobados» solo con una aprobación vigente, con su órgano, documento y política (`credits.approval`).
+  `CreditApprovalApiTest`, `CatalogBuilderTest`, `EditorialWorkflowGuardApiTest`, `ModelProvisioningApiTest` y las pruebas
+  de `model/` lo comprueban.
+
 ## 2026-11-03 — ADR de la Fase 5: Embabel 1.5.4, proveedores, límites y `AgentRun` ([#272](https://github.com/wasichai/elearning-backend/issues/272))
 
 Solo documentación, primer paso de la épica E32 ([#271](https://github.com/wasichai/elearning-backend/issues/271)).
