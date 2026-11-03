@@ -6,6 +6,7 @@ data class ProposedLesson(
     val trace: String,
 )
 
+// una unidad propuesta: el título de su capítulo y su traza, que se guarda en la unidad (RF-IMP-03)
 data class ProposedUnit(
     val title: String,
     val trace: String,

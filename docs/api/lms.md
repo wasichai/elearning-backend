@@ -572,8 +572,8 @@ en borrador.
 `StudioVersion`: `{ "id", "number", "status", "course": { "id", "code", "title" }, "authorId", "reviewerId": null,
 "updatedAt", "openComments": 2 }`. `status`: `BORRADOR` · `EN_REVISION` · `APROBADA` · `PUBLICADA` · `RETIRADA`.
 
-`StudioVersionDetail` = `StudioVersion` más `units`: `[{ "id", "order", "title", "lessons": [{ "id", "order", "title", "type",
-"sourceRef": null, "hasAssessment": false, "resources": 1 }] }]`, `comments: ReviewComment[]`, `decisions: ReviewDecision[]`.
+`StudioVersionDetail` = `StudioVersion` más `units`: `[{ "id", "order", "title", "sourceRef": null, "lessons": [{ "id", "order",
+"title", "type", "sourceRef": null, "hasAssessment": false, "resources": 1 }] }]`, `comments: ReviewComment[]`, `decisions: ReviewDecision[]`.
 
 ### Bandeja del revisor
 
@@ -651,7 +651,8 @@ en borrador.
   problemas, también los que la lista no muestra; en un informe guardado antes de que existiera, cuenta los de la lista.
 - El resultado es siempre una versión `BORRADOR` nueva del curso (número siguiente), con `autor_id` de quien la pidió y la
   duración y la modalidad de la última versión: una unidad por capítulo (sección de nivel 1, tras `leveloffset`) y una lección
-  `LECTURA` por sección de nivel 2, con su título y `sourceRef` (`owner/repo@sha:ruta#ancla`); un capítulo sin secciones lleva
+  `LECTURA` por sección de nivel 2, cada una con su título y su `sourceRef` (`owner/repo@sha:ruta#ancla`, en
+  `referencia_fuente`), que se congela con la versión y pasa a sus copias; un capítulo sin secciones lleva
   una lección con su propio título. **Sin el texto del manual** (ADR-0018 §6) y **nunca publica**. Falla (`FALLIDO`, sin
   borrador) si el maestro no existe, el origen dejó de estar permitido, el curso desapareció, la fuente pasa de
   `lms.importer.max-files` archivos o quien la pidió ya no está habilitado o perdió alguno de los permisos de arriba antes de

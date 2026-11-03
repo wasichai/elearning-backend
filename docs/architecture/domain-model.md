@@ -150,7 +150,8 @@ fuente y versión de la política.
 
 **`unidad`** (LearningUnit) — F1.
 `version_curso · RELATION → version_curso · requerido` · `orden · INTEGER` · `titulo · TEXT` · `resumen · LONG_TEXT` ·
-`semana_inicio · INTEGER · opcional`.
+`semana_inicio · INTEGER · opcional` · `referencia_fuente · TEXT · repo@sha:ruta#ancla` (F4, RF-IMP-03: el capítulo del
+que la propuso la importación; también en `leccion`, con su sección).
 Invariante: editable solo si su versión está en `BORRADOR` [guarda]. `orden` no es `unique` para poder reordenar en una
 transacción; el comando de reordenar deja 1..n sin huecos [servicio].
 
