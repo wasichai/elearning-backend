@@ -11,6 +11,9 @@ springdoc = "3.2.0"
 awsSdk = "2.57.5"
 # saneado con lista blanca del HTML generado (docs/security/README.md §5.2, ADR-0022): ni Wasichai ni el JDK traen uno
 jsoup = "1.21.2"
+# canalización con IA (ADR-0033 §1): la misma que Wasichai 1.8.0. el BOM de Wasichai no la gestiona (wasichai-agent no se
+# usa) y Spring AI, anthropic-java y openai-java llegan con ella. subirla es una decisión con su prueba
+embabel = "1.5.4"
 
 [libraries]
 wasichai-bom = { module = "wasichai:wasichai-bom", version.ref = "wasichai" }
@@ -23,6 +26,9 @@ aws-sdk-s3 = { module = "software.amazon.awssdk:s3", version.ref = "awsSdk" }
 wasichai-starter-notifications = { module = "wasichai:wasichai-spring-boot-starter-notifications" }
 spring-boot-starter-mail = { module = "org.springframework.boot:spring-boot-starter-mail" }
 jsoup = { module = "org.jsoup:jsoup", version.ref = "jsoup" }
+embabel-agent-starter = { module = "com.embabel.agent:embabel-agent-starter", version.ref = "embabel" }
+embabel-agent-starter-anthropic = { module = "com.embabel.agent:embabel-agent-starter-anthropic", version.ref = "embabel" }
+embabel-agent-starter-openai = { module = "com.embabel.agent:embabel-agent-starter-openai", version.ref = "embabel" }
 wasichai-test = { module = "wasichai:wasichai-test" }
 springdoc-webflux-api = { module = "org.springdoc:springdoc-openapi-starter-webflux-api", version.ref = "springdoc" }
 

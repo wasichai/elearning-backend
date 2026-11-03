@@ -6,6 +6,27 @@ server:
 spring:
   application:
     name: elearning-backend
+  # el modelo solo recibe las entradas de su ejecución: ni servidores MCP ni sus herramientas (ADR-0033 §4, RF-IA-06).
+  # Embabel trae el cliente MCP de Spring AI; se apaga entero, también el registro de sus anotaciones
+  ai:
+    mcp:
+      client:
+        enabled: false
+        annotation-scanner:
+          enabled: false
+
+# Embabel (ADR-0033): cada proveedor existe solo con su clave, ANTHROPIC_API_KEY u OPENAI_API_KEY, que Embabel lee del
+# entorno; elearning.ai.AiProviderGate deja fuera al que no la tiene. ANTHROPIC_BASE_URL y OPENAI_BASE_URL tienen
+# precedencia sobre base-url. un solo nivel de reintento: Embabel hace como mucho 2 intentos por llamada y los reintentos
+# son de la cola (§6); con más, la aplicación no arranca
+embabel:
+  agent:
+    platform:
+      models:
+        anthropic:
+          max-attempts: 2
+        openai:
+          max-attempts: 2
 
 wasichai:
   security:
@@ -103,3 +124,27 @@ lms:
       # cada generación (HTML y PDF por separado); por debajo de lms.jobs.timeout
       timeout: ${LMS_MEDIA_ASCIIDOCTOR_TIMEOUT:2m}
       max-bytes: ${LMS_MEDIA_ASCIIDOCTOR_MAX_BYTES:25MB}
+  # canalización editorial con IA (ADR-0033). sin claves no hay proveedor y cada paso usa su doble determinista
+  ai:
+    # con las dos claves, cuál usa la canalización: anthropic u openai. vacío: Anthropic. sin claves no cuenta
+    provider: ${LMS_AI_PROVIDER:}
+    # modelo por defecto (el de Embabel) y por paso de cada proveedor (§3); solo cuentan los del proveedor con clave. un
+    # modelo que el proveedor no tiene impide arrancar
+    models:
+      anthropic:
+        default: ${LMS_AI_ANTHROPIC_MODEL_DEFAULT:claude-sonnet-5-5}
+        extraction: ${LMS_AI_ANTHROPIC_MODEL_EXTRACTION:claude-haiku-5-5}
+        design: ${LMS_AI_ANTHROPIC_MODEL_DESIGN:claude-sonnet-5-5}
+        draft: ${LMS_AI_ANTHROPIC_MODEL_DRAFT:claude-sonnet-5-5}
+        script: ${LMS_AI_ANTHROPIC_MODEL_SCRIPT:claude-sonnet-5-5}
+        review: ${LMS_AI_ANTHROPIC_MODEL_REVIEW:claude-sonnet-5-5}
+        # referencia en la comparación de modelos (RF-IA-09)
+        reference: ${LMS_AI_ANTHROPIC_MODEL_REFERENCE:claude-opus-5-5}
+      openai:
+        default: ${LMS_AI_OPENAI_MODEL_DEFAULT:gpt-6.1-sol}
+        extraction: ${LMS_AI_OPENAI_MODEL_EXTRACTION:gpt-6-luna}
+        design: ${LMS_AI_OPENAI_MODEL_DESIGN:gpt-6.1-sol}
+        draft: ${LMS_AI_OPENAI_MODEL_DRAFT:gpt-6.1-sol}
+        script: ${LMS_AI_OPENAI_MODEL_SCRIPT:gpt-6.1-sol}
+        review: ${LMS_AI_OPENAI_MODEL_REVIEW:gpt-6.1-sol}
+        reference: ${LMS_AI_OPENAI_MODEL_REFERENCE:gpt-6-astra}

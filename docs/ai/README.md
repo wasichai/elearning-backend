@@ -56,7 +56,15 @@ Decisión en [ADR-0033](../adr/0033-fase-5-ia.md) §1–§4.
   GPT-6 y falla con 400 contra Claude 5.
 - **Proveedores**: Anthropic (`/v1/messages`) y OpenAI (Responses API, `/v1/responses`), ambos opcionales; cada uno se
   activa solo con su clave, mediante una compuerta propia en `elearning.ai` (los starters no arrancan sin clave y el
-  `EmbabelGate` de Wasichai solo cubre Anthropic). Con los dos, Anthropic es el de por defecto.
+  `EmbabelGate` de Wasichai solo cubre Anthropic). Con los dos, Anthropic es el de por defecto. Hecho en E32.2
+  ([#273](https://github.com/wasichai/elearning-backend/issues/273)): `AiProviderGate` deja fuera la autoconfiguración de
+  cada proveedor sin clave y, sin ninguno, las cinco de la plataforma; `AiStatus` dice al arrancar qué proveedor quedó
+  (ninguno: doble determinista) y comprueba los modelos y `max-attempts`. Verificado contra 1.5.4: el BOM de Wasichai no
+  gestiona Embabel (la versión va en `gradle/libs.versions.toml`); las propiedades son
+  `embabel.agent.platform.models.{anthropic,openai}.{api-key,base-url,max-attempts}` y `embabel.models.default-llm`; Embabel
+  trae el cliente MCP de Spring AI, que se apaga con `spring.ai.mcp.client.enabled=false` y
+  `spring.ai.mcp.client.annotation-scanner.enabled=false`; con Embabel en el classpath no llega Spring MVC ni Tomcat (la
+  tarea `noServletStack` de `check` lo vigila).
 - **Uso selectivo**: Embabel solo en los pasos 2–5 (y la opinión del 6), con **una llamada tipada por paso**
   (`PromptRunner.createObject`, nombre exacto a verificar contra 1.5.4), sin planificador, sin herramientas y con el
   cliente MCP desactivado. Sin abstracción multi-proveedor propia: una interfaz interna pequeña por paso
@@ -71,7 +79,10 @@ Decisión en [ADR-0033](../adr/0033-fase-5-ia.md) §1–§4.
 - **Catálogo de modelos**: 1.5.4 conoce `claude-opus-5-5`, `claude-sonnet-5-5`, `claude-haiku-5-5` y `gpt-6-*`. El
   modelo es configuración por paso, no código; propuesta: `claude-haiku-5-5`/`gpt-6-luna` para extracción,
   `claude-sonnet-5-5`/`gpt-6.1-sol` para diseño, borrador y guion, `claude-opus-5-5`/`gpt-6-astra` como referencia de
-  comparación (los de OpenAI, a verificar en el catálogo de 1.5.4). Un modelo desconocido falla al arrancar.
+  comparación; los seis están en el catálogo de 1.5.4 (verificado en E32.2, `gpt-6.1-sol` incluido). Viven en
+  `lms.ai.models.{anthropic,openai}` (`default`, `extraction`, `design`, `draft`, `script`, `review`, `reference`). Un
+  modelo desconocido, el de por defecto incluido, falla al arrancar con un mensaje que nombra la propiedad y los modelos
+  que sí hay.
 
 ## 3. Relación con `wasichai-agent`
 
