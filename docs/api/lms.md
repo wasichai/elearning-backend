@@ -166,9 +166,14 @@ Respuesta 200 `CourseDetail` = todos los campos de `CourseSummary` (salvo `nextO
       "teachers": [{ "name": "…", "professionalTitle": "…", "role": "TITULAR" }]
     }
   ],
-  "teachers": [{ "name": "…", "professionalTitle": "…", "bio": "…", "specialties": "…" }]
+  "teachers": [{ "name": "…", "professionalTitle": "…", "bio": "…", "specialties": "…", "ratings": null }]
 }
 ```
+
+`teachers[].ratings` (ADR-0038 §12, RF-REP-06): el agregado de las valoraciones del docente, solo si su perfil es
+público **y** consiente `valoraciones_publicas` (falso por omisión): media y n por dimensión de sus ediciones liberadas
+(cifras congeladas con n ≥ `lms.reputation.min-sample`, sumadas con la media ponderada por n), con `criterion`, el
+enlace a su definición (`/api/lms/public/ratings/criterion`), y `criterionVersion`. Si no, `null`. Nunca comentarios.
 
 `enrollmentStatus` (RF-CAT-09, [ADR-0023](../adr/0023-cupo-agotado-en-la-proyeccion-del-catalogo.md)) = `CLOSED` si la
 edición no está en `INSCRIPCION_ABIERTA` o la fecha de hoy (en la zona de la edición) cae fuera de
@@ -580,7 +585,8 @@ progreso (`403`). El catálogo público no la pide.
 
 `valid`: sin retirar y antes de `expiresAt`. Al retirarla o vencer, la supresión corre en la cola
 (`lms.privacy.sweep-every`, 1 h, encola las vencidas): suprime eventos, progreso, asistencias, entregas, intentos sin
-calificar y trabajos; deja la matrícula (`RETIRADA` si estaba activa), los intentos calificados y el certificado sin la
+calificar, valoraciones (con sus puntajes, comentarios y apelaciones), denuncias resueltas y trabajos; deja sin la
+persona sus denuncias abiertas y la matrícula (`RETIRADA` si estaba activa), los intentos calificados y el certificado sin la
 persona (`holderName: null` en su verificación) y vacía su perfil docente. Detalle en
 [seguridad §7](../security/README.md#7-privacidad-y-retención).
 

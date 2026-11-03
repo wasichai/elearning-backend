@@ -400,6 +400,9 @@ el cuándo, en [`roadmap.md`](roadmap.md).
 - **RF-REP-06** · F6 · planificado — Perfiles de estudiante, docente, creador y revisor con su historial; un puntaje
   solo si está definido y es explicable.
   _Aceptación:_ cada cifra del perfil enlaza a su definición.
+  _Avance:_ el agregado de valoraciones de la ficha pública del docente (con su consentimiento `valoraciones_publicas` y
+  n ≥ k) enlaza su criterio publicado y versionado ([#325](https://github.com/wasichai/elearning-backend/issues/325),
+  ADR-0038); el resto de los perfiles, pendiente.
 
 ### RF-ADM — Administración, auditoría e informes (§13, §14, §15)
 
@@ -491,7 +494,8 @@ el cuándo, en [`roadmap.md`](roadmap.md).
   _Avance:_ política en [ADR-0030](../adr/0030-lgpl-definitiva-y-conservacion-segun-los-terminos.md) (se conserva lo que aprueban los términos de uso) y
   [ADR-0037](../adr/0037-terminos-de-uso-y-supresion-de-datos-personales.md) (qué se suprime y qué se disocia). Términos versionados con plazo y aceptación por persona;
   sin aceptación vigente, `403` al matricularse o registrar progreso; al retirarla o vencer, la supresión corre en la cola
-  ([#304](https://github.com/wasichai/elearning-backend/issues/304)). Pruebas: `TermsApiTest` y `PersonalDataErasureApiTest`.
+  ([#304](https://github.com/wasichai/elearning-backend/issues/304)). Pruebas: `TermsApiTest` y `PersonalDataErasureApiTest`. Las
+  valoraciones entran en la supresión (ADR-0038 §21, [#325](https://github.com/wasichai/elearning-backend/issues/325), `RatingErasureApiTest`).
 - **RNF-SEG-12** · F6 · planificado — Copias de seguridad con restauración verificada.
   _Aceptación:_ ensayo de restauración documentado con fecha y resultado.
 
