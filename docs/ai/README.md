@@ -187,12 +187,20 @@ Generar, validar, aprobar y publicar son permisos distintos (acciones declaradas
 
 | Acción                                              | Quién                                     | Objeto                          | Estado                        |
 | --------------------------------------------------- | ----------------------------------------- | ------------------------------- | ----------------------------- |
-| Generar (encolar un paso)                           | CREADOR con acceso al curso               | Acción `GENERAR` (ADR-0033 §10) | Planificado (E33.3)           |
-| Validar (lanzar y aceptar el informe de validación) | CREADOR o REVISOR asignado                | Acción `VALIDAR` (ADR-0033 §10) | Planificado (E33.3)           |
+| Generar (encolar un paso)                           | CREADOR con acceso al curso               | `GENERAR` sobre `version_curso` | Implementado (E33.3)          |
+| Validar (lanzar y aceptar el informe de validación) | REVISOR, nunca quien genera               | `VALIDAR` sobre `version_curso` | Implementado (E33.3)          |
 | Aprobar                                             | Persona con `APROBAR`, distinta del autor | `version_curso`                 | Planificado (F1 en el modelo) |
 | Publicar                                            | Persona con `PUBLICAR`                    | `version_curso`                 | Planificado (F1 en el modelo) |
 
 Los trabajos IA no tienen ninguna de las dos últimas.
+
+`elearning.ai.AiPermissions` las comprueba ([#280](https://github.com/wasichai/elearning-backend/issues/280)):
+`requireToEnqueue` exige la acción a quien llama con `CurrentUser.requirePermission` (`403`) y `requireStillAllowed`
+la vuelve a mirar al ejecutar con los roles guardados de quien pidió el trabajo (`Requesters`, ADR-0022 §4). Cada paso
+de E33.4–E33.6 llama a las dos. Validar es del REVISOR y no del CREADOR, como aprobar: ningún rol da por bueno lo que
+él mismo genera (separación de deberes, [seguridad §3](../security/README.md#3-separación-de-deberes)), y el
+issue lo pide así («quien solo puede generar recibe `403` al validar»). Aprobar sigue sin autoaprobación
+(`EditorialWorkflowGuard`).
 
 ## 9. Comparación reproducible de modelos
 
