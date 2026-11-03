@@ -19,7 +19,7 @@ data class NewVersionRequest(
 
 // copia una versión a un borrador de quien la pide (ADR-0018 §1): su temario, sus evaluaciones, sus enlaces a recursos y
 // los entornos de sus laboratorios (ADR-0027), con identidades nuevas. todo como la persona, así que sus permisos y la
-// guarda editorial aplican. el original no se toca.
+// guarda editorial aplican. el original no se toca. un curso sin versiones recibe la primera, vacía (#257).
 // devuelve la identidad del borrador; su detalle lo lee el estudio (StudioReader), ya confirmada la copia
 @Service
 class NewVersionService(
@@ -39,7 +39,7 @@ class NewVersionService(
                 versions.firstOrNull { it.id == request.fromVersionId }
                     ?: throw ValidationException("Invalid version", "fromVersionId", "must be a version of this course")
             } else {
-                versions.maxByOrNull { number(it) } ?: throw ValidationException("Invalid version", "fromVersionId", "this course has no versions")
+                versions.maxByOrNull { number(it) } ?: return firstDraft(course.id, me)
             }
         val next = versions.maxOf { number(it) } + 1
         return transactions.executeAndAwait {
@@ -74,6 +74,17 @@ class NewVersionService(
             copyAll(records.listAllIn(RUBRIC, QUESTION, questionIds), RUBRIC, QUESTION, newQuestions)
             UUID.fromString(created.id)
         }
+    }
+
+    // un curso sin versiones empieza por la v1 vacía, sin unidades (#257). el curso no tiene duración ni modalidad: van
+    // las mínimas válidas (FIRST_DRAFT) y el creador las ajusta. dos peticiones a la vez no hacen dos
+    // v1: el número es único por curso (uniqueConstraints) y la segunda responde 409
+    private suspend fun firstDraft(
+        course: String,
+        author: String,
+    ): UUID {
+        val attributes = FIRST_DRAFT + mapOf(COURSE to course, "numero" to 1, "autor_id" to author, "estado" to "BORRADOR")
+        return UUID.fromString(records.create(VERSION, RecordRequest(attributes)).id)
     }
 
     // copia los registros bajo sus padres nuevos, en orden y en un lote; devuelve la identidad nueva de cada uno
@@ -122,6 +133,9 @@ class NewVersionService(
         const val QUESTION = "pregunta"
         const val OPTION = "opcion"
         const val RUBRIC = "criterio_rubrica"
+
+        // los mínimos válidos de la primera versión; los mismos DEFAULTS que ImportJobHandler, que no depende de authoring
+        val FIRST_DRAFT = mapOf("modalidad" to "ASINCRONA", "duracion" to "SEMANAS", "semanas" to 1, "sistema_credito" to "NINGUNO")
 
         // lo decidido en la versión de origen no se hereda: ni su estado, ni su publicación, ni sus créditos aprobados
         val DRAFT_DROPS = setOf(COURSE, "numero", "autor_id", "estado", "publicada_en", "creditos_aprobados", "revisor_id")

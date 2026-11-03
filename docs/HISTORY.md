@@ -11,6 +11,21 @@ Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este
   Las instantáneas anteriores la dan como `null`. Las diferencias de versión no comparan evaluaciones: no aplica.
 - `ReviewLessonApiTest` (guarda, inmutabilidad y copia) y `AttemptApiTest` lo comprueban; `test_model`, el campo.
 
+## 2026-11-03 — Primer borrador vacío de un curso sin versiones ([#257](https://github.com/wasichai/elearning-backend/issues/257))
+
+- `POST /api/lms/studio/courses/{courseId}/versions` sobre un curso sin versiones ya no responde `400`: crea la v1
+  `BORRADOR` vacía a nombre de quien llama, con la modalidad, la duración y el crédito mínimos válidos (el curso no los
+  tiene), y aparece en «Mis versiones». Con versiones, sigue copiando la última o la de `fromVersionId`.
+- La unicidad de `[curso, numero]` impide dos v1: de dos peticiones a la vez, una crea y la otra responde `409`.
+  `NewVersionApiTest` prueba el borrador vacío, la concurrencia y la autorización negativa.
+
+## 2026-11-03 — Listado de mis importaciones ([#255](https://github.com/wasichai/elearning-backend/issues/255))
+
+- `GET /api/lms/studio/import` devuelve los trabajos de importación de quien llama, el más reciente primero, con la fuente,
+  el curso y las fechas (`ImportJob` gana `source`, `courseId`, `createdAt` y `finishedAt`): al recargar, la interfaz no
+  pierde de vista la importación en curso (ADR-0029). Nunca lista las de otra persona; los terminados duran lo que la
+  retención de la cola. Índice nuevo `trabajo_por_solicitante` (V14).
+
 ## 2026-11-03 — Traza de origen en la unidad ([#263](https://github.com/wasichai/elearning-backend/issues/263), RF-IMP-03)
 
 - `unidad` gana `referencia_fuente` (`repo@sha:ruta#ancla`), como la lección: la importación la llena con la traza del

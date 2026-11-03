@@ -565,6 +565,12 @@ Con sesión. Los permisos son las acciones declaradas sobre `version_curso`; lo 
 | POST   | `/api/lms/studio/versions/{id}/submit`        | envía a revisión → `StudioVersion`                           |
 | GET    | `/api/lms/studio/versions/{id}/diff`          | contra la versión anterior → `VersionDiff`                   |
 
+Una versión nueva copia la última del curso, o la de `fromVersionId` (`400` si no es de ese curso), a un `BORRADOR` de quien
+llama con el número siguiente. Un curso sin versiones recibe la v1 `BORRADOR` vacía, sin unidades, con `modalidad: ASINCRONA`,
+`duracion: SEMANAS` y `semanas: 1`, que el creador ajusta (#257). Exige `CREATE` sobre `version_curso` (`403`); un curso
+inexistente o que no puedo leer, `404`. El número es único por curso: dos peticiones a la vez no crean dos versiones con el
+mismo número, y la que pierde responde `409`.
+
 El contenido (unidades, lecciones, evaluaciones) se edita con la API de registros de Wasichai, que la guarda deja solo al autor y
 en borrador. La lección de repaso de una pregunta (`leccion_repaso`, opcional) es una lección de la misma versión: otra es
 `400` en `leccion_repaso`. Copiar la versión la re-apunta a la lección copiada.
@@ -625,6 +631,7 @@ en borrador. La lección de repaso de una pregunta (`leccion_repaso`, opcional) 
 | ------ | -------------------------------- | ---------------------------------------------------------------------------------- |
 | GET    | `/api/lms/studio/import/sources` | orígenes permitidos → `[{ "repository": "owner/repo", "sha": null }]`              |
 | POST   | `/api/lms/studio/import`         | `{ "source": "owner/repo@sha:ruta/maestro.adoc", "courseId" }` → `202` `ImportJob` |
+| GET    | `/api/lms/studio/import`         | mis trabajos de importación, el más reciente primero → `[ImportJob]`               |
 | GET    | `/api/lms/studio/import/{id}`    | `ImportJob`                                                                        |
 
 - Importar (y ver los orígenes) exige `CREATE` sobre `version_curso`, `unidad` y `leccion` (`403`). `source` es un archivo de un
@@ -638,7 +645,11 @@ en borrador. La lección de repaso de una pregunta (`leccion_repaso`, opcional) 
   devuelve ese trabajo (`202`), sin otro borrador; terminado, importar otra vez es otro trabajo. Con
   `lms.jobs.max-active-per-requester` (5) trabajos pendientes o en curso, entre importaciones y generaciones, uno más es `429`
   con `Retry-After` ([ADR-0022](../adr/0022-limites-y-ciclo-de-vida-de-los-trabajos.md)).
-- `ImportJob`: `{ "id", "status": "PENDIENTE" | "EN_CURSO" | "HECHO" | "FALLIDO", "error": null, "versionId": null, "report": null }`.
+- `GET /api/lms/studio/import` lista a lo sumo 50 trabajos de importación de quien llama, pendientes, en curso y terminados aún
+  retenidos, el más reciente primero. Pide los mismos permisos que importar (`403`) y nunca muestra los de otra persona,
+  tampoco al administrador. Sirve para que la interfaz no pierda de vista una importación al recargar.
+- `ImportJob`: `{ "id", "status": "PENDIENTE" | "EN_CURSO" | "HECHO" | "FALLIDO", "error": null, "versionId": null, "report": null,
+"source": "owner/repo@sha:ruta", "courseId", "createdAt", "finishedAt": null }`.
   `error` es el motivo de `FALLIDO` (o el último fallo pasajero mientras se reintenta). Con `HECHO`, `versionId` es la versión
   nueva del curso y `report`: `{ "source", "files", "includes", "sections", "images", "units", "lessons", "problemCount",
 "problems": [{ "kind", "origin": "owner/repo@sha:ruta", "line", "detail", "severity" }], "problemsBySeverity": { "GAP": 1, "CHECK": 4 } }`
