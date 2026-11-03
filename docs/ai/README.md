@@ -196,6 +196,14 @@ acotados llegarán con los pasos que los usen.
 - La salida se trata también como no confiable: HTML saneado, sin enlaces nuevos no presentes en las fuentes salvo
   marcados para revisión.
 - Ni claves ni datos de estudiantes en el contexto del modelo.
+- **Claves fuera de registros y persistencia** (RNF-SEG-09, ADR-0033 §12): solo el entorno del backend las tiene. Un fallo
+  del proveedor sale de `ModelCalls` con un mensaje propio que solo dice el estado (`the AI provider rejected the request
+(401)`, `the AI provider failed (429)`); el del SDK, que repite el cuerpo de la respuesta (el 401 de OpenAI cita parte
+  de la clave), queda en la causa y solo va al registro de la aplicación. `AgentExecutionLog` tapa además una clave
+  configurada y el valor de una cabecera `Authorization`, `x-api-key` o `api-key` en cualquier texto. Actuator no publica
+  `env`, `configprops` ni `heapdump` y los valores salen tapados si alguien los expusiera. Los SDK solo escriben
+  cabeceras con `ANTHROPIC_LOG=debug` u `OPENAI_LOG=debug`, en `System.err` y con las de credenciales tapadas; no se
+  activan en producción. `ProviderKeysApiTest` lo comprueba con los registros en DEBUG.
 
 ## 7. Doble determinista sin credenciales
 

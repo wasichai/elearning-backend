@@ -222,6 +222,21 @@ class AgentExecutionApiTest : LmsApiTest() {
         assertEquals("401 for key [REDACTED]", ok(read("/api/lms/ai/runs/$id", creator))["error"].asString())
     }
 
+    // una cabecera de credenciales en un texto se tapa aunque su valor no sea una clave configurada: la de otro proveedor,
+    // una rotada
+    @Test
+    fun `the value of a credential header never reaches a field, whatever the key`() {
+        val id = runBlocking { log.start(newRun(inputs = mapOf("pasted" to "curl -H 'x-api-key: $OTHER_KEY'\nAuthorization: Bearer $OTHER_KEY"))) }
+        runBlocking {
+            log.finish(DEMO_ORGANIZATION, id, AgentExecutionOutcome(AgentExecutionStatus.FAILED, error = "401\nAPI-Key: $OTHER_KEY\nretry later"))
+        }
+
+        val run = ok(read("/api/lms/ai/runs/$id", creator))
+        assertEquals("401\nAPI-Key: [REDACTED]\nretry later", run["error"].asString())
+        assertFalse(OTHER_KEY in run.toString(), run.toString())
+        assertEquals("curl -H 'x-api-key: [REDACTED]'\nAuthorization: [REDACTED]", run["inputs"]["pasted"].asString())
+    }
+
     @Test
     fun `who works the content reads the executions of a course it sees, anyone else gets 403 or 404`() {
         val course = courseId()
@@ -338,5 +353,8 @@ class AgentExecutionApiTest : LmsApiTest() {
 
         // una clave centinela: la forma de una de Anthropic, nunca una real
         const val SENTINEL = "sk-ant-sentinel-0000-never-a-real-key"
+
+        // una clave que la aplicación no conoce
+        const val OTHER_KEY = "sk-proj-other-0000-never-a-real-key"
     }
 }

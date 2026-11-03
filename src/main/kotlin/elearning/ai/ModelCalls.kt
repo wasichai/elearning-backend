@@ -24,7 +24,11 @@ data class ModelReply<T : Any>(
 // Los fallos, como los clasifica la cola (ADR-0033 §6): lo que reintentar no arregla (400, 401, 403, 404, 422 y una salida
 // que no se deserializa) sale como PermanentJobFailure; 408, 409, 429, 5xx y los de red salen tal cual, y la cola los
 // reintenta. Antes de eso, Embabel hace hasta embabel.agent.platform.llm-operations.data-binding.max-attempts intentos
-// (2) y el SDK del proveedor repite 408, 409, 429 y 5xx dos veces más dentro de cada uno (docs/ai §2)
+// (2) y el SDK del proveedor repite 408, 409, 429 y 5xx dos veces más dentro de cada uno (docs/ai §2).
+//
+// El mensaje de un fallo del proveedor es siempre el de aquí, con su estado y nada más (RNF-SEG-09): es el que guardan
+// lms.trabajo.error y AgentRun.error y el que lee quien pidió el trabajo. El del SDK repite el cuerpo de la respuesta (el
+// 401 de OpenAI cita parte de la clave) y se queda en la causa, que solo va al registro de la aplicación
 @Service
 class ModelCalls(
     private val contexts: ObjectProvider<ExecutingOperationContext>,
@@ -66,7 +70,11 @@ class ModelCalls(
                 return PermanentJobFailure("the model output does not match the expected type", e)
             }
             val status = chain.firstNotNullOfOrNull(::statusOf) ?: return e
-            return if (status in TRANSIENT || status >= 500) e else PermanentJobFailure("the AI provider rejected the request ($status)", e)
+            return if (status in TRANSIENT || status >= 500) {
+                ProviderUnavailable("the AI provider failed ($status)", e)
+            } else {
+                PermanentJobFailure("the AI provider rejected the request ($status)", e)
+            }
         }
 
         fun statusOf(t: Throwable): Int? =
@@ -79,3 +87,9 @@ class ModelCalls(
         const val MAX_CAUSES = 10
     }
 }
+
+// un fallo pasajero del proveedor (408, 409, 429, 5xx): la cola lo reintenta. el mensaje no lleva nada de la respuesta
+class ProviderUnavailable(
+    message: String,
+    cause: Throwable,
+) : RuntimeException(message, cause)
