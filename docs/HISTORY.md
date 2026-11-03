@@ -2,6 +2,15 @@
 
 Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este archivo registra lo que se entregó.
 
+## 2026-11-03 — Fase 3 sin pendientes de requisitos ([#231](https://github.com/wasichai/elearning-backend/issues/231))
+
+- Todos los requisitos F3 de [requirements.md](product/requirements.md) están `implementado`. El último, RF-AUL-08, se
+  comprobó en el código: `ClassroomReader` deriva `achievements` (`UNIT_COMPLETED`, `ASSESSMENT_PASSED`,
+  `CERTIFICATE_ISSUED`), `AchievementsApiTest` los prueba (incluida la autorización negativa: ni otro estudiante ni el
+  docente asignado los ven) y la interfaz los muestra con su e2e real (front#166). Los hallazgos de la revisión de la Fase 3
+  ([#183](https://github.com/wasichai/elearning-backend/issues/183)) ya estaban cerrados; la fila F3 del
+  [roadmap](product/roadmap.md) queda sin pendientes.
+
 ## 2026-11-03 — Logros en la interfaz del aula: RF-AUL-08 implementado ([front#166](https://github.com/wasichai/elearning-frontend/pull/166))
 
 - La interfaz muestra `achievements` junto al avance, con su fecha y enlace a su unidad, evaluación o certificado. El
