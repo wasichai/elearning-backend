@@ -949,14 +949,15 @@ Un guion de vídeo ([IA §12.1](../ai/README.md#121-el-guion-de-vídeo-esquema-1
 de render ([ADR-0040](../adr/0040-renderizador-de-video-en-un-trabajador-node.md)). **Opcional y apagado por defecto**
 (`LMS_RENDER_ENABLED`): apagado, pedir un render es `409` (`Video rendering is not enabled in this deployment: …`).
 
-| Método | Ruta                                           | Resultado                                               |
-| ------ | ---------------------------------------------- | ------------------------------------------------------- |
-| POST   | `/api/lms/studio/resources/{id}/video-renders` | `{ "guion": … }` → `202` `VideoRenderJob` (`PENDIENTE`) |
-| GET    | `/api/lms/studio/video-renders/{id}`           | `VideoRenderJob`                                        |
+| Método | Ruta                                           | Resultado                                                   |
+| ------ | ---------------------------------------------- | ----------------------------------------------------------- |
+| POST   | `/api/lms/studio/resources/{id}/video-renders` | `{ "guion": … }` → `202` `VideoRenderJob` (`PENDIENTE`)     |
+| GET    | `/api/lms/studio/video-renders/{id}`           | `VideoRenderJob`                                            |
+| GET    | `/api/lms/studio/resource-versions/{id}/video` | el MP4 validado (`video/mp4`, `inline`), para previsualizar |
 
 `VideoRenderJob`: `{ "id", "resourceId", "status": "PENDIENTE" | "EN_CURSO" | "HECHO" | "FALLIDO" | "CANCELADO", "attempts",
 "maxAttempts", "error", "durationSeconds", "video": { "sha256", "bytes" } | null, "subtitles": { "sha256", "bytes" } | null,
-"createdAt", "finishedAt" }`.
+"versionId", "versionNumber", "createdAt", "finishedAt" }`. `versionId` y `versionNumber` (la versión creada) solo con `HECHO`.
 
 - **Permisos**: las dos rutas exigen `CREATE` sobre `version_recurso` (`403`); el recurso se lee como quien pide (`404`) y
   tiene que ser `VIDEO` (`409`). Un trabajo de otra persona es `404`, también para el administrador. Antes de ejecutarse se
@@ -970,8 +971,26 @@ de render ([ADR-0040](../adr/0040-renderizador-de-video-en-un-trabajador-node.md
 - **Errores**: el trabajador inexistente o inalcanzable (`The render worker at … cannot be reached …: check that the
 render-worker container is running and that LMS_RENDER_WORKER_URL points to it`), el secreto que no coincide, el guion
   rechazado o el render imposible son `FALLIDO` en el primer intento; ocupado o un corte a mitad, `PENDIENTE` hasta agotar
-  `lms.jobs.max-attempts`. Guardar el vídeo como versión del recurso y validarlo con `ffprobe` llegan con
-  [#298](https://github.com/wasichai/elearning-backend/issues/298).
+  `lms.jobs.max-attempts`.
+- **Validación** (RF-MED-03, [#298](https://github.com/wasichai/elearning-backend/issues/298), ADR-0040 §5): el informe de
+  `ffprobe` del trabajador se compara con el guion (`RenderedVideoCheck`): contenedor MP4, una sola pista H.264 `yuv420p`
+  con la resolución y los fps pedidos, ninguna de audio (el guion no trae) ni de otro tipo, duración de la suma de las
+  secciones (± un fotograma y 0,1 s), tamaño igual al del informe y dentro de `lms.render.max-bytes`; el VTT, bien formado,
+  ordenado, sin solapes, dentro de la duración y con una señal por subtítulo del guion en su tiempo. Lo que no cuadra es
+  `FALLIDO` en el primer intento (`The rendered video does not match its script: the video runs at 25/1 fps, not 30`) y
+  **no crea versión**: sin validar no hay vídeo terminado.
+- **Lo validado se guarda** como la plataforma: una `version_recurso` nueva en `BORRADOR` a nombre de quien lo pidió con
+  el MP4 en su campo `video` (una sola copia, pasada a `wasichai-files` según llega; su sha256 tiene que ser el del
+  informe o el intento se repite) y dos `artefacto_generado`: `MP4` sin archivo (sha256, `hash_fuente` del guion,
+  `generador` `remotion`, `version_generador`, `parametros` e `informe` con `ffprobe`) y `VTT` con su archivo. Repetir el
+  trabajo devuelve lo ya escrito.
+- **El campo `video` solo lo escribe el render** (`RenderedVideoGuard`): ponerlo, cambiarlo o quitarlo por la API de
+  registros es `403`, también para el administrador. Una versión de un recurso `VIDEO` sin vídeo (ni el validado ni un
+  `archivo` subido a mano) no pasa a `EN_REVISION`, `APROBADA` ni `PUBLICADA` (`409`).
+- **Previsualizar** (`GET /api/lms/studio/resource-versions/{id}/video`): el propio MP4 de la versión, antes de decidir su
+  revisión. Lo ve su autor y quien tiene `APROBAR` o `PUBLICAR` sobre `version_recurso`; quien la lee sin eso (un docente
+  con `VER_TODAS`) recibe `403`, y una versión que no ve o sin vídeo renderizado es `404`. Se sirve como `video/mp4`,
+  `inline`, `nosniff` y sin caché; **sin `Range`** todavía (el reproductor lo baja entero; pedido a Wasichai, ADR-0040 §4).
 
 ## Registro de ejecuciones de IA (F5, ADR-0033 §7)
 

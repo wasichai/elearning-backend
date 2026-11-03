@@ -408,7 +408,7 @@ el cuándo, en [`roadmap.md`](roadmap.md).
 - **RF-MED-02** · F5 · implementado ([#297](https://github.com/wasichai/elearning-backend/issues/297)) — Renderizado Remotion asíncrono, fuera de WebFlux, con límite de concurrencia y
   registro de trabajo y errores.
   _Aceptación:_ lanzar más renders que el límite los encola sin degradar la API.
-- **RF-MED-03** · F5 · planificado — Un vídeo se da por terminado solo si se renderizó y validó (duración,
+- **RF-MED-03** · F5 · implementado ([#298](https://github.com/wasichai/elearning-backend/issues/298)) — Un vídeo se da por terminado solo si se renderizó y validó (duración,
   resolución, subtítulos), con previsualización.
   _Aceptación:_ un render fallido o incompleto no se ofrece para publicar.
   _Avance:_ la validación del artefacto y la previsualización (E37.3, [#298](https://github.com/wasichai/elearning-backend/issues/298))

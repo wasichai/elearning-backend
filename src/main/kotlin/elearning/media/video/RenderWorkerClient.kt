@@ -2,6 +2,7 @@ package elearning.media.video
 
 import io.netty.channel.ChannelOption
 import kotlinx.coroutines.reactor.awaitSingle
+import kotlinx.coroutines.reactor.awaitSingleOrNull
 import org.slf4j.LoggerFactory
 import org.springframework.core.io.buffer.DataBuffer
 import org.springframework.core.io.buffer.DataBufferUtils
@@ -10,13 +11,12 @@ import org.springframework.http.client.reactive.ReactorClientHttpConnector
 import org.springframework.web.reactive.function.client.ClientResponse
 import org.springframework.web.reactive.function.client.ExchangeStrategies
 import org.springframework.web.reactive.function.client.WebClient
+import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import reactor.netty.http.client.HttpClient
 import tools.jackson.databind.json.JsonMapper
 import java.net.ConnectException
 import java.net.UnknownHostException
-import java.security.MessageDigest
-import java.util.HexFormat
 import java.util.UUID
 
 // un fallo al hablar con el trabajador. permanent: reintentar no lo arregla (el trabajador no existe, rechazó el guion o el
@@ -27,7 +27,7 @@ class RenderWorkerException(
     cause: Throwable? = null,
 ) : RuntimeException(message, cause)
 
-// lo descargado del trabajador: su sha256 y su tamaño, calculados al vuelo sin juntar los bytes en memoria
+// un archivo del render: su sha256 y su tamaño, según el informe del trabajador y comprobados al guardarlo
 data class WorkerFile(
     val sha256: String,
     val bytes: Long,
@@ -74,35 +74,45 @@ class RenderWorkerClient(
                 }
         }
 
-    // GET /renders/{trabajo}/{name}: el sha256 y el tamaño de lo que manda, que no puede pasar de maxBytes
-    suspend fun download(
+    // GET /renders/{trabajo}/{name}: los bytes tal como llegan, sin juntarlos, cortados en cuanto pasan de maxBytes. quien los
+    // consume los libera; su sha256 lo comprueba quien los guarda (wasichai-files lo calcula al guardarlos)
+    fun stream(
         job: UUID,
         name: String,
         maxBytes: Long,
-    ): WorkerFile =
-        call("download $name") {
-            client
-                .get()
-                .uri("/renders/{id}/{name}", job, name)
-                .exchangeToMono { response ->
-                    if (!response.statusCode().is2xxSuccessful) return@exchangeToMono rejected(response)
-                    val digest = MessageDigest.getInstance("SHA-256")
-                    var size = 0L
-                    response
-                        .bodyToFlux(DataBuffer::class.java)
-                        .doOnNext { buffer ->
-                            try {
-                                size += buffer.readableByteCount()
-                                if (size > maxBytes) throw RenderWorkerException("The rendered $name is larger than $maxBytes bytes", permanent = true)
-                                val bytes = ByteArray(buffer.readableByteCount())
-                                buffer.read(bytes)
-                                digest.update(bytes)
-                            } finally {
-                                DataBufferUtils.release(buffer)
-                            }
-                        }.then(Mono.fromCallable { WorkerFile(HexFormat.of().formatHex(digest.digest()), size) })
-                }
+    ): Flux<DataBuffer> =
+        Flux
+            .defer {
+                var size = 0L
+                client
+                    .get()
+                    .uri("/renders/{id}/{name}", job, name)
+                    .retrieve()
+                    .onStatus({ !it.is2xxSuccessful }) { rejected<Throwable>(it) }
+                    .bodyToFlux(DataBuffer::class.java)
+                    .map { buffer ->
+                        size += buffer.readableByteCount()
+                        if (size > maxBytes) {
+                            DataBufferUtils.release(buffer)
+                            throw RenderWorkerException("The rendered $name is larger than $maxBytes bytes", permanent = true)
+                        }
+                        buffer
+                    }
+            }.onErrorMap({ it !is RenderWorkerException }) { network("download $name", it) }
+
+    // lo mismo, junto en memoria: solo para lo pequeño (los subtítulos)
+    suspend fun fetch(
+        job: UUID,
+        name: String,
+        maxBytes: Long,
+    ): ByteArray {
+        val joined = DataBufferUtils.join(stream(job, name, maxBytes)).awaitSingleOrNull() ?: return ByteArray(0)
+        try {
+            return ByteArray(joined.readableByteCount()).also { joined.read(it) }
+        } finally {
+            DataBufferUtils.release(joined)
         }
+    }
 
     // DELETE /renders/{trabajo}: lo que no se borre aquí lo borra el trabajador pasada una hora, así que un fallo solo se avisa
     suspend fun delete(job: UUID) {

@@ -91,6 +91,9 @@ class ApiError(Exception):
             errors = problem.get("errors") if isinstance(problem.get("errors"), list) else []
             if errors:
                 detail += " — " + "; ".join(f"{e.get('field')}: {e.get('message')}" if isinstance(e, dict) else str(e) for e in errors)
+            # el cuerpo entero también: un problema puede decir lo importante fuera de detail y errors
+            if detail != body:
+                detail += f" (respuesta: {body[:2000]})"
         super().__init__(f"{method} {path} → {status}: {detail}")
         self.status = status
 
@@ -149,6 +152,9 @@ def validate(model: dict, roles: dict | None = None) -> None:
                 problems.append(f"campo '{where}': maxBytes y contentTypes son de FILE o IMAGE")
             if "maxBytes" in f and (not isinstance(f["maxBytes"], int) or f["maxBytes"] <= 0):
                 problems.append(f"campo '{where}': maxBytes debe ser un entero positivo")
+            # ADR-0040 §4: el techo de wasichai-files sube a 256 MB con el render de vídeo; un FILE sin tope propio lo heredaría
+            if ftype == "FILE" and "maxBytes" not in f:
+                problems.append(f"campo '{where}': un FILE declara su maxBytes (si no, hereda el techo de wasichai.files.max-bytes)")
             if f.get("indexed") and ftype == "LONG_TEXT":
                 problems.append(f"campo '{where}': un LONG_TEXT no se indexa")
         actions: set[str] = set()

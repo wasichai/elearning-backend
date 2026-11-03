@@ -19,7 +19,7 @@
     "modalidad_sesion": ["PRESENCIAL", "VIRTUAL"],
     "estado_sesion": ["PROGRAMADA", "REPROGRAMADA", "CANCELADA"],
     "estado_asistencia": ["PRESENTE", "TARDE", "AUSENTE", "JUSTIFICADO"],
-    "formato_artefacto": ["HTML", "PDF"],
+    "formato_artefacto": ["HTML", "PDF", "MP4", "VTT"],
     "tipo_aprobacion_creditos": ["APROBACION", "REVOCACION"],
     "estado_politica_credito": ["BORRADOR", "PUBLICADA", "RETIRADA"],
     "metodo_credito": ["ECTS_CARGA_TOTAL", "US_SCH_34CFR600_2", "PE_LEY30220_HORAS_LECTIVAS"],
@@ -787,6 +787,12 @@
           "name": "revisada_en",
           "label": "Revisada en",
           "type": "DATETIME"
+        },
+        {
+          "name": "video",
+          "label": "Vídeo renderizado y validado (máx. 256 MB; solo lo escribe la plataforma)",
+          "type": "FILE",
+          "maxBytes": 268435456
         }
       ],
       "uniqueConstraints": [["recurso", "numero"]]
@@ -875,7 +881,7 @@
       "pluralLabel": "Artefactos generados",
       "appendOnly": true,
       "apiOnly": true,
-      "description": "HTML o PDF generado desde una fuente (GeneratedArtifact, RF-CON-03/07). Lo escribe solo el trabajo de generación; regenerar crea otra versión del recurso, nunca sobrescribe.",
+      "description": "HTML o PDF generado desde una fuente, o MP4 y VTT renderizados desde un guion (GeneratedArtifact, RF-CON-03/07, RF-MED-03). Lo escribe solo el trabajo de generación o de render; regenerar crea otra versión del recurso, nunca sobrescribe. El MP4 no guarda copia: sus bytes son el vídeo de la versión (ADR-0040 §4).",
       "fields": [
         {
           "name": "formato",
@@ -886,9 +892,8 @@
         },
         {
           "name": "archivo",
-          "label": "Archivo generado (máx. 25 MB; se descarga, nunca se ejecuta)",
+          "label": "Archivo generado (máx. 25 MB; se descarga, nunca se ejecuta; el MP4 no lo lleva: está en su versión)",
           "type": "FILE",
-          "required": true,
           "maxBytes": 26214400
         },
         {
@@ -899,7 +904,7 @@
         },
         {
           "name": "hash_fuente",
-          "label": "SHA-256 de la fuente generada",
+          "label": "SHA-256 de la fuente generada o del guion renderizado",
           "type": "TEXT",
           "required": true
         },
@@ -921,6 +926,16 @@
           "type": "UUID",
           "required": true,
           "indexed": true
+        },
+        {
+          "name": "parametros",
+          "label": "Parámetros de salida (JSON: resolución, fps, duración)",
+          "type": "LONG_TEXT"
+        },
+        {
+          "name": "informe",
+          "label": "Informe de validación (JSON: ffprobe, sha256 y tamaños, versiones)",
+          "type": "LONG_TEXT"
         }
       ],
       "uniqueConstraints": [["trabajo_id", "formato"]]
@@ -2001,8 +2016,7 @@
       "type": "MANY_TO_ONE",
       "source": "artefacto_generado",
       "target": "fuente_recurso",
-      "fieldName": "fuente_recurso",
-      "required": true
+      "fieldName": "fuente_recurso"
     },
     {
       "name": "guion_video_version",

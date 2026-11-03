@@ -81,6 +81,15 @@ class ValidationTest(unittest.TestCase):
         self.assertTrue(any("target desconocido" in p for p in found))
         self.assertTrue(any("ya existe" in p for p in found))
 
+    def test_every_file_field_declares_its_max_bytes(self):
+        bad = copy.deepcopy(MODEL)
+        bad["objects"][0]["fields"].append({"name": "adjunto", "type": "FILE"})
+        bad["objects"][0]["fields"].append({"name": "con_tope", "type": "FILE", "maxBytes": 1024})
+        found = self.problems(bad)
+        self.assertEqual(1, len(found), found)
+        self.assertIn("curso.adjunto", found[0])
+        self.assertIn("maxBytes", found[0])
+
     def test_relationship_name_fits_wasichai(self):
         bad = copy.deepcopy(MODEL)
         bad["relationships"].append({"name": "r" * 36, "type": "MANY_TO_ONE", "source": "version_curso", "target": "curso", "fieldName": "otro"})

@@ -266,20 +266,28 @@ Para activarlo ([ADR-0040](../adr/0040-renderizador-de-video-en-un-trabajador-no
 3. **Tiempo límite**: `LMS_RENDER_TIMEOUT` (30 min) tiene que ser menor que `LMS_JOBS_LEASE` (15 min por defecto): con el
    render activo, **sube `LMS_JOBS_LEASE`** (p. ej. `35m`) o el backend no arranca. Un render ocupa una plaza de
    `LMS_JOBS_PARALLELISM` mientras dura.
-4. **Archivos**: `WASICHAI_FILES_MAX_BYTES=256MB` (los campos que suben personas conservan su tope de 25 MB) y un heap del
+4. **Archivos**: `WASICHAI_FILES_MAX_BYTES` en 256 MB (el valor por defecto desde #298; los campos que suben personas
+   conservan su tope de 25 MB) y un heap del
    backend de al menos 1 GB; con un techo menor que `LMS_RENDER_MAX_BYTES` (256 MB) el backend no arranca.
 5. `LMS_RENDER_MAX_CONCURRENT` (1, entre todas las réplicas: los demás esperan en la cola), `LMS_RENDER_MAX_SECONDS` (900)
    y `LMS_RENDER_MAX_BYTES` (256 MB).
 
-| Síntoma                                                               | Qué mirar                                                                  |
-| --------------------------------------------------------------------- | -------------------------------------------------------------------------- |
-| Render `FALLIDO`: `The render worker at … cannot be reached`          | el contenedor `render-worker` en marcha y `LMS_RENDER_WORKER_URL` hacia él |
-| Render `FALLIDO`: `refused the shared secret`                         | `LMS_RENDER_WORKER_TOKEN` del backend igual a `RENDER_WORKER_TOKEN`        |
-| Render `FALLIDO`: `rejected the video (422): … could not be rendered` | el registro del trabajador (Chrome, memoria, `ffprobe`)                    |
-| Renders `PENDIENTE` mucho tiempo                                      | uno `EN_CURSO` ocupa `LMS_RENDER_MAX_CONCURRENT`; el trabajador está vivo  |
-| `409 Video rendering is not enabled`                                  | `LMS_RENDER_ENABLED=true` en el backend                                    |
+| Síntoma                                                               | Qué mirar                                                                   |
+| --------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| Render `FALLIDO`: `The render worker at … cannot be reached`          | el contenedor `render-worker` en marcha y `LMS_RENDER_WORKER_URL` hacia él  |
+| Render `FALLIDO`: `refused the shared secret`                         | `LMS_RENDER_WORKER_TOKEN` del backend igual a `RENDER_WORKER_TOKEN`         |
+| Render `FALLIDO`: `rejected the video (422): … could not be rendered` | el registro del trabajador (Chrome, memoria, `ffprobe`)                     |
+| Renders `PENDIENTE` mucho tiempo                                      | uno `EN_CURSO` ocupa `LMS_RENDER_MAX_CONCURRENT`; el trabajador está vivo   |
+| `409 Video rendering is not enabled`                                  | `LMS_RENDER_ENABLED=true` en el backend                                     |
+| Render `FALLIDO`: `does not match its script: …`                      | el vídeo no es el del guion (fps, resolución, duración, pistas, subtítulos) |
 
 Apagar el render con renders en cola los deja `PENDIENTE`: ninguna réplica los reclama hasta que se vuelva a encender.
+
+Un despliegue con el modelo anterior a #298: `model/apply.py` añade `version_recurso.video` (256 MB, que pide el techo
+`WASICHAI_FILES_MAX_BYTES` de 256 MB, el valor por defecto) y `MP4`/`VTT` a `formato_artefacto`, pero no cambia campos
+existentes: avisa de que `artefacto_generado.archivo` y `artefacto_generado.fuente_recurso` siguen obligatorios en el
+servidor. Antes de activar el render, quítales la obligatoriedad desde la administración de metadatos de Wasichai (el
+MP4 no lleva archivo ni sale de una fuente); sin eso, guardar un render falla.
 
 ## Despliegue objetivo (k3s)
 

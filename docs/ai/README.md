@@ -576,12 +576,16 @@ con otra palabra clave: cambiar el esquema obliga a cambiar los dos lados en el 
 - `VideoRenderJobHandler` corre en el dispatcher de la cola, con su propio tiempo límite (`lms.render.timeout`) y como
   mucho `lms.render.max-concurrent` renders en curso entre todas las réplicas: `JobQueue.claimCapped` no reclama uno más
   (los demás esperan en `QUEUED` sin gastar intentos). Llama al trabajador con `PUT /renders/{trabajo}` (idempotente),
-  descarga `video.mp4` y `subtitulos.vtt` comprobando sha256 y tamaño contra el informe, y los borra con `DELETE`.
+  valida el informe, recoge `video.mp4` y `subtitulos.vtt` comprobando sha256 y tamaño contra el informe, y los borra con
+  `DELETE`.
 - En el trabajo quedan el guion (`datos`), el informe (`resultado`: sha256 y tamaños, `ffprobe`, versiones de Remotion y del
   trabajador) y el error. Un trabajador inexistente o inalcanzable, un secreto que no coincide o un guion rechazado son
   fallo **permanente** con un mensaje que dice qué mirar; ocupado (`503`) o un corte a mitad, se reintenta.
-- Validar el informe de `ffprobe` contra el guion y guardar el MP4 y el VTT en `wasichai-files` es E37.3
-  ([#298](https://github.com/wasichai/elearning-backend/issues/298)).
+- **Validación y guardado** (E37.3, [#298](https://github.com/wasichai/elearning-backend/issues/298), RF-MED-03):
+  `RenderedVideoCheck` compara el informe de `ffprobe` y el VTT con el guion (duración, resolución, fps, pistas y
+  subtítulos); lo que no cuadra falla sin crear versión. Lo validado queda en una `version_recurso` en `BORRADOR` (MP4 en su
+  campo `video`, una sola copia) con sus `artefacto_generado` `MP4` y `VTT`; el revisor lo previsualiza con
+  `GET /api/lms/studio/resource-versions/{id}/video` ([API](../api/lms.md#render-de-vídeo-f5-rf-med-02)).
 
 ## 13. Informe de validación (RF-IA-05)
 
