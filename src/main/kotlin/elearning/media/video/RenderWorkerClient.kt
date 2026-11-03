@@ -204,8 +204,8 @@ class RenderWorkerClient(
         private const val HTTP_UNAUTHORIZED = 401
         private const val HTTP_UNAVAILABLE = 503
 
-        // 400 esquema, 409 el mismo trabajo con otro guion, 413 demasiado grande, 422 render imposible (ADR-0040 §3)
-        private val PERMANENT = setOf(400, 409, 413, 422)
+        // 400 esquema, 409 el mismo trabajo con otro guion, 413 demasiado grande, 415 no es JSON, 422 render imposible (ADR-0040 §3)
+        private val PERMANENT = setOf(400, 409, 413, 415, 422)
         private val MAPPER: JsonMapper = JsonMapper.builder().build()
     }
 }
