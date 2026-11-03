@@ -256,6 +256,27 @@ class RealModelTest(unittest.TestCase):
             for action in ("CREATE", "UPDATE", "DELETE"):
                 self.assertFalse(holds(role["name"], "conocimiento_previo", action), f"{role['name']} no debe {action}")
 
+    # RF-IA-01 (E33.1): el brief de un curso se guarda a medias en borrador; la completitud y las fuentes las exige
+    # BriefGuard al pasarlo a LISTO. lo escribe quien crea versiones del curso; los permisos de IA llegan en E33.3
+    def test_a_course_brief_is_drafted_by_the_creator(self):
+        brief = next(o for o in MODEL["objects"] if o["name"] == "brief")
+        fields = {f["name"]: f for f in brief["fields"]}
+        for name in ("tematica", "publico", "objetivos", "duracion_horas", "idioma", "nivel", "expertos", "fuentes"):
+            self.assertIn(name, fields)
+            self.assertFalse(fields[name].get("required", False), name)
+        self.assertEqual("nivel", fields["nivel"]["enum"])
+        self.assertEqual(["BORRADOR", "LISTO"], MODEL["enums"]["estado_brief"])
+        self.assertEqual("BORRADOR", fields["estado"]["defaultValue"])
+        self.assertTrue(fields["estado"]["required"])
+        link = next(r for r in MODEL["relationships"] if r["source"] == "brief")
+        self.assertEqual(("curso", "curso", "MANY_TO_ONE"), (link["target"], link["fieldName"], link["type"]))
+        self.assertTrue(link["required"])
+        self.assertNotIn("actions", brief)
+        for role in ROLES["roles"]:
+            creates = holds(role["name"], "version_curso", "CREATE")
+            for action in ("READ", "CREATE", "UPDATE", "DELETE"):
+                self.assertEqual(creates, holds(role["name"], "brief", action), f"{role['name']} {action}")
+
     def test_curriculum_is_separate_from_offering_and_schedule(self):
         # el temario (curso/versión) no tiene fechas; la edición sí, con su zona horaria
         course = {f["name"] for o in MODEL["objects"] if o["name"] in ("curso", "version_curso") for f in o["fields"]}

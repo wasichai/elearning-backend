@@ -320,6 +320,10 @@ el cuándo, en [`roadmap.md`](roadmap.md).
 - **RF-IA-01** · F5 · planificado — Brief estructurado (temática, público, objetivos, duración, idioma, nivel,
   expertos, fuentes autorizadas) validado por esquema.
   _Aceptación:_ un brief incompleto se rechaza con los campos que faltan.
+  _Avance:_ Custom Object `brief` del curso y `BriefGuard` (E33.1, [#278](https://github.com/wasichai/elearning-backend/issues/278)):
+  se guarda a medias en `BORRADOR` y pasar a `LISTO` incompleto es `400` con los campos que faltan; cada fuente es de la lista
+  permitida del importador o de un paquete ya importado al curso; lo escribe quien crea versiones. Falta el formulario
+  en el estudio y su uso por los pasos (E33.2).
 - **RF-IA-02** · F5 · planificado — Pasos reproducibles (análisis de fuentes con procedencia, diseño pedagógico,
   borrador con plantillas versionadas) con salidas tipadas; una salida inválida se rechaza o va a corrección.
   _Aceptación:_ prueba con una salida malformada del doble determinista.
