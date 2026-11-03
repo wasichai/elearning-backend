@@ -2,6 +2,19 @@
 
 Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este archivo registra lo que se entregó.
 
+## 2026-11-03 — ADR de la Fase 5: Embabel 1.5.4, proveedores, límites y `AgentRun` ([#272](https://github.com/wasichai/elearning-backend/issues/272))
+
+Solo documentación, primer paso de la épica E32 ([#271](https://github.com/wasichai/elearning-backend/issues/271)).
+
+- [ADR-0033](adr/0033-fase-5-ia.md): Embabel 1.5.4 (no la 1.5.3, que falla con Claude 5) con Anthropic y OpenAI (Responses
+  API) opcionales y Anthropic por defecto; modelo por paso como configuración; una llamada tipada por paso, sin
+  planificador, herramientas ni MCP; los trabajos de IA en `lms.trabajo` con el estado nuevo `CANCELLED` y el reintento
+  interno de Embabel a 1–2; `AgentRun` en la tabla fija `lms.ejecucion_agente`; `max_tokens` por paso, concurrencia por
+  organización y presupuesto por curso; permisos `GENERAR` y `VALIDAR`; ninguna prueba de CI llama a un proveedor real
+  (doble determinista y doble HTTP con WireMock).
+- `docs/ai`, RF-IA-08, `domain-model.md`, `docs/operations` (claves, URL base y modelos por paso) y el roadmap (épicas
+  E32–E38) se alinean con él.
+
 ## 2026-11-03 — Nombres de autor, revisor y de quien decide ([#258](https://github.com/wasichai/elearning-backend/issues/258))
 
 - `StudioVersion` (estudio y bandeja), `ReviewComment` y `ReviewDecision` traen `authorName` / `reviewerName` junto a su id:
