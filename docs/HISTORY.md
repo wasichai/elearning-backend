@@ -65,6 +65,14 @@ Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este
   lo que espera `AiStepRunner`.
   `CollectedSource` del importador expone el texto leído. Sin migraciones.
 
+## 2026-11-03 — Un borrador lo envía a revisión su autor ([#354](https://github.com/wasichai/elearning-backend/pull/354))
+
+- `EditorialWorkflowGuard` responde `403` cuando alguien que no es el autor ni tiene `PUBLICAR` lleva a `EN_REVISION` una
+  `version_curso` o `version_recurso` por la API de registros. Antes bastaban `UPDATE` y `ENVIAR_A_REVISION`, que CREADOR tiene
+  sobre todas: el borrador de un compañero se enviaba con un `PATCH` o un `PUT` (`200`). El estudio ya respondía `404`.
+- `VersionTransitionsApiTest` recorre el flujo por roles y deja cubiertos los pasos del autor, la bandeja del revisor, quien
+  publica y la plataforma.
+
 ## 2026-11-03 — Informe de validación de borradores ([#286](https://github.com/wasichai/elearning-backend/issues/286))
 
 - `DraftValidator` (`elearning.ai`) valida por código una versión en borrador (RF-IA-05): estructura, referencias,

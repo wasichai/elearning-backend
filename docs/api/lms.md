@@ -782,6 +782,10 @@ o `PUBLICADA`. Quien no tiene la acción sigue recibiendo `403`. Una versión va
 devuelve a borrador, se rechaza o se retira. `submit` también responde `409` si la versión no está en borrador: para distinguirlos,
 el cliente mira `units[].lessons` del detalle, no el texto.
 
+**Un borrador lo envía su autor.** `submit` responde `404` si la versión es de otra persona. Por la API de registros, un `PATCH` o
+`PUT` que lleva a `EN_REVISION` el borrador de otro es `403` salvo con `PUBLICAR`, también en `version_recurso`, y ese `403` llega
+antes que el `409` de la versión sin lecciones (`VersionTransitionsApiTest`).
+
 El contenido (unidades, lecciones, evaluaciones) se edita con la API de registros de Wasichai, que la guarda deja solo al autor y
 en borrador. La lección de repaso de una pregunta (`leccion_repaso`, opcional) es una lección de la misma versión: otra es
 `400` en `leccion_repaso`. Copiar la versión la re-apunta a la lección copiada.
