@@ -809,3 +809,37 @@ pasajero (almacenamiento, interrupción) vuelve a `PENDIENTE` hasta agotar `lms.
   REVISOR): `formato`, `archivo`, `sha256`, `hash_fuente`, `generador`, `version_generador`, `trabajo_id` y las relaciones
   `version_recurso` y `fuente_recurso`. Se descargan con `GET /api/objects/artefacto_generado/records/{id}/files/archivo`,
   siempre como adjunto. La API de registros no los escribe (`403`).
+
+## Registro de ejecuciones de IA (F5, ADR-0033 §7)
+
+Cada llamada de un paso de la canalización deja una ejecución (`AgentRun`, RF-IA-03) en `lms.ejecucion_agente`. La escriben
+los pasos desde su trabajo; esta API solo la lee.
+
+| Método | Ruta                             | Resultado                                                                                  |
+| ------ | -------------------------------- | ------------------------------------------------------------------------------------------ |
+| GET    | `/api/lms/ai/runs?courseId={id}` | las ejecuciones del curso, la más reciente primero, a lo sumo 100 → `[AgentExecutionLine]` |
+| GET    | `/api/lms/ai/runs/{id}`          | `AgentExecution`                                                                           |
+
+- **Permisos**: ambas rutas exigen `UPDATE` sobre `version_curso` (CREADOR, REVISOR y ADMIN; `403` para ESTUDIANTE y DOCENTE) y
+  el curso se lee como quien llama: el mismo alcance que el curso. Un curso que no existe o no ve es `404`; una ejecución que
+  no existe, de otra organización o de un curso que no ve, también `404`. No hay ruta que escriba (`405`).
+- `AgentExecutionLine`: `{ "id", "jobId", "step", "status", "generator", "provider": null, "model": null, "requestedBy",
+"courseId", "unitId": null, "versionId": null, "attempt", "inputTokens": null, "outputTokens": null, "cost": null,
+"startedAt", "finishedAt": null }`.
+- `AgentExecution`: lo de la línea más `"organizationId", "objective", "inputs", "sources": [{ "ref": "owner/repo@sha:ruta#ancla",
+"sha256" }], "modelSettings": { "maxTokens", "temperature": null }, "promptVersion", "templateVersion", "idempotencyKey",
+"output": null, "validations": null, "error": null, "interventions": [{ "userId", "kind", "at", "note": null }]`.
+  `inputs`, `output` y `validations` son el JSON del paso.
+- `step`: `SOURCE_ANALYSIS` · `COURSE_DESIGN` · `LESSON_DRAFT` · `SCRIPT` · `CONSISTENCY_REVIEW` · `ASSISTANT`. `status`:
+  `PENDING` · `RUNNING` · `SUCCEEDED` · `INVALID_OUTPUT` · `FAILED` · `CANCELLED`. `generator`: `MODEL` · `DETERMINISTIC`; con
+  `DETERMINISTIC`, `provider`, `model` y `modelSettings` son `null`. `provider`: `anthropic` · `openai`. `kind`: `ACCEPTED` ·
+  `EDITED` · `REJECTED`.
+- `cost`: `{ "amount", "currency", "inputPerMillion", "outputPerMillion", "rateSince" }`, calculado al cerrar con la tarifa de
+  `lms.ai.rates` que regía el día en que empezó, y guardado con ella: cambiar la tarifa no reescribe lo gastado. `null`
+  mientras corre, sin consumo informado, con el doble determinista o si el modelo no tiene tarifa configurada.
+- **Lo que no cambia**: lo pedido (paso, ámbito, objetivo, entradas, fuentes, modelo, versiones, clave e intento) no se edita;
+  la ejecución se cierra una sola vez (estado, salida, validaciones, error, tokens, coste y fin) y las intervenciones solo se
+  añaden al final. Nada se borra ni se purga con los trabajos. Lo hace cumplir un disparador, también frente a SQL directo.
+- **Sin secretos**: ningún campo guarda claves ni cabeceras; `modelSettings` es tipado (no admite parámetros libres) y una clave
+  configurada (`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`) que aparezca en el objetivo, las entradas, la salida, el error o una nota
+  se guarda como `[REDACTED]` (RNF-SEG-09).

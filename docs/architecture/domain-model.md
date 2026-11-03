@@ -333,16 +333,17 @@ solo en una versión `EN_REVISION` y solo quien la revisa; el creador lo lee en 
 
 **`lms.ejecucion_agente`** (AgentRun) — F5, tabla fija del esquema `lms` (`ModuleMigration` orden 200), no un Custom
 Object: sus entradas, salida y validaciones son JSON ([ADR-0033](../adr/0033-fase-5-ia.md) §7, ADR-0004).
-`id` · `organizacion_id` · `trabajo_id` (el de `lms.trabajo`) · `paso` · `usuario_id` · `curso_id`, `version_curso_id`,
-`unidad_id` · `objetivo` · `entradas · jsonb` · `fuentes · jsonb · referencias y hashes` · `proveedor` · `modelo` ·
-`parametros · jsonb` · `version_instrucciones` · `version_plantilla` · `resultado · jsonb · validado` ·
-`validaciones · jsonb` · `estado · PENDING | RUNNING | SUCCEEDED | INVALID_OUTPUT | FAILED | CANCELLED` · `error` ·
-`tokens_entrada` · `tokens_salida` · `coste`, `tarifa`, `tarifa_fecha` · `iniciada_en`, `terminada_en` ·
-`intervenciones · jsonb` · `clave_idempotencia` · `intento` · `generador · MODEL | DETERMINISTIC`. Nombres de columna
-definitivos en la migración (E32.4); los campos son los de [docs/ai §4](../ai/README.md#4-registro-agentrun).
+`id` · `organizacion_id` · `trabajo_id` (el de `lms.trabajo`, sin clave foránea: la cola purga sus trabajos) · `paso` ·
+`solicitante_id` · `curso_id`, `unidad_id`, `version_curso_id` · `objetivo` · `entradas · jsonb` · `fuentes · jsonb ·
+[{ref, sha256}]` · `generador · MODEL | DETERMINISTIC` · `proveedor · anthropic | openai`, `modelo`, `parametros_modelo ·
+jsonb` (los tres solo con `MODEL`) · `version_instrucciones` · `version_plantilla` · `clave` · `intento` · `iniciada_en` ·
+`estado · PENDING | RUNNING | SUCCEEDED | INVALID_OUTPUT | FAILED | CANCELLED` · `salida · jsonb` · `validaciones · jsonb` ·
+`error` · `tokens_entrada` · `tokens_salida` · `coste`, `moneda`, `tarifa_entrada`, `tarifa_salida`, `tarifa_desde`
+(por millón de tokens) · `terminada_en` · `intervenciones · jsonb · [{userId, kind, at, note}]`
+(`V16__ejecucion_agente.sql`, E32.4); los campos son los de [docs/ai §4](../ai/README.md#4-registro-agentrun).
 Invariantes: sin secretos en ningún campo [servicio]; repetir con la misma clave no crea otra ejecución [cola]; una
-ejecución nunca publica [diseño]; no se edita salvo su cierre y las intervenciones, que se añaden, y no se purga con los
-trabajos [servicio]. Se lee por `/api/lms/ai/**` con el alcance del curso.
+ejecución nunca publica [diseño]; no se edita salvo su cierre, una vez, y las intervenciones, que se añaden, y no se borra
+[disparador]; no se purga con los trabajos [servicio]. Se lee por `/api/lms/ai/**` con el alcance del curso.
 
 **`artefacto_generado`** (GeneratedArtifact) — F4 (HTML/PDF, implementado) · F5 (vídeo). `appendOnly` y `apiOnly`.
 `version_recurso · RELATION` · `fuente_recurso · RELATION` · `formato · ENUM formato_artefacto(HTML, PDF)` · `archivo ·
