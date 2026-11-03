@@ -40,6 +40,8 @@ class CreditApprovalWrite : AbstractCoroutineContextElement(Key) {
 // conceden y se consultan, y es esta guarda la que las exige (hallazgo alto de la revisión de seguridad, E10.1).
 //
 // - solo transiciones legales, cada una con su acción; saltarse la revisión no es una transición
+// - un borrador lo lleva a revisión su autor o quien publica: ENVIAR_A_REVISION y UPDATE no bastan para enviar el de otro.
+//   sacarlo de revisión ya es de su autor, o la decisión de quien revisa
 // - nadie aprueba una versión de la que es autor (autor_id), tampoco el administrador
 // - con revisor asignado (revisor_id), solo esa persona decide la revisión: aprobar, pedir cambios o rechazar (ADR-0018 §2).
 //   el revisor lo asigna quien publica, nunca el autor de la versión
@@ -130,6 +132,9 @@ class EditorialWorkflowGuard(
                 if (from != to) {
                     val allowed = TRANSITIONS[from to to] ?: throw ConflictException("Transition $from -> $to is not allowed")
                     if (allowed.none { holds(it) }) throw ForbiddenException("Missing permission ${allowed.joinToString(" or ")}")
+                    if (from == DRAFT && to == IN_REVIEW && before.text(AUTHOR) != user.userId.toString() && !holds(PUBLISH)) {
+                        throw ForbiddenException("Only the author submits a draft version")
+                    }
                     if (to == APPROVED && before.text(AUTHOR).let { it == null || it == user.userId.toString() }) {
                         throw ForbiddenException("A version is approved by someone other than its author")
                     }

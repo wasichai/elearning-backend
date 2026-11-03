@@ -98,6 +98,9 @@ guarda, un CREADOR podía publicar escribiendo `estado` con un `PATCH`.
   `EN_REVISION→BORRADOR` (`ENVIAR_A_REVISION` o `APROBAR`), `EN_REVISION→APROBADA` (`APROBAR`), `APROBADA→PUBLICADA`
   (`PUBLICAR`), `PUBLICADA→RETIRADA` (`RETIRAR`). Cualquier otra es `409`; una legal sin la acción, `403`. Crear
   directamente en otro estado (importar historia) pide la acción de ese estado.
+- **Un borrador lo envía a revisión su autor o quien tiene `PUBLICAR`**, en `version_curso` y en `version_recurso`:
+  `ENVIAR_A_REVISION` y `UPDATE` no bastan para enviar el de otro (`403`, por `PATCH` o `PUT`, también con `APROBAR`).
+  Sacarlo de revisión sigue siendo de su autor; para cualquier otro es decidir la revisión, con las reglas de abajo.
 - **Sin autoaprobación**: nadie aprueba una versión cuyo `autor_id` es él, tampoco el administrador (`403`). Quien crea
   una versión figura como autor (`400` si pone a otro), salvo quien tiene `PUBLICAR`; el autor no cambia (`409`).
 - **El contenido solo cambia en borrador y solo lo cambia su autor** (o quien tiene `PUBLICAR`): en revisión, aprobada,
@@ -439,6 +442,7 @@ comprueba también que **nada cambió**, releyendo como propietario.
 | Rol sin permiso               | ESTUDIANTE llama a un comando de DOCENTE, CREADOR o REVISOR; DOCENTE intenta `PUBLICAR`               | `403`                                |
 | Docente fuera de su edición   | DOCENTE de la edición X lee o califica en la Y                                                        | `404`                                |
 | Autoaprobación                | El autor, aun con `APROBAR`, aprueba su versión                                                       | Rechazo del guard                    |
+| Envío de lo ajeno             | Otro CREADOR lleva un borrador ajeno a `EN_REVISION` por registros; por el estudio, `404`             | `403`                                |
 | Créditos sin la acción        | REVISOR con `APROBAR` aprueba créditos o hace `PATCH` de `creditos_aprobados`                         | `403`                                |
 | Créditos de lo propio         | Autor, revisor asignado, quien aprobó en la bandeja o docente del curso, también ADMIN                | `403`                                |
 | Publicada inmutable           | Editar o borrar una versión `PUBLICADA`                                                               | Rechazo del guard                    |
