@@ -359,7 +359,7 @@ class JobQueueTest : WasichaiIntegrationTest() {
         val worker = thread { drain() }
         try {
             assertTrue(cappedStarted.tryAcquire(30, TimeUnit.SECONDS), "el trabajo no empezó")
-            assertEquals(listOf(JobState.RUNNING, JobState.QUEUED, JobState.QUEUED), ids.map { status(it).state }.sorted())
+            assertEquals(listOf(JobState.QUEUED, JobState.QUEUED, JobState.RUNNING), ids.map { status(it).state }.sorted())
             assertEquals(listOf(0, 0, 1), ids.map { status(it).attempts }.sorted())
             assertEquals(0, runBlocking { other.runOnce() }, "otra réplica tampoco reclama uno más")
             assertTrue(runBlocking { queue.claimCapped(CAPPED, 1, 5) }.isEmpty())
