@@ -71,6 +71,29 @@ Segundo paso de la épica E33 ([#277](https://github.com/wasichai/elearning-back
   puede abrir ([front#168](https://github.com/wasichai/elearning-frontend/issues/168)). Sigue siendo una lectura para todas
   las ediciones (#261). Documentado en `docs/api/lms.md`.
 
+## 2026-11-03 — Cierre de la Fase 4: estado del criterio ([#179](https://github.com/wasichai/elearning-backend/issues/179))
+
+El criterio de F4 ([roadmap](product/roadmap.md)) todavía no se da por cumplido. Lo que hay de cada parte:
+
+- **Recorridos e2e 8–12** contra el backend real: cumplido
+  ([elearning-frontend#60](https://github.com/wasichai/elearning-frontend/issues/60), cerrado por
+  [front#75](https://github.com/wasichai/elearning-frontend/pull/75)). La revisión de seguridad E29.2
+  ([#180](https://github.com/wasichai/elearning-backend/issues/180), #217) también está cerrada.
+- **Publicar v2 no altera v1 ni el progreso sobre v1**: `NewVersionApiTest` copiaba y editaba la v2 sin publicarla, y
+  `PublicationNoticesApiTest` la publicaba sin mirar la v1. La prueba nueva
+  `publishing v2 leaves v1, its resources and the progress on v1 as they were` lleva la v2 por el estudio y la bandeja
+  (copiar, editar, enviar, aprobar, publicar) y comprueba que el registro de la v1, su lección, el recurso enlazado y el aula
+  de quien la cursa (versión, progreso y temario) quedan igual. No se pudo ejecutar aquí (el proxy del entorno niega
+  GitHub Packages y Gradle no resuelve Wasichai): la valida el CI.
+- **Importación de un capítulo de SRTM y uno de SGSPE con informe y trazas `repositorio@sha:ruta#ancla`**: pendiente. El
+  importador solo lee por la API de contenidos de GitHub (`GitHubSourceFetcher`), y desde este entorno esa API responde
+  `403` para `wasichai/srtm-backend` y `wasichai/sgspe`. `ImportApiTest` prueba las trazas y el informe con un origen
+  simulado (`acme/manuales`), no con estos manuales. Commits de referencia para la importación (`main` el 2026-11-03):
+  `wasichai/srtm-backend@1225b4f5501b4e0526b3824976299c9372691e17` (`docs/manuales/comun/acceso.adoc`) y
+  `wasichai/sgspe@c957a1a2168b30de3c0583ca9bbc8ed1e0a2ab5c` (`docs/manuals/user/manual-usuario.adoc`, con
+  `02-primeros-pasos.adoc`). Falta ejecutarla con `LMS_IMPORTER_ALLOWED_SOURCES` y `LMS_IMPORTER_GITHUB_TOKEN` en un
+  entorno con acceso a la API de GitHub, y dejar aquí el informe y las trazas.
+
 ## 2026-11-03 — Logros en la interfaz del aula: RF-AUL-08 implementado ([front#166](https://github.com/wasichai/elearning-frontend/pull/166))
 
 - La interfaz muestra `achievements` junto al avance, con su fecha y enlace a su unidad, evaluación o certificado. El
