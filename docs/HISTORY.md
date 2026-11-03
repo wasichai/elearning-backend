@@ -9,6 +9,13 @@ Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este
   persona aprueba en los términos de uso. La aceptación con plazo y la supresión se implementan en
   [#304](https://github.com/wasichai/elearning-backend/issues/304).
 
+## 2026-11-03 — Listado de mis importaciones ([#255](https://github.com/wasichai/elearning-backend/issues/255))
+
+- `GET /api/lms/studio/import` devuelve los trabajos de importación de quien llama, el más reciente primero, con la fuente,
+  el curso y las fechas (`ImportJob` gana `source`, `courseId`, `createdAt` y `finishedAt`): al recargar, la interfaz no
+  pierde de vista la importación en curso (ADR-0029). Nunca lista las de otra persona; los terminados duran lo que la
+  retención de la cola. Índice nuevo `trabajo_por_solicitante` (V14).
+
 ## 2026-11-03 — Traza de origen en la unidad ([#263](https://github.com/wasichai/elearning-backend/issues/263), RF-IMP-03)
 
 - `unidad` gana `referencia_fuente` (`repo@sha:ruta#ancla`), como la lección: la importación la llena con la traza del

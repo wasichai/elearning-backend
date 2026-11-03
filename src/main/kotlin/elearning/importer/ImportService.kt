@@ -14,6 +14,7 @@ import wasichai.core.data.RecordService
 import wasichai.core.identity.AuthenticatedUser
 import wasichai.core.identity.CurrentUser
 import wasichai.core.metadata.MetadataService
+import java.time.Instant
 import java.util.UUID
 
 // el contrato del importador (docs/api/lms.md, ADR-0018 §5 y §6)
@@ -37,6 +38,11 @@ data class ImportJob(
     val error: String?,
     val versionId: String?,
     val report: ImportReport?,
+    // lo pedido (E30.2): owner/repo@sha:ruta del maestro y el curso
+    val source: String,
+    val courseId: String,
+    val createdAt: Instant,
+    val finishedAt: Instant?,
 )
 
 data class ImportReport(
@@ -152,6 +158,13 @@ class ImportService(
         return view(queue.find(user.organizationId, id)!!)
     }
 
+    // mis importaciones, la más reciente primero (E30.2): al recargar, la interfaz no pierde de vista la que corre. pide lo
+    // mismo que importar; nunca lista las de otra persona, tampoco al administrador
+    suspend fun mine(): List<ImportJob> {
+        val user = requireImporter()
+        return queue.requestedBy(user.organizationId, JOB_TYPE, user.userId, MAX_LISTED).map { view(it) }
+    }
+
     suspend fun job(id: UUID): ImportJob {
         val user = currentUser.require()
         val status = queue.find(user.organizationId, id)?.takeIf { it.type == JOB_TYPE } ?: throw NotFoundException(NOT_FOUND)
@@ -175,7 +188,18 @@ class ImportService(
                 status.state == JobState.RUNNING -> "EN_CURSO"
                 else -> "HECHO"
             }
-        return ImportJob(status.id.toString(), state, outcome?.failure ?: status.error, outcome?.versionId, outcome?.report?.withSeverity())
+        val payload = MAPPER.readValue<ImportPayload>(status.payload)
+        return ImportJob(
+            status.id.toString(),
+            state,
+            outcome?.failure ?: status.error,
+            outcome?.versionId,
+            outcome?.report?.withSeverity(),
+            payload.source,
+            payload.courseId,
+            status.createdAt,
+            status.finishedAt,
+        )
     }
 
     companion object {
@@ -185,6 +209,9 @@ class ImportService(
         const val UNIT = "unidad"
         const val LESSON = "leccion"
         private const val NOT_FOUND = "Import not found"
+
+        // con el tope de activos por persona y la retención, una persona tiene pocas: las más recientes bastan
+        private const val MAX_LISTED = 50
         internal val MAPPER: JsonMapper = JsonMapper.builder().findAndAddModules().build()
     }
 }
