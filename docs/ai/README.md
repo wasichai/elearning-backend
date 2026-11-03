@@ -271,7 +271,7 @@ procedimiento (práctica y ejercicio) con la lectura de su sección, y un cuesti
 ejecución `SUCCEEDED` de un diseño cuyo brief sigue `LISTO` y cuyas semanas son una duración válida (de 1 a 8, o un semestre
 de 12 a 26): lee su salida y vuelve a leer las fuentes del brief en el mismo commit exacto (`SourceMaterialReader`), que son
 las `sources` de la ejecución. `LessonDrafter` tiene dos implementaciones, `ModelLessonDrafter` (modelo `draft` y
-`lms.ai.max-tokens.draft`, 16000) y `DeterministicLessonDrafter`; instrucciones `lesson-draft@1`. El diseño y las secciones de
+`lms.ai.max-tokens.draft`, 16000) y `DeterministicLessonDrafter`; instrucciones `lesson-draft@2`. El diseño y las secciones de
 las fuentes (texto no confiable) van delimitados en el mensaje de usuario. `LessonDraft` trae, por cada unidad del diseño y en
 su orden, sus lecciones: título, resumen, objetivo, duración, la sección de la que sale (`source`), el cuerpo en AsciiDoc y las
 verificaciones. **El modelo no escribe el documento**: `LessonTemplate` (`lesson-draft@1`, la `version_plantilla` de la
@@ -296,10 +296,31 @@ devuelve su ejecución, sin otra versión. El doble hace una lección por lectur
 una con el resumen y los temas si no tiene ninguna), el primer resultado de la unidad como objetivo y una verificación por
 actividad.
 
+**Las evaluaciones del diseño** ([#367](https://github.com/wasichai/elearning-backend/issues/367), instrucciones
+`lesson-draft@2`). `LessonDraft` trae además una entrada por evaluación del diseño, en su orden: instrucciones, duración,
+la sección de la que salen sus preguntas (`source`) y las preguntas, cada una con su tipo de la plataforma, enunciado,
+puntos, opciones con `correct` y respuestas aceptadas. Qué evaluación es (título, tipo), con qué resultados se alinea y en
+qué unidad va lo pone el **código** con el diseño, no el modelo: la última unidad que trabaja alguno de sus resultados (si
+ninguna, la última), detrás de sus lecturas. `LessonDraftCheck` deja `INVALID_OUTPUT` otro número de evaluaciones que el
+diseño (`ASSESSMENTS_MISMATCH`), una evaluación del diseño sin ningún resultado que exista (`UNALIGNED_ASSESSMENT`) o sin
+preguntas, más de 30 preguntas o de 10 opciones, una pregunta sin enunciado o con una opción vacía (`BLANK_QUESTION`), de un
+tipo que no se genera (`INVALID_QUESTION_TYPE`: se generan `UNICA`, `MULTIPLE`, `VERDADERO_FALSO`, `CORTA` y `ABIERTA`; no
+`ARCHIVO`), con puntos fuera de (0, 100] (`INVALID_POINTS`), con opciones que no son las de su tipo (`INVALID_OPTIONS`: dos o
+más y una correcta en `UNICA`, alguna en `MULTIPLE`, dos y una correcta en `VERDADERO_FALSO`, ninguna en `CORTA` ni en
+`ABIERTA`, sin repetir) o una `CORTA` sin respuestas aceptadas (`MISSING_ACCEPTED_ANSWERS`). La fuente y la duración se
+descartan como las de una lección y los enlaces nuevos de sus textos quedan en `linksToReview`. `LessonDraftWriter` escribe,
+en la misma transacción y como la plataforma, su `leccion` `EVALUACION` (con los enunciados de sus resultados como
+`objetivo`, que la alinea para `DraftValidator`, y su procedencia), su `evaluacion` (un intento, 60 %, `mostrar_soluciones`
+`NUNCA`: lo ajusta quien prepara el curso), sus `pregunta` y sus `opcion`, todo en la versión `BORRADOR`. **La clave no sale
+de ahí** (ADR-0019): la opción correcta y las respuestas aceptadas no se serializan en la salida ni en el informe de la
+ejecución, que lee quien ve `AgentRun`. El doble hace, por resultado alineado, una `UNICA` cuya opción correcta es su
+enunciado y una `ABIERTA` con su evidencia. Así un borrador generado de punta a punta ya no da `NO_ASSESSMENT` en la
+validación (§13) y, sin otros errores bloqueantes, entra en revisión sin que nadie lo toque.
+
 **La unidad de demostración** (E38.1, [#300](https://github.com/wasichai/elearning-backend/issues/300)) recorre todo esto por la
 API hasta el aula: `DemoUnitFlow`, con `DemoUnitApiTest` (doble determinista) y `DemoUnitAnthropicApiTest`/`DemoUnitOpenAiApiTest`
-(doble HTTP). Deja dos cosas a la vista. El borrador no escribe evaluaciones, así que su primera validación bloquea con
-`NO_ASSESSMENT` hasta que una persona las añade. Y las versiones de recurso de las lecturas nacen en `BORRADOR` (las escribe la
+(doble HTTP). Deja a la vista que el borrador ya trae sus evaluaciones (#367), así que su primera validación no bloquea y entra en
+revisión sin que nadie lo toque, y que las versiones de recurso de las lecturas nacen en `BORRADOR` (las escribe la
 plataforma, que no pasa por «una lección solo usa versiones de recurso publicadas»): se envían, aprueban y publican por la API
 de registros antes de publicar la versión del curso, y hoy nada lo exige al publicarla. La ejecución con un proveedor real se
 documenta en [`evaluations/demo-unit/`](evaluations/demo-unit/README.md).

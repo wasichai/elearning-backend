@@ -26,10 +26,10 @@ import java.util.UUID
 // La recorren DemoUnitApiTest (sin claves, con el doble determinista) y DemoUnitProviderApiTest (Embabel contra el doble HTTP
 // de Anthropic y de OpenAI); cada una comprueba aparte lo propio de su generador.
 //
-// Lo que deja ver de la canalización real: el borrador de lecciones no escribe evaluaciones (el diseño las propone, pero el paso
-// solo crea lecturas), así que la primera validación bloquea con NO_ASSESSMENT y es una persona, la autora, quien añade la
-// evaluación (paso 8, correcciones); y las versiones de recurso de las lecciones nacen en BORRADOR y pasan su propio flujo
-// (enviar, aprobar, publicar) antes de publicar la versión del curso, para que lo publicado no se pueda cambiar después
+// Lo que deja ver de la canalización real: el borrador trae las lecturas y las evaluaciones del diseño (#367), así que la
+// primera validación ya no bloquea; la corrección de la autora (paso 8) es una edición menor que obliga a validar otra vez,
+// porque el informe deja de corresponder al borrador. Y las versiones de recurso de las lecturas nacen en BORRADOR y pasan
+// su propio flujo (enviar, aprobar, publicar) antes de publicar la versión del curso, para que lo publicado no cambie después
 internal class DemoUnitFlow(
     private val client: WebTestClient,
     private val json: JsonMapper,
@@ -50,7 +50,7 @@ internal class DemoUnitFlow(
         val version: String,
         // la ejecución de cada paso de IA, por paso: SOURCE_ANALYSIS, COURSE_DESIGN, LESSON_DRAFT
         val runs: Map<String, JsonNode>,
-        // los dos informes de validación: antes y después de la corrección
+        // los dos informes de validación: antes y después de la corrección menor de la autora
         val reports: List<JsonNode>,
     )
 
@@ -97,61 +97,36 @@ internal class DemoUnitFlow(
             val units = list(author, "unidad", "version_curso", version).sortedBy { it["attributes"]["orden"].asInt() }.map { it["id"].asString() }
             assertTrue(units.isNotEmpty())
             val lessons = units.associateWith { unit -> list(author, "leccion", "unidad", unit).sortedBy { it["attributes"]["orden"].asInt() } }
-            val readings = lessons.values.flatten().map { it["id"].asString() }
+            val all = lessons.values.flatten()
+            val readings = all.filter { it["attributes"]["tipo"].asString() == "LECTURA" }.map { it["id"].asString() }
             assertTrue(readings.isNotEmpty())
-            assertTrue(lessons.values.flatten().all { it["attributes"]["tipo"].asString() == "LECTURA" })
+            // el borrador trae también las evaluaciones del diseño (#367): lecciones EVALUACION con su evaluación y sus preguntas
+            val evaluationLessons = all.filter { it["attributes"]["tipo"].asString() == "EVALUACION" }.map { it["id"].asString() }
+            assertTrue(evaluationLessons.isNotEmpty(), all.toString())
+            assertEquals(all.size, readings.size + evaluationLessons.size, all.toString())
+            val evaluations = evaluationLessons.map { lesson -> list(author, "evaluacion", "leccion", lesson).single()["id"].asString() }
+            for (evaluation in evaluations) assertTrue(list(author, "pregunta", "evaluacion", evaluation).isNotEmpty())
             // es generada (docs/ai §13): sin informe no va a revisión
             assertEquals(HttpStatus.CONFLICT, submit(author, version).first)
 
-            // 6. validación: la lanza el revisor; la autora no valida lo suyo aunque tenga VALIDAR (separación de deberes)
+            // 6. validación: la lanza el revisor; la autora no valida lo suyo aunque tenga VALIDAR (separación de deberes). Con
+            // las evaluaciones del borrador, ya no bloquea con NO_ASSESSMENT
             assertEquals(HttpStatus.FORBIDDEN, call(HttpMethod.POST, author, "/api/lms/ai/validations", mapOf("versionId" to version)).first)
             val first = validated(reviewer, version, opinion)
-            assertTrue(first["report"]["blocking"].asBoolean(), first.toString())
-            assertEquals(setOf("NO_ASSESSMENT"), blocking(first), first.toString())
+            assertFalse(first["report"]["blocking"].asBoolean(), first.toString())
+            assertEquals(emptySet<String>(), blocking(first), first.toString())
+            assertFalse(first["report"]["problems"].values().any { it["kind"].asString() == "NO_ASSESSMENT" }, first.toString())
+            assertEquals(evaluations.size, first["report"]["evaluations"].asInt(), first.toString())
+
+            // 8. corrección: la autora retoca las instrucciones de una evaluación; el informe deja de corresponder al borrador
+            // (otro hash) y no entra en revisión hasta validarlo otra vez
+            val edit = mapOf("instrucciones" to "Responde sin consultar el manual ni tus notas")
+            assertEquals(HttpStatus.OK, patch(author, "evaluacion", evaluations.first(), edit))
             assertEquals(HttpStatus.CONFLICT, submit(author, version).first)
-
-            // 8. corrección: la autora añade la evaluación de la primera unidad, una lección EVALUACION con una pregunta
-            val unit = units.first()
-            val evaluationLesson =
-                created(
-                    author,
-                    "leccion",
-                    mapOf(
-                        "unidad" to unit,
-                        "orden" to lessons.getValue(unit).size + 1,
-                        "titulo" to "Comprueba lo aprendido",
-                        "tipo" to "EVALUACION",
-                        "objetivo" to "Publicar un anuncio para toda la organización",
-                    ),
-                )
-            val evaluation =
-                created(
-                    author,
-                    "evaluacion",
-                    mapOf(
-                        "leccion" to evaluationLesson,
-                        "titulo" to "Evaluación de la unidad",
-                        "intentos_max" to 2,
-                        "orden_aleatorio" to false,
-                        "nota_minima" to 60,
-                        "peso" to 1,
-                        "mostrar_soluciones" to "AL_ENVIAR",
-                    ),
-                )
-            val question =
-                created(
-                    author,
-                    "pregunta",
-                    mapOf("evaluacion" to evaluation, "orden" to 1, "tipo" to "UNICA", "enunciado" to "¿Qué botón publica el anuncio?", "puntos" to 1),
-                )
-            created(author, "opcion", mapOf("pregunta" to question, "orden" to 1, "texto" to "Publicar", "correcta" to true))
-            created(author, "opcion", mapOf("pregunta" to question, "orden" to 2, "texto" to "Retirar", "correcta" to false))
-
-            // otra validación, del contenido corregido: sin errores bloqueantes, y el borrador entra en revisión
             val second = validated(reviewer, version, opinion)
             assertFalse(second["report"]["blocking"].asBoolean(), second.toString())
             assertTrue(second["current"].asBoolean())
-            assertEquals(1, second["report"]["evaluations"].asInt(), second.toString())
+            assertEquals(evaluations.size, second["report"]["evaluations"].asInt(), second.toString())
             assertEquals("EN_REVISION", ok(submit(author, version))["status"].asString())
 
             // 7 y 9. revisión y aprobación: nunca la autora (403 aunque tenga APROBAR), sí el revisor, en la bandeja
@@ -187,11 +162,10 @@ internal class DemoUnitFlow(
             val classroom = ok(call(HttpMethod.GET, learner, "/api/lms/classroom/enrollments/${enrollment!!["id"].asString()}"))
             val seen = classroom["units"].values().toList()
             assertEquals(units, seen.map { it["id"].asString() })
-            val expected = lessons.mapValues { (_, l) -> l.map { it["id"].asString() } }.toMutableMap()
-            expected[unit] = expected.getValue(unit) + evaluationLesson
+            val expected = lessons.mapValues { (_, l) -> l.map { it["id"].asString() } }
             assertEquals(expected, seen.associate { u -> u["id"].asString() to u["lessons"].values().map { it["id"].asString() } })
             val shown = seen.flatMap { it["lessons"].values() }.associateBy { it["id"].asString() }
-            assertNotNull(shown.getValue(evaluationLesson)["assessment"]?.takeUnless { it.isNull }, shown.getValue(evaluationLesson).toString())
+            for (lesson in evaluationLessons) assertNotNull(shown.getValue(lesson)["assessment"]?.takeUnless { it.isNull }, shown.getValue(lesson).toString())
             for (lesson in readings) {
                 val resource = shown.getValue(lesson)["resources"].values().single()
                 assertTrue(resource["id"].asString() in resources, resource.toString())

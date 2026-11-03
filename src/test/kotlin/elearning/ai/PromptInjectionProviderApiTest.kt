@@ -173,8 +173,13 @@ abstract class PromptInjectionProviderApiTest(
         )) {
             assertThat(version["attributes"][field].let { it == null || it.isNull }).describedAs(field).isTrue()
         }
-        val lessons = records("unidad", "version_curso", version["id"].asString()).flatMap { records("leccion", "unidad", it["id"].asString()) }
+        val all = records("unidad", "version_curso", version["id"].asString()).flatMap { records("leccion", "unidad", it["id"].asString()) }
+        val lessons = all.filter { it["attributes"]["tipo"].asString() == "LECTURA" }
         assertThat(lessons).hasSize(2)
+        // y las evaluaciones del diseño (#367): una lección EVALUACION por evaluación, con lo «obediente» de sus preguntas ignorado
+        val evaluations = all.filter { it["attributes"]["tipo"].asString() == "EVALUACION" }
+        assertThat(evaluations).hasSize(2)
+        for (lesson in evaluations) assertThat(records("evaluacion", "leccion", lesson["id"].asString())).hasSize(1)
         for (lesson in lessons) {
             val resource =
                 record("version_recurso", records("recurso_leccion", "leccion", lesson["id"].asString()).single()["attributes"]["version_recurso"].asString())

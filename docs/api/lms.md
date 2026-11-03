@@ -1210,18 +1210,26 @@ trabajo de IA (`ai.lesson_draft`) y se sigue con las rutas de [Trabajos de IA](#
   `LISTO` o cuyas semanas no son una duración válida (1–8 o 12–26), `409`. Pedir otra vez el mismo borrador devuelve su
   ejecución sin llamar al proveedor ni crear otra versión.
 - **Generador**: con proveedor, el modelo `draft` de `lms.ai.models` y `lms.ai.max-tokens.draft`; sin claves, el doble
-  determinista. Instrucciones `lesson-draft@1` (`promptVersion`) y plantilla `lesson-draft@1` (`templateVersion`).
+  determinista. Instrucciones `lesson-draft@2` (`promptVersion`) y plantilla `lesson-draft@1` (`templateVersion`).
 - **Resultado**: la ejecución tiene `inputs` `{ "designExecutionId", "analysisExecutionId", "briefId", "topic", "language",
 "sources" }`, las `sources` leídas otra vez con su hash, `output` `{ "template", "units": [{ "title", "summary", "objectives":
-[], "lessons": [{ "title", "summary", "objective", "durationMinutes", "source", "asciidoc" }] }], "load", "outcomes",
-"assessmentSystem", "versionId", "versionNumber" }` y `validations` `{ "units", "lessons", "problems": [], "discarded": [{
-"at", "value", "reason" }], "linksToReview": [{ "at", "lesson", "url", "reason" }] }` (`reason`: `NOT_IN_SOURCES` · `UNSAFE`).
+[], "lessons": [{ "title", "summary", "objective", "durationMinutes", "source", "asciidoc" }], "assessments": [{ "title",
+"kind", "summary", "outcomes": [], "objective", "instructions", "durationMinutes", "source", "questions": [{ "type",
+"statement", "points", "options": [{ "text" }] }] }] }], "load", "outcomes", "assessmentSystem", "versionId", "versionNumber"
+}` (sin la clave: ni `correct` ni las respuestas aceptadas, ADR-0019) y `validations` `{ "units", "lessons", "assessments",
+"questions", "problems": [], "discarded": [{ "at", "value", "reason" }], "linksToReview": [{ "at", "lesson", "url", "reason"
+}] }` (`reason`: `NOT_IN_SOURCES` · `UNSAFE`).
 - **Borrador**: `versionId` es una `version_curso` `BORRADOR` con `autor_id` = quien lo pidió y `plantilla_ia` =
   `lesson-draft@1`; cada lección tiene un `recurso` HTML con su `fuente_recurso` (el AsciiDoc) y una `version_recurso`
-  `BORRADOR` con el HTML saneado (ADR-0022), enlazada por `recurso_leccion`. Es un borrador **generado**: no se envía a revisión
-  sin un informe de validación al día ([Validación de borradores](#validación-de-borradores-f5-rf-ia-05)).
+  `BORRADOR` con el HTML saneado (ADR-0022), enlazada por `recurso_leccion`. Cada evaluación del diseño es una lección
+  `EVALUACION` en la última unidad que trabaja alguno de sus resultados, detrás de sus lecturas, con su `evaluacion` (un
+  intento, 60 %, `mostrar_soluciones` `NUNCA`), sus `pregunta` (`UNICA` · `MULTIPLE` · `VERDADERO_FALSO` · `CORTA` ·
+  `ABIERTA`) y sus `opcion` (#367). Es un borrador **generado**: no se envía a revisión sin un informe de validación al día
+  ([Validación de borradores](#validación-de-borradores-f5-rf-ia-05)).
 - **Fallos**: una salida que no es el JSON del tipo o que no pasa la comprobación (`problems[].code`: `UNITS_MISMATCH` ·
-  `UNIT_WITHOUT_LESSONS` · `BLANK_LESSON` · `LESSON_WITHOUT_CHECKS` · `TOO_MANY_ELEMENTS` · `LESSON_TOO_LONG`) deja la
+  `UNIT_WITHOUT_LESSONS` · `BLANK_LESSON` · `LESSON_WITHOUT_CHECKS` · `TOO_MANY_ELEMENTS` · `LESSON_TOO_LONG` ·
+  `ASSESSMENTS_MISMATCH` · `UNALIGNED_ASSESSMENT` · `ASSESSMENT_WITHOUT_QUESTIONS` · `BLANK_QUESTION` ·
+  `INVALID_QUESTION_TYPE` · `INVALID_POINTS` · `INVALID_OPTIONS` · `MISSING_ACCEPTED_ANSWERS`) deja la
   ejecución `INVALID_OUTPUT` sin `output` ni versión; un fallo al generar el HTML o al escribir el borrador, `FAILED` con lo que
   costó la llamada.
 

@@ -23,8 +23,8 @@ import tools.jackson.databind.JsonNode
 // el borrador de lecciones por la API sin claves (E33.6): brief LISTO → análisis → diseño → borrador, con los dobles
 // deterministas y sin red. El borrador entra como version_curso BORRADOR a nombre de quien lo pidió, con la plantilla y su
 // versión en la ejecución y en la versión; cada lección guarda su fuente AsciiDoc y su HTML saneado (ADR-0022) en un recurso
-// BORRADOR. Nada cambia de estado solo, y la versión es «generada» (docs/ai §13): no va a revisión sin informe. La cola se
-// mueve a mano
+// BORRADOR, y cada evaluación del diseño, su lección EVALUACION con sus preguntas (#367). Nada cambia de estado solo, y la
+// versión es «generada» (docs/ai §13): no va a revisión sin informe, y con él entra. La cola se mueve a mano
 @Import(SourceAnalysisFixtures.FakeSource::class, LessonDraftFixtures.FakeRenderer::class)
 @TestPropertySource(
     properties = [
@@ -44,6 +44,7 @@ class LessonDraftApiTest : LmsApiTest() {
 
     private val creator by lazy { demoUser("creador") }
     private val student by lazy { demoUser("estudiante") }
+    private val reviewer by lazy { demoUser("revisor") }
 
     @BeforeEach
     fun cancelLeftovers() {
@@ -51,7 +52,7 @@ class LessonDraftApiTest : LmsApiTest() {
             db
                 .sql(
                     "UPDATE lms.trabajo SET estado = 'CANCELLED', reclamado_en = NULL, terminado_en = now() " +
-                        "WHERE tipo LIKE 'ai.%' AND estado IN ('QUEUED', 'RUNNING')",
+                        "WHERE (tipo LIKE 'ai.%' OR tipo = '${DraftValidations.JOB_TYPE}') AND estado IN ('QUEUED', 'RUNNING')",
                 ).fetch()
                 .rowsUpdated()
                 .awaitSingle()
@@ -179,9 +180,30 @@ class LessonDraftApiTest : LmsApiTest() {
         // una unidad por unidad del diseño y una lección por lectura, con su procedencia
         val units = list("unidad", "version_curso", versionId).sortedBy { it["attributes"]["orden"].asInt() }
         assertEquals(listOf("Retirar un anuncio", "Publicar un anuncio"), units.map { it["attributes"]["titulo"].asString() })
-        val lessons = units.flatMap { u -> list("leccion", "unidad", u["id"].asString()) }
+        val byUnit = units.map { u -> list("leccion", "unidad", u["id"].asString()).sortedBy { it["attributes"]["orden"].asInt() } }
+        val lessons = byUnit.flatMap { unit -> unit.filter { it["attributes"]["tipo"].asString() == "LECTURA" } }
         assertEquals(listOf(WITHDRAW, PUBLISH), lessons.map { it["attributes"]["referencia_fuente"].asString() })
         assertTrue(lessons.all { it["attributes"]["objetivo"].asString().isNotBlank() })
+
+        // #367: detrás de su lectura, cada unidad tiene la evaluación del diseño de su resultado, con sus preguntas y opciones
+        for ((u, unit) in byUnit.withIndex()) {
+            assertEquals(listOf("LECTURA", "EVALUACION"), unit.map { it["attributes"]["tipo"].asString() }, unit.toString())
+            val lesson = unit[1]["attributes"]
+            assertEquals(2, lesson["orden"].asInt())
+            assertTrue(lesson["titulo"].asString().startsWith("Cuestionario: "), lesson.toString())
+            assertEquals(lessons[u]["attributes"]["objetivo"].asString(), lesson["objetivo"].asString())
+            assertEquals(listOf(WITHDRAW, PUBLISH)[u], lesson["referencia_fuente"].asString())
+            val evaluation = list("evaluacion", "leccion", unit[1]["id"].asString()).single()
+            assertEquals("NUNCA", evaluation["attributes"]["mostrar_soluciones"].asString())
+            val questions = list("pregunta", "evaluacion", evaluation["id"].asString()).sortedBy { it["attributes"]["orden"].asInt() }
+            assertEquals(listOf("UNICA", "ABIERTA"), questions.map { it["attributes"]["tipo"].asString() })
+            val options = list("opcion", "pregunta", questions[0]["id"].asString())
+            assertEquals(listOf(true, false), options.sortedBy { it["attributes"]["orden"].asInt() }.map { it["attributes"]["correcta"].asBoolean() })
+        }
+        // la clave de las preguntas no está en la salida de la ejecución (ADR-0019)
+        assertEquals(2, output["units"].values().sumOf { it["assessments"].size() }, output.toString())
+        assertFalse(output.toString().contains("\"correct\""), output.toString())
+        assertFalse(output.toString().contains("acceptedAnswers"), output.toString())
 
         // cada lección: su fuente AsciiDoc con la plantilla y su HTML saneado, en un recurso BORRADOR
         val link = list("recurso_leccion", "leccion", lessons[1]["id"].asString()).single()["attributes"]
@@ -204,6 +226,28 @@ class LessonDraftApiTest : LmsApiTest() {
         assertEquals("BORRADOR", get("/api/objects/version_curso/records/$versionId", creator)["attributes"]["estado"].asString())
         assertEquals(0, run["validations"]["problems"].size(), run["validations"].toString())
         assertEquals(0, run["validations"]["linksToReview"].size(), run["validations"].toString())
+        assertEquals(2, run["validations"]["assessments"].asInt(), run["validations"].toString())
+    }
+
+    // #367: el borrador generado de punta a punta con los dobles ya trae sus evaluaciones, así que la validación por código no
+    // lo bloquea con NO_ASSESSMENT y entra en revisión sin que nadie lo toque
+    @Test
+    fun `a draft generated end to end by the double passes the validation without NO_ASSESSMENT and goes to review`() {
+        val course = course()
+        val versionId = get("/api/lms/ai/runs/${drafted(designed(course))["executionId"].asString()}", creator)["output"]["versionId"].asString()
+
+        val (status, job) = exchange("/api/lms/ai/validations", reviewer, mapOf("versionId" to versionId))
+        assertEquals(HttpStatus.ACCEPTED, status, job.toString())
+        drain()
+
+        val report = get("/api/lms/ai/validations?versionId=$versionId", reviewer)["report"]
+        val kinds = report["problems"].values().map { it["kind"].asString() }
+        assertFalse("NO_ASSESSMENT" in kinds, report.toString())
+        assertFalse(report["blocking"].asBoolean(), report.toString())
+        assertEquals(2, report["evaluations"].asInt(), report.toString())
+        val (submitted, body) = exchange("/api/lms/studio/versions/$versionId/submit", creator, emptyMap<String, Any>())
+        assertEquals(HttpStatus.OK, submitted, body.toString())
+        assertEquals("EN_REVISION", get("/api/objects/version_curso/records/$versionId", creator)["attributes"]["estado"].asString())
     }
 
     @Test

@@ -1,0 +1,18 @@
+{
+  "id": "msg_double_lesson_draft_bad_question",
+  "type": "message",
+  "role": "assistant",
+  "model": "claude-sonnet-5-5",
+  "content": [
+    {
+      "type": "text",
+      "text": "{\"units\": [{\"lessons\": [{\"title\": \"Publicar un anuncio\", \"summary\": \"Cómo llega un anuncio a toda la organización\", \"objective\": \"Publicar un anuncio para toda la organización\", \"durationMinutes\": 45, \"source\": \"acme/manuales@0123456789abcdef0123456789abcdef01234567:capitulos/anuncios.adoc#_publicar_un_anuncio\", \"body\": \"== Pasos\\n\\n. Abrir el panel de anuncios.\\n. Escribir el texto.\\n. Pulsar Publicar.\\n\\nMás ayuda en https://ayuda.example.org/anuncios.\\n\\n++++\\n<script>alert(1)</script>\\n++++\", \"checks\": [\"Publica un anuncio de prueba y compruébalo en el tablón\"], \"html\": \"<b>ignorado</b>\"}]}, {\"lessons\": [{\"title\": \"Retirar un anuncio\", \"summary\": \"Retirar y comprobar\", \"objective\": \"Retirar un anuncio publicado\", \"durationMinutes\": 9999, \"source\": \"acme/otro@0123456789abcdef0123456789abcdef01234567:guia.adoc#_x\", \"body\": \"Un anuncio retirado deja de verse. Procedimiento interno en http://intranet.local/anuncios.\", \"checks\": [\"Retira el anuncio y comprueba que ya no se ve\"]}]}], \"assessments\": [{\"instructions\": \"Responde sin consultar el manual\", \"durationMinutes\": 20, \"source\": \"acme/manuales@0123456789abcdef0123456789abcdef01234567:capitulos/anuncios.adoc#_publicar_un_anuncio\", \"questions\": [{\"type\": \"UNICA\", \"statement\": \"¿Qué botón publica un anuncio para toda la organización?\", \"points\": 1, \"options\": [{\"text\": \"Publicar\", \"correct\": true}, {\"text\": \"Retirar\", \"correct\": true}, {\"text\": \"Guardar borrador\", \"correct\": false}]}, {\"type\": \"CORTA\", \"statement\": \"¿Desde qué panel se publica un anuncio?\", \"points\": 1}]}, {\"instructions\": \"Publica y retira un anuncio de prueba antes de responder\", \"durationMinutes\": 45, \"source\": \"acme/manuales@0123456789abcdef0123456789abcdef01234567:capitulos/anuncios.adoc#_retirar_un_anuncio\", \"questions\": [{\"type\": \"VERDADERO_FALSO\", \"statement\": \"Un anuncio retirado sigue viéndose en el tablón\", \"points\": 1, \"options\": [{\"text\": \"Verdadero\", \"correct\": false}, {\"text\": \"Falso\", \"correct\": true}]}, {\"type\": \"MULTIPLE\", \"statement\": \"¿Qué pasos forman parte de publicar un anuncio?\", \"points\": 1, \"options\": [{\"text\": \"Abrir el panel de anuncios\", \"correct\": true}, {\"text\": \"Pulsar Publicar\", \"correct\": true}, {\"text\": \"Borrar la organización\", \"correct\": false}]}, {\"type\": \"ABIERTA\", \"statement\": \"Explica cómo compruebas que un anuncio ya no se ve\", \"points\": 2}]}]}"
+    }
+  ],
+  "stop_reason": "end_turn",
+  "stop_sequence": null,
+  "usage": {
+    "input_tokens": 4000,
+    "output_tokens": 1200
+  }
+}

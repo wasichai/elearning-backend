@@ -91,9 +91,9 @@ data class StagedLesson(
 // ADR-0018): una version_curso BORRADOR con el número siguiente del curso, una unidad por unidad del diseño y, por lección, su
 // leccion y su recurso HTML: la fuente canónica AsciiDoc (fuente_recurso, RF-CON-03) y una version_recurso BORRADOR con el HTML
 // que genera DocumentRenderer, saneado con la lista blanca de ADR-0022 (GeneratedHtml) antes de guardarse, enlazada a la
-// lección (recurso_leccion). Nada cambia de estado: aprobar y publicar son de personas (EditorialWorkflowGuard). La plantilla
-// queda en plantilla_ia y los enlaces que no están en las fuentes, en referencias de la versión del recurso, además de en el
-// informe de la ejecución.
+// lección (recurso_leccion); detrás, por evaluación del diseño, su lección EVALUACION con su evaluacion y sus preguntas. Nada
+// cambia de estado: aprobar y publicar son de personas (EditorialWorkflowGuard). La plantilla queda en plantilla_ia y los
+// enlaces que no están en las fuentes, en referencias de la versión del recurso, además de en el informe de la ejecución.
 //
 // Los archivos se generan y se suben antes (prepare, fuera de la transacción: el render bloquea); lo que quede sin adjuntar lo
 // borra la limpieza de wasichai-files. Todo lo demás va en la transacción que cierra la ejecución y el trabajo
@@ -196,7 +196,7 @@ class LessonDraftWriter(
                             "descripcion" to unit.summary.ifBlank { null },
                             "objetivos" to unit.objectives.joinToString("\n").ifBlank { null },
                             "horas_estimadas" to weekly.total().takeIf { it.signum() > 0 }?.toPlainString(),
-                            SOURCE_REF to unit.lessons.firstNotNullOfOrNull { it.source },
+                            SOURCE_REF to (unit.lessons.firstNotNullOfOrNull { it.source } ?: unit.assessments.firstNotNullOfOrNull { it.source }),
                         ),
                     ),
                 )
@@ -250,8 +250,72 @@ class LessonDraftWriter(
                     )
                 records.create(RESOURCE_LINK, RecordRequest(mapOf(LESSON to lessonRecord.id, RESOURCE_VERSION to resourceVersion.id, ORDER to 1)))
             }
+            unit.assessments.forEachIndexed { a, assessment -> assessment(version.id, created.id, unit.lessons.size + a + 1, "${u + 1}-${a + 1}", assessment) }
         }
         return output.copy(versionId = version.id, versionNumber = number)
+    }
+
+    // una evaluación del diseño (#367): su lección EVALUACION detrás de las lecturas de la unidad, alineada por su objetivo con
+    // los resultados que comprueba, su evaluacion con valores prudentes (un intento, 60 %, sin soluciones, el peso por defecto:
+    // lo ajusta quien prepara el curso) y sus preguntas con sus opciones y sus respuestas aceptadas, la clave que solo leen quienes preparan,
+    // revisan o corrigen (ADR-0019). Todo BORRADOR, con su versión
+    private suspend fun assessment(
+        versionId: String,
+        unitId: String,
+        order: Int,
+        code: String,
+        assessment: DraftedAssessment,
+    ) {
+        val lesson =
+            records.create(
+                LESSON,
+                RecordRequest(
+                    mapOf(
+                        UNIT to unitId,
+                        ORDER to order,
+                        TITLE to assessment.title,
+                        "tipo" to "EVALUACION",
+                        "duracion_minutos" to assessment.durationMinutes,
+                        "resumen" to assessment.summary.ifBlank { null },
+                        "objetivo" to assessment.objective,
+                        SOURCE_REF to assessment.source,
+                    ),
+                ),
+            )
+        val evaluation =
+            records.create(
+                EVALUATION,
+                RecordRequest(
+                    mapOf(
+                        LESSON to lesson.id,
+                        "codigo" to "ia-$versionId-e$code",
+                        TITLE to assessment.title,
+                        "instrucciones" to assessment.instructions.ifBlank { null },
+                        "intentos_max" to 1,
+                        "nota_minima" to PASSING_PERCENT,
+                        "mostrar_soluciones" to "NUNCA",
+                    ),
+                ),
+            )
+        assessment.questions.forEachIndexed { q, question ->
+            val created =
+                records.create(
+                    QUESTION,
+                    RecordRequest(
+                        mapOf(
+                            EVALUATION to evaluation.id,
+                            ORDER to q + 1,
+                            "tipo" to question.type,
+                            "enunciado" to question.statement,
+                            "puntos" to question.points.toPlainString(),
+                            "respuestas_aceptadas" to question.acceptedAnswers.joinToString("\n").ifEmpty { null },
+                        ),
+                    ),
+                )
+            question.options.forEachIndexed { o, option ->
+                records.create(OPTION, RecordRequest(mapOf(QUESTION to created.id, ORDER to o + 1, "texto" to option.text, "correcta" to option.correct)))
+            }
+        }
     }
 
     private suspend fun stage(
@@ -275,6 +339,9 @@ class LessonDraftWriter(
         const val SOURCE = "fuente_recurso"
         const val RESOURCE_VERSION = "version_recurso"
         const val RESOURCE_LINK = "recurso_leccion"
+        const val EVALUATION = "evaluacion"
+        const val QUESTION = "pregunta"
+        const val OPTION = "opcion"
 
         // la plantilla y su versión con que se juntó el borrador (la version_plantilla de su ejecución)
         const val TEMPLATE = "plantilla_ia"
@@ -287,6 +354,7 @@ class LessonDraftWriter(
         private const val SOURCE_REF = "referencia_fuente"
         private const val FILE = "archivo"
         private const val TEXT = "text/plain"
+        private const val PASSING_PERCENT = 60
 
         // RF-ACA-05: hasta 8 semanas, por semanas; de 12 a 26, un semestre. Lo demás no es una duración válida (null)
         fun durationOf(weeks: Int): String? = listOf(CourseDuration.WEEKS, CourseDuration.SEMESTER).firstOrNull { CourseDuration.problem(it, weeks) == null }
