@@ -46,10 +46,11 @@ class LessonProgressService(
         clientEventId: UUID,
     ): LessonProgress {
         val user = currentUser.require()
-        terms.requireAccepted(user, "registrar tu progreso")
         // la matrícula se lee con el alcance de la persona; quien ve todas (un docente) tampoco avanza la de otro
         val enrollment = records.get(ENROLLMENT, enrollmentId)
         if (enrollment.attributes[STUDENT]?.toString() != user.userId.toString()) throw NotFoundException(NOT_FOUND)
+        // lo ajeno sigue siendo 404; en lo propio, antes que nada, la aceptación vigente
+        terms.requireAccepted(user, "registrar tu progreso")
         if (enrollment.attributes[STATE]?.toString() != ACTIVE) throw ConflictException("La matrícula no está activa")
         val lesson = records.get(LESSON, lessonId)
         val unit = lesson.attributes.ref(UNIT)?.let { records.get(UNIT, UUID.fromString(it)) }

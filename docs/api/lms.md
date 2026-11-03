@@ -348,8 +348,8 @@ otra matrícula, lección o tipo es `409` y no registra nada.
 - Solo la persona matriculada registra su progreso, sobre su matrícula `ACTIVA` (otra → `409`). Los eventos llegan a la
   vez sin carreras: uno por lección a la vez.
 - `400` si `type` no es uno de los tres o `clientEventId` no es un UUID.
-- `403` sin aceptación vigente de los términos de uso, antes que todo lo demás («Para registrar tu progreso debes
-  aceptar los términos de uso vigentes (…)»).
+- `403` sin aceptación vigente de los términos de uso, sobre una matrícula propia y antes que las demás reglas («Para
+  registrar tu progreso debes aceptar los términos de uso vigentes (…)»); una ajena sigue siendo `404`.
 
 - `409` si la regla no se cumple: `MARKED_COMPLETE` en un vídeo o en una lección `NOT_YET`; `VIDEO_ENDED` en una
   lección que no es vídeo. El estado nunca retrocede.

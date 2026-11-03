@@ -174,20 +174,13 @@ class PersonalDataErasure(
     }
 
     // el perfil sigue enlazado a la cuenta mientras la persona enseñe (sus asignaciones cuelgan de él), sin nada que la
-    // describa y fuera del catálogo
+    // describa y fuera del catálogo. sigue con el mismo id de cuenta: uno ya vaciado no se cuenta otra vez
     private suspend fun dissociateProfile(user: UUID): Long {
-        val found = records.listAll(PROFILE, mapOf(PROFILE_USER to user.toString()))
-        found.forEach {
-            val cleared =
-                mapOf(
-                    PUBLIC_NAME to ANONYMOUS_TEACHER,
-                    "titulo_profesional" to null,
-                    "biografia" to null,
-                    "especialidades" to null,
-                    "perfil_publico" to false,
-                )
-            records.patch(PROFILE, UUID.fromString(it.id), RecordRequest(cleared), AUDIT_REASON)
-        }
+        val found =
+            records.listAll(PROFILE, mapOf(PROFILE_USER to user.toString())).filter { profile ->
+                CLEARED_PROFILE.any { (field, value) -> profile.attributes[field] != value }
+            }
+        found.forEach { records.patch(PROFILE, UUID.fromString(it.id), RecordRequest(CLEARED_PROFILE), AUDIT_REASON) }
         return found.size.toLong()
     }
 
@@ -246,6 +239,14 @@ class PersonalDataErasure(
         private const val PROFILE_USER = "usuario_id"
         private const val PUBLIC_NAME = "nombre_publico"
         const val ANONYMOUS_TEACHER = "Perfil suprimido"
+        private val CLEARED_PROFILE: Map<String, Any?> =
+            mapOf(
+                PUBLIC_NAME to ANONYMOUS_TEACHER,
+                "titulo_profesional" to null,
+                "biografia" to null,
+                "especialidades" to null,
+                "perfil_publico" to false,
+            )
 
         private val MAPPER: JsonMapper = JsonMapper.builder().findAndAddModules().build()
     }
