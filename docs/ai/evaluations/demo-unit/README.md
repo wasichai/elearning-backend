@@ -82,15 +82,15 @@ Con el entorno de [getting-started](../../../development/getting-started.md) (Po
    Un paso que no termina en `DONE` es un resultado que se documenta tal cual (estado, `error`, `validations`), no se
    repite hasta que salga bien.
 
-4. Validación (la lanza el revisor, nunca la autora), corrección y otra validación. El borrador de lecciones no escribe
-   evaluaciones, así que la primera validación bloquea con `NO_ASSESSMENT`; la autora añade la evaluación en el estudio
-   (una lección `EVALUACION` con su evaluación, una pregunta y sus opciones) y se valida otra vez:
+4. Validación (la lanza el revisor, nunca la autora), corrección y otra validación. El borrador trae ya las evaluaciones
+   del diseño (#367), así que la primera validación no bloquea con `NO_ASSESSMENT`; la corrección de la autora en el
+   estudio (aquí, retocar las instrucciones de una evaluación) cambia el borrador, y el informe hay que pedirlo otra vez:
 
    ```bash
    validate() { J=$(call $REVIEWER POST /api/lms/ai/validations -d "{\"versionId\":\"$VERSION\"}" | jq -r .id)
      wait_job $REVIEWER /api/lms/ai/validations/jobs/$J >/dev/null; call $REVIEWER GET "/api/lms/ai/validations?versionId=$VERSION"; }
    validate | tee validacion-1.json | jq '.report.blocking, .report.problemsBySeverity, .opinion.verdict'
-   # … la corrección en el estudio (o por /api/objects/{leccion,evaluacion,pregunta,opcion}/records como la autora) …
+   # … la corrección en el estudio (o por /api/objects/evaluacion/records/{id} como la autora) …
    validate | tee validacion-2.json | jq '.report.blocking, .opinion.verdict'
    ```
 
