@@ -424,4 +424,8 @@ class PipelineIndicatorsApiTest : LmsApiTest() {
             .isCreated
         return bearer(email, DEMO_PASSWORD)
     }
+
+    private companion object {
+        val DEMO_ORGANIZATION: UUID = UUID.fromString("00000000-0000-0000-0000-000000000001")
+    }
 }

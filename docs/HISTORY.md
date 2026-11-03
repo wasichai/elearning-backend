@@ -13,6 +13,7 @@ Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este
   la bandeja, por el puerto `DraftGenerators` de authoring. Distintivo de la interfaz: [wasichai/elearning-frontend#176](https://github.com/wasichai/elearning-frontend/issues/176).
 - `AiWork` marca todo trabajo de IA (`AiStepRunner.run`, la validación) y `AiWorkGuard` le niega aprobar o publicar una versión
   (`403`), aunque corra como la plataforma. Sin migraciones. Docs: `docs/ai` §14, `docs/api`.
+
 ## 2026-11-03 — Indicadores de proceso de la canalización: E35.2 ([#291](https://github.com/wasichai/elearning-backend/issues/291))
 
 - `GET /api/lms/ai/indicators` (`?courseId=` opcional) calcula a petición los indicadores 1–6 de docs/ai §10 desde
