@@ -293,6 +293,19 @@ class RealModelTest(unittest.TestCase):
             for action in ("READ", "CREATE", "UPDATE", "DELETE"):
                 self.assertEqual(creates, holds(role["name"], "brief", action), f"{role['name']} {action}")
 
+    # RF-IA-07 (ADR-0033 §10): generar y validar con IA son acciones declaradas distintas de aprobar y publicar. quien
+    # genera (CREADOR) no valida lo generado ni lo aprueba; valida quien revisa (REVISOR), que no genera
+    def test_generating_and_validating_are_separate_actions(self):
+        version = next(o for o in MODEL["objects"] if o["name"] == "version_curso")
+        self.assertTrue({"GENERAR", "VALIDAR"} <= {a["name"] for a in version["actions"]})
+        for role in ROLES["roles"]:
+            name = role["name"]
+            self.assertEqual(name == "CREADOR", holds(name, "version_curso", "GENERAR"), name)
+            self.assertEqual(name == "REVISOR", holds(name, "version_curso", "VALIDAR"), name)
+            if holds(name, "version_curso", "GENERAR"):
+                for action in ("VALIDAR", "APROBAR", "PUBLICAR"):
+                    self.assertFalse(holds(name, "version_curso", action), f"{name} genera y no debe {action}")
+
     def test_curriculum_is_separate_from_offering_and_schedule(self):
         # el temario (curso/versión) no tiene fechas; la edición sí, con su zona horaria
         course = {f["name"] for o in MODEL["objects"] if o["name"] in ("curso", "version_curso") for f in o["fields"]}

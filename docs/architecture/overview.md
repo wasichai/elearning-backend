@@ -140,6 +140,7 @@ flowchart BT
     ai --> authoring
     ai --> course
     ai --> importer
+    ai --> jobs
     media --> authoring
     media --> jobs
     reputation --> enrollment

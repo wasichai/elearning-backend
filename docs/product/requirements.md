@@ -342,6 +342,10 @@ el cuándo, en [`roadmap.md`](roadmap.md).
   estado editorial.
 - **RF-IA-07** · F5 · planificado — Permisos separados para generar, validar, aprobar y publicar.
   _Aceptación:_ un usuario que solo puede generar recibe `403` al aprobar.
+  _Avance:_ acciones declaradas `GENERAR` (CREADOR) y `VALIDAR` (REVISOR) sobre `version_curso` y `AiPermissions`
+  (E33.3, [#280](https://github.com/wasichai/elearning-backend/issues/280)): al encolar exige la acción a quien llama
+  (`403`) y al ejecutar la vuelve a mirar con sus roles guardados (ADR-0022); quien genera no valida, aprueba ni publica.
+  Falta que la exijan los pasos de E33.4–E33.6.
 - **RF-IA-08** · F5 · planificado — Embabel se usa en la versión 1.5.4, con Anthropic y OpenAI opcionales
   ([ADR-0033](../adr/0033-fase-5-ia.md)); sin credenciales hay un doble determinista claramente identificado; si algo
   no es compatible se documenta y se entrega una alternativa real.

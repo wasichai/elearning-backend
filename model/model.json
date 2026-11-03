@@ -169,6 +169,14 @@
           "label": "Aprobar créditos (autoridad académica)"
         },
         {
+          "name": "GENERAR",
+          "label": "Generar con IA (encolar un paso)"
+        },
+        {
+          "name": "VALIDAR",
+          "label": "Validar lo generado con IA"
+        },
+        {
           "name": "VER_TODAS",
           "label": "Ver todo el contenido, no solo el de las matrículas propias"
         }
