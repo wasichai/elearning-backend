@@ -19,6 +19,7 @@ enum class Rule(
     PACKAGE_DAG("solo las dependencias de docs/architecture/overview.md §2.3"),
     CONCRETE_PROVIDER("ningún proveedor concreto de IA, almacenamiento, videoconferencia ni fuentes fuera de su adaptador (RNF-ARQ-08)"),
     EXTERNAL_PROCESS("un proceso externo solo en el adaptador del generador, elearning.media.asciidoctor (ADR-0018 §7, RNF-ARQ-08)"),
+    EMBABEL("Embabel solo en elearning.ai (ADR-0033 §4)"),
 }
 
 data class Violation(
@@ -71,6 +72,9 @@ class SourceScanner(
             if (!isProviderAdapter(packageName)) {
                 CONCRETE_PROVIDER.findAll(line).forEach { report(Rule.CONCRETE_PROVIDER, index, "usa ${it.value}") }
             }
+            if (!isEmbabelAdapter(packageName)) {
+                EMBABEL.findAll(line).forEach { report(Rule.EMBABEL, index, "usa ${it.value}") }
+            }
             if (!isProcessAdapter(packageName)) {
                 EXTERNAL_PROCESS.findAll(line).forEach { report(Rule.EXTERNAL_PROCESS, index, "usa ${it.value}") }
             }
@@ -84,6 +88,9 @@ class SourceScanner(
 
     private fun isProviderAdapter(packageName: String) =
         PROVIDER_ADAPTERS.any { packageName == "$rootPackage.$it" || packageName.startsWith("$rootPackage.$it.") }
+
+    private fun isEmbabelAdapter(packageName: String) =
+        packageName == "$rootPackage.$EMBABEL_ADAPTER" || packageName.startsWith("$rootPackage.$EMBABEL_ADAPTER.")
 
     private fun isProcessAdapter(packageName: String) =
         PROCESS_ADAPTERS.any { packageName == "$rootPackage.$it" || packageName.startsWith("$rootPackage.$it.") }
@@ -146,6 +153,10 @@ class SourceScanner(
                     """api\.github\.com|raw\.githubusercontent\.com)\b""",
             )
         private val PROVIDER_ADAPTERS = setOf("ai", "media", "course.meeting", "importer.github")
+
+        // Embabel, por paquete: solo la canalización la usa (ADR-0033 §4); los demás adaptadores, tampoco
+        private val EMBABEL = Regex("""\bcom\.embabel\.[\w.*]*""")
+        private const val EMBABEL_ADAPTER = "ai"
 
         // lanzar un programa: ProcessBuilder o Runtime.exec. la fuente de un documento no es de confianza (CLAUDE.md,
         // regla 6), así que el único proceso es el generador, en su adaptador, en modo seguro y con tiempo límite

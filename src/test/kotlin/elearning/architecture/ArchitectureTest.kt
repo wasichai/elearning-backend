@@ -45,6 +45,9 @@ class ArchitectureTest {
     fun `no external process outside the renderer adapter`() = assertNoViolations(Rule.EXTERNAL_PROCESS)
 
     @Test
+    fun `no embabel outside elearning ai`() = assertNoViolations(Rule.EMBABEL)
+
+    @Test
     fun `every capability sits in the dag and uses only what it may`() = assertNoViolations(Rule.PACKAGE_DAG)
 
     // la tabla también se vigila: una línea nueva no puede colar un ciclo, dar dependencias a workload ni hacer que

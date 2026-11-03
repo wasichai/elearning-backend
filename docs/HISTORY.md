@@ -2,6 +2,27 @@
 
 Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este archivo registra lo que se entregó.
 
+## 2026-11-03 — Embabel 1.5.4 con Anthropic y OpenAI opcionales ([#273](https://github.com/wasichai/elearning-backend/issues/273))
+
+Segundo paso de la épica E32 ([#271](https://github.com/wasichai/elearning-backend/issues/271)), según
+[ADR-0033](adr/0033-fase-5-ia.md) §1–§6.
+
+- `embabel-agent-starter`, `-starter-anthropic` y `-starter-openai` 1.5.4 en `gradle/libs.versions.toml` (el BOM de
+  Wasichai no gestiona Embabel). Sin `-webmvc`, `-a2a` ni `-jdbc`; la tarea `noServletStack`, parte de `check`, hace fallar
+  el build si Spring MVC o Tomcat llegan a `runtimeClasspath`.
+- `elearning.ai.AiProviderGate` (`EnvironmentPostProcessor` en `META-INF/spring.factories`): deja fuera la
+  autoconfiguración de cada proveedor sin clave y, sin ninguno, la de la plataforma de Embabel; pone como
+  `embabel.models.default-llm` el modelo por defecto del proveedor activo (`LMS_AI_PROVIDER`, Anthropic con las dos claves).
+- `AiStatus`: al arrancar dice qué proveedor quedó (sin claves, ninguno: la canalización usará el doble determinista) e
+  impide arrancar, con un mensaje que nombra la propiedad y los modelos que hay, si un modelo por defecto o de paso
+  (`lms.ai.models.{anthropic,openai}.*`) no existe en su proveedor o si `max-attempts` de Embabel pasa de 2 (queda en 2 para
+  los dos).
+- Cliente MCP de Spring AI apagado. `ArchitectureTest` impide `com.embabel` fuera de `elearning.ai` (regla `EMBABEL`).
+- Pruebas: `AiProviderGateTest` y `AiStatusTest` (unitarias); `NoAiProviderApiTest`, `AnthropicOnlyApiTest`,
+  `OpenAiOnlyApiTest` y `AiStartupFailureTest` arrancan la aplicación entera con cada combinación de claves de mentira y
+  URL base a un puerto cerrado: ninguna llama a un proveedor.
+- `docs/operations` (variables `LMS_AI_*` y arranque sin claves), `docs/ai` §2 y `.env.example`.
+
 ## 2026-11-03 — ADR de la Fase 5: Embabel 1.5.4, proveedores, límites y `AgentRun` ([#272](https://github.com/wasichai/elearning-backend/issues/272))
 
 Solo documentación, primer paso de la épica E32 ([#271](https://github.com/wasichai/elearning-backend/issues/271)).
