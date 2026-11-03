@@ -26,6 +26,9 @@ import java.util.UUID
 //   hay borrador. El borrador y el cierre del trabajo van en una transacción: si la cancelación llega entre medias, complete
 //   no escribe y el borrador se deshace
 // - límites: el presupuesto del curso se vuelve a mirar antes de cada llamada
+// - lectura: lo que el paso lee antes de llamar (sus fuentes, la salida de un paso anterior) se lee después de todo lo
+//   anterior, así que lo ya resuelto o cancelado no gasta lecturas. Un fallo al leer sale tal cual, sin ejecución: no se
+//   llamó a ningún modelo. Las fuentes leídas, con su hash, son las de la ejecución
 @Service
 class AiStepRunner(
     private val log: AgentExecutionLog,
@@ -43,6 +46,14 @@ class AiStepRunner(
         job: Job,
         generator: AiModelCall,
         draft: suspend (AgentExecution) -> Unit = {},
+    ): String = run(job, { request -> AiStepInput(Unit, request.sources) }, { prompt, _ -> generator.call(prompt) }, draft)
+
+    // un paso que lee antes de llamar: read le da al generador su material y las fuentes que leyó
+    suspend fun <M> run(
+        job: Job,
+        read: suspend (AiStepPayload) -> AiStepInput<M>,
+        generator: AiStepGenerator<M>,
+        draft: suspend (AgentExecution) -> Unit = {},
     ): String {
         val request = AiJobs.payloadOf(job.payload)
         val organization = job.organizationId
@@ -57,11 +68,14 @@ class AiStepRunner(
         }
         if (queue.cancelled(job)) throw JobCancelled(job)
         if (jobs.budgetExhausted(organization, request.courseId)) throw PermanentJobFailure("The AI budget of this course is spent")
-        val id = log.start(execution(job, request))
+        val input = read(request)
+        if (queue.cancelled(job)) throw JobCancelled(job)
+        val id = log.start(execution(job, request, input.sources))
         val reply =
             try {
-                generator.call(
-                    AiPrompt(request.step, request.objective, request.inputs, request.sources, request.model, request.promptVersion, request.templateVersion),
+                generator.generate(
+                    AiPrompt(request.step, request.objective, request.inputs, input.sources, request.model, request.promptVersion, request.templateVersion),
+                    input.material,
                 )
             } catch (e: AiProviderFailure) {
                 val error = "The AI provider answered ${e.status}: ${e.message}"
@@ -124,6 +138,7 @@ class AiStepRunner(
     private fun execution(
         job: Job,
         request: AiStepPayload,
+        sources: List<SourceDigest>,
     ) = NewAgentExecution(
         organizationId = job.organizationId,
         jobId = job.id,
@@ -134,7 +149,7 @@ class AiStepRunner(
         versionId = request.versionId,
         objective = request.objective,
         inputs = request.inputs,
-        sources = request.sources,
+        sources = sources,
         generator = if (request.model == null) Generator.DETERMINISTIC else Generator.MODEL,
         model = request.model,
         promptVersion = request.promptVersion,

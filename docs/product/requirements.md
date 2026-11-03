@@ -326,6 +326,9 @@ el cuándo, en [`roadmap.md`](roadmap.md).
 - **RF-IA-02** · F5 · planificado — Pasos reproducibles (análisis de fuentes con procedencia, diseño pedagógico,
   borrador con plantillas versionadas) con salidas tipadas; una salida inválida se rechaza o va a corrección.
   _Aceptación:_ prueba con una salida malformada del doble determinista.
+  _Avance:_ análisis de fuentes (E33.4, [#281](https://github.com/wasichai/elearning-backend/issues/281)): `SourceAnalysis`
+  tipado con Embabel y con el doble determinista; lo que no tiene procedencia en la fuente se descarta por código y una
+  salida malformada, o sin nada verificable, queda `INVALID_OUTPUT` sin borrador. Faltan el diseño y el borrador (E33.5, E33.6).
 - **RF-IA-03** · F5 · planificado — Cada ejecución (`AgentRun`) registra usuario, ámbito, objetivo, entradas, fuentes,
   modelo y proveedor (sin secretos), versiones de instrucciones y plantillas, resultados, validaciones, estado,
   errores, consumo, duración e intervenciones humanas.
@@ -353,6 +356,8 @@ el cuándo, en [`roadmap.md`](roadmap.md).
   ([ADR-0033](../adr/0033-fase-5-ia.md)); sin credenciales hay un doble determinista claramente identificado; si algo
   no es compatible se documenta y se entrega una alternativa real.
   _Aceptación:_ la suite de pruebas pasa sin claves de proveedor y la UI marca los resultados del doble.
+  _Avance:_ el análisis de fuentes (E33.4) corre entero sin claves con su doble y su ejecución dice `generator = DETERMINISTIC`
+  en la API; falta el distintivo de la interfaz.
 - **RF-IA-09** · F5 · planificado — Comparación de modelos por tarea con entradas, criterios, versiones e informes
   conservados.
   _Aceptación:_ un informe reproducible por tarea comparada.

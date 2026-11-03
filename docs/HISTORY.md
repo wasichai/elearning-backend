@@ -2,6 +2,26 @@
 
 Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este archivo registra lo que se entregó.
 
+## 2026-11-03 — Análisis de fuentes con procedencia y doble determinista: E33.4 ([#281](https://github.com/wasichai/elearning-backend/issues/281))
+
+- `POST /api/lms/ai/source-analysis` encola, con un brief `LISTO`, el paso `SOURCE_ANALYSIS` (`ai.source_analysis`): lee
+  sus fuentes y su grafo `include::` por el puerto del importador, da al generador cada sección con ancla
+  (`owner/repo@sha:ruta#ancla`) y guarda en `AgentRun` cada archivo leído con el SHA-256 de su texto.
+- `SourceAnalyzer` con dos implementaciones: `ModelSourceAnalyzer` (Embabel, modelo `extraction` y
+  `lms.ai.max-tokens.extraction`) y `DeterministicSourceAnalyzer`, sin claves (`generator = DETERMINISTIC` en la API).
+  `SourceAnalysisCheck` descarta por código cada concepto o procedimiento sin procedencia, de un archivo o ancla que no se
+  leyó o con una cita que no está en su sección, y lo deja en `validations`; una salida malformada o sin nada verificable
+  queda `INVALID_OUTPUT`, sin salida ni borrador.
+- La fuente va delimitada en el mensaje de usuario, con un marcador que sale del hash del contenido, y nunca en las
+  instrucciones de sistema: `ModelCalls.createObject` recibe aparte las de sistema. Lo prueban `SourceAnalysisTest` con el
+  `FakeOperationContext` de Embabel 1.5.4 y las pruebas de API contra el doble HTTP de Anthropic y de OpenAI.
+- Fija el patrón de paso tipado que siguen E33.5, E33.6 y E36.1 (`docs/ai` §5): `AiStepRunner.run(job, read, generator)`
+  lee antes de llamar, tras la idempotencia, la cancelación y el presupuesto; `AiStepModels` elige modelo y `max_tokens`;
+  `ModelCalls` traduce los fallos de Embabel a `AiProviderFailure` (que sustituye a `ProviderUnavailable` y a su
+  `PermanentJobFailure`, con los mismos mensajes; un 409 pasa a permanente, como en `AiProviderFailure`) y `AiInvalidOutput`,
+  lo que espera `AiStepRunner`.
+  `CollectedSource` del importador expone el texto leído. Sin migraciones.
+
 ## 2026-11-03 — Informe de validación de borradores ([#286](https://github.com/wasichai/elearning-backend/issues/286))
 
 - `DraftValidator` (`elearning.ai`) valida por código una versión en borrador (RF-IA-05): estructura, referencias,
@@ -13,6 +33,7 @@ Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este
 - `GeneratedDraftGuard`: enviar a revisión un borrador generado sin informe, con uno que ya no corresponde al contenido o con
   errores bloqueantes es `409`. Generado = una ejecución `LESSON_DRAFT` lo nombra en `version_curso_id` u `output.versionId`
   ([docs/ai §13](ai/README.md#13-informe-de-validación-rf-ia-05)); #283 lo respetará. `V23` añade los índices por versión.
+
 ## 2026-11-03 — Una versión sin lecciones no se envía a revisión ([#346](https://github.com/wasichai/elearning-backend/issues/346))
 
 - `EditorialWorkflowGuard` responde `409` al llevar una `version_curso` sin lecciones a `EN_REVISION`, `APROBADA` o
