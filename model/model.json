@@ -1785,7 +1785,7 @@
       "fieldName": "politica_credito"
     },
     {
-      "name": "aprobacion_creditos_politica_credito",
+      "name": "aprobacion_creditos_politica",
       "label": "Política de crédito aplicada",
       "inverseLabel": "Aprobaciones de créditos",
       "type": "MANY_TO_ONE",

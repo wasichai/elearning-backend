@@ -42,6 +42,7 @@ NAME = re.compile(r"^[a-z][a-z0-9_]{0,62}$")
 ACTION = re.compile(r"^[A-Z][A-Z0-9_]{1,48}$")
 ROLE = re.compile(r"^[A-Z][A-Z0-9_]{1,62}$")
 FIELD_TYPES = {"TEXT", "LONG_TEXT", "INTEGER", "DECIMAL", "BOOLEAN", "DATE", "DATETIME", "ENUM", "EMAIL", "URL", "UUID", "FILE", "IMAGE"}
+MAX_RELATIONSHIP_NAME = 35
 RELATIONSHIP_TYPES = {"MANY_TO_ONE", "ONE_TO_ONE", "ONE_TO_MANY", "MANY_TO_MANY"}
 RECORD_ACTIONS = {"READ", "CREATE", "UPDATE", "DELETE"}
 BUILT_IN_ACTIONS = RECORD_ACTIONS | {"MANAGE_METADATA", "MANAGE_ORGANIZATION", "MANAGE_TENANTS"}
@@ -156,6 +157,8 @@ def validate(model: dict, roles: dict | None = None) -> None:
         rname = rel.get("name", "")
         if not NAME.match(rname):
             problems.append(f"relación '{rname}': nombre inválido")
+        elif len(rname) > MAX_RELATIONSHIP_NAME:
+            problems.append(f"relación '{rname}': nombre de más de {MAX_RELATIONSHIP_NAME} caracteres (Wasichai lo rechaza)")
         if rel.get("type") not in RELATIONSHIP_TYPES:
             problems.append(f"relación '{rname}': tipo desconocido {rel.get('type')!r}")
         for end in ("source", "target"):
