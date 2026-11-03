@@ -26,6 +26,7 @@ Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este
   presenta como calidad pedagógica. Definición exacta de cada uno en docs/ai §10.
 - Acción declarada nueva `VER_INDICADORES_IA` sobre `version_curso`, que ningún rol del LMS tiene (solo ADMIN); la exige
   `AiPermissions`. Pruebas de cálculo con datos sembrados y de autorización negativa. Sin migraciones.
+
 ## 2026-11-03 — Comparación reproducible de modelos: E35.1 ([#290](https://github.com/wasichai/elearning-backend/issues/290))
 
 - `./gradlew aiEval`, fuera de `build`, `check` e `integrationTest` (etiqueta `ai-eval`), compara los modelos configurados

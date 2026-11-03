@@ -81,7 +81,13 @@ val aiEval by tasks.registering(Test::class) {
     classpath = sourceSets.test.get().runtimeClasspath
     useJUnitPlatform { includeTags("ai-eval") }
     systemProperty("lms.ai.eval.sets", file("docs/ai/evaluations").absolutePath)
-    systemProperty("lms.ai.eval.out", layout.buildDirectory.dir("ai-eval").get().asFile.absolutePath)
+    systemProperty(
+        "lms.ai.eval.out",
+        layout.buildDirectory
+            .dir("ai-eval")
+            .get()
+            .asFile.absolutePath,
+    )
     // cada ejecución es una medición nueva: nunca al día
     outputs.upToDateWhen { false }
     testLogging {
