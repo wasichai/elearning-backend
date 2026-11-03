@@ -193,6 +193,20 @@ class CertificateStore(
 
     suspend fun ofEnrollment(enrollment: UUID): Certificate? = one("matricula_id = :value", enrollment)
 
+    // los de varias matrículas, por matrícula y en una lectura: el panel del estudiante (#261)
+    suspend fun ofEnrollments(enrollments: Collection<UUID>): Map<UUID, Certificate> {
+        if (enrollments.isEmpty()) return emptyMap()
+        return db
+            .sql("SELECT matricula_id, CAST(datos AS text) AS datos FROM lms.certificado WHERE matricula_id = ANY(:enrollments)")
+            .bind("enrollments", enrollments.distinct().toTypedArray())
+            .map { row, _ ->
+                row.get("matricula_id", UUID::class.java)!! to MAPPER.readValue(row.get("datos", String::class.java), Certificate::class.java)
+            }.all()
+            .collectList()
+            .awaitSingle()
+            .toMap()
+    }
+
     suspend fun ofCode(code: String): Certificate? = one("codigo = :value", code)
 
     private suspend fun one(

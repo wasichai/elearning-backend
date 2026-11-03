@@ -484,6 +484,43 @@ tipo que detecta `wasichai-files`; lo demás es `400` en `archivo` (RNF-SEG-07).
 `PROGRAMADA` · `REPROGRAMADA` · `CANCELADA`. `attendance`: `null` o `PRESENTE` · `TARDE` · `AUSENTE` · `JUSTIFICADO`. El
 enlace solo es `https`.
 
+### Panel del estudiante
+
+`GET /api/lms/classroom/panel?page=0&size=25` → `ClassroomPanelItem[]`: una página de «Mis cursos» (las mismas matrículas
+y en el mismo orden que `GET /api/lms/classroom/enrollments`), cada una con lo que antes se leía aparte por matrícula
+(#261). `page` y `size` como en el roster: `size` vale 25 si falta y se acota a 1–200, `page` a ≥ 0; una página con
+menos de `size` elementos es la última. Solo las matrículas propias, también para un docente.
+
+`ClassroomPanelItem` = `Enrollment` más:
+
+```json
+{
+  "upcomingSessions": [{ "id": "…", "title": "…", "start": "…", "end": "…", "status": "PROGRAMADA", "attendance": null }],
+  "pendingAssessments": [
+    {
+      "lessonId": "…",
+      "assessment": {
+        "id": "…",
+        "title": "…",
+        "maxAttempts": 2,
+        "timeLimitMinutes": null,
+        "passingPercent": 60,
+        "attemptsUsed": 0,
+        "openAttemptId": null,
+        "best": null
+      }
+    }
+  ]
+}
+```
+
+- `upcomingSessions`: `Session[]` (como en `GET …/sessions`) sin las canceladas ni las ya terminadas, la más próxima
+  primero; la que está en curso sigue.
+- `pendingAssessments`: las evaluaciones no aprobadas con un intento abierto o con intentos por usar, en el orden del
+  curso. `assessment` es el de la lección en `Classroom`. No hay plazos de evaluación en el modelo.
+- Una matrícula que no está `ACTIVA` o ya tiene certificado no tiene nada por delante: las dos listas van vacías.
+- Se lee por lotes: las sentencias SQL no crecen con el número de matrículas de la página.
+
 ### Finalización y certificado
 
 - `GET /api/lms/classroom/enrollments/{id}/completion` → `{ "met": false, "rules": [{ "rule": "LESSONS", "met": true,
@@ -520,6 +557,7 @@ cualquier edición, sin asignación; calificar le sigue respondiendo `404`.
 | Método | Ruta                                            | Resultado                                                             |
 | ------ | ----------------------------------------------- | --------------------------------------------------------------------- |
 | GET    | `/api/lms/teaching/offerings`                   | `TeachingOffering[]`                                                  |
+| GET    | `/api/lms/teaching/panel`                       | `TeachingPanelItem[]`; `?page` y `?size`                              |
 | GET    | `/api/lms/teaching/offerings/{code}/students`   | `Roster[]`; `?page` y `?size` opcionales                              |
 | GET    | `/api/lms/teaching/offerings/{code}/attempts`   | cola: intentos `SUBMITTED` → `PendingAttempt[]`; `?page`, `?size`     |
 | GET    | `/api/lms/teaching/attempts/{attemptId}`        | `Attempt` con soluciones, respuestas y entregas                       |
@@ -534,6 +572,12 @@ cualquier edición, sin asignación; calificar le sigue respondiendo `404`.
 - `email` puede ser `null` en `Roster`, `PendingAttempt` y `AttendanceRow`: lo guarda la matrícula al crearse.
 - `TeachingOffering`: `{ "code", "status", "startDate", "endDate", "timeZone", "course": { "slug", "code", "title" },
 "enrolled": 12, "pendingAttempts": 3 }`.
+- `TeachingPanelItem` (#261) = `TeachingOffering` más `upcomingSessions` (`Session[]` sin `attendance`, sin las
+  canceladas ni las ya terminadas, la más próxima primero) y `oldestPending` (`PendingAttempt[]`: los 5 primeros de la
+  cola, en su orden; el total está en `pendingAttempts` y la cola entera en `GET …/attempts`). Una página de las
+  ediciones asignadas en el orden de `GET /offerings` (la de inicio más próximo primero), con `page` y `size` como el
+  roster pero siempre paginada: sin ellos, la primera página de 25. Se lee por lotes: las sentencias SQL no crecen con
+  el número de ediciones de la página.
 - `Roster`: `{ "enrollmentId", "email", "status", "progress": ProgressSummary, "attendance": { "attended": 3,
 "total": 4 }, "assessments": [{ "lessonId", "title", "bestPercent": 80, "passed": true, "pending": false }] }`.
 - `PendingAttempt`: `{ "attemptId", "enrollmentId", "email", "lessonId", "lessonTitle", "submittedAt",

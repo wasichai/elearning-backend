@@ -8,11 +8,14 @@ import elearning.common.ref
 import elearning.course.meeting.SafeLink
 import org.springframework.stereotype.Component
 import wasichai.core.common.NotFoundException
+import wasichai.core.common.PageRequest
 import wasichai.core.data.RecordResponse
 import wasichai.core.data.RecordService
 import wasichai.core.identity.CurrentUser
+import java.time.Clock
 import java.time.Instant
 import java.time.LocalDate
+import java.time.ZoneId
 import java.util.UUID
 
 // arma el aula leyendo como el estudiante: sus alcances (ADR-0012/0013) deciden qué ve. el aula es siempre la propia:
@@ -23,6 +26,7 @@ class ClassroomReader(
     private val records: RecordService,
     private val facts: AssessmentFacts,
     private val certificates: CertificateStore,
+    private val clock: Clock,
 ) {
     // mis matrículas salvo las retiradas (una finalizada sigue legible), la de inicio más próximo primero
     suspend fun mine(): List<EnrollmentView> {
@@ -32,6 +36,68 @@ class ClassroomReader(
             .map { view(it) }
             .sortedWith(compareBy({ it.offering.startDate }, { it.id }))
     }
+
+    // el panel (#261): una página de mis matrículas en el orden de mine(), cada una con sus próximas sesiones y sus
+    // evaluaciones pendientes, que la interfaz pedía aparte por matrícula. por lotes: temarios, cursos, progreso, intentos,
+    // sesiones, asistencia y certificados en una lectura cada uno, así las sentencias no crecen con la página
+    suspend fun panel(page: PageRequest): List<ClassroomPanelItem> {
+        val me = currentUser.require().userId.toString()
+        val mine = all(ENROLLMENT, mapOf(STUDENT to me)).filter { it.attributes[STATE]?.toString() != WITHDRAWN }
+        val offerings = records.listByIds(OFFERING, mine.mapNotNull { it.attributes.ref(OFFERING_FIELD) }).associateBy { it.id }
+        val enrollments =
+            mine
+                .sortedWith(compareBy({ startDate(offerings.getValue(it.attributes.ref(OFFERING_FIELD)!!)) }, { it.id }))
+                .drop(page.offset.toInt())
+                .take(page.size)
+        if (enrollments.isEmpty()) return emptyList()
+        val ids = enrollments.map { it.id }
+        val syllabi = syllabi(enrollments.map { it.attributes.ref(VERSION)!! })
+        val courses = records.listByIds(COURSE, syllabi.values.map { it.version.attributes.ref(COURSE)!! }).associateBy { it.id }
+        val progress = records.listAllIn(PROGRESS, ENROLLMENT, ids).groupBy { it.attributes.ref(ENROLLMENT).orEmpty() }
+        val lessons = syllabi.values.flatMap { s -> s.units.flatMap { it.lessons } }
+        val assessments =
+            facts.enrollmentsLessonAssessments(currentUser.require().organizationId, ids.map(UUID::fromString), lessons.map { UUID.fromString(it.id) })
+        val sessions =
+            records.listAllIn(SESSION, OFFERING_FIELD, enrollments.map { it.attributes.ref(OFFERING_FIELD)!! }).groupBy {
+                it.attributes.ref(OFFERING_FIELD).orEmpty()
+            }
+        val attendance = records.listAllIn(ATTENDANCE, ENROLLMENT, ids).groupBy { it.attributes.ref(ENROLLMENT).orEmpty() }
+        val issued = certificates.ofEnrollments(ids.map(UUID::fromString))
+        val now = Instant.now(clock)
+        return enrollments.map { enrollment ->
+            val syllabus = syllabi.getValue(enrollment.attributes.ref(VERSION)!!)
+            val offering = offerings.getValue(enrollment.attributes.ref(OFFERING_FIELD)!!)
+            val own = syllabus.units.flatMap { u -> u.lessons.map { it.id } }.toSet()
+            val marks = attendance[enrollment.id].orEmpty()
+            val present = marks.filter { it.attributes[STATE]?.toString() in PRESENT }.mapNotNull { it.attributes.ref(SESSION) }.toSet()
+            val content =
+                Content(
+                    syllabus.version,
+                    syllabus.units,
+                    progress[enrollment.id].orEmpty().associateBy { it.attributes.ref(LESSON).orEmpty() },
+                    assessments[enrollment.id].orEmpty().filterKeys { it in own },
+                    attended(linked(sessions[offering.id].orEmpty()), present),
+                )
+            val certificate = issued[UUID.fromString(enrollment.id)]
+            val listed = view(enrollment, content, certificate, courses.getValue(syllabus.version.attributes.ref(COURSE)!!), offering)
+            if (listed.status != ACTIVE || certificate != null) return@map ClassroomPanelItem(listed, emptyList(), emptyList())
+            val zone = ZoneId.of(offering.text("zona_horaria"))
+            val taken = marks.associate { it.attributes.ref(SESSION) to it.attributes[STATE]?.toString() }
+            ClassroomPanelItem(
+                listed,
+                SessionService.upcoming(sessions[offering.id].orEmpty(), now).map { SessionService.view(it, zone, taken[it.id]) },
+                pending(content),
+            )
+        }
+    }
+
+    // las evaluaciones que aún se pueden hacer, en el orden del curso: no aprobadas y con un intento abierto o por usar
+    private fun pending(content: Content): List<PendingAssessment> =
+        content.units
+            .flatMap { it.lessons }
+            .mapNotNull { lesson -> content.assessments[lesson.id]?.let { lesson.id to it } }
+            .filter { (_, a) -> a.passedAt == null && (a.openAttemptId != null || a.attemptsUsed < a.maxAttempts) }
+            .map { (lesson, a) -> PendingAssessment(lesson, assessment(a)) }
 
     suspend fun classroom(id: UUID): ClassroomView {
         val enrollment = records.get(ENROLLMENT, id)
@@ -91,9 +157,20 @@ class ClassroomReader(
         content: Content,
         certificate: Certificate?,
     ): EnrollmentView {
-        val a = enrollment.attributes
         val course = records.get(COURSE, UUID.fromString(content.version.attributes.ref(COURSE)!!))
-        val offering = records.get(OFFERING, UUID.fromString(a.ref(OFFERING_FIELD)!!))
+        val offering = records.get(OFFERING, UUID.fromString(enrollment.attributes.ref(OFFERING_FIELD)!!))
+        return view(enrollment, content, certificate, course, offering)
+    }
+
+    // con el curso y la edición ya leídos: el panel los lee por lotes
+    private fun view(
+        enrollment: RecordResponse,
+        content: Content,
+        certificate: Certificate?,
+        course: RecordResponse,
+        offering: RecordResponse,
+    ): EnrollmentView {
+        val a = enrollment.attributes
         val lessons = content.units.flatMap { it.lessons }
         val next = lessons.firstOrNull { countable(it, content) && !done(it, content) }
         val unitOrder = content.units.flatMap { u -> u.lessons.map { it.id to u.record.int(ORDER) } }.toMap()
@@ -107,7 +184,7 @@ class ClassroomReader(
                 OfferingRef(
                     code = offering.text("codigo"),
                     status = offering.text(STATE),
-                    startDate = LocalDate.parse(offering.text("fecha_inicio").take(10)),
+                    startDate = startDate(offering),
                     endDate = LocalDate.parse(offering.text("fecha_fin").take(10)),
                     timeZone = offering.text("zona_horaria"),
                 ),
@@ -213,6 +290,19 @@ class ClassroomReader(
                 .sortedWith(compareBy({ it.int(ORDER) }, { it.id }))
                 .map { unit -> Unit(unit, all(LESSON, mapOf(UNIT to unit.id)).sortedWith(compareBy({ it.int(ORDER) }, { it.id }))) }
         return Syllabus(record, units)
+    }
+
+    // varias versiones, por id, con las versiones, las unidades y las lecciones en una lectura cada una (#261)
+    private suspend fun syllabi(versions: List<String>): Map<String, Syllabus> {
+        val found = records.listByIds(VERSION, versions)
+        val units = records.listAllIn(UNIT, VERSION, found.map { it.id }).sortedWith(compareBy({ it.int(ORDER) }, { it.id }))
+        val lessons =
+            records
+                .listAllIn(LESSON, UNIT, units.map { it.id })
+                .sortedWith(compareBy({ it.int(ORDER) }, { it.id }))
+                .groupBy { it.attributes.ref(UNIT).orEmpty() }
+        val byVersion = units.groupBy { it.attributes.ref(VERSION).orEmpty() }
+        return found.associate { version -> version.id to Syllabus(version, byVersion[version.id].orEmpty().map { Unit(it, lessons[it.id].orEmpty()) }) }
     }
 
     // la versión de la matrícula con sus unidades y lecciones en orden, y el progreso guardado por lección
@@ -395,6 +485,7 @@ class ClassroomReader(
         const val ENROLLMENT = "matricula"
         const val STUDENT = "estudiante_id"
         const val WITHDRAWN = "RETIRADA"
+        const val ACTIVE = "ACTIVA"
         const val RESOURCE = "recurso"
         const val RESOURCE_VERSION = "version_recurso"
         const val RESOURCE_LINK = "recurso_leccion"
@@ -421,6 +512,8 @@ class ClassroomReader(
         val NOT_YET = setOf("EVALUACION", "SESION")
     }
 }
+
+private fun startDate(offering: RecordResponse): LocalDate = LocalDate.parse(offering.text("fecha_inicio").take(10))
 
 private fun RecordResponse.text(name: String): String = attributes[name]?.toString().orEmpty()
 
