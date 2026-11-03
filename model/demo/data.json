@@ -129,6 +129,90 @@
       }
     },
     {
+      "ref": "dimension-docente-claridad",
+      "object": "dimension_valoracion",
+      "key": ["clave"],
+      "attributes": {
+        "clave": "docente_claridad",
+        "nombre": "Explica con claridad",
+        "destino": "DOCENCIA",
+        "activa": true,
+        "orden": 1
+      }
+    },
+    {
+      "ref": "dimension-docente-disponibilidad",
+      "object": "dimension_valoracion",
+      "key": ["clave"],
+      "attributes": {
+        "clave": "docente_disponibilidad",
+        "nombre": "Responde y está disponible",
+        "destino": "DOCENCIA",
+        "activa": true,
+        "orden": 2
+      }
+    },
+    {
+      "ref": "dimension-docente-retroalimentacion",
+      "object": "dimension_valoracion",
+      "key": ["clave"],
+      "attributes": {
+        "clave": "docente_retroalimentacion",
+        "nombre": "Su retroalimentación ayuda a mejorar",
+        "destino": "DOCENCIA",
+        "activa": true,
+        "orden": 3
+      }
+    },
+    {
+      "ref": "dimension-claridad",
+      "object": "dimension_valoracion",
+      "key": ["clave"],
+      "attributes": {
+        "clave": "claridad",
+        "nombre": "Claridad",
+        "destino": "RECURSO",
+        "activa": true,
+        "orden": 1
+      }
+    },
+    {
+      "ref": "dimension-utilidad",
+      "object": "dimension_valoracion",
+      "key": ["clave"],
+      "attributes": {
+        "clave": "utilidad",
+        "nombre": "Utilidad",
+        "destino": "RECURSO",
+        "activa": true,
+        "orden": 2
+      }
+    },
+    {
+      "ref": "dimension-actualidad",
+      "object": "dimension_valoracion",
+      "key": ["clave"],
+      "attributes": {
+        "clave": "actualidad",
+        "nombre": "Actualidad",
+        "destino": "RECURSO",
+        "activa": true,
+        "orden": 3
+      }
+    },
+    {
+      "ref": "dimension-calidad",
+      "object": "dimension_valoracion",
+      "key": ["clave"],
+      "attributes": {
+        "clave": "calidad",
+        "nombre": "Calidad",
+        "destino": "RECURSO",
+        "activa": true,
+        "orden": 4
+      }
+    },
+    {
       "ref": "perfil-diego",
       "object": "perfil_docente",
       "key": ["usuario_id"],

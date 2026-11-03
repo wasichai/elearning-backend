@@ -51,11 +51,13 @@ class ArchitectureTest {
     fun `every capability sits in the dag and uses only what it may`() = assertNoViolations(Rule.PACKAGE_DAG)
 
     // la tabla también se vigila: una línea nueva no puede colar un ciclo, dar dependencias a workload ni hacer que
-    // alguien use catalog (el catálogo solo lee; lo junta la aplicación)
+    // alguien use catalog (el catálogo solo lee; lo junta la aplicación) o reputation (las valoraciones no tocan la
+    // matrícula ni las notas, ADR-0038)
     @Test
-    fun `the table of allowed dependencies is a dag where workload uses nothing and nobody uses catalog`() {
+    fun `the table of allowed dependencies is a dag where workload uses nothing and nobody uses catalog nor reputation`() {
         assertThat(ALLOWED_DEPENDENCIES.getValue("workload")).isEmpty()
         assertThat(ALLOWED_DEPENDENCIES.filterValues { "catalog" in it }.keys).isEmpty()
+        assertThat(ALLOWED_DEPENDENCIES.filterValues { "reputation" in it }.keys).isEmpty()
         assertThat(ALLOWED_DEPENDENCIES.values.flatten()).allSatisfy { assertThat(ALLOWED_DEPENDENCIES).containsKey(it) }
         assertThat(cycleIn(ALLOWED_DEPENDENCIES)).isNull()
     }
@@ -88,7 +90,9 @@ class ArchitectureTest {
                 "ai" to setOf("common", "authoring", "course", "importer", "jobs"),
                 // la generación encola y maneja sus trabajos en la cola persistente (ADR-0018 §7)
                 "media" to setOf("common", "authoring", "jobs"),
-                "reputation" to setOf("common", "enrollment"),
+                // las valoraciones (ADR-0038): leen la matrícula y el progreso del aula y sus agregados corren en la cola. nadie
+                // las usa: ni la matrícula ni las notas dependen de ellas (regla 8)
+                "reputation" to setOf("common", "enrollment", "learning", "jobs"),
             )
 
         // un ciclo como lista de nodos, o null si no hay

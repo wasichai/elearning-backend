@@ -166,9 +166,14 @@ Respuesta 200 `CourseDetail` = todos los campos de `CourseSummary` (salvo `nextO
       "teachers": [{ "name": "…", "professionalTitle": "…", "role": "TITULAR" }]
     }
   ],
-  "teachers": [{ "name": "…", "professionalTitle": "…", "bio": "…", "specialties": "…" }]
+  "teachers": [{ "name": "…", "professionalTitle": "…", "bio": "…", "specialties": "…", "ratings": null }]
 }
 ```
+
+`teachers[].ratings` (ADR-0038 §12, RF-REP-06): el agregado de las valoraciones del docente, solo si su perfil es
+público **y** consiente `valoraciones_publicas` (falso por omisión): media y n por dimensión de sus ediciones liberadas
+(cifras congeladas con n ≥ `lms.reputation.min-sample`, sumadas con la media ponderada por n), con `criterion`, el
+enlace a su definición (`/api/lms/public/ratings/criterion`), y `criterionVersion`. Si no, `null`. Nunca comentarios.
 
 `enrollmentStatus` (RF-CAT-09, [ADR-0023](../adr/0023-cupo-agotado-en-la-proyeccion-del-catalogo.md)) = `CLOSED` si la
 edición no está en `INSCRIPCION_ABIERTA` o la fecha de hoy (en la zona de la edición) cae fuera de
@@ -580,9 +585,110 @@ progreso (`403`). El catálogo público no la pide.
 
 `valid`: sin retirar y antes de `expiresAt`. Al retirarla o vencer, la supresión corre en la cola
 (`lms.privacy.sweep-every`, 1 h, encola las vencidas): suprime eventos, progreso, asistencias, entregas, intentos sin
-calificar y trabajos; deja la matrícula (`RETIRADA` si estaba activa), los intentos calificados y el certificado sin la
+calificar, valoraciones (con sus puntajes, comentarios y apelaciones), denuncias resueltas y trabajos; deja sin la
+persona sus denuncias abiertas y la matrícula (`RETIRADA` si estaba activa), los intentos calificados y el certificado sin la
 persona (`holderName: null` en su verificación) y vacía su perfil docente. Detalle en
 [seguridad §7](../security/README.md#7-privacidad-y-retención).
+
+## Valoraciones del estudiante (F6, ADR-0038)
+
+Con sesión y la acción `VALORAR` (ESTUDIANTE; sin ella, `403`), desde una matrícula propia (ajena o inexistente → `404`).
+El valorado no lee nada de esto: DOCENTE y CREADOR no tienen `READ` sobre `valoracion` ni `puntaje_valoracion`, y la API
+de registros los cierra a todos (`apiOnly`).
+
+| Método | Ruta                                          | Resultado                                                         |
+| ------ | --------------------------------------------- | ----------------------------------------------------------------- |
+| GET    | `/api/lms/classroom/enrollments/{id}/ratings` | `RatingEligibility`: a quién puede valorar, con qué dimensiones   |
+| POST   | `/api/lms/classroom/enrollments/{id}/ratings` | `{ type, targetId, scores, comment }` → `201` `Rating`            |
+| GET    | `/api/lms/ratings/mine`                       | `Rating[]`, lo más nuevo primero                                  |
+| PUT    | `/api/lms/ratings/{ratingId}`                 | `{ scores, comment }` → `Rating`; reemplaza puntajes y comentario |
+| DELETE | `/api/lms/ratings/{ratingId}`                 | `204`                                                             |
+
+- `type` es `DOCENCIA` (`targetId`: la asignación, de `teachers[].id`) o `RECURSO` (`targetId`: la versión de recurso, de
+  `resources[].id`). `scores` va por clave de dimensión activa del destino, enteros de 1 a 5, al menos uno (`400`).
+  `comment` es texto plano de hasta 2000 caracteres (`400`); vacío lo quita. La interfaz lo muestra siempre escapado.
+- `403`: matrícula ni `ACTIVA` ni `FINALIZADA`; un destino que no es de la edición o de la versión de la matrícula;
+  progreso del aula bajo `lms.reputation.min-progress` (50 %) sin haber finalizado (docente); ninguna lección que usa el
+  recurso completada; lo propio (docente de la edición, autor del recurso).
+- `409`: ya lo valoró (se edita la suya) o la ventana cerró (`lms.reputation.window-after-end`, 30 días tras `fecha_fin`,
+  también para editar y retirar).
+- `429` con `ProblemDetail` y `Retry-After`: más de `lms.reputation.max-edits-per-day` (5) altas, ediciones o retiradas
+  en el día UTC. Lo rechazado no cuenta.
+- `POST` acepta `Idempotency-Key` (ADR-058 de Wasichai): la misma clave y el mismo cuerpo devuelven la misma respuesta
+  (`Idempotent-Replayed: true`) sin valorar otra vez; otro cuerpo con la clave, `422`.
+- Editar el comentario lo devuelve a `PENDIENTE` (solo se muestra `PUBLICADA`); cambiar solo los puntajes, no. Su
+  historial lo lee el autor en `/api/objects/valoracion/records/{id}/history`.
+
+```json
+{
+  "enrollmentId": "…",
+  "open": true,
+  "closesOn": "2026-12-31",
+  "progressPercent": 50,
+  "minProgress": 50,
+  "teachers": [{ "type": "DOCENCIA", "id": "…", "name": "Ana Quispe", "eligible": true, "reason": null, "ratingId": null }],
+  "resources": [{ "type": "RECURSO", "id": "…", "name": "Lectura de la unidad", "eligible": false, "reason": "LESSON", "ratingId": null }],
+  "dimensions": { "DOCENCIA": [{ "key": "docente_claridad", "name": "Explica con claridad" }], "RECURSO": [] }
+}
+```
+
+`reason`, cuando no puede: `CLOSED`, `ENROLLMENT`, `PROGRESS`, `LESSON`, `OWN` o `RATED` (ya la valoró: `ratingId`).
+`Rating`: `{ id, enrollmentId, type, targetId, targetName, scores: { clave: valor }, comment, moderation, createdAt,
+updatedAt }`, con `moderation` `PENDIENTE`, `PUBLICADA` u `OCULTA` (`null` sin comentario).
+
+### Resúmenes para el valorado (ADR-0038 §8–§11)
+
+Con sesión y la acción `VER_RESUMEN` (DOCENTE y CREADOR; sin ella, `403`), solo de lo que tiene a la persona como
+destino. Nunca traen estudiante, matrícula, fecha ni ids de valoraciones. Una dimensión con menos de
+`lms.reputation.min-sample` valoraciones (5; configurada por debajo de 3, vale 3) va con `sufficient: false` y sin
+`mean` ni `n`.
+
+- `GET /api/lms/teaching/offerings/{code}/ratings` → `TeacherRatingSummary` del docente en una edición que tiene
+  asignada (otra, `404`). `released: false` (sin cifras ni comentarios) hasta que la ventana cerró y todas las
+  matrículas no retiradas tienen resultado, o pasado `lms.reputation.release-after-end` (60 días) del fin. Al liberarse,
+  sus cifras se **congelan** (la primera lectura o el trabajo diario): un cambio posterior no las mueve. Los comentarios
+  `PUBLICADA` llegan solo con muestra suficiente, sin autor ni fecha y en orden aleatorio, cada uno con su
+  `token` opaco para denunciarlo.
+- `GET /api/lms/ratings/resources` → `ResourceRatingSummary[]`: las versiones de recurso de las que la persona es
+  autora, con sus cifras de todas las ediciones, recalculadas cada día por el trabajo `reputation.aggregate`
+  (`calculatedAt`).
+- `GET /api/lms/public/ratings/criterion` (sin sesión) → el criterio publicado y versionado (`media-simple@1`): escala,
+  fórmula, muestra mínima y liberación. Cada resumen lo enlaza en `criterion`.
+
+```json
+{
+  "released": true,
+  "windowClosesOn": "2026-12-31",
+  "releasedAtLatestOn": "2027-01-30",
+  "criterion": "/api/lms/public/ratings/criterion",
+  "criterionVersion": "media-simple@1",
+  "dimensions": [
+    { "key": "docente_claridad", "name": "Explica con claridad", "sufficient": true, "mean": 4.2, "n": 6 },
+    { "key": "docente_disponibilidad", "name": "Responde y está disponible", "sufficient": false, "mean": null, "n": null }
+  ],
+  "comments": [{ "token": "…", "text": "…" }]
+}
+```
+
+### Moderación, denuncias y apelación (ADR-0038 §13–§19)
+
+Los puntajes cuentan sin moderación; un comentario nace `PENDIENTE` y solo llega al valorado `PUBLICADA`.
+
+| Método | Ruta                                               | Quién                     | Resultado                                                  |
+| ------ | -------------------------------------------------- | ------------------------- | ---------------------------------------------------------- |
+| GET    | `/api/lms/moderation/ratings`                      | `MODERAR`                 | `ModerationItem[]`: pendientes, denunciados o apelados     |
+| POST   | `/api/lms/moderation/ratings/{id}/decision`        | `MODERAR`                 | `{ decision: PUBLISH \| HIDE, reason }` → `ModerationItem` |
+| POST   | `/api/lms/moderation/ratings/{id}/appeal-decision` | `MODERAR`, otro moderador | `{ decision: UPHOLD \| REVERSE }` → `ModerationItem`       |
+| POST   | `/api/lms/ratings/{id}/appeal`                     | el autor (`VALORAR`)      | `{ text }` → `{ ratingId, text, pending }`                 |
+| POST   | `/api/lms/ratings/comments/{token}/reports`        | el valorado (`DENUNCIAR`) | `{ reason }` → `201` `{ status: "ABIERTA" }`               |
+
+- Ocultar exige `reason` entre `ATAQUE_PERSONAL`, `DATOS_PERSONALES`, `SPAM`, `FUERA_DE_TEMA`, `CONFLICTO_DE_INTERES` e
+  `ILEGAL` (`400`). Nadie modera una valoración que escribió o que lo tiene como destino (`403`, también ADMIN); decidir
+  cierra las denuncias abiertas. `ModerationItem` no trae quién escribió ni quién denunció.
+- El autor apela una vez un comentario `OCULTA` (otro estado o una segunda vez, `409`; ajena, `404`), también con la
+  ventana cerrada. La decide un moderador distinto del que ocultó (`403` el mismo), una vez y es final (`409`).
+- El valorado denuncia por la ficha (`token`) de un comentario de su resumen; otra ficha, `404`. La denuncia no oculta
+  nada. Más de `lms.reputation.max-reports-per-day` (10) denuncias en el día UTC → `429` con `Retry-After`.
 
 ## Espacio docente (F3, ADR-0016)
 

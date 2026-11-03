@@ -90,6 +90,21 @@ lms:
   # tarda como mucho en suprimirse
   privacy:
     sweep-every: ${LMS_PRIVACY_SWEEP_EVERY:1h}
+  # valoraciones de docentes y recursos (ADR-0038): los valores de la política de #268, a confirmar por el titular
+  reputation:
+    # progreso del aula (%) desde el que se valora a un docente; una matrícula FINALIZADA siempre
+    min-progress: ${LMS_REPUTATION_MIN_PROGRESS:50}
+    # muestra mínima de un indicador; por debajo de 3 vale 3
+    min-sample: ${LMS_REPUTATION_MIN_SAMPLE:5}
+    # cuánto tras el fin de la edición se crea, edita o retira una valoración
+    window-after-end: ${LMS_REPUTATION_WINDOW_AFTER_END:30d}
+    # pasado esto tras el fin, el docente ve sus resultados aunque falten resultados de matrículas
+    release-after-end: ${LMS_REPUTATION_RELEASE_AFTER_END:60d}
+    # cambios (alta, edición o retirada) y denuncias por persona y día UTC; uno más es 429
+    max-edits-per-day: ${LMS_REPUTATION_MAX_EDITS_PER_DAY:5}
+    max-reports-per-day: ${LMS_REPUTATION_MAX_REPORTS_PER_DAY:10}
+    # cada cuánto se encola el trabajo de agregados: congela las ediciones liberadas y rehace los indicadores de recurso
+    aggregate-every: ${LMS_REPUTATION_AGGREGATE_EVERY:1d}
   # importador AsciiDoc (ADR-0018 §5): solo lee de estos repositorios, separados por comas, como owner/repo (cualquier
   # commit) u owner/repo@sha (solo ese). vacío: no importa nada. el host de GitHub es fijo, nunca configuración
   importer:

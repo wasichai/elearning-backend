@@ -27,6 +27,7 @@ class CatalogSource(
             knowledge = all(PrerequisiteKnowledgeGuard.VOCABULARY),
             approvals = all(CREDIT_APPROVAL),
             policies = all(CreditPolicyRecords.POLICY),
+            dimensions = all(RATING_DIMENSION),
         )
 
     private suspend fun all(
@@ -47,5 +48,6 @@ class CatalogSource(
     companion object {
         private const val PAGE = PageRequest.MAX_SIZE
         const val CREDIT_APPROVAL = "aprobacion_creditos"
+        const val RATING_DIMENSION = "dimension_valoracion"
     }
 }

@@ -23,6 +23,51 @@ Segundo paso de la épica E32 ([#271](https://github.com/wasichai/elearning-back
   URL base a un puerto cerrado: ninguna llama a un proveedor.
 - `docs/operations` (variables `LMS_AI_*` y arranque sin claves), `docs/ai` §2 y `.env.example`.
 
+## 2026-11-03 — Valoraciones en la supresión de datos personales y en la ficha pública del docente ([#325](https://github.com/wasichai/elearning-backend/issues/325), paso 4 de [#268](https://github.com/wasichai/elearning-backend/issues/268))
+
+- `PersonalDataErasure` (ADR-0037) suprime las valoraciones de la persona con sus puntajes, comentarios y apelaciones, y
+  su cuota diaria; borra sus denuncias resueltas y deja las abiertas sin ella; encola `reputation.aggregate` para que los
+  indicadores de recurso se recalculen. Lo congelado, anónimo y con n ≥ k, se conserva.
+- `perfil_docente.valoraciones_publicas` (falso por omisión): con él y `perfil_publico`, la ficha pública del docente en
+  el catálogo trae el agregado de sus ediciones liberadas (cifras con n ≥ k, media ponderada por n) con el enlace a su
+  criterio. El catálogo lo lee de `lms.indicador_valoracion` sin usar `reputation`. Vaciar un perfil al suprimirlo
+  retira también ese consentimiento.
+- Pruebas: `RatingErasureApiTest` y `CatalogBuilderTest`.
+
+## 2026-11-03 — Moderación, denuncias y apelación de las valoraciones ([#324](https://github.com/wasichai/elearning-backend/issues/324), paso 3 de [#268](https://github.com/wasichai/elearning-backend/issues/268))
+
+- Cola y decisión de moderación con `MODERAR`: publicar u ocultar con un motivo tasado (`400` sin él); nadie modera lo
+  que escribió ni lo que lo tiene como destino (`403`, también ADMIN), y decidir cierra las denuncias abiertas.
+- El valorado (`DENUNCIAR`) denuncia por la ficha opaca de un comentario de su resumen (`denuncia_valoracion`, `apiOnly`),
+  sin ocultarlo; pasado `lms.reputation.max-reports-per-day` (10), `429`.
+- El autor apela una vez un comentario oculto, también con la ventana cerrada; lo decide otro moderador, una vez.
+- `RatingWriteGuard` lo exige para toda escritura; un moderador delegado no ve quién escribió (`fieldPermissions` sobre
+  `estudiante_id` y `matricula`), probado con un rol creado en la prueba. Pruebas: `RatingModerationApiTest`.
+
+## 2026-11-03 — Resúmenes de valoraciones con muestra mínima y liberación tras las notas ([#323](https://github.com/wasichai/elearning-backend/issues/323), paso 2 de [#268](https://github.com/wasichai/elearning-backend/issues/268))
+
+- `GET /api/lms/teaching/offerings/{code}/ratings` (el docente asignado) y `GET /api/lms/ratings/resources` (el autor),
+  con `VER_RESUMEN`: media y n por dimensión solo con n ≥ `lms.reputation.min-sample` (5, piso 3), sin nadie dentro;
+  comentarios publicados en orden aleatorio solo con muestra suficiente.
+- El docente ve los de una edición cuando la ventana cerró y todas las matrículas tienen resultado, o pasados
+  `lms.reputation.release-after-end` (60 días) del fin; entonces se congelan en `lms.indicador_valoracion` (V20). Los de
+  recurso los rehace cada día el trabajo `reputation.aggregate`, que también borra la cuota de días pasados.
+- Criterio publicado y versionado en `GET /api/lms/public/ratings/criterion` (`media-simple@1`).
+- Pruebas: `RatingSummaryApiTest`.
+
+## 2026-11-03 — Valorar docentes y recursos desde la matrícula ([#322](https://github.com/wasichai/elearning-backend/issues/322), paso 1 de [#268](https://github.com/wasichai/elearning-backend/issues/268))
+
+- [ADR-0038](adr/0038-politica-de-valoraciones.md): la política de valoraciones de #268 (quién valora, anonimato para el
+  valorado, liberación tras las notas, muestra mínima, moderación tasada, límites y conservación según los términos de
+  uso), con lo abierto (purga del `audit_log` de Wasichai, delegar `MODERAR`) pendiente del titular.
+- Modelo: `dimension_valoracion` (siete dimensiones en la demo), `valoracion` y `puntaje_valoracion` (`apiOnly`), con
+  las acciones `VALORAR` (ESTUDIANTE), `VER_RESUMEN` y `DENUNCIAR` (DOCENTE y CREADOR, sin `READ`) y `MODERAR` (ADMIN).
+- `elearning.reputation`: elegibilidad, crear (con `Idempotency-Key`), editar, retirar y listar las propias desde
+  `/api/lms/classroom/enrollments/{id}/ratings` y `/api/lms/ratings/**`; progreso mínimo, lección completada, conflicto
+  de interés, ventana tras `fecha_fin` y `429` pasado el límite diario (`lms.cuota_valoracion`, V19). `RatingWriteGuard`
+  e `RatingReadScope` para toda escritura y lectura; `lms.reputation.*`. `ArchitectureTest`: nadie usa `reputation`.
+- Pruebas: `RatingApiTest` (sujetos de un solo rol, releyendo tras cada negativa), `RatingWindowTest`, `test_model.py`.
+
 ## 2026-11-03 — Permisos para generar y validar con IA ([#280](https://github.com/wasichai/elearning-backend/issues/280), RF-IA-07)
 
 - Acciones declaradas `GENERAR` y `VALIDAR` sobre `version_curso` ([ADR-0033](adr/0033-fase-5-ia.md) §10): genera CREADOR
@@ -190,6 +235,12 @@ Solo documentación, primer paso de la épica E32 ([#271](https://github.com/was
   escritura nuevos y sin otra lectura: el certificado se lee una vez para `certificateCode` y para su logro. Solo los ve
   el estudiante de la matrícula (`404` a otro y al docente). `AchievementsApiTest` y la semilla (`CORTO-101-A`) lo
   prueban; la interfaz los mostrará en front#154.
+
+## 2026-11-03 — La administración, una sección del menú ([front#157](https://github.com/wasichai/elearning-frontend/pull/157))
+
+- RNF-UX-06: «Datos» y «Administración» solo los ve quien tiene `admin` o `MANAGE_ORGANIZATION`, con `shellNav` de
+  `@wasichai/core`. Una sola aplicación y ninguna URL nueva (ADR-0005). `docs/operations/administracion.md` lo recoge, junto
+  con lo que queda: el mensaje de core ante un `403` y que la interfaz aún no ofrece crear el primer borrador de un curso nuevo sin importar.
 
 ## 2026-11-03 — LGPL definitiva y conservación según los términos ([#303](https://github.com/wasichai/elearning-backend/issues/303))
 

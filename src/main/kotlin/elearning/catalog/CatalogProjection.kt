@@ -4,6 +4,7 @@ import elearning.common.LmsProperties
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import org.slf4j.LoggerFactory
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Component
 import wasichai.core.data.RecordService
@@ -28,6 +29,8 @@ class CatalogProjection(
     private val source: CatalogSource,
     private val repository: CatalogRepository,
     private val clusterLock: ClusterLock,
+    // la muestra mínima de los indicadores de valoraciones, con su piso de 3 (ADR-0038 §9): el catálogo no usa reputation
+    @Value("\${lms.reputation.min-sample:5}") private val ratingMinSample: Int,
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
     private val builder = CatalogBuilder()
@@ -66,7 +69,13 @@ class CatalogProjection(
         }
         val loaded = records.asPlatform(organization.id, SOURCE) { source.load() }
         val courses =
-            builder.build(loaded.copy(occupancy = repository.occupancy(organization.id))) { course, problem ->
+            builder.build(
+                loaded.copy(
+                    occupancy = repository.occupancy(organization.id),
+                    teacherRatings = repository.teacherRatings(organization.id),
+                    ratingSample = maxOf(ratingMinSample, RATING_SAMPLE_FLOOR),
+                ),
+            ) { course, problem ->
                 log.warn("course {} left out of the public catalog: {}", course, problem.message)
             }
         val stored = repository.stored(slug).associate { it.slug to it.hash }
@@ -82,6 +91,7 @@ class CatalogProjection(
         const val LOCK = "elearning:catalog-projection"
         const val SOURCE = "job:catalogo-publico"
         const val VERSION_OBJECT = "version_curso"
+        const val RATING_SAMPLE_FLOOR = 3
         private const val ATTEMPTS = 60
         private const val WAIT_MS = 500L
     }

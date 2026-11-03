@@ -268,7 +268,7 @@ class CatalogListApiTest : LmsApiTest() {
     @Test
     fun `when the public organization cannot be resolved the catalog is emptied, not left stale`() {
         val lost =
-            CatalogProjection(LmsProperties(public = LmsProperties.Public("organizacion-que-no-existe")), tenants, records, source, repository, clusterLock)
+            CatalogProjection(LmsProperties(public = LmsProperties.Public("organizacion-que-no-existe")), tenants, records, source, repository, clusterLock, 5)
         try {
             runBlocking { lost.refreshNow() }
             assertEquals(0, list()["totalElements"].asInt())

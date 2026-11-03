@@ -145,6 +145,55 @@ class CatalogBuilderTest {
         assertEquals(listOf(LocalDate.parse("2026-11-09")), built.startDates)
     }
 
+    // ADR-0038 §12: el agregado de valoraciones de un docente sale solo con perfil_publico, valoraciones_publicas y n ≥ k;
+    // entre ediciones se suma con la media ponderada por n, y una edición bajo la muestra no entra
+    @Test
+    fun `a teacher's ratings are public only with consent and enough sample`() {
+        val base = records(version("v1", 1, "PUBLICADA"))
+        val figures =
+            listOf(
+                TeacherRating("a1", "docente_claridad", 5, BigDecimal("4.00")),
+                TeacherRating("a0", "docente_claridad", 10, BigDecimal("3.00")),
+                TeacherRating("a1", "docente_disponibilidad", 2, BigDecimal("5.00")),
+            )
+        val dimensions = listOf(record("d1", "clave" to "docente_claridad", "nombre" to "Explica con claridad"))
+        val withFigures =
+            base.copy(
+                assignments = base.assignments + record("a0", "edicion_curso" to "e-antigua", "perfil_docente" to "p1"),
+                teacherRatings = figures,
+                dimensions = dimensions,
+                ratingSample = 5,
+            )
+
+        fun ratings(records: CatalogRecords) =
+            CatalogBuilder()
+                .build(records)
+                .single()
+                .detail.teachers
+                .single()
+                .ratings
+
+        assertNull(ratings(withFigures), "sin valoraciones_publicas")
+        val consenting =
+            withFigures.copy(
+                profiles =
+                    listOf(
+                        base.profiles.single().let {
+                            record(it.id, *(it.attributes + ("valoraciones_publicas" to true)).toList().toTypedArray())
+                        },
+                    ),
+            )
+        val shown = ratings(consenting)!!
+        assertEquals("/api/lms/public/ratings/criterion", shown.criterion)
+        val clarity = shown.dimensions.single()
+        assertEquals("docente_claridad", clarity.key)
+        assertEquals("Explica con claridad", clarity.name)
+        assertEquals(15, clarity.n)
+        assertEquals(BigDecimal("3.33"), clarity.mean)
+        assertNull(ratings(consenting.copy(ratingSample = 11)), "ninguna edición con muestra suficiente")
+        assertNull(ratings(consenting.copy(teacherRatings = emptyList())))
+    }
+
     // privado por defecto (#66): sin consentimiento, ni el nombre del docente sale en el catálogo
     @Test
     fun `a teacher who has not agreed to a public profile is left out of the catalog`() {

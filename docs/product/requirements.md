@@ -376,18 +376,33 @@ el cuándo, en [`roadmap.md`](roadmap.md).
 - **RF-REP-01** · F6 · planificado — Valoración de docentes por estudiantes matriculados en su edición, con
   dimensiones configurables; una por estudiante y edición, editable con registro de cambios.
   _Aceptación:_ un no matriculado o un visitante recibe `403`; un duplicado se rechaza.
+  _Avance:_ política en [ADR-0038](../adr/0038-politica-de-valoraciones.md); valorar, editar y retirar desde la matrícula
+  con progreso mínimo, ventana de 30 días tras el fin, conflicto de interés y una por par, sin que el valorado lea nada
+  ([#322](https://github.com/wasichai/elearning-backend/issues/322), `RatingApiTest`). Resúmenes y moderación en #323 y #324.
 - **RF-REP-02** · F6 · planificado — Valoración de recursos por claridad, utilidad, actualidad y calidad.
   _Aceptación:_ mismas reglas de RF-REP-01 aplicadas a recursos.
+  _Avance:_ como RF-REP-01, con las cuatro dimensiones en `dimension_valoracion` y la lección que usa el recurso completada
+  ([#322](https://github.com/wasichai/elearning-backend/issues/322)).
 - **RF-REP-03** · F6 · planificado — Feedback contextual por unidad o lección con estado de resolución.
   _Aceptación:_ el responsable cambia el estado y el autor del feedback lo ve.
 - **RF-REP-04** · F6 · planificado — Moderación y privacidad de valoraciones y feedback.
   _Aceptación:_ contenido moderado no visible; la identidad del valorador no se muestra al valorado.
+  _Avance:_ comentarios `PENDIENTE` hasta que alguien con `MODERAR` los publica u oculta con motivo tasado, nunca lo
+  propio ni lo que lo tiene como destino; denuncias del valorado por ficha opaca y una apelación decidida por otro
+  moderador ([#324](https://github.com/wasichai/elearning-backend/issues/324), ADR-0038, `RatingModerationApiTest`). El
+  valorado no lee valoraciones ([#322](https://github.com/wasichai/elearning-backend/issues/322)).
 - **RF-REP-05** · F6 · planificado — Indicadores agregados solo con criterio publicado y muestra mínima configurable;
   cantidad o velocidad no se presentan como calidad.
   _Aceptación:_ por debajo de la muestra mínima el indicador no se muestra.
+  _Avance:_ resúmenes del docente por edición y del autor por recurso con muestra mínima (`lms.reputation.min-sample`, 5,
+  piso 3), liberados tras las notas y congelados en `lms.indicador_valoracion`; criterio público y versionado
+  ([#323](https://github.com/wasichai/elearning-backend/issues/323), ADR-0038, `RatingSummaryApiTest`).
 - **RF-REP-06** · F6 · planificado — Perfiles de estudiante, docente, creador y revisor con su historial; un puntaje
   solo si está definido y es explicable.
   _Aceptación:_ cada cifra del perfil enlaza a su definición.
+  _Avance:_ el agregado de valoraciones de la ficha pública del docente (con su consentimiento `valoraciones_publicas` y
+  n ≥ k) enlaza su criterio publicado y versionado ([#325](https://github.com/wasichai/elearning-backend/issues/325),
+  ADR-0038); el resto de los perfiles, pendiente.
 
 ### RF-ADM — Administración, auditoría e informes (§13, §14, §15)
 
@@ -471,12 +486,16 @@ el cuándo, en [`roadmap.md`](roadmap.md).
   _Aceptación:_ prueba que busca la clave de prueba en registros y persistencia.
 - **RNF-SEG-10** · F6 · planificado — Límites de abuso y spam en endpoints públicos y de valoración.
   _Aceptación:_ superar el límite configurado → `429`. Si Wasichai ofrece limitación de tasa está a verificar.
+  _Avance:_ los cambios de valoraciones por persona y día (`lms.reputation.max-edits-per-day`) responden `429` con
+  `Retry-After` ([#322](https://github.com/wasichai/elearning-backend/issues/322), ADR-0038), igual que las denuncias
+  (`max-reports-per-day`, [#324](https://github.com/wasichai/elearning-backend/issues/324)); el límite global, en el ingress (#73).
 - **RNF-SEG-11** · F6 · implementado — Privacidad por defecto, conservación y eliminación de datos personales.
   _Aceptación:_ política escrita y prueba de eliminación de un usuario de demostración.
   _Avance:_ política en [ADR-0030](../adr/0030-lgpl-definitiva-y-conservacion-segun-los-terminos.md) (se conserva lo que aprueban los términos de uso) y
   [ADR-0037](../adr/0037-terminos-de-uso-y-supresion-de-datos-personales.md) (qué se suprime y qué se disocia). Términos versionados con plazo y aceptación por persona;
   sin aceptación vigente, `403` al matricularse o registrar progreso; al retirarla o vencer, la supresión corre en la cola
-  ([#304](https://github.com/wasichai/elearning-backend/issues/304)). Pruebas: `TermsApiTest` y `PersonalDataErasureApiTest`.
+  ([#304](https://github.com/wasichai/elearning-backend/issues/304)). Pruebas: `TermsApiTest` y `PersonalDataErasureApiTest`. Las
+  valoraciones entran en la supresión (ADR-0038 §21, [#325](https://github.com/wasichai/elearning-backend/issues/325), `RatingErasureApiTest`).
 - **RNF-SEG-12** · F6 · planificado — Copias de seguridad con restauración verificada.
   _Aceptación:_ ensayo de restauración documentado con fecha y resultado.
 
@@ -493,7 +512,7 @@ el cuándo, en [`roadmap.md`](roadmap.md).
   _Aceptación:_ pruebas por rol y etiqueta en Testing Library y recorrido por teclado en E2E; auditoría completa en F6.
 - **RNF-UX-05** · F1 · implementado ([#17 web](https://github.com/wasichai/elearning-frontend/pull/17)) — Textos con i18next; español inicial y estructura lista para más idiomas.
   _Aceptación:_ sin textos literales en componentes; claves `es` completas.
-- **RNF-UX-06** · F3 · implementado ([front#50](https://github.com/wasichai/elearning-frontend/pull/50), [front#69](https://github.com/wasichai/elearning-frontend/pull/69), [front#70](https://github.com/wasichai/elearning-frontend/pull/70)) (el menú de administración es de `@wasichai/core` y se muestra sin permisos) — Experiencias separadas por audiencia (catálogo, aula, docente, estudio,
+- **RNF-UX-06** · F3 · implementado ([front#50](https://github.com/wasichai/elearning-frontend/pull/50), [front#69](https://github.com/wasichai/elearning-frontend/pull/69), [front#70](https://github.com/wasichai/elearning-frontend/pull/70), [front#157](https://github.com/wasichai/elearning-frontend/pull/157)) (la administración es una sección del menú que solo ve quien tiene `admin` o `MANAGE_ORGANIZATION`) — Experiencias separadas por audiencia (catálogo, aula, docente, estudio,
   revisor, administración), no una pantalla universal.
   _Aceptación:_ un módulo de frontend por experiencia con su navegación filtrada por permisos.
   _Nota:_ catálogo, aula, docencia, estudio y revisión son módulos propios, y sus menús se muestran por permiso, nunca por

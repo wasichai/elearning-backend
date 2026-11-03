@@ -8,6 +8,7 @@ import elearning.workload.Workload
 import tools.jackson.databind.json.JsonMapper
 import wasichai.core.data.RecordResponse
 import java.math.BigDecimal
+import java.math.RoundingMode
 import java.security.MessageDigest
 import java.time.Instant
 import java.time.LocalDate
@@ -31,6 +32,20 @@ data class CatalogRecords(
     val approvals: List<RecordResponse> = emptyList(),
     // politica_credito: la versión de política a la que está ligada cada versión de curso (ADR-0036)
     val policies: List<RecordResponse> = emptyList(),
+    // los indicadores congelados de las asignaciones docentes (lms.indicador_valoracion) y las dimensiones, para el agregado
+    // público de un perfil que lo consiente (ADR-0038 §12)
+    val teacherRatings: List<TeacherRating> = emptyList(),
+    val dimensions: List<RecordResponse> = emptyList(),
+    // la muestra mínima de un indicador (lms.reputation.min-sample, con su piso); sin ella no se publica nada
+    val ratingSample: Int = Int.MAX_VALUE,
+)
+
+// una cifra congelada de una asignación docente: dimensión, n y media
+data class TeacherRating(
+    val assignment: String,
+    val dimension: String,
+    val n: Int,
+    val mean: BigDecimal,
 )
 
 // un curso listo para la proyección: la ficha completa y las columnas por las que se filtra y ordena
@@ -70,6 +85,7 @@ class CatalogBuilder {
         val knowledge = records.knowledge.mapNotNull { k -> k.text("clave")?.let { it to (k.text("nombre") ?: it) } }.toMap()
         // la vigente: la última de cada versión si es una aprobación; tras una revocación, ninguna
         val policies = records.policies.associateBy { it.id }
+        val ratings = publicRatings(records, profiles)
         val approvals =
             records.approvals
                 .groupBy { it.ref("version_curso") }
@@ -99,6 +115,7 @@ class CatalogBuilder {
                         knowledge,
                         approvals[version.id],
                         policies,
+                        ratings,
                     )
                 } catch (e: IllegalArgumentException) {
                     onReject(course.text("codigo") ?: course.id, e)
@@ -116,6 +133,40 @@ class CatalogBuilder {
             }
     }
 
+    // el agregado público de cada perfil (ADR-0038 §12): solo con perfil_publico y valoraciones_publicas, y de cada dimensión
+    // solo las cifras congeladas con muestra suficiente, sumadas entre sus ediciones (media ponderada por n). sin ninguna,
+    // nada. cada cifra enlaza el criterio con que se calculó
+    private fun publicRatings(
+        records: CatalogRecords,
+        profiles: Map<String, RecordResponse>,
+    ): Map<String, TeacherRatings> {
+        val consenting =
+            profiles.values
+                .filter { it.bool("valoraciones_publicas") == true }
+                .map { it.id }
+                .toSet()
+        if (consenting.isEmpty()) return emptyMap()
+        val profileOf = records.assignments.mapNotNull { a -> a.ref("perfil_docente")?.takeIf { it in consenting }?.let { a.id to it } }.toMap()
+        val names = records.dimensions.mapNotNull { d -> d.text("clave")?.let { it to (d.text("nombre") ?: it) } }.toMap()
+        return records.teacherRatings
+            .filter { it.n >= records.ratingSample && it.assignment in profileOf }
+            .groupBy { profileOf.getValue(it.assignment) }
+            .mapValues { (_, rows) ->
+                TeacherRatings(
+                    criterion = RATING_CRITERION,
+                    criterionVersion = RATING_CRITERION_VERSION,
+                    dimensions =
+                        rows
+                            .groupBy { it.dimension }
+                            .map { (key, figures) ->
+                                val n = figures.sumOf { it.n }
+                                val total = figures.fold(BigDecimal.ZERO) { sum, it -> sum + it.mean * BigDecimal(it.n) }
+                                PublicRating(key, names[key], total.divide(BigDecimal(n), 2, RoundingMode.HALF_UP), n)
+                            }.sortedBy { it.key },
+                )
+            }
+    }
+
     private fun course(
         course: RecordResponse,
         version: RecordResponse,
@@ -129,6 +180,7 @@ class CatalogBuilder {
         knowledge: Map<String, String>,
         approval: RecordResponse?,
         policies: Map<String, RecordResponse>,
+        ratings: Map<String, TeacherRatings>,
     ): PublishedCourse {
         val slug = requireNotNull(course.text("slug")) { "course without slug" }
         require(PUBLIC_SLUG.matches(slug)) { "slug '$slug' is not a public slug" }
@@ -149,8 +201,15 @@ class CatalogBuilder {
                 .flatMap { (record, _) -> teachersByOffering[record.id].orEmpty() }
                 .mapNotNull { profiles[it.ref("perfil_docente")] }
                 .distinctBy { it.id }
-                .map { TeacherView(it.text("nombre_publico") ?: "", it.text("titulo_profesional"), it.text("biografia"), it.text("especialidades")) }
-                .sortedBy { it.name }
+                .map {
+                    TeacherView(
+                        it.text("nombre_publico") ?: "",
+                        it.text("titulo_profesional"),
+                        it.text("biografia"),
+                        it.text("especialidades"),
+                        ratings[it.id],
+                    )
+                }.sortedBy { it.name }
         val workload = VersionWorkload.of(version.attributes)
         val category = course.ref("categoria")?.let { categories[it] }
         return PublishedCourse(
@@ -314,6 +373,10 @@ class CatalogBuilder {
         const val APPROVAL = "APROBACION"
         const val KNOWLEDGE_KEYS = PrerequisiteKnowledgeGuard.FIELD
         const val DEFAULT_ZONE = "America/Lima"
+
+        // el criterio publicado de los indicadores de valoraciones (GET /api/lms/public/ratings/criterion, ADR-0038 §11)
+        const val RATING_CRITERION = "/api/lms/public/ratings/criterion"
+        const val RATING_CRITERION_VERSION = "media-simple@1"
 
         // lo que acepta la ruta GET /courses/{slug}: un curso con otro slug se listaría pero su ficha daría 404
         val PUBLIC_SLUG = Regex("^[a-z0-9][a-z0-9-]{0,99}$")

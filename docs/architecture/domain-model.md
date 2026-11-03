@@ -408,13 +408,49 @@ destinos de objetos `appendOnly`).
 
 ### 4.6 Reputación y auditoría
 
-**`valoracion`** (Rating) — F6.
-`matricula · RELATION` · `docente_edicion · RELATION` · `version_recurso · RELATION` · `comentario · LONG_TEXT` ·
-`estado_moderacion · ENUM(PENDIENTE, PUBLICADA, OCULTA)`; puntajes por dimensión configurable en `puntaje_valoracion`
-(`valoracion`, `dimension`, `valor · INTEGER`).
+**`dimension_valoracion`** — F6 ([ADR-0038](../adr/0038-politica-de-valoraciones.md)).
+`clave · TEXT único` · `nombre · TEXT` · `destino · ENUM(DOCENCIA, RECURSO)` · `activa · BOOLEAN` · `orden · INTEGER`.
+Lo que se valora de cada destino, de 1 a 5; la demo trae claridad, utilidad, actualidad y calidad para recursos y tres
+dimensiones para docentes. La clave no cambia: para dejar de pedirla se desactiva.
+
+**`valoracion`** (Rating) — F6, `apiOnly` ([ADR-0038](../adr/0038-politica-de-valoraciones.md)).
+`estudiante_id · UUID` · `matricula · RELATION` · `edicion · RELATION` (desnormalizada) ·
+`destino · ENUM(DOCENCIA, RECURSO)` · `docente_edicion · UUID` · `version_recurso · RELATION` · `comentario · LONG_TEXT` ·
+`estado_moderacion · ENUM(PENDIENTE, PUBLICADA, OCULTA)` (nulo sin comentario). Acciones `VALORAR`, `VER_RESUMEN`,
+`DENUNCIAR` y `MODERAR`.
+`docente_edicion` es el id de la asignación y no un `RELATION`: Wasichai exige que el destino de un `RELATION` sea legible
+por quien escribe, y el estudiante no lee asignaciones (`AssignmentReadScope`). Su campo de cuenta es `usuario_id`.
 `uniqueConstraints: [[matricula, docente_edicion], [matricula, version_recurso]]` (con `NULL` distintos, cada par
 impide su duplicado sin chocar con el otro).
-Invariantes: solo valora quien tiene esa matrícula [guarda]; exactamente un destino [guarda]; nunca un visitante.
+
+Moderación (#324): `ficha · UUID único` (la ficha opaca con que el valorado denuncia un comentario) ·
+`motivo_moderacion · ENUM` (motivos tasados) · `moderada_por · UUID` · `moderada_en · DATETIME` · `apelacion · LONG_TEXT`
+· `apelada_en · DATETIME` · `apelacion_decidida_por · UUID` · `apelacion_resultado · ENUM(MANTENIDA, REVOCADA)`.
+
+**`denuncia_valoracion`** — F6, `apiOnly`. `valoracion_id · UUID` (no `RELATION`: el valorado no lee valoraciones) ·
+`denunciante_id · UUID` · `motivo · LONG_TEXT` · `estado · ENUM(ABIERTA, RESUELTA)` · `resuelta_por · UUID`. La lee quien
+modera y quien la hizo.
+
+**`puntaje_valoracion`** — F6, `apiOnly`. `valoracion · RELATION` · `dimension · RELATION` · `estudiante_id · UUID` ·
+`valor · INTEGER (1–5)`; `uniqueConstraints: [[valoracion, dimension]]`.
+
+Invariantes (`RatingWriteGuard`, para toda escritura, la plataforma incluida): la matrícula es de quien valora, `ACTIVA`
+o `FINALIZADA` y de la misma edición; exactamente un destino y del tipo declarado; el docente es de la edición y el
+recurso, de una lección de la versión de la matrícula; nadie valora lo suyo; una persona escribe solo a su nombre y con
+la ventana abierta (`lms.reputation.window-after-end` tras `fecha_fin`); lo que identifica la valoración no cambia;
+editar el comentario lo devuelve a `PENDIENTE`; solo `MODERAR` publica u oculta, nunca sobre lo propio ni sobre lo que
+lo tiene como destino; un puntaje es de 1 a 5, de una dimensión activa del destino. Alcance (`RatingReadScope`): el
+estudiante lee lo suyo; quien modera, todo menos lo que lo tiene como destino. El valorado no tiene `READ`. Los límites
+diarios se cuentan en la tabla fija `lms.cuota_valoracion` (V19).
+
+**`lms.indicador_valoracion`** y **`lms.liberacion_valoracion`** — tablas fijas (V20, ADR-0004), como la proyección del
+catálogo (ADR-0011): media simple y n por destino, sujeto (la asignación o la versión de recurso), edición y dimensión,
+con la versión del criterio; sin nadie dentro. Los de una edición se congelan al liberarse (una fila en
+`lms.liberacion_valoracion`); los de recurso los rehace cada día el trabajo `reputation.aggregate`.
+
+`perfil_docente.valoraciones_publicas · BOOLEAN` (falso por omisión): el consentimiento para que la ficha pública del
+docente traiga el agregado de sus ediciones liberadas, además de `perfil_publico` (#325). La supresión de datos
+personales borra las valoraciones de la persona y conserva lo congelado (ADR-0038 §21).
 
 **`feedback_contenido`** (Feedback) — F6.
 `autor_id · UUID` · `matricula · RELATION` · `version_curso · RELATION` · `unidad · RELATION` · `leccion · RELATION` ·
