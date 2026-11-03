@@ -182,6 +182,23 @@ class AttemptApiTest : ClassroomApiTestSupport() {
     }
 
     @Test
+    fun `the result points each question to its review lesson, never the open attempt nor the solution`() {
+        val course = course(withEvaluation = true)
+        val student = newStudent()
+        val attempt = started(student, enroll(student, course)["id"].asString(), course)
+        assertFalse("reviewlessonid" in attempt.toString().lowercase(), attempt.toString())
+
+        // falla y le queda un intento: el repaso sí, la solución todavía no
+        val done = ok(submit(student, attempt["id"].asString()))
+
+        val results = done["result"]["questions"].values().associateBy { it["questionId"].asString() }
+        val single = results.getValue(course.questions.getValue("SINGLE"))
+        assertEquals(course.reading, single["reviewLessonId"].asString())
+        assertTrue(single["solution"].isNull, single.toString())
+        assertTrue(results.getValue(course.questions.getValue("MULTIPLE"))["reviewLessonId"].isNull)
+    }
+
+    @Test
     fun `attempts run out`() {
         val course = course(withEvaluation = true)
         val student = newStudent()

@@ -67,7 +67,8 @@ class NewVersionService(
             val evaluations = records.listAllIn(EVALUATION, LESSON, lessonIds)
             val newEvaluations = copyAll(evaluations, EVALUATION, LESSON, newLessons, drop = setOf("codigo"))
             val questions = records.listAllIn(QUESTION, EVALUATION, evaluations.map { it.id })
-            val newQuestions = copyAll(questions, QUESTION, EVALUATION, newEvaluations)
+            // la lección de repaso de una pregunta es de su versión (#260): apunta a la lección copiada
+            val newQuestions = copyAll(questions, QUESTION, EVALUATION, newEvaluations, relinked = mapOf(REVIEW_LESSON to newLessons))
             val questionIds = questions.map { it.id }
             copyAll(records.listAllIn(OPTION, QUESTION, questionIds), OPTION, QUESTION, newQuestions)
             copyAll(records.listAllIn(RUBRIC, QUESTION, questionIds), RUBRIC, QUESTION, newQuestions)
@@ -82,10 +83,20 @@ class NewVersionService(
         parentField: String,
         parents: Map<String, String>,
         drop: Set<String> = emptySet(),
+        // otras relaciones dentro de la versión, re-apuntadas a la copia de su destino; una que no está en la copia no se hereda
+        relinked: Map<String, Map<String, String>> = emptyMap(),
     ): Map<String, String> {
         val requests =
-            sources.map {
-                RecordRequest(scalars(it, drop + parentField) + mapOf(parentField to parents.getValue(it.attributes.ref(parentField)!!)))
+            sources.map { source ->
+                val links =
+                    relinked.mapNotNull { (field, copies) ->
+                        source.attributes
+                            .ref(field)
+                            ?.let { copies[it] }
+                            ?.let { field to it }
+                    }
+                val parent = mapOf(parentField to parents.getValue(source.attributes.ref(parentField)!!))
+                RecordRequest(scalars(source, drop + parentField + relinked.keys) + parent + links)
             }
         return sources.map { it.id }.zip(records.createAll(objectName, requests).map { it.id }).toMap()
     }
@@ -103,6 +114,7 @@ class NewVersionService(
         const val VERSION = "version_curso"
         const val UNIT = "unidad"
         const val LESSON = "leccion"
+        const val REVIEW_LESSON = "leccion_repaso"
         const val LINK = "recurso_leccion"
         const val RESOURCE_VERSION = "version_recurso"
         const val LAB_ENVIRONMENT = "entorno_laboratorio"
