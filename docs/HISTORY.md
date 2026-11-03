@@ -15,6 +15,293 @@ Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este
   como el estudiante, con un identificador de evento estable; las matrículas no se repiten ni superan la capacidad.
   `test_demo.py` prueba el contenido, la validación y la aplicación contra el Wasichai simulado.
 
+## 2026-11-03 — Valoraciones en la supresión de datos personales y en la ficha pública del docente ([#325](https://github.com/wasichai/elearning-backend/issues/325), paso 4 de [#268](https://github.com/wasichai/elearning-backend/issues/268))
+
+- `PersonalDataErasure` (ADR-0037) suprime las valoraciones de la persona con sus puntajes, comentarios y apelaciones, y
+  su cuota diaria; borra sus denuncias resueltas y deja las abiertas sin ella; encola `reputation.aggregate` para que los
+  indicadores de recurso se recalculen. Lo congelado, anónimo y con n ≥ k, se conserva.
+- `perfil_docente.valoraciones_publicas` (falso por omisión): con él y `perfil_publico`, la ficha pública del docente en
+  el catálogo trae el agregado de sus ediciones liberadas (cifras con n ≥ k, media ponderada por n) con el enlace a su
+  criterio. El catálogo lo lee de `lms.indicador_valoracion` sin usar `reputation`. Vaciar un perfil al suprimirlo
+  retira también ese consentimiento.
+- Pruebas: `RatingErasureApiTest` y `CatalogBuilderTest`.
+
+## 2026-11-03 — Moderación, denuncias y apelación de las valoraciones ([#324](https://github.com/wasichai/elearning-backend/issues/324), paso 3 de [#268](https://github.com/wasichai/elearning-backend/issues/268))
+
+- Cola y decisión de moderación con `MODERAR`: publicar u ocultar con un motivo tasado (`400` sin él); nadie modera lo
+  que escribió ni lo que lo tiene como destino (`403`, también ADMIN), y decidir cierra las denuncias abiertas.
+- El valorado (`DENUNCIAR`) denuncia por la ficha opaca de un comentario de su resumen (`denuncia_valoracion`, `apiOnly`),
+  sin ocultarlo; pasado `lms.reputation.max-reports-per-day` (10), `429`.
+- El autor apela una vez un comentario oculto, también con la ventana cerrada; lo decide otro moderador, una vez.
+- `RatingWriteGuard` lo exige para toda escritura; un moderador delegado no ve quién escribió (`fieldPermissions` sobre
+  `estudiante_id` y `matricula`), probado con un rol creado en la prueba. Pruebas: `RatingModerationApiTest`.
+
+## 2026-11-03 — Resúmenes de valoraciones con muestra mínima y liberación tras las notas ([#323](https://github.com/wasichai/elearning-backend/issues/323), paso 2 de [#268](https://github.com/wasichai/elearning-backend/issues/268))
+
+- `GET /api/lms/teaching/offerings/{code}/ratings` (el docente asignado) y `GET /api/lms/ratings/resources` (el autor),
+  con `VER_RESUMEN`: media y n por dimensión solo con n ≥ `lms.reputation.min-sample` (5, piso 3), sin nadie dentro;
+  comentarios publicados en orden aleatorio solo con muestra suficiente.
+- El docente ve los de una edición cuando la ventana cerró y todas las matrículas tienen resultado, o pasados
+  `lms.reputation.release-after-end` (60 días) del fin; entonces se congelan en `lms.indicador_valoracion` (V20). Los de
+  recurso los rehace cada día el trabajo `reputation.aggregate`, que también borra la cuota de días pasados.
+- Criterio publicado y versionado en `GET /api/lms/public/ratings/criterion` (`media-simple@1`).
+- Pruebas: `RatingSummaryApiTest`.
+
+## 2026-11-03 — Valorar docentes y recursos desde la matrícula ([#322](https://github.com/wasichai/elearning-backend/issues/322), paso 1 de [#268](https://github.com/wasichai/elearning-backend/issues/268))
+
+- [ADR-0038](adr/0038-politica-de-valoraciones.md): la política de valoraciones de #268 (quién valora, anonimato para el
+  valorado, liberación tras las notas, muestra mínima, moderación tasada, límites y conservación según los términos de
+  uso), con lo abierto (purga del `audit_log` de Wasichai, delegar `MODERAR`) pendiente del titular.
+- Modelo: `dimension_valoracion` (siete dimensiones en la demo), `valoracion` y `puntaje_valoracion` (`apiOnly`), con
+  las acciones `VALORAR` (ESTUDIANTE), `VER_RESUMEN` y `DENUNCIAR` (DOCENTE y CREADOR, sin `READ`) y `MODERAR` (ADMIN).
+- `elearning.reputation`: elegibilidad, crear (con `Idempotency-Key`), editar, retirar y listar las propias desde
+  `/api/lms/classroom/enrollments/{id}/ratings` y `/api/lms/ratings/**`; progreso mínimo, lección completada, conflicto
+  de interés, ventana tras `fecha_fin` y `429` pasado el límite diario (`lms.cuota_valoracion`, V19). `RatingWriteGuard`
+  e `RatingReadScope` para toda escritura y lectura; `lms.reputation.*`. `ArchitectureTest`: nadie usa `reputation`.
+- Pruebas: `RatingApiTest` (sujetos de un solo rol, releyendo tras cada negativa), `RatingWindowTest`, `test_model.py`.
+
+## 2026-11-03 — Permisos para generar y validar con IA ([#280](https://github.com/wasichai/elearning-backend/issues/280), RF-IA-07)
+
+- Acciones declaradas `GENERAR` y `VALIDAR` sobre `version_curso` ([ADR-0033](adr/0033-fase-5-ia.md) §10): genera CREADOR
+  y valida REVISOR; quien genera no valida, aprueba ni publica. `APROBAR` y `PUBLICAR` siguen siendo las de F4.
+- `AiPermissions` (`elearning.ai`): `requireToEnqueue` exige la acción a quien llama con `CurrentUser.requirePermission`
+  (`403`) y `requireStillAllowed` la vuelve a mirar al ejecutar con los roles guardados de quien lo pidió (`Requesters`,
+  ADR-0022 §4). Aún no hay pasos que encolar: los de E33.4–E33.6 llamarán a las dos. Ningún código mira nombres de rol.
+- `ai` puede usar `jobs` ([overview §2.3](architecture/overview.md#23-dependencias-permitidas-y-prohibidas)): sus pasos son
+  trabajos de la cola (ADR-0033 §5).
+- `AiPermissionsApiTest` llama al servicio con el token real de cada persona de la demo; `test_model.py` fija el reparto.
+
+## 2026-11-03 — Brief estructurado del curso ([#278](https://github.com/wasichai/elearning-backend/issues/278), RF-IA-01)
+
+- Custom Object `brief` (relación `brief_curso`): temática, público, objetivos, duración en horas, idioma, nivel, expertos y
+  fuentes autorizadas, con estado `BORRADOR` → `LISTO` (enum `estado_brief`). CREADOR lo lee y escribe.
+- `BriefGuard` (`elearning.ai`), para toda escritura: el brief se guarda a medias en borrador y pasar a `LISTO` (o seguir en
+  él) incompleto es `400` con un error por campo que falta; horas > 0. Cada fuente es `owner/repo@sha:ruta` de
+  `lms.importer.allowed-sources` o del repositorio y commit de un paquete ya importado al curso (`400` si no, también en
+  borrador). Lo escribe solo quien tiene `CREATE` sobre `version_curso`: darle el brief a otro rol no basta (`403`).
+- `ai` puede usar `course` e `importer` ([overview §2.3](architecture/overview.md#23-dependencias-permitidas-y-prohibidas)).
+  `BriefGuardApiTest` y `test_model.py`.
+
+## 2026-11-03 — La supresión de datos personales cubre `lms.ejecucion_agente` ([#326](https://github.com/wasichai/elearning-backend/issues/326), RNF-SEG-11)
+
+- `V18__supresion_ejecucion_agente.sql`: el disparador de `lms.ejecucion_agente` deja pasar, solo dentro de la transacción
+  de una supresión (`lms.supresion`, como V15), el cambio de `solicitante_id` y del `userId` de las intervenciones; nada
+  más cambia y borrar sigue prohibido.
+- `PersonalDataErasure` disocia las ejecuciones que la persona pidió o en las que intervino con el mismo seudónimo: la
+  ejecución queda como evidencia del proceso editorial y la constancia las cuenta en `disociados.ejecucion_agente`.
+  `PersonalDataErasureApiTest` lo prueba con una ejecución sembrada con `AgentExecutionLog`; repetirla no cambia nada.
+
+## 2026-11-03 — Registro `AgentRun` de las ejecuciones de IA ([#275](https://github.com/wasichai/elearning-backend/issues/275), RF-IA-03)
+
+- `lms.ejecucion_agente` (`V17__ejecucion_agente.sql`, [ADR-0033](adr/0033-fase-5-ia.md) §7) con los campos de `docs/ai` §4:
+  quién lo pidió, curso, unidad y versión, objetivo, entradas, fuentes con hash, proveedor, modelo y parámetros efectivos,
+  versiones de instrucciones y plantilla, salida, validaciones, estado, error, tokens, coste con su tarifa y fecha, inicio y
+  fin, intervenciones, clave, intento y `generator`. Un disparador impide editar lo pedido, cerrar dos veces, borrar y tocar
+  las intervenciones ya escritas: solo se añaden.
+- `AgentExecutionLog` (`elearning.ai`) es la escritura para los pasos de F5: abre, cierra con el consumo del proveedor y
+  calcula el coste con la tarifa de `lms.ai.rates` que regía el día en que empezó; tapa como `[REDACTED]` una clave
+  configurada que aparezca en cualquier campo. Los parámetros del modelo son tipados (`maxTokens`, `temperature`).
+- `GET /api/lms/ai/runs?courseId=` y `GET /api/lms/ai/runs/{id}` con `UPDATE` sobre `version_curso` y el alcance del curso
+  (`403`/`404`). `AgentExecutionApiTest` y `AiRatesTest` lo prueban con ejecuciones construidas en la prueba; la de un paso
+  contra el doble WireMock queda para [#274](https://github.com/wasichai/elearning-backend/issues/274).
+
+## 2026-11-03 — Políticas de crédito versionadas por jurisdicción, institución y programa ([#318](https://github.com/wasichai/elearning-backend/issues/318), RF-CRE-07)
+
+- [ADR-0036](adr/0036-politicas-de-credito-versionadas-en-datos.md): método en código, política en datos.
+  `politica_credito` (clave y número, borrador → publicada → retirada, sistema, método, parámetros, jurisdicción ISO 3166-1
+  o `EHEA`, programa opcional, fuente y vigencia). `CreditPolicyGuard`: publicada no cambia ni se borra (`409`);
+  `CreditMethods.of` valida los parámetros contra la norma (`400`).
+- Método nuevo `PE_LEY30220_HORAS_LECTIVAS` (Ley 30220 art. 39: 16 h de teoría o 32 de práctica por crédito, sin estudio
+  autónomo) y sistema `PE_CREDITO`; sin conversión entre sistemas.
+- `/api/lms/credits/policies`: listado por jurisdicción, sistema, estado y programa; publicar, retirar y `new-version`.
+- `version_curso.politica_credito` liga una versión de curso a una versión de política: propone con ella en el catálogo y
+  en la aprobación, que la exige publicada y del mismo sistema y guarda la relación y su instantánea. Publicar otra
+  versión de la política no cambia lo ya ligado. `CreditPolicyApiTest`, `CreditPolicyTest` y `CatalogBuilderTest`.
+
+## 2026-11-03 — Historial de estados de una versión ([#259](https://github.com/wasichai/elearning-backend/issues/259))
+
+- [ADR-0032](adr/0032-historial-de-estados-de-la-version-en-tabla-propia.md): cada cambio de `estado` de una
+  `version_curso`, y su creación, deja una fila en la tabla nueva `lms.transicion_version` (V16) con el estado anterior,
+  el nuevo, quién y cuándo. Es de solo inserción (un disparador impide cambiarla o borrarla) y la escribe un
+  `RecordChangeListener` en la transacción de quien escribe, sea por el estudio, la bandeja, la API de registros o la
+  plataforma. No se lee el `audit_log` de Wasichai.
+- El detalle del estudio y de la bandeja (`StudioVersionDetail`) gana `history: [{ from, to, by, byName, at }]`, con las
+  mismas reglas de lectura; `byName` se lee junto con los demás nombres de la versión (ADR-0034). Enviar a revisión y
+  crear la primera versión vacía pasan a escribir en una transacción. `VersionHistoryApiTest` recorre BORRADOR →
+  EN_REVISION → BORRADOR → EN_REVISION → APROBADA → PUBLICADA, la API de registros, la plataforma y el disparador.
+
+## 2026-11-03 — Aprobación de créditos por una autoridad académica ([#315](https://github.com/wasichai/elearning-backend/issues/315), RF-CRE-08)
+
+- **Corrige un fallo** que encontró la investigación de [#269](https://github.com/wasichai/elearning-backend/issues/269):
+  `EditorialWorkflowGuard` dejaba escribir `version_curso.creditos_aprobados` a quien tenía `APROBAR`, la acción editorial
+  del revisor. Ahora ese campo y `politica_creditos` solo los escribe el comando de aprobación (`403` por la API de
+  registros para todos, ADMIN incluido) y una versión nueva no los hereda.
+- [ADR-0035](adr/0035-aprobacion-de-creditos-por-una-autoridad-academica.md): acción `APROBAR_CREDITOS` sobre
+  `version_curso` y rol `AUTORIDAD_ACADEMICA` (demo: `autoridad@demo.wasichai-learning.test`). `aprobacion_creditos`
+  (`appendOnly`, `apiOnly`) guarda cada acto con la instantánea de la política de referencia (id@versión, método,
+  parámetros, fuente), horas, créditos calculados, propuestos y aprobados, motivo, órgano, documento, persona y hora.
+- `/api/lms/credits/**`: propuesta y aprobación vigente, historial, aprobar (versión `APROBADA` o `PUBLICADA` con sistema
+  de crédito, recálculo en el servidor, motivo si difiere) y revocar (otra fila, con motivo). Separación de funciones por
+  datos, también para ADMIN: ni el autor, ni el revisor asignado, ni quien aprobó en la bandeja, ni un docente del curso.
+- El catálogo dice «aprobados» solo con una aprobación vigente, con su órgano, documento y política (`credits.approval`).
+  `CreditApprovalApiTest`, `CatalogBuilderTest`, `EditorialWorkflowGuardApiTest`, `ModelProvisioningApiTest` y las pruebas
+  de `model/` lo comprueban.
+
+## 2026-11-03 — ADR de la Fase 5: Embabel 1.5.4, proveedores, límites y `AgentRun` ([#272](https://github.com/wasichai/elearning-backend/issues/272))
+
+Solo documentación, primer paso de la épica E32 ([#271](https://github.com/wasichai/elearning-backend/issues/271)).
+
+- [ADR-0033](adr/0033-fase-5-ia.md): Embabel 1.5.4 (no la 1.5.3, que falla con Claude 5) con Anthropic y OpenAI (Responses
+  API) opcionales y Anthropic por defecto; modelo por paso como configuración; una llamada tipada por paso, sin
+  planificador, herramientas ni MCP; los trabajos de IA en `lms.trabajo` con el estado nuevo `CANCELLED` y el reintento
+  interno de Embabel a 1–2; `AgentRun` en la tabla fija `lms.ejecucion_agente`; `max_tokens` por paso, concurrencia por
+  organización y presupuesto por curso; permisos `GENERAR` y `VALIDAR`; ninguna prueba de CI llama a un proveedor real
+  (doble determinista y doble HTTP con WireMock).
+- `docs/ai`, RF-IA-08, `domain-model.md`, `docs/operations` (claves, URL base y modelos por paso) y el roadmap (épicas
+  E32–E38) se alinean con él.
+
+## 2026-11-03 — Nombres de autor, revisor y de quien decide ([#258](https://github.com/wasichai/elearning-backend/issues/258))
+
+- `StudioVersion` (estudio y bandeja), `ReviewComment` y `ReviewDecision` traen `authorName` / `reviewerName` junto a su id:
+  el nombre para mostrar de la persona, nunca su correo; `null` si está deshabilitada o fue borrada. Solo van donde ya iba el
+  id y a quien ya puede leer la versión.
+- Wasichai 1.8.0 no da nombres en `UserDirectory`: `DisplayNames` los lee de su tabla de personas en una sentencia por
+  respuesta, con las condiciones de `UserDirectory.existing` ([ADR-0034](adr/0034-nombres-para-mostrar-desde-la-tabla-de-personas-de-wasichai.md),
+  provisional). `AuthoringNamesApiTest` prueba los nombres, el `null` de quien se deshabilita y que lo ajeno sigue siendo
+  `404`/`403`; `AuthoringCostApiTest`, que la bandeja y el detalle no suman sentencias por persona.
+
+## 2026-11-03 — Generación de HTML y PDF aceptada con una fuente propia ([#264](https://github.com/wasichai/elearning-backend/issues/264), RF-CON-07)
+
+- [ADR-0031](adr/0031-aceptacion-de-la-generacion-con-una-fuente-propia.md): la aceptación de RF-CON-07 deja de pedir una
+  lección importada (la importación no copia el texto de los manuales, ADR-0018 §6) y pide una `fuente_recurso` propia con
+  `include::`, una imagen y una tabla que produzca en la cola HTML y PDF validados, sin generar en la petición.
+- `RenderApiTest` lo prueba con el doble y con Asciidoctor real: HTML saneado con título, texto, tabla e imagen por su
+  texto alternativo, el `include::` (también `/etc/passwd`) como enlace sin leer nada, y un PDF bien formado con la imagen
+  incrustada y el generador real en cada artefacto. CI instala `asciidoctor` 2.0.26 y `asciidoctor-pdf` 2.3.27 con
+  `gem install` y exige la prueba (`LMS_TEST_ASCIIDOCTOR=required`). RF-CON-07 pasa a implementado; el binario en la
+  imagen de despliegue sigue en F6 (RNF-OPS-04).
+
+## 2026-11-03 — Términos de uso con plazo y supresión de datos personales ([#304](https://github.com/wasichai/elearning-backend/issues/304), RNF-SEG-11)
+
+- [ADR-0037](adr/0037-terminos-de-uso-y-supresion-de-datos-personales.md) implementa ADR-0030: términos de uso
+  versionados e inmutables (`lms.terminos_uso`, V15) que publica quien tiene `MANAGE_ORGANIZATION`, y una aceptación por
+  persona con la versión y el plazo que aprobó (`lms.aceptacion_terminos`). `GET`/`POST /api/lms/terms` y
+  `POST`/`DELETE /api/lms/terms/acceptance`. Publicar otra versión no altera las aceptaciones previas.
+- **Sin aceptación vigente, matricularse y registrar progreso dan `403`** con el motivo; el catálogo público sigue
+  abierto. Sin términos publicados nadie se matricula: una organización existente debe publicar los suyos.
+- Al retirar la aceptación o vencer su plazo (barrido cada `lms.privacy.sweep-every`, 1 h), el trabajo `privacy.erase`
+  de la cola suprime eventos, progreso, asistencias, entregas, intentos sin calificar, trabajos y la aceptación, y
+  disocia matrículas, intentos calificados y certificados (seudónimo aleatorio, sin correo, respuestas ni nombre; el
+  código del certificado sigue verificando) y vacía el perfil docente. Una transacción, idempotente, con constancia sin
+  datos personales en `lms.supresion`. Los disparadores de solo inserción ceden solo dentro de esa transacción.
+- `Certificate.holderName` puede ser `null` (titular suprimido). La semilla publica unos términos ficticios y el
+  estudiante demo los acepta antes de matricularse (`terms` en `model/demo/data.json`, validado por `apply.py`).
+- `TermsApiTest` (puerta `403`, catálogo abierto, versiones y permisos) y `PersonalDataErasureApiTest` (supresión por
+  retirada y por vencimiento, lo disociado, la constancia y la idempotencia) lo prueban; `test_demo`, la semilla.
+
+## 2026-11-03 — Paneles del estudiante y del docente en una lectura ([#261](https://github.com/wasichai/elearning-backend/issues/261))
+
+- `GET /api/lms/classroom/panel` y `GET /api/lms/teaching/panel`, paginados con `page` y `size`, devuelven por elemento
+  lo que la interfaz armaba con hasta dos peticiones por matrícula o edición: «Mis cursos» con sus próximas sesiones y sus
+  evaluaciones pendientes; «Mis ediciones» con sus próximas sesiones y los 5 intentos más antiguos de su cola. Sin el
+  tope de 8 ediciones: la interfaz los usará en [front#158](https://github.com/wasichai/elearning-frontend/issues/158).
+- Se leen por lotes: temarios, progreso, intentos, sesiones, asistencia y certificados (estudiante), y versiones, cursos,
+  matrículas, conteo y principio de la cola (docente), en una lectura cada uno. `GET /teaching/offerings` usa el mismo
+  armado y deja de leer cuatro veces por edición. `ClassroomPanelApiTest` y `TeachingPanelApiTest` prueban el contenido,
+  la paginación, el alcance (solo lo propio; solo lo asignado) y que el coste no crece con la página (`StatementCount`).
+
+## 2026-11-03 — Lección de repaso de una pregunta ([#260](https://github.com/wasichai/elearning-backend/issues/260))
+
+- `pregunta` gana `leccion_repaso`, una relación opcional a la lección que la repasa. `EditorialWorkflowGuard` exige que sea
+  de la misma versión (`400` si no) y la congela con lo publicado; la copia de versión la re-apunta a la lección copiada.
+- La copia de las evaluaciones (`lms.contenido_evaluacion`) y la instantánea del intento la guardan: el resultado trae
+  `reviewLessonId` por pregunta, una vez enviado y sin depender de las soluciones (ADR-0019); el intento abierto no la trae.
+  Las instantáneas anteriores la dan como `null`. Las diferencias de versión no comparan evaluaciones: no aplica.
+- `ReviewLessonApiTest` (guarda, inmutabilidad y copia) y `AttemptApiTest` lo comprueban; `test_model`, el campo.
+
+## 2026-11-03 — Logros derivados en el aula ([#265](https://github.com/wasichai/elearning-backend/issues/265), RF-AUL-08)
+
+- El aula de una matrícula devuelve `achievements: [{ kind, at, ref }]`: `UNIT_COMPLETED` (unidad con todas sus
+  lecciones contables completadas), `ASSESSMENT_PASSED` (evaluación aprobada por un intento calificado) y
+  `CERTIFICATE_ISSUED` (certificado emitido). Se derivan al leer de lo que el aula ya calcula, sin modelo, tabla ni
+  escritura nuevos y sin otra lectura: el certificado se lee una vez para `certificateCode` y para su logro. Solo los ve
+  el estudiante de la matrícula (`404` a otro y al docente). `AchievementsApiTest` y la semilla (`CORTO-101-A`) lo
+  prueban; la interfaz los mostrará en front#154.
+
+## 2026-11-03 — La administración, una sección del menú ([front#157](https://github.com/wasichai/elearning-frontend/pull/157))
+
+- RNF-UX-06: «Datos» y «Administración» solo los ve quien tiene `admin` o `MANAGE_ORGANIZATION`, con `shellNav` de
+  `@wasichai/core`. Una sola aplicación y ninguna URL nueva (ADR-0005). `docs/operations/administracion.md` lo recoge, junto
+  con lo que queda: el mensaje de core ante un `403` y que la interfaz aún no ofrece crear el primer borrador de un curso nuevo sin importar.
+
+## 2026-11-03 — LGPL definitiva y conservación según los términos ([#303](https://github.com/wasichai/elearning-backend/issues/303))
+
+- [ADR-0030](adr/0030-lgpl-definitiva-y-conservacion-segun-los-terminos.md) reemplaza a ADR-0015: la licencia
+  LGPL-3.0-or-later deja de ser provisional (RNF-OSS-07 implementado) y los datos personales se conservan el tiempo que la
+  persona aprueba en los términos de uso. La aceptación con plazo y la supresión se implementan en
+  [#304](https://github.com/wasichai/elearning-backend/issues/304).
+
+## 2026-11-03 — Primer borrador vacío de un curso sin versiones ([#257](https://github.com/wasichai/elearning-backend/issues/257))
+
+- `POST /api/lms/studio/courses/{courseId}/versions` sobre un curso sin versiones ya no responde `400`: crea la v1
+  `BORRADOR` vacía a nombre de quien llama, con la modalidad, la duración y el crédito mínimos válidos (el curso no los
+  tiene), y aparece en «Mis versiones». Con versiones, sigue copiando la última o la de `fromVersionId`.
+- La unicidad de `[curso, numero]` impide dos v1: de dos peticiones a la vez, una crea y la otra responde `409`.
+  `NewVersionApiTest` prueba el borrador vacío, la concurrencia y la autorización negativa.
+
+## 2026-11-03 — Listado de mis importaciones ([#255](https://github.com/wasichai/elearning-backend/issues/255))
+
+- `GET /api/lms/studio/import` devuelve los trabajos de importación de quien llama, el más reciente primero, con la fuente,
+  el curso y las fechas (`ImportJob` gana `source`, `courseId`, `createdAt` y `finishedAt`): al recargar, la interfaz no
+  pierde de vista la importación en curso (ADR-0029). Nunca lista las de otra persona; los terminados duran lo que la
+  retención de la cola. Índice nuevo `trabajo_por_solicitante` (V14).
+
+## 2026-11-03 — Traza de origen en la unidad ([#263](https://github.com/wasichai/elearning-backend/issues/263), RF-IMP-03)
+
+- `unidad` gana `referencia_fuente` (`repo@sha:ruta#ancla`), como la lección: la importación la llena con la traza del
+  capítulo que propuso la unidad. Es contenido de la versión: `EditorialWorkflowGuard` la congela con lo demás, la copia de
+  versión la lleva y las diferencias la comparan.
+- El detalle del estudio devuelve `sourceRef` también en cada unidad. `ImportApiTest` comprueba la traza de cada unidad y
+  que la copia la conserva; `VersionDiffApiTest`, que cambiarla cambia la unidad. Con esto RF-IMP-03 queda implementado.
+
+## 2026-11-03 — Gravedad en los problemas de importación ([#254](https://github.com/wasichai/elearning-backend/issues/254))
+
+- Cada problema del informe de importación trae `severity` (`GAP`: esa parte del manual no se leyó; `CHECK`: se leyó y queda
+  algo que revisar), decidida por el servidor según su tipo, y el informe trae `problemsBySeverity` con todos los problemas,
+  también los que pasan de los 500 que muestra. La interfaz deja de mantener su propia tabla (ADR-0029). Los informes
+  guardados antes la reciben al leerlos.
+
+## 2026-11-02 — Rediseño UX/UI de la interfaz ([front#126](https://github.com/wasichai/elearning-frontend/issues/126))
+
+Solo en elearning-frontend ([#251](https://github.com/wasichai/elearning-backend/issues/251) registra aquí la decisión): ninguna API ni contrato de
+este repositorio cambió. La decisión está en [ADR-0029](adr/0029-sistema-de-diseno-quipu-aplicado.md), con lo que el rediseño pide al backend y no se
+hizo.
+
+- **Cimientos**: auditoría y dirección ([front#127](https://github.com/wasichai/elearning-frontend/pull/127)); piezas compartidas de `src/shared` y
+  recorrido visual ([front#128](https://github.com/wasichai/elearning-frontend/pull/128),
+  [front#132](https://github.com/wasichai/elearning-frontend/pull/132)); pestañas de sección y avisos con icono
+  ([front#137](https://github.com/wasichai/elearning-frontend/pull/137)); comparación de versiones con leyenda, cifras y antes y ahora
+  ([front#138](https://github.com/wasichai/elearning-frontend/pull/138)).
+- **Aprendizaje**: visor de lecciones ([front#129](https://github.com/wasichai/elearning-frontend/pull/129)), panel del estudiante con «Continuar
+  aprendiendo» ([front#130](https://github.com/wasichai/elearning-frontend/pull/130)), detalle del curso y navegación del aula
+  ([front#133](https://github.com/wasichai/elearning-frontend/pull/133)), evaluaciones
+  ([front#134](https://github.com/wasichai/elearning-frontend/pull/134)) y su resultado
+  ([front#135](https://github.com/wasichai/elearning-frontend/pull/135)).
+- **Docencia**: panel con bandeja y agenda ([front#139](https://github.com/wasichai/elearning-frontend/pull/139)), matriculados y marco común de la
+  edición ([front#145](https://github.com/wasichai/elearning-frontend/pull/145)), corrección en lote con rúbrica
+  ([front#149](https://github.com/wasichai/elearning-frontend/pull/149)), sesiones por fecha y asistencia
+  ([front#153](https://github.com/wasichai/elearning-frontend/pull/153)).
+- **Gestión editorial**: versiones por curso y detalle con línea de estados ([front#144](https://github.com/wasichai/elearning-frontend/pull/144)),
+  importación por pasos con informe por gravedad ([front#147](https://github.com/wasichai/elearning-frontend/pull/147)), bandeja y panel de decisión
+  ([front#151](https://github.com/wasichai/elearning-frontend/pull/151)).
+- **Descubrimiento**: catálogo con filtros progresivos ([front#143](https://github.com/wasichai/elearning-frontend/pull/143)), ficha de curso y
+  matrícula ([front#146](https://github.com/wasichai/elearning-frontend/pull/146)), finalización y certificado
+  ([front#148](https://github.com/wasichai/elearning-frontend/pull/148), [front#152](https://github.com/wasichai/elearning-frontend/pull/152)).
+- Pendiente de la épica: la sección de administración en una sola `WasichaiApp`
+  ([front#140](https://github.com/wasichai/elearning-frontend/issues/140) a [front#142](https://github.com/wasichai/elearning-frontend/issues/142)) y
+  el cierre ([front#125](https://github.com/wasichai/elearning-frontend/issues/125)). Lo que Wasichai no ofrece se pidió en
+  [wasichai-ui#122](https://github.com/wasichai/wasichai-ui/issues/122) a [wasichai-ui#130](https://github.com/wasichai/wasichai-ui/issues/130).
+
 ## 2026-11-01 — El laboratorio completo y sus entornos externos validados ([#250](https://github.com/wasichai/elearning-backend/pull/250), [front#106](https://github.com/wasichai/elearning-frontend/pull/106))
 
 - RF-LAB-01 ([ADR-0027](adr/0027-laboratorio-en-la-leccion-y-entornos-por-matricula.md)): `leccion` gana `objetivo`,
@@ -38,6 +325,18 @@ Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este
   una clave, `none` y una clave sin cursos; `PrerequisiteKnowledgeGuardApiTest`, el vocabulario y la guarda.
 - La semilla declara cuatro claves (una sin cursos) y las pone en las versiones publicadas de SRTM e IA. Con esto
   RF-CAT-08 queda implementado.
+
+## 2026-11-01 — ADR-0026 (propuesta): sistema de diseño Quipu ([#245](https://github.com/wasichai/elearning-backend/issues/245))
+
+- [ADR-0026](adr/0026-sistema-de-diseno-quipu.md) propone lo que la interfaz ya integró del sistema de diseño Quipu:
+  - un tema de app sobre el contrato de `@wasichai/ui` (`quipu`, `quipu-dark`);
+  - una hoja de controles de 44px por `data-slot` públicos;
+  - el modo lectura como subárbol (`quipu-lectura`);
+  - Figtree y Literata servidas por la app.
+
+  La CSP de la lectura HTML no cambia; incrustar Literata en ella (`font-src data:`) queda para un ADR propio. Pedidos a
+  Wasichai: [wasichai/wasichai-ui#115](https://github.com/wasichai/wasichai-ui/issues/115) y
+  [#116](https://github.com/wasichai/wasichai-ui/issues/116).
 
 ## 2026-11-01 — Wasichai 1.8.0: el servidor comprueba el hash de cada descarga ([#216](https://github.com/wasichai/elearning-backend/issues/216), L6)
 

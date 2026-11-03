@@ -48,6 +48,29 @@ data class EnrollmentView(
 data class ClassroomView(
     @get:JsonUnwrapped val enrollment: EnrollmentView,
     val units: List<UnitView>,
+    val achievements: List<Achievement>,
+)
+
+// un elemento del panel del estudiante (#261): la matrícula como en «Mis cursos», con sus próximas sesiones y sus
+// evaluaciones pendientes. una matrícula que ya no está activa no tiene nada por delante: las dos listas van vacías
+data class ClassroomPanelItem(
+    @get:JsonUnwrapped val enrollment: EnrollmentView,
+    val upcomingSessions: List<SessionView>,
+    val pendingAssessments: List<PendingAssessment>,
+)
+
+// una evaluación que aún se puede hacer: no aprobada, con un intento abierto o con intentos por usar. en el orden del curso
+data class PendingAssessment(
+    val lessonId: String,
+    val assessment: AssessmentSummary,
+)
+
+// un logro (RF-AUL-08): se deriva al leer el aula, no se guarda. kind: UNIT_COMPLETED (ref: la unidad), ASSESSMENT_PASSED
+// (ref: la evaluación) o CERTIFICATE_ISSUED (ref: el código del certificado). at: cuándo se logró
+data class Achievement(
+    val kind: String,
+    val at: Instant?,
+    val ref: String,
 )
 
 data class UnitView(

@@ -66,17 +66,21 @@ usuarios de un archivo anterior, y el camino de estados (`workflows`) se declara
 Lo que en el producto es un comando del LMS, la demo lo hace por ese comando e iniciando sesión como quien lo haría, así
 que pasa por las mismas reglas (ventana de inscripción, asignación del docente, plazos, motivo al cambiar una nota):
 
-| Clave         | Qué hace                                                                                                                     |
-| ------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| `workflows`   | El camino de estados de cada objeto; `commands` da un paso por una ruta `/api/lms/` (aprobar por la bandeja).                |
-| `enrollments` | `{ user, offering }`: el estudiante se matricula con `POST /api/lms/enrollments`, en una edición abierta hoy.                |
-| `progress`    | `{ student, offering, lessons }`: el estudiante completa esas lecciones con el evento del aula (marcar o terminar el vídeo). |
-| `sessions`    | Las crea el docente asignado a la edición con el comando de sesiones.                                                        |
-| `attempts`    | `{ student, offering, lesson, teacher, answers, grades }`: el estudiante responde y envía; el docente asignado califica.     |
+| Clave         | Qué hace                                                                                                                                |
+| ------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `workflows`   | El camino de estados de cada objeto; `commands` da un paso por una ruta `/api/lms/` (aprobar por la bandeja).                           |
+| `terms`       | `{ text, retentionDays, acceptedBy }`: si faltan, el administrador publica los términos de uso; cada correo de `acceptedBy` los acepta. |
+| `enrollments` | `{ user, offering }`: el estudiante se matricula con `POST /api/lms/enrollments`, en una edición abierta hoy.                           |
+| `progress`    | `{ student, offering, lessons }`: el estudiante completa esas lecciones con el evento del aula (marcar o terminar el vídeo).            |
+| `sessions`    | Las crea el docente asignado a la edición con el comando de sesiones.                                                                   |
+| `attempts`    | `{ student, offering, lesson, teacher, answers, grades }`: el estudiante responde y envía; el docente asignado califica.                |
 
 Las matrículas de una edición no se repiten ni superan su `capacidad`. En `progress` van solo lecturas, presentaciones,
 laboratorios y vídeos de la versión de esa edición: una lección con evaluación se completa aprobándola y una con sesión,
 asistiendo. El identificador de cada evento sale del estudiante, la edición y la lección, y lo ya completado no se envía.
+
+Sin aceptación vigente de los términos nadie se matricula (ADR-0037): quien aparece en `enrollments` debe estar en
+`terms.acceptedBy`. Unos términos ya publicados no se tocan y una aceptación vigente no se renueva.
 
 En `attempts`, `answers` y `grades` nombran preguntas y opciones por su `ref`. El estudiante debe estar en `enrollments`
 para esa edición, el docente asignado a ella (`docente_edicion`), la lección tener evaluación y cada nota ir a una
@@ -100,7 +104,8 @@ ejecución.
   revisa y publica otra versión, y matricula a un estudiante nuevo en `TRAMITE-101-A`. Publicar saca del catálogo las
   ediciones de la versión anterior, así que ningún otro recorrido ni la matrícula de la demo lo usan.
 - C usa la carga de ejemplo de la especificación: 6 semanas × (12 h de teoría + 12 h de práctica o laboratorio + 12 h
-  autónomas), sistema ECTS y **sin** `creditos_aprobados`: los créditos los aprueba una persona con su regla.
+  autónomas), sistema ECTS y **sin** `creditos_aprobados`: los créditos los aprueba una autoridad académica con su
+  comando (`autoridad@demo.wasichai-learning.test`, ADR-0035).
 - Ediciones en `America/Lima`, entre noviembre de 2026 y junio de 2027, con periodo de inscripción y capacidad.
 
 ### Fuentes de A y B

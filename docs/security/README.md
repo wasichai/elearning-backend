@@ -54,17 +54,24 @@ los cuatro ejes y fallar cualquiera la rechaza.
 4. **Propiedad** → `404`. `own_records_only` de Wasichai; un usuario multi-rol solo queda restringido si **todos** sus
    roles lo fijan.
 
-Roles (`model/roles.json`, multi-rol en `user_roles`): ESTUDIANTE, DOCENTE, CREADOR, REVISOR y el ADMIN de Wasichai.
+Roles (`model/roles.json`, multi-rol en `user_roles`): ESTUDIANTE, DOCENTE, CREADOR, REVISOR, AUTORIDAD_ACADEMICA y el
+ADMIN de Wasichai.
 `ADMIN` atraviesa las comprobaciones de permiso y no recibe `RecordReadScope`; por eso el trabajo diario no se hace con
 `ADMIN` y las pruebas negativas nunca lo usan como sujeto.
 
 Acciones declaradas:
 
-| Objeto          | Acción                                   | Quién la recibe                                              | Estado                  |
-| --------------- | ---------------------------------------- | ------------------------------------------------------------ | ----------------------- |
-| `version_curso` | `APROBAR`                                | REVISOR (o el rol que fije la política), nunca el autor (§3) | En el modelo F1, uso F4 |
-| `version_curso` | `PUBLICAR`                               | ADMIN o un rol editorial designado                           | En el modelo F1, uso F4 |
-| A decidir       | p. ej. `CALIFICAR`, `GENERAR`, `VALIDAR` | Ver [IA §8](../ai/README.md#8-permisos-separados)            | F3/F5                   |
+| Objeto          | Acción                     | Quién la recibe                                                                | Estado                   |
+| --------------- | -------------------------- | ------------------------------------------------------------------------------ | ------------------------ |
+| `version_curso` | `APROBAR`                  | REVISOR (o el rol que fije la política), nunca el autor (§3)                   | En el modelo F1, uso F4  |
+| `version_curso` | `PUBLICAR`                 | ADMIN o un rol editorial designado                                             | En el modelo F1, uso F4  |
+| `version_curso` | `APROBAR_CREDITOS`         | AUTORIDAD_ACADEMICA, con separación de funciones (§3)                          | F6 (ADR-0035)            |
+| `version_curso` | `GENERAR`                  | CREADOR; encolar un paso de IA ([IA §8](../ai/README.md#8-permisos-separados)) | F5 (ADR-0033 §10, E33.3) |
+| `version_curso` | `VALIDAR`                  | REVISOR, nunca quien genera ([IA §8](../ai/README.md#8-permisos-separados))    | F5 (ADR-0033 §10, E33.3) |
+| `valoracion`    | `VALORAR`                  | ESTUDIANTE, desde su matrícula (§4.8)                                          | F6 (ADR-0038)            |
+| `valoracion`    | `VER_RESUMEN`, `DENUNCIAR` | DOCENTE y CREADOR, sobre lo que los tiene como destino                         | F6 (ADR-0038)            |
+| `valoracion`    | `MODERAR`                  | ADMIN; nunca sobre lo propio ni lo que lo tiene como destino                   | F6 (ADR-0038)            |
+| A decidir       | p. ej. `CALIFICAR`         | —                                                                              | F3                       |
 
 `GET /api/auth/me/permissions` informa al frontend de lo que el usuario puede hacer, acciones declaradas incluidas.
 
@@ -94,7 +101,20 @@ guarda, un CREADOR podía publicar escribiendo `estado` con un `PATCH`.
 - **El contenido solo cambia en borrador y solo lo cambia su autor** (o quien tiene `PUBLICAR`): en revisión, aprobada,
   publicada o retirada la versión **y su temario** (`unidad`, `leccion`) no se crean, cambian ni borran (`409`). El
   revisor tiene `UPDATE` sobre `version_curso` solo para poder transitar; no reescribe borradores ajenos (`403`).
-- `creditos_aprobados` exige `APROBAR`; `publicada_en` solo se pone al publicar. Solo se borra un borrador.
+- **Créditos aprobados solo por el comando de aprobación** (RF-CRE-08, ADR-0035). `creditos_aprobados` y
+  `politica_creditos` no se escriben por la API de registros (`403` para todos, ADMIN incluido): antes bastaba `APROBAR`,
+  la acción editorial, y quien aprobaba el contenido ponía un número con un `PATCH` (hallazgo de #269). El comando
+  `POST /api/lms/credits/versions/{id}/approvals` exige `APROBAR_CREDITOS` y deja una fila de `aprobacion_creditos`
+  (`appendOnly`, `apiOnly`) con la política, el órgano y el documento, en la misma transacción que la copia.
+  **Separación de funciones por datos, también para ADMIN**: no aprueba ni revoca el autor de la versión, su revisor
+  asignado, quien la aprobó en la bandeja (`lms.decision_revision`) ni un docente de una edición del curso
+  (`docente_edicion`, leído con una subconsulta para no depender de lo que la autoridad pueda leer) → `403`. Pruebas:
+  `CreditApprovalApiTest`.
+- **Políticas de crédito publicadas inmutables** (RF-CRE-07, ADR-0036): `CreditPolicyGuard` rechaza cambiar o borrar una
+  `politica_credito` publicada o retirada y escribir su estado por la API de registros (`409`, también ADMIN); publicar y
+  retirar exigen `PUBLICAR` sobre `politica_credito`. Aprobar exige la versión de política ligada publicada y del mismo
+  sistema (`409`).
+- `publicada_en` solo se pone al publicar. Solo se borra un borrador.
 - **Sin autoasignación de roles** (a verificar). Los roles se administran solo con `MANAGE_ORGANIZATION` de Wasichai y
   quedan en `audit_log` como `admin:*`. Que Wasichai impida a un administrador cambiar sus **propios** roles no está
   documentado; si no lo impide, se cubre con revisión periódica de las entradas `admin:*`.
@@ -216,6 +236,8 @@ Detalle en [`docs/ai/README.md`](../ai/README.md#6-protección-contra-prompt-inj
   dato de estudiantes; claves fuera del prompt; sin herramientas de red; `AgentResultFilter` en el asistente.
 - **D** Coste desbocado o bucles → límites de tokens e iteraciones, presupuesto, trabajos cancelables, idempotencia.
 - **E** El agente hereda los permisos de quien lo lanzó → el trabajo no aprueba ni publica; son acciones humanas.
+  Encolar exige `GENERAR` o `VALIDAR` y el trabajo lo vuelve a mirar al ejecutar con los roles guardados de quien lo
+  pidió (`AiPermissions`, ADR-0022 §4).
 
 ### 4.6 Importador AsciiDoc (F4)
 
@@ -253,7 +275,8 @@ el único sitio del código que lanza un proceso (`ArchitectureTest`, regla `EXT
   y trabajo (RF-CON-03); la versión que crea sigue el flujo editorial.
 - **I** Lectura de archivos del servidor o de la red desde el documento (`include::`, imágenes, `docinfo`) → modo
   `secure`, carpeta temporal propia como base, sin `allow-uri-read` (solo se activa por línea de órdenes). El proceso no
-  hereda el entorno del servidor (credenciales): solo `PATH`, `LANG`, `LC_ALL`, `GEM_HOME` y `GEM_PATH`.
+  hereda el entorno del servidor (credenciales): solo `PATH`, `LANG`, `LC_ALL`, `GEM_HOME` y `GEM_PATH`. Probado con
+  Asciidoctor real en CI: `include::/etc/passwd[]` queda en un enlace sin leer nada (ADR-0031).
 - **D** Documento que no termina o que produce un archivo enorme → tiempo límite por generación (2 min) que mata el
   proceso, tope de 25 MB de salida y la cola con intentos acotados, sin reintentar lo que la fuente rompe en cada intento
   (ADR-0022); nunca en el hilo de WebFlux. Pedir en bucle → la misma fuente mientras espera es el mismo trabajo y cada
@@ -263,6 +286,18 @@ el único sitio del código que lanza un proceso (`ArchitectureTest`, regla `EXT
   con `++++` o `pass:[]` (modo `secure` lo deja pasar) → el HTML generado se sanea con lista blanca antes de guardarse
   (`GeneratedHtml`, jsoup; sin scripts, manejadores, `iframe`, formularios ni hojas externas, ADR-0022) y además se
   descarga como adjunto con `nosniff`, como cualquier HTML (§4.4).
+
+### 4.8 Valoraciones (F6, ADR-0038)
+
+| Amenaza                                                 | Control                                                                                                             |
+| ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| Represalia: el docente averigua quién lo valoró         | Sin `READ` del valorado sobre `valoracion` ni `puntaje_valoracion` (API de registros, historial y auditoría: `403`) |
+| Valorar sin haber cursado, o a nombre de otro           | Matrícula propia `ACTIVA` o `FINALIZADA`, progreso mínimo, `RatingWriteGuard` para toda escritura                   |
+| Conflicto de interés                                    | Ni el docente de la edición a sus colegas ni el autor su recurso (`403`), comprobado por datos y no por rol         |
+| Manipular el estado de moderación o la API de registros | `apiOnly`; solo `MODERAR` publica u oculta; lo que identifica una valoración no cambia                              |
+| Inferir quién valoró por las cifras                     | Muestra mínima (piso 3), sin fechas ni ids, comentarios en orden aleatorio y solo tras liberarse                    |
+| Ocultar lo negativo pertinente o vengarse moderando     | Motivos tasados (`400` sin uno), nadie modera lo propio ni lo que lo tiene como destino, apelación a otro moderador |
+| Inundar de cambios                                      | `429` pasado el límite diario por persona                                                                           |
 
 ## 5. Controles transversales
 
@@ -276,7 +311,10 @@ el único sitio del código que lanza un proceso (`ArchitectureTest`, regla `EXT
    `.internal` ni IPv4 privadas o escritas de otra forma; `LabEnvironmentGuard` para toda escritura, RNF-SEG-08). El
    servidor no los resuelve ni los visita, así que no hay redirección que seguir; los entornos solo los leen los
    matriculados (ADR-0027).
-4. **Abuso y spam** (valoraciones y feedback, F6): solo matriculados, una valoración por par, moderación, límite de tasa.
+4. **Abuso y spam** (valoraciones y feedback, F6): solo matriculados con progreso mínimo, una valoración por par,
+   moderación y límites diarios por persona (`lms.reputation.max-edits-per-day`, 5; `max-reports-per-day`, 10) que
+   responden `429` con `Retry-After`, contados en `lms.cuota_valoracion` en la transacción del cambio (ADR-0038,
+   RNF-SEG-10). El límite global de peticiones queda en el ingress (#73).
 5. **Idempotencia**: `Idempotency-Key` (ADR-058 de Wasichai) en creaciones y comandos con efecto.
 6. **Concurrencia**: ETag e `If-Match` en las ediciones.
 7. **CORS**: `wasichai.web.cors-allowed-origin-patterns` limitado al origen de la UI de cada entorno.
@@ -300,6 +338,7 @@ Qué consulta ADMIN de cada operación sensible (RF-ADM-03, `SensitiveOperations
 | --------------------------------------------- | ---------------------------------------------- | ---------------------------------------------------------------------- |
 | Crear o cambiar una versión, unidad o lección | `audit_log`, con quién, campo, antes y después | `/api/audit?objectName=leccion&recordId=…` o el `history` del registro |
 | Decisión de revisión y publicación            | `audit_log` (cambio de `estado`, con su autor) | igual, sobre `version_curso`; la decisión, además, en la bandeja       |
+| Aprobación o revocación de créditos           | `audit_log` (alta de `aprobacion_creditos`)    | `/api/audit?objectName=aprobacion_creditos&recordId=…`; el historial   |
 | Roles de un usuario                           | `audit_log` como `admin:user`                  | `/api/audit?objectName=admin:user&recordId=<usuario>`                  |
 | Calificación manual (y su cambio, con motivo) | `lms.calificacion`, de solo inserción          | cola `?status=GRADED` e intento con `history` del espacio docente      |
 
@@ -323,18 +362,49 @@ aplicación se conecta con un rol que no es dueño de las tablas, para que nadie
 - **Privado por defecto**: un `perfil_docente` solo aparece en el catálogo público si `perfil_publico` es verdadero
   (falso por omisión; implementado en F1, #66): sin consentimiento no sale ni su nombre. Las valoraciones agregadas
   exigen muestra suficiente y consentimiento explícito (F6). Ningún visitante publica valoraciones académicas verificadas.
+- **Valoraciones** ([ADR-0038](../adr/0038-politica-de-valoraciones.md)): el valorado nunca ve quién lo valoró (sin
+  `READ` sobre `valoracion` ni `puntaje_valoracion`, su historial ni su auditoría); se conservan mientras quien valora
+  mantenga aceptados los términos de uso, y su supresión entra en la de ADR-0037 (tabla de abajo). El agregado público
+  de un docente exige su consentimiento `valoraciones_publicas` (falso por omisión) además de `perfil_publico`.
 - **`calendario` de una edición** es texto público: sin enlaces de reunión ni datos de contacto personales. Los enlaces
   de las sesiones síncronas llegan por el adaptador de videoconferencia (F3) y solo a los matriculados.
 - **IA**: la canalización editorial no recibe datos de estudiantes; el asistente de Wasichai, si se habilita, filtra
   con `AgentResultFilter` lo que sale al proveedor.
-- **Retención**: plazos por tipo de dato en F6 (cuentas inactivas, intentos, registros IA). Los eventos de aprendizaje se
-  guardan mientras el estudiante acepte los términos y se suprimen al retirarla (ADR-0020).
-  La purga de `audit_log` solo la hace el rol de purga de Wasichai (`wasichai.audit.purge-role`), nunca la aplicación.
-  Los trabajos terminados de `lms.trabajo` (sus datos nombran a quien los pidió y su error puede citar la fuente) los
-  borra la propia cola pasado `lms.jobs.retention` (30 días, ADR-0022); la versión y los artefactos que crearon guardan
-  autor, fuente y trabajo.
-- **Eliminación de cuenta**: a diseñar en F6, conservando lo que deba conservarse (calificaciones emitidas,
-  certificados, auditoría). Plazos legales: a verificar con la organización; este documento no fija ninguno.
+- **Retención** ([ADR-0030](../adr/0030-lgpl-definitiva-y-conservacion-segun-los-terminos.md),
+  [ADR-0037](../adr/0037-terminos-de-uso-y-supresion-de-datos-personales.md), RNF-SEG-11): los datos personales se
+  conservan el tiempo que la persona aprueba en los términos de uso, sin plazos propios por tipo de dato. Los publica
+  quien tiene `MANAGE_ORGANIZATION` (`lms.terminos_uso`, inmutables); cada persona acepta la versión vigente y su plazo
+  (`lms.aceptacion_terminos`: persona, versión, fecha, vencimiento y retirada; nada más). **Sin aceptación vigente no hay
+  matrícula ni progreso** (`403` con el motivo; sin términos publicados, tampoco); el catálogo público sigue abierto.
+- **Supresión**: al retirar la aceptación (`DELETE /api/lms/terms/acceptance`) o vencer su plazo (barrido cada
+  `lms.privacy.sweep-every`), el trabajo `privacy.erase` de la cola, como la plataforma y en una transacción, suprime y
+  disocia; es idempotente y deja una constancia en `lms.supresion` (motivo y cuántos de cada clase) sin la persona:
+
+  | Dato                                                                    | Destino                                                                             |
+  | ----------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+  | Eventos de aprendizaje, progreso, asistencias                           | Se suprimen                                                                         |
+  | Entregas                                                                | Se suprimen; el archivo, por la limpieza de huérfanos de wasichai-files             |
+  | Intentos sin calificar (y sus notas parciales)                          | Se suprimen                                                                         |
+  | Intentos calificados y sus notas                                        | Se disocian: seudónimo aleatorio y sin respuestas                                   |
+  | Matrículas                                                              | Se disocian: seudónimo, sin correo, `RETIRADA` si estaba activa; queda el resultado |
+  | Certificados                                                            | Se disocian: seudónimo y sin nombre; el código sigue verificando el impreso         |
+  | Perfil docente                                                          | Se vacía y deja de publicarse; sigue enlazado a la cuenta por sus asignaciones      |
+  | Valoraciones, sus puntajes, comentarios y apelaciones; su cuota diaria  | Se suprimen; lo congelado (anónimo, n ≥ k) se queda y lo de recurso se recalcula    |
+  | Denuncias de valoraciones                                               | Las resueltas se suprimen; las abiertas quedan sin la persona                       |
+  | Trabajos que pidió y la aceptación misma                                | Se suprimen                                                                         |
+  | Ejecuciones de agente que pidió o en las que intervino                  | Se disocian: seudónimo como solicitante y en sus intervenciones; la ejecución queda |
+  | Autoría, revisiones, notas puestas, sesiones y asistencias que registró | Se conservan con el id de cuenta: son actos de la organización                      |
+
+  Las intervenciones en una ejecución de agente son, como las revisiones, actos de la organización, pero se disocian:
+  la ejecución guarda qué pidió y qué aceptó o editó la persona sobre material generado, y la decisión editorial que
+  importa ya queda, con su autor, en la versión y en `lms.decision_revision` (#326).
+
+  Queda en Wasichai: la cuenta (nombre, correo, roles), que deshabilita o elimina el administrador; las notificaciones;
+  y `audit_log`, con el antes de cada registro suprimido o disociado, hasta que lo borre el rol de purga de Wasichai
+  (`wasichai.audit.purge-role`), nunca la aplicación. Los trabajos terminados de `lms.trabajo` los borra la propia cola
+  pasado `lms.jobs.retention` (30 días, ADR-0022), también el de la supresión, que lleva el id de la persona en su clave.
+
+- **Plazos legales**: los decide cada organización en sus términos; este documento no fija ninguno.
 - **Datos de demostración y pruebas**: siempre sintéticos ([pruebas](../testing/README.md#datos-sintéticos)).
 
 ## 8. Gestión de secretos
@@ -356,20 +426,23 @@ Obligatorias para cada recurso nuevo, como pruebas de integración contra la apl
 ver [pruebas](../testing/README.md)). Sujetos: usuarios de prueba con un solo rol, nunca `ADMIN`. Cada prueba
 comprueba también que **nada cambió**, releyendo como propietario.
 
-| Caso                          | Cómo                                                                                    | Esperado                             |
-| ----------------------------- | --------------------------------------------------------------------------------------- | ------------------------------------ |
-| Anónimo en ruta privada       | Sin `Authorization` a `/api/lms/**` no público y a `/api/objects/**`                    | `401`                                |
-| Anónimo escribe en lo público | `POST`, `PUT`, `DELETE` a `/api/lms/public/**`                                          | `401` o `403`                        |
-| Borrador por URL pública      | Slug de una versión en borrador o en revisión                                           | `404`                                |
-| IDOR: id ajeno en la URL      | Cambiar el id de matrícula, intento, entrega, lección, versión o revisión por uno ajeno | `404`, cuerpo sin datos              |
-| IDOR en relaciones            | Crear o actualizar con un `RELATION` a un registro fuera de alcance                     | `400` en el campo                    |
-| Otra organización             | Token de la organización B con ids de la A                                              | `404`                                |
-| Rol sin permiso               | ESTUDIANTE llama a un comando de DOCENTE, CREADOR o REVISOR; DOCENTE intenta `PUBLICAR` | `403`                                |
-| Docente fuera de su edición   | DOCENTE de la edición X lee o califica en la Y                                          | `404`                                |
-| Autoaprobación                | El autor, aun con `APROBAR`, aprueba su versión                                         | Rechazo del guard                    |
-| Publicada inmutable           | Editar o borrar una versión `PUBLICADA`                                                 | Rechazo del guard                    |
-| Nota sin motivo               | `PATCH` de calificación sin motivo                                                      | `400`                                |
-| Listados                      | Filtros que incluirían recursos ajenos                                                  | Solo los propios, conteos coherentes |
+| Caso                          | Cómo                                                                                                  | Esperado                             |
+| ----------------------------- | ----------------------------------------------------------------------------------------------------- | ------------------------------------ |
+| Anónimo en ruta privada       | Sin `Authorization` a `/api/lms/**` no público y a `/api/objects/**`                                  | `401`                                |
+| Anónimo escribe en lo público | `POST`, `PUT`, `DELETE` a `/api/lms/public/**`                                                        | `401` o `403`                        |
+| Borrador por URL pública      | Slug de una versión en borrador o en revisión                                                         | `404`                                |
+| IDOR: id ajeno en la URL      | Cambiar el id de matrícula, intento, entrega, lección, versión o revisión por uno ajeno               | `404`, cuerpo sin datos              |
+| IDOR en relaciones            | Crear o actualizar con un `RELATION` a un registro fuera de alcance                                   | `400` en el campo                    |
+| Otra organización             | Token de la organización B con ids de la A                                                            | `404`                                |
+| Rol sin permiso               | ESTUDIANTE llama a un comando de DOCENTE, CREADOR o REVISOR; DOCENTE intenta `PUBLICAR`               | `403`                                |
+| Docente fuera de su edición   | DOCENTE de la edición X lee o califica en la Y                                                        | `404`                                |
+| Autoaprobación                | El autor, aun con `APROBAR`, aprueba su versión                                                       | Rechazo del guard                    |
+| Créditos sin la acción        | REVISOR con `APROBAR` aprueba créditos o hace `PATCH` de `creditos_aprobados`                         | `403`                                |
+| Créditos de lo propio         | Autor, revisor asignado, quien aprobó en la bandeja o docente del curso, también ADMIN                | `403`                                |
+| Publicada inmutable           | Editar o borrar una versión `PUBLICADA`                                                               | Rechazo del guard                    |
+| Nota sin motivo               | `PATCH` de calificación sin motivo                                                                    | `400`                                |
+| Sin términos aceptados        | Matricularse o registrar progreso sin aceptación vigente; publicar términos sin `MANAGE_ORGANIZATION` | `403`                                |
+| Listados                      | Filtros que incluirían recursos ajenos                                                                | Solo los propios, conteos coherentes |
 
 Rechazos de `EditorialWorkflowGuard`: `403` falta la acción o es autoaprobación o borrador ajeno; `409` transición
 inexistente o contenido congelado; `400` versión a nombre de otro. Pruebas: `EditorialWorkflowGuardApiTest`.

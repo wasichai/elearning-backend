@@ -5,7 +5,7 @@
     "tipo_duracion": ["SEMANAS", "SEMESTRAL"],
     "estado_version": ["BORRADOR", "EN_REVISION", "APROBADA", "PUBLICADA", "RETIRADA"],
     "estado_edicion": ["PROGRAMADA", "INSCRIPCION_ABIERTA", "EN_CURSO", "FINALIZADA", "CANCELADA"],
-    "sistema_credito": ["NINGUNO", "ECTS", "SCH"],
+    "sistema_credito": ["NINGUNO", "ECTS", "SCH", "PE_CREDITO"],
     "tipo_leccion": ["LECTURA", "VIDEO", "PRESENTACION", "LABORATORIO", "EVALUACION", "SESION"],
     "rol_docente": ["TITULAR", "ASISTENTE"],
     "estado_matricula": ["ACTIVA", "RETIRADA", "FINALIZADA"],
@@ -19,7 +19,16 @@
     "modalidad_sesion": ["PRESENCIAL", "VIRTUAL"],
     "estado_sesion": ["PROGRAMADA", "REPROGRAMADA", "CANCELADA"],
     "estado_asistencia": ["PRESENTE", "TARDE", "AUSENTE", "JUSTIFICADO"],
-    "formato_artefacto": ["HTML", "PDF"]
+    "formato_artefacto": ["HTML", "PDF"],
+    "tipo_aprobacion_creditos": ["APROBACION", "REVOCACION"],
+    "estado_politica_credito": ["BORRADOR", "PUBLICADA", "RETIRADA"],
+    "metodo_credito": ["ECTS_CARGA_TOTAL", "US_SCH_34CFR600_2", "PE_LEY30220_HORAS_LECTIVAS"],
+    "estado_brief": ["BORRADOR", "LISTO"],
+    "destino_valoracion": ["DOCENCIA", "RECURSO"],
+    "estado_moderacion": ["PENDIENTE", "PUBLICADA", "OCULTA"],
+    "motivo_moderacion": ["ATAQUE_PERSONAL", "DATOS_PERSONALES", "SPAM", "FUERA_DE_TEMA", "CONFLICTO_DE_INTERES", "ILEGAL"],
+    "resultado_apelacion": ["MANTENIDA", "REVOCADA"],
+    "estado_denuncia": ["ABIERTA", "RESUELTA"]
   },
   "objects": [
     {
@@ -156,6 +165,18 @@
           "label": "Retirar"
         },
         {
+          "name": "APROBAR_CREDITOS",
+          "label": "Aprobar créditos (autoridad académica)"
+        },
+        {
+          "name": "GENERAR",
+          "label": "Generar con IA (encolar un paso)"
+        },
+        {
+          "name": "VALIDAR",
+          "label": "Validar lo generado con IA"
+        },
+        {
           "name": "VER_TODAS",
           "label": "Ver todo el contenido, no solo el de las matrículas propias"
         }
@@ -236,12 +257,12 @@
         },
         {
           "name": "creditos_aprobados",
-          "label": "Créditos aprobados",
+          "label": "Créditos aprobados (los copia la aprobación de créditos)",
           "type": "DECIMAL"
         },
         {
           "name": "politica_creditos",
-          "label": "Política de créditos aplicada (id@versión)",
+          "label": "Política de los créditos aprobados (id@versión, la copia la aprobación de créditos)",
           "type": "TEXT"
         },
         {
@@ -352,6 +373,11 @@
           "name": "horas_estimadas",
           "label": "Horas estimadas",
           "type": "DECIMAL"
+        },
+        {
+          "name": "referencia_fuente",
+          "label": "Fuente (repo@sha:ruta#ancla)",
+          "type": "TEXT"
         }
       ],
       "uniqueConstraints": [["version_curso", "orden"]],
@@ -543,6 +569,13 @@
         {
           "name": "perfil_publico",
           "label": "Consiente publicar este perfil en el catálogo",
+          "type": "BOOLEAN",
+          "required": true,
+          "defaultValue": "false"
+        },
+        {
+          "name": "valoraciones_publicas",
+          "label": "Consiente publicar en el catálogo el agregado de sus valoraciones (con muestra suficiente)",
           "type": "BOOLEAN",
           "required": true,
           "defaultValue": "false"
@@ -1263,6 +1296,482 @@
           "defaultValue": "false"
         }
       ]
+    },
+    {
+      "name": "politica_credito",
+      "label": "Política de crédito",
+      "pluralLabel": "Políticas de crédito",
+      "description": "Regla versionada con la que se proponen créditos (RF-CRE-07, ADR-0036): un método del código con sus parámetros, su fuente y su ámbito (jurisdicción, la organización y, si se indica, un programa). Solo se edita en borrador; publicada no cambia: un cambio es una versión nueva.",
+      "actions": [
+        {
+          "name": "PUBLICAR",
+          "label": "Publicar o retirar una política de crédito"
+        }
+      ],
+      "uniqueConstraints": [["clave", "numero"]],
+      "fields": [
+        {
+          "name": "clave",
+          "label": "Clave (la misma en todas sus versiones)",
+          "type": "TEXT",
+          "required": true,
+          "indexed": true
+        },
+        {
+          "name": "numero",
+          "label": "Número de versión",
+          "type": "INTEGER",
+          "required": true
+        },
+        {
+          "name": "nombre",
+          "label": "Nombre",
+          "type": "TEXT",
+          "required": true
+        },
+        {
+          "name": "estado",
+          "label": "Estado",
+          "type": "ENUM",
+          "enum": "estado_politica_credito",
+          "required": true,
+          "defaultValue": "BORRADOR",
+          "indexed": true
+        },
+        {
+          "name": "sistema",
+          "label": "Sistema de crédito",
+          "type": "ENUM",
+          "enum": "sistema_credito",
+          "required": true,
+          "indexed": true
+        },
+        {
+          "name": "metodo",
+          "label": "Método de cálculo",
+          "type": "ENUM",
+          "enum": "metodo_credito",
+          "required": true
+        },
+        {
+          "name": "parametros",
+          "label": "Parámetros del método (JSON; vacío: los de la norma)",
+          "type": "LONG_TEXT"
+        },
+        {
+          "name": "jurisdiccion",
+          "label": "Jurisdicción (ISO 3166-1 alfa-2, o EHEA)",
+          "type": "TEXT",
+          "required": true,
+          "indexed": true
+        },
+        {
+          "name": "programa_codigo",
+          "label": "Programa al que se limita (código; vacío: toda la institución)",
+          "type": "TEXT",
+          "indexed": true
+        },
+        {
+          "name": "fuente",
+          "label": "Fuente normativa o institucional",
+          "type": "TEXT",
+          "required": true
+        },
+        {
+          "name": "fuente_url",
+          "label": "Enlace a la fuente",
+          "type": "URL"
+        },
+        {
+          "name": "vigente_desde",
+          "label": "Vigente desde",
+          "type": "DATE"
+        },
+        {
+          "name": "publicada_por",
+          "label": "Publicada por (usuario de Wasichai)",
+          "type": "UUID"
+        },
+        {
+          "name": "publicada_en",
+          "label": "Publicada en",
+          "type": "DATETIME"
+        }
+      ]
+    },
+    {
+      "name": "aprobacion_creditos",
+      "label": "Aprobación de créditos",
+      "pluralLabel": "Aprobaciones de créditos",
+      "appendOnly": true,
+      "apiOnly": true,
+      "description": "Acto con el que una autoridad académica aprueba o revoca los créditos de una versión de curso (RF-CRE-08, ADR-0035). Lo escribe solo el comando de aprobación, con la instantánea de la política y del cálculo; nunca cambia: revocar es otra fila.",
+      "fields": [
+        {
+          "name": "tipo",
+          "label": "Tipo",
+          "type": "ENUM",
+          "enum": "tipo_aprobacion_creditos",
+          "required": true
+        },
+        {
+          "name": "sustituye",
+          "label": "Aprobación que revoca (solo en una revocación)",
+          "type": "UUID"
+        },
+        {
+          "name": "sistema",
+          "label": "Sistema de crédito",
+          "type": "ENUM",
+          "enum": "sistema_credito"
+        },
+        {
+          "name": "politica_id",
+          "label": "Política aplicada",
+          "type": "TEXT"
+        },
+        {
+          "name": "politica_version",
+          "label": "Versión de la política",
+          "type": "TEXT"
+        },
+        {
+          "name": "metodo",
+          "label": "Método",
+          "type": "TEXT"
+        },
+        {
+          "name": "parametros",
+          "label": "Parámetros de la política (JSON)",
+          "type": "LONG_TEXT"
+        },
+        {
+          "name": "fuente",
+          "label": "Fuente normativa",
+          "type": "TEXT"
+        },
+        {
+          "name": "horas_totales",
+          "label": "Horas de carga total",
+          "type": "DECIMAL"
+        },
+        {
+          "name": "creditos_calculados",
+          "label": "Créditos calculados",
+          "type": "DECIMAL"
+        },
+        {
+          "name": "creditos_propuestos",
+          "label": "Créditos propuestos",
+          "type": "DECIMAL"
+        },
+        {
+          "name": "creditos_aprobados",
+          "label": "Créditos aprobados",
+          "type": "DECIMAL"
+        },
+        {
+          "name": "motivo",
+          "label": "Motivo (si difiere de lo propuesto y al revocar)",
+          "type": "LONG_TEXT"
+        },
+        {
+          "name": "organo",
+          "label": "Órgano que aprueba (p. ej. Consejo de Facultad)",
+          "type": "TEXT",
+          "required": true
+        },
+        {
+          "name": "documento_referencia",
+          "label": "Documento que lo respalda (p. ej. número de resolución)",
+          "type": "TEXT",
+          "required": true
+        },
+        {
+          "name": "documento_fecha",
+          "label": "Fecha del documento",
+          "type": "DATE"
+        },
+        {
+          "name": "aprobada_por",
+          "label": "Quién la registró (usuario de Wasichai)",
+          "type": "UUID",
+          "required": true
+        },
+        {
+          "name": "aprobada_en",
+          "label": "Registrada en",
+          "type": "DATETIME",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "brief",
+      "label": "Brief",
+      "pluralLabel": "Briefs",
+      "description": "Encargo estructurado de un curso para la canalización de IA (RF-IA-01, E33.1): temática, público, objetivos, duración, idioma, nivel, expertos y fuentes autorizadas. Se guarda a medias en borrador; pasa a LISTO solo completo y con fuentes de la lista permitida del importador o de paquetes ya importados al curso (BriefGuard).",
+      "fields": [
+        {
+          "name": "tematica",
+          "label": "Temática",
+          "type": "TEXT"
+        },
+        {
+          "name": "publico",
+          "label": "Público destinatario",
+          "type": "LONG_TEXT"
+        },
+        {
+          "name": "objetivos",
+          "label": "Objetivos (uno por línea)",
+          "type": "LONG_TEXT"
+        },
+        {
+          "name": "duracion_horas",
+          "label": "Duración (horas)",
+          "type": "DECIMAL"
+        },
+        {
+          "name": "idioma",
+          "label": "Idioma (BCP 47)",
+          "type": "TEXT"
+        },
+        {
+          "name": "nivel",
+          "label": "Nivel",
+          "type": "ENUM",
+          "enum": "nivel"
+        },
+        {
+          "name": "expertos",
+          "label": "Expertos de la materia (uno por línea)",
+          "type": "LONG_TEXT"
+        },
+        {
+          "name": "fuentes",
+          "label": "Fuentes autorizadas (owner/repo@sha:ruta, una por línea)",
+          "type": "LONG_TEXT"
+        },
+        {
+          "name": "estado",
+          "label": "Estado",
+          "type": "ENUM",
+          "enum": "estado_brief",
+          "required": true,
+          "defaultValue": "BORRADOR",
+          "indexed": true
+        }
+      ]
+    },
+    {
+      "name": "dimension_valoracion",
+      "label": "Dimensión de valoración",
+      "pluralLabel": "Dimensiones de valoración",
+      "description": "Lo que se valora de un docente o de un recurso, de 1 a 5 (RF-REP-01/02, ADR-0038). La clave no cambia: la nombran los puntajes y los agregados congelados; para dejar de pedirla se desactiva.",
+      "fields": [
+        {
+          "name": "clave",
+          "label": "Clave (minúsculas, dígitos y guiones bajos)",
+          "type": "TEXT",
+          "required": true,
+          "unique": true
+        },
+        {
+          "name": "nombre",
+          "label": "Nombre",
+          "type": "TEXT",
+          "required": true
+        },
+        {
+          "name": "destino",
+          "label": "Qué se valora",
+          "type": "ENUM",
+          "enum": "destino_valoracion",
+          "required": true
+        },
+        {
+          "name": "activa",
+          "label": "Se pide al valorar",
+          "type": "BOOLEAN",
+          "required": true,
+          "defaultValue": "true"
+        },
+        {
+          "name": "orden",
+          "label": "Orden",
+          "type": "INTEGER",
+          "defaultValue": "0"
+        }
+      ]
+    },
+    {
+      "name": "valoracion",
+      "label": "Valoración",
+      "pluralLabel": "Valoraciones",
+      "description": "Valoración de un docente o de un recurso por un estudiante de la edición (Rating, ADR-0038). La escribe solo el LMS: elegibilidad, ventana, conflicto de interés y moderación. El valorado no la lee: solo resúmenes con muestra mínima.",
+      "apiOnly": true,
+      "actions": [
+        {
+          "name": "VALORAR",
+          "label": "Valorar a los docentes y los recursos de sus matrículas"
+        },
+        {
+          "name": "VER_RESUMEN",
+          "label": "Ver el resumen anónimo de las valoraciones que lo tienen como destino"
+        },
+        {
+          "name": "DENUNCIAR",
+          "label": "Denunciar un comentario que lo tiene como destino"
+        },
+        {
+          "name": "MODERAR",
+          "label": "Publicar u ocultar comentarios con motivo y decidir apelaciones"
+        }
+      ],
+      "fields": [
+        {
+          "name": "estudiante_id",
+          "label": "Estudiante que valora (usuario de Wasichai)",
+          "type": "UUID",
+          "required": true,
+          "indexed": true
+        },
+        {
+          "name": "destino",
+          "label": "Qué se valora",
+          "type": "ENUM",
+          "enum": "destino_valoracion",
+          "required": true
+        },
+        {
+          "name": "docente_edicion",
+          "label": "Asignación docente valorada (id de docente_edicion; el estudiante no lee asignaciones)",
+          "type": "UUID",
+          "indexed": true
+        },
+        {
+          "name": "comentario",
+          "label": "Comentario (texto plano)",
+          "type": "LONG_TEXT"
+        },
+        {
+          "name": "estado_moderacion",
+          "label": "Moderación del comentario",
+          "type": "ENUM",
+          "enum": "estado_moderacion"
+        },
+        {
+          "name": "ficha",
+          "label": "Ficha opaca del comentario (con la que el valorado lo denuncia)",
+          "type": "UUID",
+          "unique": true
+        },
+        {
+          "name": "motivo_moderacion",
+          "label": "Motivo tasado al ocultar",
+          "type": "ENUM",
+          "enum": "motivo_moderacion"
+        },
+        {
+          "name": "moderada_por",
+          "label": "Quién moderó (usuario de Wasichai)",
+          "type": "UUID"
+        },
+        {
+          "name": "moderada_en",
+          "label": "Moderada en",
+          "type": "DATETIME"
+        },
+        {
+          "name": "apelacion",
+          "label": "Apelación del autor (una vez)",
+          "type": "LONG_TEXT"
+        },
+        {
+          "name": "apelada_en",
+          "label": "Apelada en",
+          "type": "DATETIME"
+        },
+        {
+          "name": "apelacion_decidida_por",
+          "label": "Quién decidió la apelación (otro moderador)",
+          "type": "UUID"
+        },
+        {
+          "name": "apelacion_resultado",
+          "label": "Resultado de la apelación",
+          "type": "ENUM",
+          "enum": "resultado_apelacion"
+        }
+      ],
+      "uniqueConstraints": [
+        ["matricula", "docente_edicion"],
+        ["matricula", "version_recurso"]
+      ]
+    },
+    {
+      "name": "puntaje_valoracion",
+      "label": "Puntaje de valoración",
+      "pluralLabel": "Puntajes de valoración",
+      "description": "El valor de 1 a 5 de una dimensión en una valoración (ADR-0038). Lo escribe solo el LMS.",
+      "apiOnly": true,
+      "fields": [
+        {
+          "name": "estudiante_id",
+          "label": "Estudiante que valora (usuario de Wasichai)",
+          "type": "UUID",
+          "required": true,
+          "indexed": true
+        },
+        {
+          "name": "valor",
+          "label": "Valor (1 a 5)",
+          "type": "INTEGER",
+          "required": true
+        }
+      ],
+      "uniqueConstraints": [["valoracion", "dimension"]]
+    },
+    {
+      "name": "denuncia_valoracion",
+      "label": "Denuncia de valoración",
+      "pluralLabel": "Denuncias de valoraciones",
+      "description": "El valorado denuncia un comentario que ve (ADR-0038 §16). No oculta nada por sí sola: la resuelve quien modera. La escribe solo el LMS.",
+      "apiOnly": true,
+      "fields": [
+        {
+          "name": "valoracion_id",
+          "label": "Valoración denunciada (id; el valorado no lee valoraciones)",
+          "type": "UUID",
+          "required": true,
+          "indexed": true
+        },
+        {
+          "name": "denunciante_id",
+          "label": "Quién denuncia (usuario de Wasichai)",
+          "type": "UUID",
+          "indexed": true
+        },
+        {
+          "name": "motivo",
+          "label": "Motivo (texto plano)",
+          "type": "LONG_TEXT"
+        },
+        {
+          "name": "estado",
+          "label": "Estado",
+          "type": "ENUM",
+          "enum": "estado_denuncia",
+          "required": true,
+          "defaultValue": "ABIERTA"
+        },
+        {
+          "name": "resuelta_por",
+          "label": "Quién la resolvió (usuario de Wasichai)",
+          "type": "UUID"
+        }
+      ]
     }
   ],
   "relationships": [
@@ -1466,6 +1975,15 @@
       "required": true
     },
     {
+      "name": "pregunta_leccion_repaso",
+      "label": "Lección de repaso",
+      "inverseLabel": "Preguntas que repasa",
+      "type": "MANY_TO_ONE",
+      "source": "pregunta",
+      "target": "leccion",
+      "fieldName": "leccion_repaso"
+    },
+    {
       "name": "opcion_pregunta",
       "label": "Pregunta",
       "inverseLabel": "Opciones",
@@ -1533,6 +2051,93 @@
       "source": "comentario_revision",
       "target": "version_curso",
       "fieldName": "version_curso",
+      "required": true
+    },
+    {
+      "name": "aprobacion_creditos_version_curso",
+      "label": "Versión del curso",
+      "inverseLabel": "Aprobaciones de créditos",
+      "type": "MANY_TO_ONE",
+      "source": "aprobacion_creditos",
+      "target": "version_curso",
+      "fieldName": "version_curso",
+      "required": true
+    },
+    {
+      "name": "version_curso_politica_credito",
+      "label": "Política de crédito",
+      "inverseLabel": "Versiones de curso que la usan",
+      "type": "MANY_TO_ONE",
+      "source": "version_curso",
+      "target": "politica_credito",
+      "fieldName": "politica_credito"
+    },
+    {
+      "name": "aprobacion_creditos_politica",
+      "label": "Política de crédito aplicada",
+      "inverseLabel": "Aprobaciones de créditos",
+      "type": "MANY_TO_ONE",
+      "source": "aprobacion_creditos",
+      "target": "politica_credito",
+      "fieldName": "politica_credito"
+    },
+    {
+      "name": "brief_curso",
+      "label": "Curso",
+      "inverseLabel": "Briefs",
+      "type": "MANY_TO_ONE",
+      "source": "brief",
+      "target": "curso",
+      "fieldName": "curso",
+      "required": true
+    },
+    {
+      "name": "valoracion_matricula",
+      "label": "Matrícula",
+      "inverseLabel": "Valoraciones",
+      "type": "MANY_TO_ONE",
+      "source": "valoracion",
+      "target": "matricula",
+      "fieldName": "matricula",
+      "required": true
+    },
+    {
+      "name": "valoracion_edicion",
+      "label": "Edición",
+      "inverseLabel": "Valoraciones",
+      "type": "MANY_TO_ONE",
+      "source": "valoracion",
+      "target": "edicion_curso",
+      "fieldName": "edicion",
+      "required": true
+    },
+    {
+      "name": "valoracion_version_recurso",
+      "label": "Versión de recurso valorada",
+      "inverseLabel": "Valoraciones",
+      "type": "MANY_TO_ONE",
+      "source": "valoracion",
+      "target": "version_recurso",
+      "fieldName": "version_recurso"
+    },
+    {
+      "name": "puntaje_valoracion_valoracion",
+      "label": "Valoración",
+      "inverseLabel": "Puntajes",
+      "type": "MANY_TO_ONE",
+      "source": "puntaje_valoracion",
+      "target": "valoracion",
+      "fieldName": "valoracion",
+      "required": true
+    },
+    {
+      "name": "puntaje_valoracion_dimension",
+      "label": "Dimensión",
+      "inverseLabel": "Puntajes",
+      "type": "MANY_TO_ONE",
+      "source": "puntaje_valoracion",
+      "target": "dimension_valoracion",
+      "fieldName": "dimension",
       "required": true
     }
   ]

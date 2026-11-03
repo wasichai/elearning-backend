@@ -120,6 +120,25 @@ class CatalogRepository(
             .awaitSingle()
             .toMap()
 
+    // los indicadores congelados de las asignaciones docentes de la organización (ADR-0038 §12), sin nadie dentro: el
+    // agregado público de un perfil sale de ellos. se lee la tabla fija, no la capacidad reputation (nadie la usa)
+    suspend fun teacherRatings(organization: UUID): List<TeacherRating> =
+        db
+            .sql(
+                "SELECT sujeto_id, dimension, n, media FROM lms.indicador_valoracion " +
+                    "WHERE organizacion_id = :org AND destino = 'DOCENCIA' AND congelado AND media IS NOT NULL",
+            ).bind("org", organization)
+            .map { row, _ ->
+                TeacherRating(
+                    row.get("sujeto_id", UUID::class.java)!!.toString(),
+                    row.get("dimension", String::class.java)!!,
+                    row.get("n", Number::class.java)!!.toInt(),
+                    row.get("media", BigDecimal::class.java)!!,
+                )
+            }.all()
+            .collectList()
+            .awaitSingle()
+
     suspend fun delete(
         organization: String,
         slugs: Collection<String>,

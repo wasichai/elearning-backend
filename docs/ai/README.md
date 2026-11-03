@@ -1,7 +1,8 @@
 # IA y multimedia (Fase 5)
 
 **Estado: planificado (F5). Nada de esto está implementado.** Este documento fija el diseño para que F5 empiece con
-decisiones tomadas y riesgos conocidos. Requisitos de origen: secciones 10, 11 y 12 de la especificación, resumidas en
+decisiones tomadas y riesgos conocidos; las de versión, proveedores, trabajos, límites y `AgentRun` están en
+[ADR-0033](../adr/0033-fase-5-ia.md). Requisitos de origen: secciones 10, 11 y 12 de la especificación, resumidas en
 [`docs/product/requirements.md`](../product/requirements.md); fase y criterio de aceptación en
 [`docs/product/roadmap.md`](../product/roadmap.md). Amenazas en [`docs/security/README.md`](../security/README.md#45-agentes-ia-f5).
 
@@ -15,7 +16,9 @@ que es lógica determinista del módulo `elearning.ai` o de `authoring`; «perso
 
 1. **Brief** — temática, público, objetivos, duración, idioma, nivel, expertos y fuentes autorizadas. _Persona_
    (CREADOR) con formulario validado → `Brief`. Fuentes solo de la lista permitida o de paquetes importados
-   ([importador](../security/README.md#46-importador-asciidoc-f4)).
+   ([importador](../security/README.md#46-importador-asciidoc-f4)). Implementado en E33.1 ([#278](https://github.com/wasichai/elearning-backend/issues/278)):
+   Custom Object `brief` del curso y `BriefGuard` ([modelo](../architecture/domain-model.md)); se guarda a medias en
+   `BORRADOR` y solo pasa a `LISTO` completo, que es lo que consumirán los pasos.
 2. **Análisis de fuentes con procedencia** — _código_ (importador: grafo `include::`, secciones, anclas) + _Embabel_
    (extracción de conceptos y procedimientos) → `SourceAnalysis`, cada elemento ligado a `repo@sha:ruta#ancla`. Lo que
    no tiene procedencia se descarta.
@@ -44,24 +47,31 @@ validaciones. Extraer de una fuente, diseñar pedagógicamente y aprobar son tre
 
 ## 2. Embabel y Spring AI
 
-- **Versión**: Embabel Agent 1.5.3 (Apache-2.0). Verificado en `embabel-agent-api-1.5.3.pom`: declara
-  `spring-boot-starter:4.1.1` y `spring-ai-client-chat:2.0.1`, compatible con Boot 4.1 y Spring AI 2.0
-  ([referencias](../research/reference-repositories.md#1-versiones-reales)). Wasichai 1.8.0 fija
-  1.5.4 (desde 1.7.0), con `claude-haiku-5-5` como modelo por defecto del agente.
-- **Uso selectivo**: Embabel solo en los pasos 2–5 (y la opinión del 6). Sin abstracción multi-proveedor propia: una
-  interfaz interna pequeña por paso (`SourceAnalyzer`, `CourseDesigner`, `LessonDrafter`, `ScriptWriter`) que tiene dos
-  implementaciones, Embabel y el doble determinista (§7). Sirve para probar y para comparar modelos (§9).
-- **APIs exactas de Embabel** (acciones, objetivos, salida tipada): a verificar contra el código de 1.5.3 al
-  implementar; no se simulan. Si algo no fuera compatible, se documenta aquí y se entrega la alternativa con Spring AI
-  `ChatClient` directo.
-- **Llamadas bloqueantes**: Embabel ejecuta acciones y herramientas en hilos propios (el `AgentRun` de `wasichai-agent`
-  usa `runBlocking` para volver al contexto del llamante). La canalización corre siempre en un trabajo (§5), en un
-  dispatcher acotado, nunca en el event loop de WebFlux.
+Decisión en [ADR-0033](../adr/0033-fase-5-ia.md) §1–§4.
+
+- **Versión**: Embabel Agent **1.5.4** (Apache-2.0, release del 2026-10-28), la misma que Wasichai 1.8.0. Depende de
+  Spring Boot 4.1.1, Spring AI 2.0.1, `anthropic-java` 2.40.1 y `openai-java` 4.49.0, con bytecode Java 21 y
+  `spring-webflux` (no MVC): compatible con este repositorio. Spring AI y los SDK no se fijan por separado. La 1.5.3,
+  que se había leído en [referencias](../research/reference-repositories.md#1-versiones-reales), no conoce Claude 5 ni
+  GPT-6 y falla con 400 contra Claude 5.
+- **Proveedores**: Anthropic (`/v1/messages`) y OpenAI (Responses API, `/v1/responses`), ambos opcionales; cada uno se
+  activa solo con su clave, mediante una compuerta propia en `elearning.ai` (los starters no arrancan sin clave y el
+  `EmbabelGate` de Wasichai solo cubre Anthropic). Con los dos, Anthropic es el de por defecto.
+- **Uso selectivo**: Embabel solo en los pasos 2–5 (y la opinión del 6), con **una llamada tipada por paso**
+  (`PromptRunner.createObject`, nombre exacto a verificar contra 1.5.4), sin planificador, sin herramientas y con el
+  cliente MCP desactivado. Sin abstracción multi-proveedor propia: una interfaz interna pequeña por paso
+  (`SourceAnalyzer`, `CourseDesigner`, `LessonDrafter`, `ScriptWriter`) que tiene dos implementaciones, Embabel y el
+  doble determinista (§7). Sirve para probar y para comparar modelos (§9). Si algo no fuera compatible, se documenta
+  aquí y se entrega la alternativa con Spring AI `ChatClient` directo.
+- **Llamadas bloqueantes**: la canalización corre siempre en un trabajo (§5), en un dispatcher acotado, nunca en el
+  event loop de WebFlux.
+- **Reintentos**: el interno de Embabel (10 por defecto) baja a 1–2; la política de reintentos es la de la cola (§5).
 - **Perfiles**: `wasichai-test` advierte que un perfil llamado `test` puede desactivar los agentes de Embabel; las
   pruebas no lo usan.
-- **Catálogo de modelos**: `wasichai-agent` documenta que el catálogo de Embabel 1.5.2 no conocía `claude-opus-5` y
-  por eso su modelo por defecto es `claude-haiku-4-5`. Qué modelos reconoce 1.5.3: a verificar. El modelo es
-  configuración, no código.
+- **Catálogo de modelos**: 1.5.4 conoce `claude-opus-5-5`, `claude-sonnet-5-5`, `claude-haiku-5-5` y `gpt-6-*`. El
+  modelo es configuración por paso, no código; propuesta: `claude-haiku-5-5`/`gpt-6-luna` para extracción,
+  `claude-sonnet-5-5`/`gpt-6.1-sol` para diseño, borrador y guion, `claude-opus-5-5`/`gpt-6-astra` como referencia de
+  comparación (los de OpenAI, a verificar en el catálogo de 1.5.4). Un modelo desconocido falla al arrancar.
 
 ## 3. Relación con `wasichai-agent`
 
@@ -81,7 +91,7 @@ canalización editorial y no se modifica.
   sigue el mismo criterio y usa el doble determinista (§7).
 
 La canalización editorial usa Embabel directamente desde `elearning.ai`, con su configuración de modelo propia; no
-reutiliza las herramientas del asistente. Nombre: `wasichai.agent.AgentRun` ya existe como clase interna de una
+depende de `wasichai-agent` ni reutiliza las herramientas del asistente, que queda fuera de F5 (ADR-0033 §8). Nombre: `wasichai.agent.AgentRun` ya existe como clase interna de una
 pregunta; la entidad de este proyecto lleva otro nombre técnico en Kotlin (se fija en
 [`domain-model.md`](../architecture/domain-model.md)) para no confundirlas.
 
@@ -108,10 +118,14 @@ Una fila por ejecución de un paso (o por pregunta del asistente). Campos exigid
 | `idempotency_key`, `attempt`            | Clave del trabajo y número de reintento                                                                 |
 | `generator`                             | `MODEL` o `DETERMINISTIC` (§7)                                                                          |
 
-Almacenamiento: `inputs`, `output` y `validations` son JSON y el tipo `JSON` de Wasichai aún no existe, así que el
-registro va en una tabla fija del esquema `lms` (`ModuleMigration` orden 200), con lectura por API propia bajo
-`/api/lms/**` y el mismo alcance que el curso. Encaja con [ADR-0004](../adr/0004-modelo-hibrido-custom-objects-y-tablas-fijas.md);
-se confirma con un ADR en F5. Las filas no se borran; la retención se define en F6.
+Almacenamiento ([ADR-0033](../adr/0033-fase-5-ia.md) §7): tabla fija **`lms.ejecucion_agente`** (`ModuleMigration`
+orden 200), porque `inputs`, `output` y `validations` son JSON (`jsonb`) y el tipo `JSON` de Wasichai aún no existe
+([ADR-0004](../adr/0004-modelo-hibrido-custom-objects-y-tablas-fijas.md)). Cada fila apunta a su trabajo de `lms.trabajo`.
+Lectura por API propia bajo `/api/lms/ai/**` con el mismo alcance que el curso. Las filas no se editan (salvo el cierre
+de la ejecución y las intervenciones, que se añaden) ni se purgan con los trabajos; la retención se define en F6.
+Implementado en E32.4 ([#275](https://github.com/wasichai/elearning-backend/issues/275)): `AgentExecutionLog` (`elearning.ai`)
+abre, cierra y añade intervenciones; el coste sale de `lms.ai.rates` y la lectura es `GET /api/lms/ai/runs`
+([docs/api](../api/lms.md#registro-de-ejecuciones-de-ia-f5-adr-0033-7)).
 
 ## 5. Esquemas tipados y trabajos
 
@@ -120,24 +134,23 @@ se confirma con un ADR en F5. Las filas no se borran; la retención se define en
 procedencia). Inválida → `INVALID_OUTPUT`, nunca se guarda como borrador; se permite un número limitado de
 reintentos de corrección (configurable) y después queda para revisión humana.
 
-**Trabajos persistentes, idempotentes y cancelables.** Verificado en `wasichai/wasichai:docs/modules/automation.md` y
-`Automation.kt`: la cola de `wasichai-automation` (`automation_runs`, reclamada con `FOR UPDATE SKIP LOCKED` por
-`AutomationDrain`) solo ejecuta las acciones de sus reglas (`UPDATE_FIELD`, `CREATE_RECORD`, `WEBHOOK`,
-`GENERATE_DOCUMENT`, `NOTIFY`) y no ofrece un SPI para acciones propias. Por eso no puede llevar directamente un paso de
-IA. Diseño previsto, a confirmar con un ADR en F5:
+**Trabajos persistentes, idempotentes y cancelables** ([ADR-0033](../adr/0033-fase-5-ia.md) §5, §6 y §9). La cola
+de `wasichai-automation` solo ejecuta las acciones de sus reglas y no ofrece un SPI para acciones propias
+(`wasichai/wasichai:docs/modules/automation.md`). Cada paso es un `JobHandler` de la cola propia **`lms.trabajo`**
+([ADR-0018](../adr/0018-fase-4-estudio-revision-e-importador.md) §4, [ADR-0022](../adr/0022-limites-y-ciclo-de-vida-de-los-trabajos.md)),
+no una tabla nueva:
 
-- Tabla fija `lms.ai_job` con el mismo patrón que `automation_runs`: estado, intentos, `FOR UPDATE SKIP LOCKED`,
-  sondeo por temporizador; reclamación con `ClusterLock` donde haga falta (ADR-039 de Wasichai).
-- El permiso se comprueba **al encolar**, como el usuario; el trabajo escribe con `RecordService.asPlatform(org,
-"ai:<job>")`, así que el `audit_log` lo etiqueta y `requested_by` queda en `AgentRun`.
+- El permiso (`GENERAR`, `VALIDAR`) se comprueba **al encolar** y se vuelve a mirar al ejecutar (ADR-0022 §4); el
+  trabajo escribe como plataforma, así que el `audit_log` lo etiqueta y `requested_by` queda en `AgentRun`.
 - **Idempotencia**: clave = hash de (paso, entradas, hashes de fuentes, versión de instrucciones y plantilla, modelo).
-  Un reencolado con la misma clave devuelve el resultado existente: no se paga dos veces ni se crea un segundo
-  borrador.
-- **Reintentos controlados**: solo errores transitorios del proveedor, con espera creciente y tope; un error de
-  esquema no se reintenta igual.
-- **Cancelación**: marca `CANCELLED` comprobada entre pasos y entre llamadas al modelo.
-- **Límites**: concurrencia por organización, tokens e iteraciones por ejecución, presupuesto por curso.
-- Si en F5 Wasichai ofrece un SPI de trabajos genérico, se usa en lugar de la tabla propia.
+  Un reencolado con la misma clave mientras el trabajo no termina devuelve el existente: no se paga dos veces ni se
+  crea un segundo borrador.
+- **Reintentos controlados**: un solo nivel. Embabel reintenta 1–2 veces; la cola reintenta 429 y 5xx con espera
+  creciente y tope; 400, 401, esquema inválido y presupuesto agotado son fallo permanente (`PermanentJobFailure`).
+- **Cancelación**: la cola gana el estado `CANCELLED`, comprobado entre llamadas al modelo; no deja borrador.
+- **Límites**: `max_tokens` por paso, concurrencia por organización y presupuesto por curso; superar los dos últimos al
+  encolar es `429` con `Retry-After`. Un paso es una llamada, más los reintentos de corrección acotados.
+- Corre en un dispatcher acotado, nunca en el event loop de WebFlux.
 
 ## 6. Protección contra prompt injection
 
@@ -164,19 +177,30 @@ procedimiento con su _Objetivo_ y _Verificación_). Reglas:
 - Las pruebas de la canalización (idempotencia, cancelación, rechazo de salida inválida, permisos) usan el doble;
   ninguna prueba de CI llama a un proveedor real.
 - No se presenta como «Embabel simulado»: es una implementación distinta de la misma interfaz.
+- Aparte está el **doble HTTP** (WireMock) de las API de Anthropic y OpenAI, solo en pruebas de integración: prueba
+  Embabel, la deserialización y los errores del proveedor sin salir a la red. No sustituye al doble determinista
+  ([ADR-0033](../adr/0033-fase-5-ia.md) §11).
 
 ## 8. Permisos separados
 
 Generar, validar, aprobar y publicar son permisos distintos (acciones declaradas de Wasichai, ADR-042):
 
-| Acción                                              | Quién                                     | Objeto                                             | Estado                        |
-| --------------------------------------------------- | ----------------------------------------- | -------------------------------------------------- | ----------------------------- |
-| Generar (encolar un paso)                           | CREADOR con acceso al curso               | Trabajo IA o versión; nombre a decidir (`GENERAR`) | A decidir en F5               |
-| Validar (lanzar y aceptar el informe de validación) | CREADOR o REVISOR asignado                | Versión; nombre a decidir (`VALIDAR`)              | A decidir en F5               |
-| Aprobar                                             | Persona con `APROBAR`, distinta del autor | `version_curso`                                    | Planificado (F1 en el modelo) |
-| Publicar                                            | Persona con `PUBLICAR`                    | `version_curso`                                    | Planificado (F1 en el modelo) |
+| Acción                                              | Quién                                     | Objeto                          | Estado                        |
+| --------------------------------------------------- | ----------------------------------------- | ------------------------------- | ----------------------------- |
+| Generar (encolar un paso)                           | CREADOR con acceso al curso               | `GENERAR` sobre `version_curso` | Implementado (E33.3)          |
+| Validar (lanzar y aceptar el informe de validación) | REVISOR, nunca quien genera               | `VALIDAR` sobre `version_curso` | Implementado (E33.3)          |
+| Aprobar                                             | Persona con `APROBAR`, distinta del autor | `version_curso`                 | Planificado (F1 en el modelo) |
+| Publicar                                            | Persona con `PUBLICAR`                    | `version_curso`                 | Planificado (F1 en el modelo) |
 
 Los trabajos IA no tienen ninguna de las dos últimas.
+
+`elearning.ai.AiPermissions` las comprueba ([#280](https://github.com/wasichai/elearning-backend/issues/280)):
+`requireToEnqueue` exige la acción a quien llama con `CurrentUser.requirePermission` (`403`) y `requireStillAllowed`
+la vuelve a mirar al ejecutar con los roles guardados de quien pidió el trabajo (`Requesters`, ADR-0022 §4). Cada paso
+de E33.4–E33.6 llama a las dos. Validar es del REVISOR y no del CREADOR, como aprobar: ningún rol da por bueno lo que
+él mismo genera (separación de deberes, [seguridad §3](../security/README.md#3-separación-de-deberes)), y el
+issue lo pide así («quien solo puede generar recibe `403` al validar»). Aprobar sigue sin autoaprobación
+(`EditorialWorkflowGuard`).
 
 ## 9. Comparación reproducible de modelos
 
@@ -213,8 +237,9 @@ Cambio estructural: alta, baja o reordenación de unidades, lecciones o evaluaci
 
 ## 11. Configuración prevista
 
-`ANTHROPIC_API_KEY` (o el proveedor elegido), modelo por paso, límites de tokens, iteraciones y concurrencia,
-presupuesto, y tarifas para estimar coste. Lista y valores en [operación](../operations/README.md#variables-de-entorno).
+`ANTHROPIC_API_KEY` y `OPENAI_API_KEY` (ambas opcionales), sus URL base (`ANTHROPIC_BASE_URL`, `OPENAI_BASE_URL`,
+que tienen precedencia sobre las propiedades), proveedor por defecto, modelo por paso, `max_tokens` por paso,
+concurrencia por organización, presupuesto por curso y tarifas para estimar coste. Lista y valores en [operación](../operations/README.md#variables-de-entorno).
 
 ## 12. Remotion (sección 12)
 

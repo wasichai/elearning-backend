@@ -51,10 +51,24 @@ data class CreditProposalView(
     val status: String,
 )
 
+// el acto que respalda los créditos aprobados: qué órgano, con qué documento y con qué política (ADR-0035). quién lo
+// registró no se publica
+data class CreditApprovalSummary(
+    val credits: BigDecimal,
+    val policyId: String?,
+    val policyVersion: String?,
+    val approvingBody: String,
+    val documentReference: String,
+    val documentDate: LocalDate?,
+    val approvedAt: Instant?,
+)
+
 data class CreditsView(
     val system: String?,
+    // solo con una aprobación vigente; null: los créditos son propuestos, no oficiales
     val approved: BigDecimal?,
     val proposal: CreditProposalView?,
+    val approval: CreditApprovalSummary? = null,
 )
 
 data class VersionView(
@@ -124,6 +138,22 @@ data class TeacherView(
     val professionalTitle: String?,
     val bio: String?,
     val specialties: String?,
+    // el agregado de sus valoraciones, solo si lo consiente y con muestra suficiente (ADR-0038 §12); si no, null
+    val ratings: TeacherRatings? = null,
+)
+
+// el agregado público de un docente: media y n por dimensión, con el criterio que lo explica (RF-REP-06)
+data class TeacherRatings(
+    val criterion: String,
+    val criterionVersion: String,
+    val dimensions: List<PublicRating>,
+)
+
+data class PublicRating(
+    val key: String,
+    val name: String?,
+    val mean: BigDecimal,
+    val n: Int,
 )
 
 data class CourseDetail(

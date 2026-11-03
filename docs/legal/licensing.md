@@ -2,8 +2,8 @@
 
 Hechos verificados sobre las licencias de lo que este proyecto usa, sus consecuencias prácticas y las opciones para
 decidir. **No es asesoría legal**: recoge hechos y opciones; la decisión y cualquier interpretación vinculante
-corresponden a los titulares de los derechos, con asesoría si la necesitan. El proyecto usa la licencia provisional
-**LGPL-3.0-or-later** ([ADR-0015](../adr/0015-licencia-lgpl-provisional.md)).
+corresponden a los titulares de los derechos, con asesoría si la necesitan. El proyecto usa la licencia
+**LGPL-3.0-or-later**, definitiva desde el 2026-11-03 ([ADR-0030](../adr/0030-lgpl-definitiva-y-conservacion-segun-los-terminos.md)).
 
 ## Estado verificado
 
@@ -18,7 +18,7 @@ públicos (Maven Central, npm).
 | `wasichai/sgspe`                                                              | **Ninguna**                                                                     | Sin archivo; `slides/package.json` dice `"license": "UNLICENSED"`                                                    |
 | `wasichai/sgspe-ui`                                                           | **Ninguna**                                                                     | Sin archivo                                                                                                          |
 | `wasichai/srtm-backend` (manuales SRTM)                                       | **Ninguna** para el proyecto; solo las de sus fuentes (OFL, DejaVu, Liberation) | Árbol del repositorio                                                                                                |
-| Embabel Agent 1.5.3                                                           | Apache-2.0                                                                      | Repositorio `embabel/embabel-agent`                                                                                  |
+| Embabel Agent 1.5.4                                                           | Apache-2.0                                                                      | Repositorio `embabel/embabel-agent`                                                                                  |
 | Spring Boot 4.1.1, Spring AI 2.0.1, Kotlin 2.4.21                             | Apache-2.0                                                                      | POM en Maven Central                                                                                                 |
 | React, Vite, Tailwind CSS, React Router, TanStack Query, Zod, i18next, Vitest | MIT                                                                             | Campo `license` en npm                                                                                               |
 | Playwright                                                                    | Apache-2.0                                                                      | Campo `license` en npm                                                                                               |
@@ -72,8 +72,9 @@ contenido propio; el derivado de los manuales necesita antes el permiso del titu
 
 ## Decisión
 
-1. **Licencia del proyecto: LGPL-3.0-or-later, provisional** ([ADR-0015](../adr/0015-licencia-lgpl-provisional.md)),
-   decidida por la dirección el 2026-10-28. `LICENSE` (LGPL-3.0) y `COPYING` (GPL-3.0) en ambos repositorios;
+1. **Licencia del proyecto: LGPL-3.0-or-later**, provisional desde el 2026-10-28
+   ([ADR-0015](../adr/0015-licencia-lgpl-provisional.md)) y definitiva desde el 2026-11-03
+   ([ADR-0030](../adr/0030-lgpl-definitiva-y-conservacion-segun-los-terminos.md)). `LICENSE` (LGPL-3.0) y `COPYING` (GPL-3.0) en ambos repositorios;
    `package.json` la declara. Cubre el código, la documentación y los materiales propios de la demo.
 2. **Pendiente: licencia de Wasichai y de los manuales.** Sin ella sigue bloqueado distribuir binarios o imágenes que
    incluyan Wasichai, y reutilizar el texto o las capturas de los manuales. La licencia que se dé a Wasichai debe ser

@@ -352,29 +352,6 @@ class SessionService(
 
     private fun zone(offering: RecordResponse) = ZoneId.of(offering.attributes["zona_horaria"].toString())
 
-    private fun view(
-        session: RecordResponse,
-        zone: ZoneId,
-        attendance: String?,
-    ): SessionView {
-        val a = session.attributes
-        return SessionView(
-            id = session.id,
-            title = a["titulo"].toString(),
-            type = a["tipo"].toString(),
-            modality = a["modalidad"].toString(),
-            start = instantOf(a["inicio"])!!,
-            end = instantOf(a["fin"])!!,
-            timeZone = zone.id,
-            status = a["estado"].toString(),
-            link = a["enlace"]?.toString(),
-            location = a["ubicacion"]?.toString(),
-            lessonId = a["leccion_id"]?.toString(),
-            originalSessionId = a["sesion_original_id"]?.toString(),
-            attendance = attendance,
-        )
-    }
-
     private fun invalid(
         field: String,
         message: String,
@@ -400,5 +377,38 @@ class SessionService(
         const val MAX_MINUTES = 1440
         val TYPES = setOf("TEORIA", "LABORATORIO", "CONSULTA", RECOVERY)
         val MODALITIES = setOf("PRESENCIAL", "VIRTUAL")
+
+        // una sesión como la sirven el aula y el espacio docente; también la usan los paneles (#261)
+        fun view(
+            session: RecordResponse,
+            zone: ZoneId,
+            attendance: String?,
+        ): SessionView {
+            val a = session.attributes
+            return SessionView(
+                id = session.id,
+                title = a["titulo"].toString(),
+                type = a["tipo"].toString(),
+                modality = a["modalidad"].toString(),
+                start = instantOf(a["inicio"])!!,
+                end = instantOf(a["fin"])!!,
+                timeZone = zone.id,
+                status = a["estado"].toString(),
+                link = a["enlace"]?.toString(),
+                location = a["ubicacion"]?.toString(),
+                lessonId = a["leccion_id"]?.toString(),
+                originalSessionId = a["sesion_original_id"]?.toString(),
+                attendance = attendance,
+            )
+        }
+
+        // las que aún no terminan, sin las canceladas, la más próxima primero: la que está en curso aún cuenta (#261)
+        fun upcoming(
+            sessions: List<RecordResponse>,
+            now: Instant,
+        ): List<RecordResponse> =
+            sessions
+                .filter { it.attributes[STATE]?.toString() != CANCELLED && instantOf(it.attributes["fin"])?.isAfter(now) == true }
+                .sortedBy { instantOf(it.attributes["inicio"]) }
     }
 }

@@ -23,8 +23,8 @@ import wasichai.core.data.RecordService
 import java.util.UUID
 
 // la importación como trabajo de la cola (ADR-0010 etapas 1 y 2, ADR-0018 §6): lee la fuente, arma el grafo y propone un
-// borrador de versión del curso con una unidad por capítulo y una lección por sección, cada lección con su traza
-// repo@sha:ruta#ancla y sin el cuerpo del manual. nunca publica: la versión nace BORRADOR y la sigue quien la pidió.
+// borrador de versión del curso con una unidad por capítulo y una lección por sección, cada una con su traza
+// repo@sha:ruta#ancla (RF-IMP-03) y sin el cuerpo del manual. nunca publica: la versión nace BORRADOR y la sigue quien la pidió.
 //
 // corre como la plataforma de su organización (no hay petición ni token en la cola), con el autor puesto en autor_id y
 // `import:<trabajo>` en la auditoría; los permisos de quien la pidió se comprueban al encolar y otra vez al ejecutar.
@@ -103,12 +103,12 @@ class ImportJobHandler(
                 )
         val version = records.create(VERSION, RecordRequest(attributes))
         units.forEachIndexed { u, unit ->
-            val created = records.create(UNIT, RecordRequest(mapOf(VERSION to version.id, ORDER to u + 1, TITLE to unit.title)))
+            val created = records.create(UNIT, RecordRequest(mapOf(VERSION to version.id, ORDER to u + 1, TITLE to unit.title, SOURCE to unit.trace)))
             unit.lessons.forEachIndexed { l, lesson ->
                 records.create(
                     LESSON,
                     RecordRequest(
-                        mapOf(UNIT to created.id, ORDER to l + 1, TITLE to lesson.title, "tipo" to "LECTURA", "referencia_fuente" to lesson.trace),
+                        mapOf(UNIT to created.id, ORDER to l + 1, TITLE to lesson.title, "tipo" to "LECTURA", SOURCE to lesson.trace),
                     ),
                 )
             }
@@ -136,6 +136,7 @@ class ImportJobHandler(
             lessons = units.sumOf { it.lessons.size },
             problemCount = problems.size,
             problems = problems.take(MAX_PROBLEMS),
+            problemsBySeverity = ProblemSeverity.count(problems),
         )
     }
 
@@ -144,6 +145,7 @@ class ImportJobHandler(
     private companion object {
         const val ORDER = "orden"
         const val TITLE = "titulo"
+        const val SOURCE = "referencia_fuente"
         const val TOO_LARGE = "FILE_TOO_LARGE"
         const val MAX_DETAIL = 500
         const val MAX_PROBLEMS = 500

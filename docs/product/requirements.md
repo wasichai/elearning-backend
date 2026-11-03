@@ -116,11 +116,19 @@ el cuándo, en [`roadmap.md`](roadmap.md).
 - **RF-CRE-06** · F1 · implementado ([#50](https://github.com/wasichai/elearning-backend/pull/50)) — Sin conversión entre ECTS y SCH.
   _Aceptación:_ no existe función de conversión; cada propuesta lleva un único sistema; la UI no muestra
   equivalencias.
-- **RF-CRE-07** · F6 · planificado — Políticas de crédito configurables por programa, institución y jurisdicción, y
-  versionadas.
+- **RF-CRE-07** · F6 · implementado ([#318](https://github.com/wasichai/elearning-backend/issues/318), ADR-0036) —
+  Políticas de crédito configurables por programa, institución y jurisdicción, y versionadas.
   _Aceptación:_ cambiar una política crea una versión nueva y las propuestas anteriores conservan la suya.
-- **RF-CRE-08** · F6 · planificado — Aprobación humana de créditos por una persona autorizada, auditada.
+  Implementado: `politica_credito` (borrador, publicada inmutable, `new-version`), métodos `ECTS_CARGA_TOTAL`,
+  `US_SCH_34CFR600_2` y `PE_LEY30220_HORAS_LECTIVAS` validados contra la norma, sistema `PE_CREDITO` y
+  `version_curso.politica_credito` ligada a una versión concreta.
+- **RF-CRE-08** · F6 · implementado ([#315](https://github.com/wasichai/elearning-backend/issues/315), ADR-0035) —
+  Aprobación humana de créditos por una persona autorizada, auditada.
   _Aceptación:_ sin el permiso → `403`; la aprobación queda en la auditoría con la política y versión usadas.
+  Implementado: acción `APROBAR_CREDITOS` (rol `AUTORIDAD_ACADEMICA`), distinta de la editorial `APROBAR`; separación de
+  funciones por datos (ni autor, ni revisor asignado, ni quien aprobó en la bandeja, ni docente del curso, tampoco ADMIN);
+  `aprobacion_creditos` de solo inserción con la instantánea de la política, el órgano y el documento; revocar es otra
+  fila; `creditos_aprobados` solo lo escribe el comando.
 
 ### RF-AUL — Aula del estudiante y progreso (§6.4)
 
@@ -146,7 +154,11 @@ el cuándo, en [`roadmap.md`](roadmap.md).
   intentos, retroalimentación, logros y certificados.
   _Aceptación:_ prueba E2E con los datos de demostración.
   _Avance:_ el aula muestra sesiones, plazos, evaluaciones, intentos, calificaciones, retroalimentación y certificado
-  (#153, front#42, front#45, recorrido real de front#61); faltan los «logros», que aún no tienen definición.
+  (#153, front#42, front#45, recorrido real de front#61). Los «logros» se derivan al leer el aula, sin modelo propio
+  (#265): `UNIT_COMPLETED` (unidad con todas sus lecciones contables completadas), `ASSESSMENT_PASSED` (evaluación
+  aprobada por un intento calificado, con su calificación visible) y `CERTIFICATE_ISSUED` (certificado emitido), en
+  `achievements` del aula ([docs/api/lms.md](../api/lms.md)), solo para el estudiante de la matrícula. Falta que la
+  interfaz los muestre y que el e2e los vea (front#154).
 - **RF-AUL-09** · F3 · implementado ([#155](https://github.com/wasichai/elearning-backend/pull/155), [#238](https://github.com/wasichai/elearning-backend/pull/238), [front#61](https://github.com/wasichai/elearning-frontend/pull/61)) — Notificaciones de publicación de contenido y de cambios de calendario.
   _Aceptación:_ reprogramar una sesión notifica a los matriculados de esa edición y a nadie más (prueba con el canal de
   correo local).
@@ -273,11 +285,15 @@ el cuándo, en [`roadmap.md`](roadmap.md).
 - **RF-CON-06** · F4 · implementado ([#208](https://github.com/wasichai/elearning-backend/pull/208)) — Las correcciones no borran versiones anteriores ni alteran las decisiones del
   revisor.
   _Aceptación:_ tras una corrección, comentarios y decisiones previas siguen ligados a su versión.
-- **RF-CON-07** · F4 · planificado — Generación de HTML y PDF desde AsciiDoc como trabajo asíncrono.
-  _Aceptación:_ una lección importada produce ambos artefactos validados sin bloquear peticiones HTTP.
-  _Avance:_ una `fuente_recurso` produce HTML y PDF en la cola, con hash y generador ([#209](https://github.com/wasichai/elearning-backend/pull/209), [#212](https://github.com/wasichai/elearning-backend/pull/212)), probado con un
-  generador doble; el adaptador se prueba con guiones en lugar de Asciidoctor. Falta el binario en la imagen de despliegue
-  (F6) y partir de una lección importada: la importación no copia el texto de los manuales (ADR-0015).
+- **RF-CON-07** · F4 · implementado ([#209](https://github.com/wasichai/elearning-backend/pull/209), [#212](https://github.com/wasichai/elearning-backend/pull/212), [#264](https://github.com/wasichai/elearning-backend/issues/264)) — Generación de HTML y PDF desde AsciiDoc como trabajo
+  asíncrono.
+  _Aceptación_ ([ADR-0031](../adr/0031-aceptacion-de-la-generacion-con-una-fuente-propia.md)): una `fuente_recurso`
+  AsciiDoc propia, con `include::`, una imagen y una tabla, produce en la cola HTML y PDF validados sin bloquear
+  peticiones HTTP. Antes pedía una lección importada, pero la importación no copia el texto de los manuales (ADR-0018 §6).
+  _Nota:_ `RenderApiTest` lo prueba con el doble y con Asciidoctor real, que CI instala en versiones fijas y exige
+  (`LMS_TEST_ASCIIDOCTOR=required`). En modo `secure`, `include::` queda como enlace y la imagen llega al PDF si va
+  incrustada como URI `data:`; en el HTML queda su texto alternativo. El binario en la imagen de despliegue es de F6
+  (RNF-OPS-04).
 
 ### RF-IMP — Importador AsciiDoc (§9; ADR-0010)
 
@@ -288,10 +304,10 @@ el cuándo, en [`roadmap.md`](roadmap.md).
   _Aceptación:_ pruebas con los manuales de SRTM (profundidad 1) y SGSPE (profundidad 2).
   _Avance:_ el analizador y la importación se prueban con fragmentos propios, con `leveloffset`, ciclos y defectos sembrados
   ([#207](https://github.com/wasichai/elearning-backend/pull/207), [#213](https://github.com/wasichai/elearning-backend/pull/213)); falta la comprobación manual documentada con los manuales reales (ADR-0018).
-- **RF-IMP-03** · F4 · planificado — Trazabilidad de cada elemento a `repositorio@sha:ruta#ancla`.
+- **RF-IMP-03** · F4 · implementado ([#213](https://github.com/wasichai/elearning-backend/pull/213), [#263](https://github.com/wasichai/elearning-backend/issues/263)) — Trazabilidad de cada elemento a `repositorio@sha:ruta#ancla`.
   _Aceptación:_ toda unidad propuesta enlaza su origen exacto.
-  _Avance:_ cada lección propuesta lleva `referencia_fuente` = `repo@sha:ruta#ancla` ([#213](https://github.com/wasichai/elearning-backend/pull/213)); `unidad` aún no tiene
-  campo de traza: la del capítulo va en su lección.
+  _Cumplimiento:_ cada unidad propuesta lleva en `referencia_fuente` la traza de su capítulo y cada lección la de su sección;
+  se congelan con la versión, la copia las lleva y las diferencias las comparan (`ImportApiTest`, `VersionDiffApiTest`).
 - **RF-IMP-04** · F4 · implementado ([#207](https://github.com/wasichai/elearning-backend/pull/207), [#213](https://github.com/wasichai/elearning-backend/pull/213)) — Informe de importación con includes, imágenes, enlaces y referencias faltantes
   o rotos.
   _Aceptación:_ una fuente con defectos sembrados los reporta todos.
@@ -304,6 +320,10 @@ el cuándo, en [`roadmap.md`](roadmap.md).
 - **RF-IA-01** · F5 · planificado — Brief estructurado (temática, público, objetivos, duración, idioma, nivel,
   expertos, fuentes autorizadas) validado por esquema.
   _Aceptación:_ un brief incompleto se rechaza con los campos que faltan.
+  _Avance:_ Custom Object `brief` del curso y `BriefGuard` (E33.1, [#278](https://github.com/wasichai/elearning-backend/issues/278)):
+  se guarda a medias en `BORRADOR` y pasar a `LISTO` incompleto es `400` con los campos que faltan; cada fuente es de la lista
+  permitida del importador o de un paquete ya importado al curso; lo escribe quien crea versiones. Falta el formulario
+  en el estudio y su uso por los pasos (E33.2).
 - **RF-IA-02** · F5 · planificado — Pasos reproducibles (análisis de fuentes con procedencia, diseño pedagógico,
   borrador con plantillas versionadas) con salidas tipadas; una salida inválida se rechaza o va a corrección.
   _Aceptación:_ prueba con una salida malformada del doble determinista.
@@ -322,8 +342,13 @@ el cuándo, en [`roadmap.md`](roadmap.md).
   estado editorial.
 - **RF-IA-07** · F5 · planificado — Permisos separados para generar, validar, aprobar y publicar.
   _Aceptación:_ un usuario que solo puede generar recibe `403` al aprobar.
-- **RF-IA-08** · F5 · planificado — Embabel se usa en la versión verificada (1.5.3); sin credenciales hay un doble
-  determinista claramente identificado; si algo no es compatible se documenta y se entrega una alternativa real.
+  _Avance:_ acciones declaradas `GENERAR` (CREADOR) y `VALIDAR` (REVISOR) sobre `version_curso` y `AiPermissions`
+  (E33.3, [#280](https://github.com/wasichai/elearning-backend/issues/280)): al encolar exige la acción a quien llama
+  (`403`) y al ejecutar la vuelve a mirar con sus roles guardados (ADR-0022); quien genera no valida, aprueba ni publica.
+  Falta que la exijan los pasos de E33.4–E33.6.
+- **RF-IA-08** · F5 · planificado — Embabel se usa en la versión 1.5.4, con Anthropic y OpenAI opcionales
+  ([ADR-0033](../adr/0033-fase-5-ia.md)); sin credenciales hay un doble determinista claramente identificado; si algo
+  no es compatible se documenta y se entrega una alternativa real.
   _Aceptación:_ la suite de pruebas pasa sin claves de proveedor y la UI marca los resultados del doble.
 - **RF-IA-09** · F5 · planificado — Comparación de modelos por tarea con entradas, criterios, versiones e informes
   conservados.
@@ -351,18 +376,33 @@ el cuándo, en [`roadmap.md`](roadmap.md).
 - **RF-REP-01** · F6 · planificado — Valoración de docentes por estudiantes matriculados en su edición, con
   dimensiones configurables; una por estudiante y edición, editable con registro de cambios.
   _Aceptación:_ un no matriculado o un visitante recibe `403`; un duplicado se rechaza.
+  _Avance:_ política en [ADR-0038](../adr/0038-politica-de-valoraciones.md); valorar, editar y retirar desde la matrícula
+  con progreso mínimo, ventana de 30 días tras el fin, conflicto de interés y una por par, sin que el valorado lea nada
+  ([#322](https://github.com/wasichai/elearning-backend/issues/322), `RatingApiTest`). Resúmenes y moderación en #323 y #324.
 - **RF-REP-02** · F6 · planificado — Valoración de recursos por claridad, utilidad, actualidad y calidad.
   _Aceptación:_ mismas reglas de RF-REP-01 aplicadas a recursos.
+  _Avance:_ como RF-REP-01, con las cuatro dimensiones en `dimension_valoracion` y la lección que usa el recurso completada
+  ([#322](https://github.com/wasichai/elearning-backend/issues/322)).
 - **RF-REP-03** · F6 · planificado — Feedback contextual por unidad o lección con estado de resolución.
   _Aceptación:_ el responsable cambia el estado y el autor del feedback lo ve.
 - **RF-REP-04** · F6 · planificado — Moderación y privacidad de valoraciones y feedback.
   _Aceptación:_ contenido moderado no visible; la identidad del valorador no se muestra al valorado.
+  _Avance:_ comentarios `PENDIENTE` hasta que alguien con `MODERAR` los publica u oculta con motivo tasado, nunca lo
+  propio ni lo que lo tiene como destino; denuncias del valorado por ficha opaca y una apelación decidida por otro
+  moderador ([#324](https://github.com/wasichai/elearning-backend/issues/324), ADR-0038, `RatingModerationApiTest`). El
+  valorado no lee valoraciones ([#322](https://github.com/wasichai/elearning-backend/issues/322)).
 - **RF-REP-05** · F6 · planificado — Indicadores agregados solo con criterio publicado y muestra mínima configurable;
   cantidad o velocidad no se presentan como calidad.
   _Aceptación:_ por debajo de la muestra mínima el indicador no se muestra.
+  _Avance:_ resúmenes del docente por edición y del autor por recurso con muestra mínima (`lms.reputation.min-sample`, 5,
+  piso 3), liberados tras las notas y congelados en `lms.indicador_valoracion`; criterio público y versionado
+  ([#323](https://github.com/wasichai/elearning-backend/issues/323), ADR-0038, `RatingSummaryApiTest`).
 - **RF-REP-06** · F6 · planificado — Perfiles de estudiante, docente, creador y revisor con su historial; un puntaje
   solo si está definido y es explicable.
   _Aceptación:_ cada cifra del perfil enlaza a su definición.
+  _Avance:_ el agregado de valoraciones de la ficha pública del docente (con su consentimiento `valoraciones_publicas` y
+  n ≥ k) enlaza su criterio publicado y versionado ([#325](https://github.com/wasichai/elearning-backend/issues/325),
+  ADR-0038); el resto de los perfiles, pendiente.
 
 ### RF-ADM — Administración, auditoría e informes (§13, §14, §15)
 
@@ -446,8 +486,16 @@ el cuándo, en [`roadmap.md`](roadmap.md).
   _Aceptación:_ prueba que busca la clave de prueba en registros y persistencia.
 - **RNF-SEG-10** · F6 · planificado — Límites de abuso y spam en endpoints públicos y de valoración.
   _Aceptación:_ superar el límite configurado → `429`. Si Wasichai ofrece limitación de tasa está a verificar.
-- **RNF-SEG-11** · F6 · planificado — Privacidad por defecto, conservación y eliminación de datos personales.
+  _Avance:_ los cambios de valoraciones por persona y día (`lms.reputation.max-edits-per-day`) responden `429` con
+  `Retry-After` ([#322](https://github.com/wasichai/elearning-backend/issues/322), ADR-0038), igual que las denuncias
+  (`max-reports-per-day`, [#324](https://github.com/wasichai/elearning-backend/issues/324)); el límite global, en el ingress (#73).
+- **RNF-SEG-11** · F6 · implementado — Privacidad por defecto, conservación y eliminación de datos personales.
   _Aceptación:_ política escrita y prueba de eliminación de un usuario de demostración.
+  _Avance:_ política en [ADR-0030](../adr/0030-lgpl-definitiva-y-conservacion-segun-los-terminos.md) (se conserva lo que aprueban los términos de uso) y
+  [ADR-0037](../adr/0037-terminos-de-uso-y-supresion-de-datos-personales.md) (qué se suprime y qué se disocia). Términos versionados con plazo y aceptación por persona;
+  sin aceptación vigente, `403` al matricularse o registrar progreso; al retirarla o vencer, la supresión corre en la cola
+  ([#304](https://github.com/wasichai/elearning-backend/issues/304)). Pruebas: `TermsApiTest` y `PersonalDataErasureApiTest`. Las
+  valoraciones entran en la supresión (ADR-0038 §21, [#325](https://github.com/wasichai/elearning-backend/issues/325), `RatingErasureApiTest`).
 - **RNF-SEG-12** · F6 · planificado — Copias de seguridad con restauración verificada.
   _Aceptación:_ ensayo de restauración documentado con fecha y resultado.
 
@@ -464,7 +512,7 @@ el cuándo, en [`roadmap.md`](roadmap.md).
   _Aceptación:_ pruebas por rol y etiqueta en Testing Library y recorrido por teclado en E2E; auditoría completa en F6.
 - **RNF-UX-05** · F1 · implementado ([#17 web](https://github.com/wasichai/elearning-frontend/pull/17)) — Textos con i18next; español inicial y estructura lista para más idiomas.
   _Aceptación:_ sin textos literales en componentes; claves `es` completas.
-- **RNF-UX-06** · F3 · implementado ([front#50](https://github.com/wasichai/elearning-frontend/pull/50), [front#69](https://github.com/wasichai/elearning-frontend/pull/69), [front#70](https://github.com/wasichai/elearning-frontend/pull/70)) (el menú de administración es de `@wasichai/core` y se muestra sin permisos) — Experiencias separadas por audiencia (catálogo, aula, docente, estudio,
+- **RNF-UX-06** · F3 · implementado ([front#50](https://github.com/wasichai/elearning-frontend/pull/50), [front#69](https://github.com/wasichai/elearning-frontend/pull/69), [front#70](https://github.com/wasichai/elearning-frontend/pull/70), [front#157](https://github.com/wasichai/elearning-frontend/pull/157)) (la administración es una sección del menú que solo ve quien tiene `admin` o `MANAGE_ORGANIZATION`) — Experiencias separadas por audiencia (catálogo, aula, docente, estudio,
   revisor, administración), no una pantalla universal.
   _Aceptación:_ un módulo de frontend por experiencia con su navegación filtrada por permisos.
   _Nota:_ catálogo, aula, docencia, estudio y revisión son módulos propios, y sus menús se muestran por permiso, nunca por
@@ -499,7 +547,7 @@ el cuándo, en [`roadmap.md`](roadmap.md).
   _Avance:_ la semilla tiene perfiles de todos los roles, matrículas y el curso corto `CORTO-101` (#161), y los recorridos
   de §20 corren sobre ella. Trae además un intento del estudiante demo en `CORTO-101-A`, enviado por el aula y calificado
   por su docente asignado (clave `attempts` de `model/demo/data.json`, #240). Las valoraciones llegan en F6.
-- **RNF-OSS-07** · F6 · planificado — Licencia del proyecto elegida y publicada solo con autorización expresa
+- **RNF-OSS-07** · F6 · implementado ([ADR-0030](../adr/0030-lgpl-definitiva-y-conservacion-segun-los-terminos.md)) — Licencia del proyecto elegida y publicada solo con autorización expresa
   (ADR-0009).
   _Aceptación:_ archivo `LICENSE` fusionado por decisión registrada del titular.
 

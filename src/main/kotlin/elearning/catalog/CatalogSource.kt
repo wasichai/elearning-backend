@@ -1,5 +1,6 @@
 package elearning.catalog
 
+import elearning.course.CreditPolicyRecords
 import elearning.course.PrerequisiteKnowledgeGuard
 import org.springframework.stereotype.Component
 import wasichai.core.common.PageRequest
@@ -24,6 +25,9 @@ class CatalogSource(
             profiles = all("perfil_docente"),
             assignments = all("docente_edicion"),
             knowledge = all(PrerequisiteKnowledgeGuard.VOCABULARY),
+            approvals = all(CREDIT_APPROVAL),
+            policies = all(CreditPolicyRecords.POLICY),
+            dimensions = all(RATING_DIMENSION),
         )
 
     private suspend fun all(
@@ -43,5 +47,7 @@ class CatalogSource(
 
     companion object {
         private const val PAGE = PageRequest.MAX_SIZE
+        const val CREDIT_APPROVAL = "aprobacion_creditos"
+        const val RATING_DIMENSION = "dimension_valoracion"
     }
 }

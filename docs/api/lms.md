@@ -120,8 +120,9 @@ Respuesta 200 `CourseDetail` = todos los campos de `CourseSummary` (salvo `nextO
     "totalHours": 216
   },
   "credits": {
-    "system": "ECTS", // "ECTS" | "SCH" | null (NINGUNO)
-    "approved": null, // número si una persona los aprobó
+    "system": "ECTS", // "ECTS" | "SCH" | "PE_CREDITO" | null (NINGUNO)
+    "approved": null, // número solo con una aprobación vigente (RF-CRE-08)
+    "approval": null, // { credits, policyId, policyVersion, approvingBody, documentReference, documentDate, approvedAt } o null
     "proposal": {
       // null si system es null
       "system": "ECTS",
@@ -165,9 +166,14 @@ Respuesta 200 `CourseDetail` = todos los campos de `CourseSummary` (salvo `nextO
       "teachers": [{ "name": "…", "professionalTitle": "…", "role": "TITULAR" }]
     }
   ],
-  "teachers": [{ "name": "…", "professionalTitle": "…", "bio": "…", "specialties": "…" }]
+  "teachers": [{ "name": "…", "professionalTitle": "…", "bio": "…", "specialties": "…", "ratings": null }]
 }
 ```
+
+`teachers[].ratings` (ADR-0038 §12, RF-REP-06): el agregado de las valoraciones del docente, solo si su perfil es
+público **y** consiente `valoraciones_publicas` (falso por omisión): media y n por dimensión de sus ediciones liberadas
+(cifras congeladas con n ≥ `lms.reputation.min-sample`, sumadas con la media ponderada por n), con `criterion`, el
+enlace a su definición (`/api/lms/public/ratings/criterion`), y `criterionVersion`. Si no, `null`. Nunca comentarios.
 
 `enrollmentStatus` (RF-CAT-09, [ADR-0023](../adr/0023-cupo-agotado-en-la-proyeccion-del-catalogo.md)) = `CLOSED` si la
 edición no está en `INSCRIPCION_ABIERTA` o la fecha de hoy (en la zona de la edición) cae fuera de
@@ -176,7 +182,8 @@ edición no está en `INSCRIPCION_ABIERTA` o la fecha de hoy (en la zona de la e
 dice solo eso, nunca cuántos ni quiénes se matricularon; llega con el refresco de la proyección, así que el comando de
 matrícula puede responder «sin cupo» antes de que la ficha lo diga. `full`, `enrollmentStatus` y el `enrollmentStatus`
 de `nextOffering` son campos añadidos: un cliente que no los lee sigue funcionando. Los créditos son siempre una **propuesta**: la interfaz debe decir
-«créditos propuestos, no oficiales» salvo que `approved` tenga valor.
+«créditos propuestos, no oficiales» salvo que `approved` tenga valor, y entonces citar el órgano y el documento de
+`approval`: la plataforma solo registra el reconocimiento de la institución (ADR-0035).
 
 ## Valores y nulos
 
@@ -186,7 +193,7 @@ de `nextOffering` son campos añadidos: un cliente que no los lee sigue funciona
   catálogo, no del modelo); lección `type` `LECTURA` \| `VIDEO` \| `PRESENTACION` \| `LABORATORIO` \|
   `EVALUACION` \| `SESION`; docente `role` `TITULAR` \| `ASISTENTE`. Un valor nuevo llega primero al modelo y aquí.
 - **Pueden ser `null`**: `summary`, `category`, `nextOffering`, `prerequisiteKnowledge`, `version.publishedAt`,
-  `requirements`, `assessment`, `certification`, `credits.system`, `credits.approved`, `credits.proposal`;
+  `requirements`, `assessment`, `certification`, `credits.system`, `credits.approved`, `credits.approval`, `credits.proposal`;
   en unidades `description` y `estimatedHours`; en lecciones `durationMinutes`, `summary` y `source`; en ediciones
   `enrollmentFrom`, `enrollmentUntil`, `capacity` y `schedule`; en docentes `professionalTitle`, `bio` y `specialties`.
   Las listas nunca son `null` (como mucho, vacías).
@@ -211,6 +218,9 @@ Cuerpo `{ "offering": "<código de la edición>" }`. Cabecera opcional `Idempote
 - `201` → `Enrollment` (nueva) · `200` → la misma `Enrollment` si ya existía.
 - `404` edición desconocida · `409` (`problem+json`, `detail` legible) inscripción cerrada, sin cupo, edición no
   disponible o prerrequisito sin cumplir · `401` sin sesión · `403` sin permiso de matricularse.
+- Sin aceptación vigente de los términos de uso ([Términos de uso](#términos-de-uso-y-supresión-adr-0037)), `403` antes
+  que nada, también para repetir una matrícula, con `detail` «Para matricularte debes aceptar los términos de uso
+  vigentes (…)».
 - Prerrequisitos (RF-ACA-08): si la versión de la edición declara cursos previos (`cursos_previos`), cada uno exige una
   matrícula propia `FINALIZADA` con resultado `APROBADO` en cualquier versión de ese curso. Si falta alguno, `409` con
   `detail` «Para matricularte en esta edición antes debes aprobar: `<código> (<título>)`; …», que nombra todos los que
@@ -294,10 +304,24 @@ legible. Lo mismo vale para sus sesiones y su finalización.
         }
       ]
     }
+  ],
+  "achievements": [
+    { "kind": "UNIT_COMPLETED", "at": "2026-11-03T15:20:00Z", "ref": "<id de la unidad>" },
+    { "kind": "ASSESSMENT_PASSED", "at": "2026-11-04T10:05:00Z", "ref": "<id de la evaluación>" },
+    { "kind": "CERTIFICATE_ISSUED", "at": "2026-11-05T09:00:00Z", "ref": "K7Q2-M9XW-4RTB" }
   ]
 }
 ```
 
+- `achievements` (RF-AUL-08): los logros de la matrícula, derivados al leer el aula de lo que ella misma muestra; no se
+  guardan ni se escriben, y no cuestan otra lectura. Del más antiguo al más reciente (uno sin `at`, al final):
+  - `UNIT_COMPLETED`: la unidad tiene completadas todas sus lecciones contables (las que no son `NOT_YET`; su `progress`
+    es `completedLessons == totalLessons > 0`). `ref` es el `id` de la unidad; `at`, el `completedAt` más reciente de esas
+    lecciones.
+  - `ASSESSMENT_PASSED`: la evaluación está aprobada por un intento calificado (`GRADED`), el que muestra su calificación
+    en `assessment.best`; un intento enviado con preguntas por corregir no cuenta. `ref` es el `id` de la evaluación
+    (`assessment.id` de su lección); `at`, el envío del primer intento que aprobó.
+  - `CERTIFICATE_ISSUED`: hay certificado emitido. `ref` es su código (`certificateCode`); `at`, su `issuedAt`.
 - `completion`: cómo se completa la lección — `EXPLICIT` (el estudiante la marca: `LECTURA`, `PRESENTACION`,
   `LABORATORIO`), `VIDEO_END` (al terminar el vídeo), `NOT_YET` (`EVALUACION`, `SESION`: llegan en F3).
 - `progress.status`: `NO_INICIADA` · `INICIADA` · `COMPLETADA` · `APROBADA` (F3). `evidence` solo cuando está completada:
@@ -331,6 +355,8 @@ otra matrícula, lección o tipo es `409` y no registra nada.
 - Solo la persona matriculada registra su progreso, sobre su matrícula `ACTIVA` (otra → `409`). Los eventos llegan a la
   vez sin carreras: uno por lección a la vez.
 - `400` si `type` no es uno de los tres o `clientEventId` no es un UUID.
+- `403` sin aceptación vigente de los términos de uso, sobre una matrícula propia y antes que las demás reglas («Para
+  registrar tu progreso debes aceptar los términos de uso vigentes (…)»); una ajena sigue siendo `404`.
 
 - `409` si la regla no se cumple: `MARKED_COMPLETE` en un vídeo o en una lección `NOT_YET`; `VIDEO_ENDED` en una
   lección que no es vídeo. El estado nunca retrocede.
@@ -421,13 +447,18 @@ intento ya enviado, lección sin evaluación o matrícula no activa. `400`: resp
   "percent": 70,
   "passed": true,
   "pending": false,
-  "questions": [{ "questionId": "…", "points": 2, "maxPoints": 2, "correct": true, "comment": null, "solution": null }]
+  "questions": [{ "questionId": "…", "points": 2, "maxPoints": 2, "correct": true, "comment": null, "solution": null, "reviewLessonId": "…" }]
 }
 ```
 
 `percent` y `passed` son `null` mientras `pending`. `solution` (`{ "optionIds": [...], "acceptedAnswers": [...] }`) solo si la
 evaluación muestra las soluciones al enviar (`mostrar_soluciones: AL_ENVIAR`) **y la persona ya aprobó o agotó sus intentos**:
 antes servirían para aprobar el siguiente. Con `NUNCA`, siempre `null`.
+
+`reviewLessonId` es la lección que repasa la pregunta (`leccion_repaso` de `pregunta`, #260), o `null` si no tiene. Sale
+con el resultado, una vez enviado el intento, sea cual sea `mostrar_soluciones`: no es una solución, solo dice dónde repasar,
+y es una lección de la misma versión que el estudiante ya puede abrir. Viene de la instantánea: no cambia aunque cambie el
+temario. Nunca está en `questions[]` del intento abierto.
 
 En `answers[]`, `submission` es `null` o `{ "id", "file": null | { "name", "contentType", "size", "url" } }`, tanto para el
 estudiante como para el docente. `deadline` es `null` sin tiempo límite. En `result`, una pregunta pendiente trae `points` y
@@ -465,6 +496,43 @@ tipo que detecta `wasichai-files`; lo demás es `400` en `archivo` (RNF-SEG-07).
 `PROGRAMADA` · `REPROGRAMADA` · `CANCELADA`. `attendance`: `null` o `PRESENTE` · `TARDE` · `AUSENTE` · `JUSTIFICADO`. El
 enlace solo es `https`.
 
+### Panel del estudiante
+
+`GET /api/lms/classroom/panel?page=0&size=25` → `ClassroomPanelItem[]`: una página de «Mis cursos» (las mismas matrículas
+y en el mismo orden que `GET /api/lms/classroom/enrollments`), cada una con lo que antes se leía aparte por matrícula
+(#261). `page` y `size` como en el roster: `size` vale 25 si falta y se acota a 1–200, `page` a ≥ 0; una página con
+menos de `size` elementos es la última. Solo las matrículas propias, también para un docente.
+
+`ClassroomPanelItem` = `Enrollment` más:
+
+```json
+{
+  "upcomingSessions": [{ "id": "…", "title": "…", "start": "…", "end": "…", "status": "PROGRAMADA", "attendance": null }],
+  "pendingAssessments": [
+    {
+      "lessonId": "…",
+      "assessment": {
+        "id": "…",
+        "title": "…",
+        "maxAttempts": 2,
+        "timeLimitMinutes": null,
+        "passingPercent": 60,
+        "attemptsUsed": 0,
+        "openAttemptId": null,
+        "best": null
+      }
+    }
+  ]
+}
+```
+
+- `upcomingSessions`: `Session[]` (como en `GET …/sessions`) sin las canceladas ni las ya terminadas, la más próxima
+  primero; la que está en curso sigue.
+- `pendingAssessments`: las evaluaciones no aprobadas con un intento abierto o con intentos por usar, en el orden del
+  curso. `assessment` es el de la lección en `Classroom`. No hay plazos de evaluación en el modelo.
+- Una matrícula que no está `ACTIVA` o ya tiene certificado no tiene nada por delante: las dos listas van vacías.
+- Se lee por lotes: las sentencias SQL no crecen con el número de matrículas de la página.
+
 ### Finalización y certificado
 
 - `GET /api/lms/classroom/enrollments/{id}/completion` → `{ "met": false, "rules": [{ "rule": "LESSONS", "met": true,
@@ -491,6 +559,137 @@ enlace solo es `https`.
 
 Congelado al emitirse: no cambia aunque cambien después el curso o la matrícula.
 
+## Términos de uso y supresión (ADR-0037)
+
+Con sesión. Los datos personales se conservan el plazo que la persona aprueba en los términos de uso
+([ADR-0030](../adr/0030-lgpl-definitiva-y-conservacion-segun-los-terminos.md)); sin aceptación vigente no hay matrícula ni
+progreso (`403`). El catálogo público no la pide.
+
+- `GET /api/lms/terms` → `{ "current": TermsVersion | null, "acceptance": TermsAcceptance | null }`: los vigentes (`null`
+  si la organización no publicó ninguno: entonces nadie se matricula) y la aceptación de quien pregunta.
+- `POST /api/lms/terms` `{ "text": "…", "retentionDays": 730 }` → `201` `TermsVersion`, la versión siguiente. Solo con
+  `MANAGE_ORGANIZATION` (`403`); `400` texto vacío o de más de 100 000 caracteres, o plazo fuera de 1–36 500 días. Una
+  versión publicada no cambia y publicar otra no altera ninguna aceptación.
+- `POST /api/lms/terms/acceptance` `{ "version": 3 }` → `200` `TermsAcceptance`. Acepta la versión vigente, que se nombra
+  (otra → `409`; sin términos publicados → `409`). Con una aceptación vigente, la renueva con esta versión y su plazo
+  desde ahora. Con una retirada o vencida, sus datos se están suprimiendo: `409` con `Retry-After` hasta que termine.
+- `DELETE /api/lms/terms/acceptance` → `202` `{ "jobId": "…" }`: retira la aceptación y encola la supresión de los datos
+  personales (repetirlo mientras no termina devuelve el mismo trabajo) · `404` sin aceptación.
+
+```json
+{
+  "current": { "version": 3, "text": "…", "retentionDays": 730, "publishedAt": "…" },
+  "acceptance": { "version": 2, "acceptedAt": "…", "expiresAt": "…", "withdrawnAt": null, "valid": true }
+}
+```
+
+`valid`: sin retirar y antes de `expiresAt`. Al retirarla o vencer, la supresión corre en la cola
+(`lms.privacy.sweep-every`, 1 h, encola las vencidas): suprime eventos, progreso, asistencias, entregas, intentos sin
+calificar, valoraciones (con sus puntajes, comentarios y apelaciones), denuncias resueltas y trabajos; deja sin la
+persona sus denuncias abiertas y la matrícula (`RETIRADA` si estaba activa), los intentos calificados y el certificado sin la
+persona (`holderName: null` en su verificación) y vacía su perfil docente. Detalle en
+[seguridad §7](../security/README.md#7-privacidad-y-retención).
+
+## Valoraciones del estudiante (F6, ADR-0038)
+
+Con sesión y la acción `VALORAR` (ESTUDIANTE; sin ella, `403`), desde una matrícula propia (ajena o inexistente → `404`).
+El valorado no lee nada de esto: DOCENTE y CREADOR no tienen `READ` sobre `valoracion` ni `puntaje_valoracion`, y la API
+de registros los cierra a todos (`apiOnly`).
+
+| Método | Ruta                                          | Resultado                                                         |
+| ------ | --------------------------------------------- | ----------------------------------------------------------------- |
+| GET    | `/api/lms/classroom/enrollments/{id}/ratings` | `RatingEligibility`: a quién puede valorar, con qué dimensiones   |
+| POST   | `/api/lms/classroom/enrollments/{id}/ratings` | `{ type, targetId, scores, comment }` → `201` `Rating`            |
+| GET    | `/api/lms/ratings/mine`                       | `Rating[]`, lo más nuevo primero                                  |
+| PUT    | `/api/lms/ratings/{ratingId}`                 | `{ scores, comment }` → `Rating`; reemplaza puntajes y comentario |
+| DELETE | `/api/lms/ratings/{ratingId}`                 | `204`                                                             |
+
+- `type` es `DOCENCIA` (`targetId`: la asignación, de `teachers[].id`) o `RECURSO` (`targetId`: la versión de recurso, de
+  `resources[].id`). `scores` va por clave de dimensión activa del destino, enteros de 1 a 5, al menos uno (`400`).
+  `comment` es texto plano de hasta 2000 caracteres (`400`); vacío lo quita. La interfaz lo muestra siempre escapado.
+- `403`: matrícula ni `ACTIVA` ni `FINALIZADA`; un destino que no es de la edición o de la versión de la matrícula;
+  progreso del aula bajo `lms.reputation.min-progress` (50 %) sin haber finalizado (docente); ninguna lección que usa el
+  recurso completada; lo propio (docente de la edición, autor del recurso).
+- `409`: ya lo valoró (se edita la suya) o la ventana cerró (`lms.reputation.window-after-end`, 30 días tras `fecha_fin`,
+  también para editar y retirar).
+- `429` con `ProblemDetail` y `Retry-After`: más de `lms.reputation.max-edits-per-day` (5) altas, ediciones o retiradas
+  en el día UTC. Lo rechazado no cuenta.
+- `POST` acepta `Idempotency-Key` (ADR-058 de Wasichai): la misma clave y el mismo cuerpo devuelven la misma respuesta
+  (`Idempotent-Replayed: true`) sin valorar otra vez; otro cuerpo con la clave, `422`.
+- Editar el comentario lo devuelve a `PENDIENTE` (solo se muestra `PUBLICADA`); cambiar solo los puntajes, no. Su
+  historial lo lee el autor en `/api/objects/valoracion/records/{id}/history`.
+
+```json
+{
+  "enrollmentId": "…",
+  "open": true,
+  "closesOn": "2026-12-31",
+  "progressPercent": 50,
+  "minProgress": 50,
+  "teachers": [{ "type": "DOCENCIA", "id": "…", "name": "Ana Quispe", "eligible": true, "reason": null, "ratingId": null }],
+  "resources": [{ "type": "RECURSO", "id": "…", "name": "Lectura de la unidad", "eligible": false, "reason": "LESSON", "ratingId": null }],
+  "dimensions": { "DOCENCIA": [{ "key": "docente_claridad", "name": "Explica con claridad" }], "RECURSO": [] }
+}
+```
+
+`reason`, cuando no puede: `CLOSED`, `ENROLLMENT`, `PROGRESS`, `LESSON`, `OWN` o `RATED` (ya la valoró: `ratingId`).
+`Rating`: `{ id, enrollmentId, type, targetId, targetName, scores: { clave: valor }, comment, moderation, createdAt,
+updatedAt }`, con `moderation` `PENDIENTE`, `PUBLICADA` u `OCULTA` (`null` sin comentario).
+
+### Resúmenes para el valorado (ADR-0038 §8–§11)
+
+Con sesión y la acción `VER_RESUMEN` (DOCENTE y CREADOR; sin ella, `403`), solo de lo que tiene a la persona como
+destino. Nunca traen estudiante, matrícula, fecha ni ids de valoraciones. Una dimensión con menos de
+`lms.reputation.min-sample` valoraciones (5; configurada por debajo de 3, vale 3) va con `sufficient: false` y sin
+`mean` ni `n`.
+
+- `GET /api/lms/teaching/offerings/{code}/ratings` → `TeacherRatingSummary` del docente en una edición que tiene
+  asignada (otra, `404`). `released: false` (sin cifras ni comentarios) hasta que la ventana cerró y todas las
+  matrículas no retiradas tienen resultado, o pasado `lms.reputation.release-after-end` (60 días) del fin. Al liberarse,
+  sus cifras se **congelan** (la primera lectura o el trabajo diario): un cambio posterior no las mueve. Los comentarios
+  `PUBLICADA` llegan solo con muestra suficiente, sin autor ni fecha y en orden aleatorio, cada uno con su
+  `token` opaco para denunciarlo.
+- `GET /api/lms/ratings/resources` → `ResourceRatingSummary[]`: las versiones de recurso de las que la persona es
+  autora, con sus cifras de todas las ediciones, recalculadas cada día por el trabajo `reputation.aggregate`
+  (`calculatedAt`).
+- `GET /api/lms/public/ratings/criterion` (sin sesión) → el criterio publicado y versionado (`media-simple@1`): escala,
+  fórmula, muestra mínima y liberación. Cada resumen lo enlaza en `criterion`.
+
+```json
+{
+  "released": true,
+  "windowClosesOn": "2026-12-31",
+  "releasedAtLatestOn": "2027-01-30",
+  "criterion": "/api/lms/public/ratings/criterion",
+  "criterionVersion": "media-simple@1",
+  "dimensions": [
+    { "key": "docente_claridad", "name": "Explica con claridad", "sufficient": true, "mean": 4.2, "n": 6 },
+    { "key": "docente_disponibilidad", "name": "Responde y está disponible", "sufficient": false, "mean": null, "n": null }
+  ],
+  "comments": [{ "token": "…", "text": "…" }]
+}
+```
+
+### Moderación, denuncias y apelación (ADR-0038 §13–§19)
+
+Los puntajes cuentan sin moderación; un comentario nace `PENDIENTE` y solo llega al valorado `PUBLICADA`.
+
+| Método | Ruta                                               | Quién                     | Resultado                                                  |
+| ------ | -------------------------------------------------- | ------------------------- | ---------------------------------------------------------- |
+| GET    | `/api/lms/moderation/ratings`                      | `MODERAR`                 | `ModerationItem[]`: pendientes, denunciados o apelados     |
+| POST   | `/api/lms/moderation/ratings/{id}/decision`        | `MODERAR`                 | `{ decision: PUBLISH \| HIDE, reason }` → `ModerationItem` |
+| POST   | `/api/lms/moderation/ratings/{id}/appeal-decision` | `MODERAR`, otro moderador | `{ decision: UPHOLD \| REVERSE }` → `ModerationItem`       |
+| POST   | `/api/lms/ratings/{id}/appeal`                     | el autor (`VALORAR`)      | `{ text }` → `{ ratingId, text, pending }`                 |
+| POST   | `/api/lms/ratings/comments/{token}/reports`        | el valorado (`DENUNCIAR`) | `{ reason }` → `201` `{ status: "ABIERTA" }`               |
+
+- Ocultar exige `reason` entre `ATAQUE_PERSONAL`, `DATOS_PERSONALES`, `SPAM`, `FUERA_DE_TEMA`, `CONFLICTO_DE_INTERES` e
+  `ILEGAL` (`400`). Nadie modera una valoración que escribió o que lo tiene como destino (`403`, también ADMIN); decidir
+  cierra las denuncias abiertas. `ModerationItem` no trae quién escribió ni quién denunció.
+- El autor apela una vez un comentario `OCULTA` (otro estado o una segunda vez, `409`; ajena, `404`), también con la
+  ventana cerrada. La decide un moderador distinto del que ocultó (`403` el mismo), una vez y es final (`409`).
+- El valorado denuncia por la ficha (`token`) de un comentario de su resumen; otra ficha, `404`. La denuncia no oculta
+  nada. Más de `lms.reputation.max-reports-per-day` (10) denuncias en el día UTC → `429` con `Retry-After`.
+
 ## Espacio docente (F3, ADR-0016)
 
 Con sesión, solo sobre las ediciones **asignadas** a la persona (`docente_edicion.usuario_id`); otra edición o un
@@ -501,6 +700,7 @@ cualquier edición, sin asignación; calificar le sigue respondiendo `404`.
 | Método | Ruta                                            | Resultado                                                             |
 | ------ | ----------------------------------------------- | --------------------------------------------------------------------- |
 | GET    | `/api/lms/teaching/offerings`                   | `TeachingOffering[]`                                                  |
+| GET    | `/api/lms/teaching/panel`                       | `TeachingPanelItem[]`; `?page` y `?size`                              |
 | GET    | `/api/lms/teaching/offerings/{code}/students`   | `Roster[]`; `?page` y `?size` opcionales                              |
 | GET    | `/api/lms/teaching/offerings/{code}/attempts`   | cola: intentos `SUBMITTED` → `PendingAttempt[]`; `?page`, `?size`     |
 | GET    | `/api/lms/teaching/attempts/{attemptId}`        | `Attempt` con soluciones, respuestas y entregas                       |
@@ -515,6 +715,12 @@ cualquier edición, sin asignación; calificar le sigue respondiendo `404`.
 - `email` puede ser `null` en `Roster`, `PendingAttempt` y `AttendanceRow`: lo guarda la matrícula al crearse.
 - `TeachingOffering`: `{ "code", "status", "startDate", "endDate", "timeZone", "course": { "slug", "code", "title" },
 "enrolled": 12, "pendingAttempts": 3 }`.
+- `TeachingPanelItem` (#261) = `TeachingOffering` más `upcomingSessions` (`Session[]` sin `attendance`, sin las
+  canceladas ni las ya terminadas, la más próxima primero) y `oldestPending` (`PendingAttempt[]`: los 5 primeros de la
+  cola, en su orden; el total está en `pendingAttempts` y la cola entera en `GET …/attempts`). Una página de las
+  ediciones asignadas en el orden de `GET /offerings` (la de inicio más próximo primero), con `page` y `size` como el
+  roster pero siempre paginada: sin ellos, la primera página de 25. Se lee por lotes: las sentencias SQL no crecen con
+  el número de ediciones de la página.
 - `Roster`: `{ "enrollmentId", "email", "status", "progress": ProgressSummary, "attendance": { "attended": 3,
 "total": 4 }, "assessments": [{ "lessonId", "title", "bestPercent": 80, "passed": true, "pending": false }] }`.
 - `PendingAttempt`: `{ "attemptId", "enrollmentId", "email", "lessonId", "lessonTitle", "submittedAt",
@@ -560,14 +766,32 @@ Con sesión. Los permisos son las acciones declaradas sobre `version_curso`; lo 
 | POST   | `/api/lms/studio/versions/{id}/submit`        | envía a revisión → `StudioVersion`                           |
 | GET    | `/api/lms/studio/versions/{id}/diff`          | contra la versión anterior → `VersionDiff`                   |
 
+Una versión nueva copia la última del curso, o la de `fromVersionId` (`400` si no es de ese curso), a un `BORRADOR` de quien
+llama con el número siguiente. Un curso sin versiones recibe la v1 `BORRADOR` vacía, sin unidades, con `modalidad: ASINCRONA`,
+`duracion: SEMANAS` y `semanas: 1`, que el creador ajusta (#257). Exige `CREATE` sobre `version_curso` (`403`); un curso
+inexistente o que no puedo leer, `404`. El número es único por curso: dos peticiones a la vez no crean dos versiones con el
+mismo número, y la que pierde responde `409`.
+
 El contenido (unidades, lecciones, evaluaciones) se edita con la API de registros de Wasichai, que la guarda deja solo al autor y
-en borrador.
+en borrador. La lección de repaso de una pregunta (`leccion_repaso`, opcional) es una lección de la misma versión: otra es
+`400` en `leccion_repaso`. Copiar la versión la re-apunta a la lección copiada.
 
-`StudioVersion`: `{ "id", "number", "status", "course": { "id", "code", "title" }, "authorId", "reviewerId": null,
-"updatedAt", "openComments": 2 }`. `status`: `BORRADOR` · `EN_REVISION` · `APROBADA` · `PUBLICADA` · `RETIRADA`.
+`StudioVersion`: `{ "id", "number", "status", "course": { "id", "code", "title" }, "authorId", "authorName", "reviewerId": null,
+"reviewerName": null, "updatedAt", "openComments": 2 }`. `status`: `BORRADOR` · `EN_REVISION` · `APROBADA` · `PUBLICADA` · `RETIRADA`.
 
-`StudioVersionDetail` = `StudioVersion` más `units`: `[{ "id", "order", "title", "lessons": [{ "id", "order", "title", "type",
-"sourceRef": null, "hasAssessment": false, "resources": 1 }] }]`, `comments: ReviewComment[]`, `decisions: ReviewDecision[]`.
+**Nombres** (#258, ADR-0034): cada `authorId` y `reviewerId` de `StudioVersion`, `ReviewComment` y `ReviewDecision` va con su
+`authorName` o `reviewerName`, el nombre para mostrar de la persona en Wasichai, nunca su correo ni otro dato. Es `null` si el
+id es `null` o si la persona está deshabilitada o fue borrada; el id se devuelve igual. Solo los recibe quien ya puede leer la
+versión (lo demás sigue siendo `404`/`403`), y se leen de una vez para toda la respuesta.
+
+`StudioVersionDetail` = `StudioVersion` más `units`: `[{ "id", "order", "title", "sourceRef": null, "lessons": [{ "id", "order",
+"title", "type", "sourceRef": null, "hasAssessment": false, "resources": 1 }] }]`, `comments: ReviewComment[]`, `decisions: ReviewDecision[]`,
+`history: VersionTransition[]`.
+
+`VersionTransition`: `{ "from": "BORRADOR", "to": "EN_REVISION", "by", "byName", "at" }`, la más antigua primero: cada cambio de
+`status` de la versión, por cualquier vía (estudio, bandeja, API de registros o plataforma), y su creación (`from: null`).
+`by` es quien la movió y `byName` su nombre para mostrar (null si está deshabilitada o se borró); los dos son null si la movió
+la plataforma. Historial de solo inserción en `lms.transicion_version` (ADR-0032); escribir otros campos no deja fila.
 
 ### Bandeja del revisor
 
@@ -595,12 +819,12 @@ en borrador.
 - **Solo aquí se decide** (ADR-0021): sacar una versión de curso de `EN_REVISION` con la API de registros es `403` para quien
   decide; el autor sí la retira a borrador. Una `version_recurso` no tiene bandeja: su revisor la decide con la API de
   registros y, salvo al aprobar, con la cabecera `X-Change-Reason` (`400` sin ella), que queda en el `audit_log`.
-- `ReviewComment`: `{ "id", "section", "text", "authorId", "createdAt", "resolved": false }`. `section` es texto libre que
+- `ReviewComment`: `{ "id", "section", "text", "authorId", "authorName", "createdAt", "resolved": false }`. `section` es texto libre que
   identifica la parte (`unidad:1/leccion:2`), hasta 200 caracteres; `text`, hasta 4000. Ambos obligatorios (`400`). Solo se
   comenta una versión `EN_REVISION` (`409`); resolver lo ya resuelto no cambia nada. `comentario_revision` es `apiOnly`: la API
   de registros no lo escribe, y por ella solo lo lee quien publica, el autor de la versión, quien la puede revisar y quien lo
   escribió (lo demás, `404`). `openComments` cuenta los no resueltos.
-- `ReviewDecision`: `{ "decision", "reason", "authorId", "at" }`, la más antigua primero; historial de solo inserción en
+- `ReviewDecision`: `{ "decision", "reason", "authorId", "authorName", "at" }`, la más antigua primero; historial de solo inserción en
   `lms.decision_revision`. Comentarios y decisiones quedan con su versión: una versión nueva a partir de ella empieza sin ellos.
 - `publish`: solo una versión `APROBADA` (`409`); pone `publicada_en` el servidor.
 - `VersionDiff`: `{ "baseVersion": 1, "units": [{ "order", "change": "ADDED" | "REMOVED" | "CHANGED" | "SAME", "title",
@@ -619,6 +843,7 @@ en borrador.
 | ------ | -------------------------------- | ---------------------------------------------------------------------------------- |
 | GET    | `/api/lms/studio/import/sources` | orígenes permitidos → `[{ "repository": "owner/repo", "sha": null }]`              |
 | POST   | `/api/lms/studio/import`         | `{ "source": "owner/repo@sha:ruta/maestro.adoc", "courseId" }` → `202` `ImportJob` |
+| GET    | `/api/lms/studio/import`         | mis trabajos de importación, el más reciente primero → `[ImportJob]`               |
 | GET    | `/api/lms/studio/import/{id}`    | `ImportJob`                                                                        |
 
 - Importar (y ver los orígenes) exige `CREATE` sobre `version_curso`, `unidad` y `leccion` (`403`). `source` es un archivo de un
@@ -632,16 +857,25 @@ en borrador.
   devuelve ese trabajo (`202`), sin otro borrador; terminado, importar otra vez es otro trabajo. Con
   `lms.jobs.max-active-per-requester` (5) trabajos pendientes o en curso, entre importaciones y generaciones, uno más es `429`
   con `Retry-After` ([ADR-0022](../adr/0022-limites-y-ciclo-de-vida-de-los-trabajos.md)).
-- `ImportJob`: `{ "id", "status": "PENDIENTE" | "EN_CURSO" | "HECHO" | "FALLIDO", "error": null, "versionId": null, "report": null }`.
+- `GET /api/lms/studio/import` lista a lo sumo 50 trabajos de importación de quien llama, pendientes, en curso y terminados aún
+  retenidos, el más reciente primero. Pide los mismos permisos que importar (`403`) y nunca muestra los de otra persona,
+  tampoco al administrador. Sirve para que la interfaz no pierda de vista una importación al recargar.
+- `ImportJob`: `{ "id", "status": "PENDIENTE" | "EN_CURSO" | "HECHO" | "FALLIDO", "error": null, "versionId": null, "report": null,
+"source": "owner/repo@sha:ruta", "courseId", "createdAt", "finishedAt": null }`.
   `error` es el motivo de `FALLIDO` (o el último fallo pasajero mientras se reintenta). Con `HECHO`, `versionId` es la versión
   nueva del curso y `report`: `{ "source", "files", "includes", "sections", "images", "units", "lessons", "problemCount",
-"problems": [{ "kind", "origin": "owner/repo@sha:ruta", "line", "detail" }] }` (a lo sumo 500 problemas; `line` 0 es el archivo
-  entero). `kind`: `MISSING_INCLUDE` · `INCLUDE_OUTSIDE_ROOT` · `INCLUDE_CYCLE` · `INCLUDE_TOO_DEEP` · `UNRESOLVED_ATTRIBUTE` ·
-  `UNSUPPORTED_INCLUDE_OPTION` · `MISSING_IMAGE` · `IMAGE_OUTSIDE_ROOT` · `BROKEN_REFERENCE` · `DUPLICATE_ANCHOR` · `FILE_TOO_LARGE`.
-  Un problema no detiene la importación: queda en el informe.
+"problems": [{ "kind", "origin": "owner/repo@sha:ruta", "line", "detail", "severity" }], "problemsBySeverity": { "GAP": 1, "CHECK": 4 } }`
+  (a lo sumo 500 problemas; `line` 0 es el archivo entero). `kind`: `MISSING_INCLUDE` · `INCLUDE_OUTSIDE_ROOT` · `INCLUDE_CYCLE` ·
+  `INCLUDE_TOO_DEEP` · `UNRESOLVED_ATTRIBUTE` · `UNSUPPORTED_INCLUDE_OPTION` · `MISSING_IMAGE` · `IMAGE_OUTSIDE_ROOT` · `BROKEN_REFERENCE`
+  · `DUPLICATE_ANCHOR` · `FILE_TOO_LARGE`. Un problema no detiene la importación: queda en el informe.
+- `severity` la decide el servidor por `kind`: `GAP` cuando esa parte del manual no se leyó y al temario le pueden faltar unidades o
+  lecciones (`MISSING_INCLUDE`, `INCLUDE_OUTSIDE_ROOT`, `INCLUDE_CYCLE`, `INCLUDE_TOO_DEEP`, `UNRESOLVED_ATTRIBUTE`, `FILE_TOO_LARGE`
+  y cualquier tipo nuevo); `CHECK` cuando se leyó y queda algo que revisar (el resto). `problemsBySeverity` cuenta todos los
+  problemas, también los que la lista no muestra; en un informe guardado antes de que existiera, cuenta los de la lista.
 - El resultado es siempre una versión `BORRADOR` nueva del curso (número siguiente), con `autor_id` de quien la pidió y la
   duración y la modalidad de la última versión: una unidad por capítulo (sección de nivel 1, tras `leveloffset`) y una lección
-  `LECTURA` por sección de nivel 2, con su título y `sourceRef` (`owner/repo@sha:ruta#ancla`); un capítulo sin secciones lleva
+  `LECTURA` por sección de nivel 2, cada una con su título y su `sourceRef` (`owner/repo@sha:ruta#ancla`, en
+  `referencia_fuente`), que se congela con la versión y pasa a sus copias; un capítulo sin secciones lleva
   una lección con su propio título. **Sin el texto del manual** (ADR-0018 §6) y **nunca publica**. Falla (`FALLIDO`, sin
   borrador) si el maestro no existe, el origen dejó de estar permitido, el curso desapareció, la fuente pasa de
   `lms.importer.max-files` archivos o quien la pidió ya no está habilitado o perdió alguno de los permisos de arriba antes de
@@ -654,6 +888,11 @@ y el resultado es una `version_recurso` **nueva en `BORRADOR`**, a nombre de qui
 recurso como `archivo`. Sigue el flujo editorial como cualquier otra versión; generar otra vez crea otra versión, nunca
 sobrescribe. El HTML se guarda saneado con lista blanca (sin scripts, manejadores de eventos, `iframe`, formularios ni hojas
 externas, [ADR-0022](../adr/0022-limites-y-ciclo-de-vida-de-los-trabajos.md)); su `sha256` es el de lo guardado.
+
+La fuente es un solo archivo autosuficiente ([ADR-0031](../adr/0031-aceptacion-de-la-generacion-con-una-fuente-propia.md)):
+en modo `secure`, `include::` no lee nada y queda como enlace a su destino. Una imagen llega al PDF si va incrustada como
+URI `data:`; una ruta relativa deja su texto alternativo. En el HTML guardado las imágenes quedan por su texto alternativo
+(el saneado solo admite `http` y `https` en `src`).
 
 | Método | Ruta                                  | Resultado                                            |
 | ------ | ------------------------------------- | ---------------------------------------------------- |
@@ -684,3 +923,104 @@ pasajero (almacenamiento, interrupción) vuelve a `PENDIENTE` hasta agotar `lms.
   REVISOR): `formato`, `archivo`, `sha256`, `hash_fuente`, `generador`, `version_generador`, `trabajo_id` y las relaciones
   `version_recurso` y `fuente_recurso`. Se descargan con `GET /api/objects/artefacto_generado/records/{id}/files/archivo`,
   siempre como adjunto. La API de registros no los escribe (`403`).
+
+## Registro de ejecuciones de IA (F5, ADR-0033 §7)
+
+Cada llamada de un paso de la canalización deja una ejecución (`AgentRun`, RF-IA-03) en `lms.ejecucion_agente`. La escriben
+los pasos desde su trabajo; esta API solo la lee.
+
+| Método | Ruta                             | Resultado                                                                                  |
+| ------ | -------------------------------- | ------------------------------------------------------------------------------------------ |
+| GET    | `/api/lms/ai/runs?courseId={id}` | las ejecuciones del curso, la más reciente primero, a lo sumo 100 → `[AgentExecutionLine]` |
+| GET    | `/api/lms/ai/runs/{id}`          | `AgentExecution`                                                                           |
+
+- **Permisos**: ambas rutas exigen `UPDATE` sobre `version_curso` (CREADOR, REVISOR y ADMIN; `403` para ESTUDIANTE y DOCENTE) y
+  el curso se lee como quien llama: el mismo alcance que el curso. Un curso que no existe o no ve es `404`; una ejecución que
+  no existe, de otra organización o de un curso que no ve, también `404`. No hay ruta que escriba (`405`).
+- `AgentExecutionLine`: `{ "id", "jobId", "step", "status", "generator", "provider": null, "model": null, "requestedBy",
+"courseId", "unitId": null, "versionId": null, "attempt", "inputTokens": null, "outputTokens": null, "cost": null,
+"startedAt", "finishedAt": null }`.
+- `AgentExecution`: lo de la línea más `"organizationId", "objective", "inputs", "sources": [{ "ref": "owner/repo@sha:ruta#ancla",
+"sha256" }], "modelSettings": { "maxTokens", "temperature": null }, "promptVersion", "templateVersion", "idempotencyKey",
+"output": null, "validations": null, "error": null, "interventions": [{ "userId", "kind", "at", "note": null }]`.
+  `inputs`, `output` y `validations` son el JSON del paso.
+- `step`: `SOURCE_ANALYSIS` · `COURSE_DESIGN` · `LESSON_DRAFT` · `SCRIPT` · `CONSISTENCY_REVIEW` · `ASSISTANT`. `status`:
+  `PENDING` · `RUNNING` · `SUCCEEDED` · `INVALID_OUTPUT` · `FAILED` · `CANCELLED`. `generator`: `MODEL` · `DETERMINISTIC`; con
+  `DETERMINISTIC`, `provider`, `model` y `modelSettings` son `null`. `provider`: `anthropic` · `openai`. `kind`: `ACCEPTED` ·
+  `EDITED` · `REJECTED`.
+- `cost`: `{ "amount", "currency", "inputPerMillion", "outputPerMillion", "rateSince" }`, calculado al cerrar con la tarifa de
+  `lms.ai.rates` que regía el día en que empezó, y guardado con ella: cambiar la tarifa no reescribe lo gastado. `null`
+  mientras corre, sin consumo informado, con el doble determinista o si el modelo no tiene tarifa configurada. Cada tarifa de la lista lleva `provider`, `model`, `input-per-million`, `output-per-million`, `currency` y `since` (por entorno, `LMS_AI_RATES_0_PROVIDER`…).
+- **Lo que no cambia**: lo pedido (paso, ámbito, objetivo, entradas, fuentes, modelo, versiones, clave e intento) no se edita;
+  la ejecución se cierra una sola vez (estado, salida, validaciones, error, tokens, coste y fin) y las intervenciones solo se
+  añaden al final. Nada se borra ni se purga con los trabajos. Lo hace cumplir un disparador, también frente a SQL directo.
+- **Sin secretos**: ningún campo guarda claves ni cabeceras; `modelSettings` es tipado (no admite parámetros libres) y una clave
+  configurada (`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`) que aparezca en el objetivo, las entradas, la salida, el error o una nota
+  se guarda como `[REDACTED]` (RNF-SEG-09).
+
+## Créditos aprobados (RF-CRE-08, ADR-0035)
+
+La plataforma calcula y **propone** créditos ([ADR-0007](../adr/0007-carga-academica-y-creditos-como-politica-versionada.md));
+reconocerlos es un acto de la institución que una persona con `APROBAR_CREDITOS` sobre `version_curso` (rol
+`AUTORIDAD_ACADEMICA`) registra en nombre de un órgano y con un documento
+([ADR-0035](../adr/0035-aprobacion-de-creditos-por-una-autoridad-academica.md)).
+
+| Método | Ruta                                       | Resultado                                                         |
+| ------ | ------------------------------------------ | ----------------------------------------------------------------- |
+| GET    | `/api/lms/credits/versions/{id}/proposal`  | propuesta de hoy y aprobación vigente → `VersionCredits`          |
+| GET    | `/api/lms/credits/versions/{id}/approvals` | historial, lo más antiguo primero → `CreditApproval[]`            |
+| POST   | `/api/lms/credits/versions/{id}/approvals` | `CreditApprovalRequest` → `201` `CreditApproval` (`APROBACION`)   |
+| POST   | `/api/lms/credits/approvals/{id}/revoke`   | `CreditRevocationRequest` → `201` `CreditApproval` (`REVOCACION`) |
+
+- **Quién**: aprobar y revocar exigen `APROBAR_CREDITOS` (`403`; un REVISOR con `APROBAR` tampoco la tiene). Leer exige leer
+  la versión (`404` si no) y `READ` sobre `aprobacion_creditos` (`403`; el estudiante nunca).
+- **Separación de funciones**, también para ADMIN (`403`): no aprueba ni revoca el autor de la versión, su revisor asignado,
+  quien la aprobó en la bandeja ni quien tiene una asignación docente en una edición de alguna versión del curso.
+- **Cuándo**: solo una versión `APROBADA` o `PUBLICADA`, con sistema de crédito (`409`), sin otra aprobación vigente (`409`:
+  primero se revoca). Solo se revoca la aprobación vigente (`409`).
+- `CreditApprovalRequest`: `{ "approvedCredits": 8, "reason": null, "approvingBody": "Consejo de Facultad",
+"documentReference": "Resolución 045-2026-CF", "documentDate": "2026-10-30" }`. `approvedCredits` es opcional (por
+  omisión, lo propuesto), positivo y con hasta 2 decimales; si difiere de lo propuesto, `reason` es obligatorio (`400`).
+  `approvingBody` y `documentReference` son obligatorios, hasta 200 caracteres; `reason`, hasta 4000; `documentDate`,
+  opcional. `CreditRevocationRequest` es igual sin `approvedCredits`, con `reason` obligatorio.
+- El servidor **recalcula** con la política del sistema de la versión y guarda su instantánea. Hasta que existan políticas
+  en datos (RF-CRE-07) es la de referencia: `ects-carga-total@1` o `sch-34cfr600.2-trabajo-equivalente@1`.
+- `CreditApproval`: `{ "id", "versionId", "type": "APROBACION" | "REVOCACION", "revokes", "system", "policyId",
+"policyVersion", "method", "parameters": { "horasPorCredito": "27" }, "source", "totalHours", "calculated", "proposed",
+"approvedCredits", "reason", "approvingBody", "documentReference", "documentDate", "approvedBy", "approvedAt" }`. En una
+  revocación, `revokes` es la aprobación revocada y la instantánea va vacía.
+- `VersionCredits`: `{ "versionId", "versionStatus", "system", "proposal": { …como la del catálogo… }, "current":
+CreditApproval | null }`.
+- Las filas son `aprobacion_creditos` (`appendOnly`, `apiOnly`): la API de registros las lee pero no las crea, cambia ni
+  borra; quedan en `/api/audit?objectName=aprobacion_creditos&recordId=…` con la persona, la hora y, en `reason`, un resumen del acto (tipo, órgano, documento, política con sus parámetros, horas y créditos, motivo; hasta 500 caracteres). El comando copia lo
+  aprobado a `version_curso.creditos_aprobados` y `politica_creditos` (`id@versión`) y lo borra al revocar; esos dos campos
+  no se escriben por la API de registros (`403` para todos). Una versión nueva no los hereda.
+- En el catálogo, `credits.approved` y `credits.approval` (`{ "credits", "policyId", "policyVersion", "approvingBody",
+"documentReference", "documentDate", "approvedAt" }`) solo existen con una aprobación vigente; tras una revocación vuelven
+  a `null` en el refresco siguiente de la proyección.
+
+### Políticas de crédito (RF-CRE-07, ADR-0036)
+
+| Método | Ruta                                         | Resultado                                                     |
+| ------ | -------------------------------------------- | ------------------------------------------------------------- |
+| GET    | `/api/lms/credits/policies`                  | `?jurisdiction=&system=&status=&program=` → `CreditPolicy[]`  |
+| GET    | `/api/lms/credits/policies/{id}`             | `CreditPolicy`                                                |
+| POST   | `/api/lms/credits/policies/{id}/publish`     | exige `PUBLICAR`; solo un borrador (`409`) → `CreditPolicy`   |
+| POST   | `/api/lms/credits/policies/{id}/retire`      | exige `PUBLICAR`; solo una publicada (`409`) → `CreditPolicy` |
+| POST   | `/api/lms/credits/policies/{id}/new-version` | exige `CREATE`; `201` borrador con `number + 1`               |
+
+- El borrador se crea y se edita con la API de registros: `POST /api/objects/politica_credito/records` con `clave`,
+  `numero`, `nombre`, `sistema` (`ECTS`, `SCH`, `PE_CREDITO`), `metodo` (`ECTS_CARGA_TOTAL`, `US_SCH_34CFR600_2`,
+  `PE_LEY30220_HORAS_LECTIVAS`), `parametros` (JSON de texto o números; vacío, los de la norma), `jurisdiccion` (ISO
+  3166-1 alfa-2 o `EHEA`), `programa_codigo`, `fuente`, `fuente_url`, `vigente_desde`. Nace en `BORRADOR` (`409` si no);
+  un método de otro sistema, un parámetro desconocido o fuera de la norma (ECTS fuera de 25–30 h; PE bajo 16 h de teoría o
+  32 de práctica) o una jurisdicción inválida son `400`. Publicada o retirada no cambia ni se borra (`409`, también ADMIN).
+- Parámetros: ECTS `horasPorCredito`, `paso`; SCH `horasInstruccionPorSemana`, `horasFueraDeClasePorSemana`,
+  `semanasDeReferencia`, `paso`; PE `horasTeoriaPorCredito`, `horasPracticaPorCredito`, `paso`.
+- `CreditPolicy`: `{ "id", "key", "number", "name", "status", "system", "method", "parameters", "jurisdiction",
+"programCode", "source", "sourceUrl", "validFrom", "publishedBy", "publishedAt" }`. La leen el personal y la autoridad
+  académica; el estudiante no (`403`). Lo de otra organización no existe (`404`).
+- Una versión de curso se liga a una versión de política con `version_curso.politica_credito` (en borrador, como todo su
+  contenido). Propone con ella si es de su sistema; sin ella, con la de referencia (`pe-ley30220-horas-lectivas@1` para
+  `PE_CREDITO`); ligada a otro sistema, `proposal` es `null`. `VersionCredits.policyId` es la ligada. Aprobar exige la
+  ligada `PUBLICADA` y de su sistema (`409`); la aprobación guarda `policyId` = `clave` y `policyVersion` = `numero`.

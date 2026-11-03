@@ -32,7 +32,9 @@ class AssessmentContentListener(
         }
         val after = change.after.orEmpty()
         val parent = after.ref(parentField) ?: return
-        val data = after.filterValues { it is String || it is Number || it is Boolean }
+        // la lección de repaso de una pregunta (#260) es una relación: va su id, venga expandida o no
+        val review = after.ref(REVIEW_LESSON)?.let { mapOf(REVIEW_LESSON to it) }.orEmpty()
+        val data = after.filterValues { it is String || it is Number || it is Boolean } + review
         db
             .sql(
                 """
@@ -52,6 +54,7 @@ class AssessmentContentListener(
 
     companion object {
         val PARENT = mapOf("evaluacion" to "leccion", "pregunta" to "evaluacion", "opcion" to "pregunta", "criterio_rubrica" to "pregunta")
+        const val REVIEW_LESSON = "leccion_repaso"
         val MAPPER: JsonMapper = JsonMapper.builder().findAndAddModules().build()
     }
 }
@@ -120,6 +123,7 @@ class AssessmentContent(
                                 ?.map { it.trim() }
                                 ?.filter { it.isNotEmpty() }
                                 .orEmpty(),
+                        reviewLessonId = q.data[AssessmentContentListener.REVIEW_LESSON]?.toString(),
                     )
                 },
         )

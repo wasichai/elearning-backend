@@ -213,6 +213,13 @@ class DemoDataTest(unittest.TestCase):
         student = "estudiante@demo.wasichai-learning.test"
         self.assertEqual([{"user": student, "offering": "edicion-srtm-a"}, {"user": student, "offering": "edicion-corto-a"}], DATA["enrollments"])
 
+    def test_whoever_enrolls_accepts_the_terms_with_a_retention_period(self):
+        # sin aceptación vigente no hay matrícula (ADR-0037): la demo la acepta antes de matricularse
+        terms = DATA["terms"]
+        self.assertTrue(terms["text"].strip())
+        self.assertGreater(terms["retentionDays"], 0)
+        self.assertLessEqual({e["user"] for e in DATA["enrollments"]}, set(terms["acceptedBy"]))
+
     def test_the_demo_student_took_the_short_course_assessment_and_its_teacher_graded_it(self):
         (attempt,) = DATA["attempts"]
         refs = by_ref()
@@ -228,7 +235,7 @@ class DemoDataTest(unittest.TestCase):
 
     def test_one_user_per_role_and_one_multi_role(self):
         role_sets = [tuple(sorted(u["roles"])) for u in DATA["users"]]
-        for role in ("ESTUDIANTE", "DOCENTE", "CREADOR", "REVISOR"):
+        for role in ("ESTUDIANTE", "DOCENTE", "CREADOR", "REVISOR", "AUTORIDAD_ACADEMICA"):
             self.assertIn((role,), role_sets)
         self.assertIn(("DOCENTE", "REVISOR"), role_sets)
         self.assertTrue(all(u["email"].endswith("@demo.wasichai-learning.test") and "password" not in u for u in DATA["users"]))
@@ -311,6 +318,19 @@ class DemoValidationTest(unittest.TestCase):
         self.assertTrue(any("'edicion-ia-a' debe tener la inscripción abierta hoy" in p for p in found))
         self.assertTrue(any("'inmediato' es true o false" in p for p in found))
 
+    def test_terms_are_checked_and_whoever_enrolls_must_accept_them(self):
+        def change(data):
+            data["terms"]["text"] = "  "
+            data["terms"]["retentionDays"] = 0
+            data["terms"]["acceptedBy"] = ["nadie@demo.wasichai-learning.test"]
+            data["terms"]["plazo"] = 3
+        found = self.broken(change)
+        self.assertTrue(any("términos de uso: falta el texto" in p for p in found), found)
+        self.assertTrue(any("retentionDays" in p for p in found), found)
+        self.assertTrue(any("'nadie@demo.wasichai-learning.test' no está en 'users'" in p and "términos" in p for p in found), found)
+        self.assertTrue(any("clave desconocida 'plazo'" in p for p in found), found)
+        self.assertEqual(2, sum("no acepta los términos de uso" in p for p in found), found)
+
     def test_attempts_are_checked(self):
         def change(data):
             data["attempts"] = [
@@ -371,6 +391,8 @@ class FakeWasichai:
         self.users, self.records, self.transitions, self.decisions = {}, {}, [], []
         self.uploads, self.tokens = [], {}
         self.attempts, self.progress, self.events = {}, {}, {}
+        # términos de uso publicados (el último es el vigente) y la versión que aceptó cada usuario
+        self.terms, self.acceptances = [], {}
         # un servidor que no aplicara el filtro por clave natural (#60)
         self.ignore_filters = False
 
@@ -391,6 +413,8 @@ class FakeWasichai:
             return self.create_session((auth or "").removeprefix("Bearer "), m[1], body)
         if path.startswith(("/api/lms/classroom/", "/api/lms/teaching/")):
             return self.assessment(method, path, query, body, self.tokens.get((auth or "").removeprefix("Bearer ")))
+        if path.startswith("/api/lms/terms"):
+            return self.handle_terms(method, path, (auth or "").removeprefix("Bearer "), body)
         if (method, path) == ("POST", "/api/lms/enrollments"):
             return self.enroll((auth or "").removeprefix("Bearer "), body)
         if method == "POST" and (m := re.fullmatch(r"/api/lms/review/versions/([\w-]+)/decision", path)):
@@ -603,11 +627,35 @@ class FakeWasichai:
         self.records.setdefault("sesion", []).append(session)
         return 201, [session]
 
+    def handle_terms(self, method, path, token, body):
+        # los términos de uso (ADR-0037): los publica quien administra la organización; cada persona acepta el vigente
+        user = self.tokens.get(token)
+        current = self.terms[-1] if self.terms else None
+        if (method, path) == ("GET", "/api/lms/terms"):
+            accepted = self.acceptances.get(user["id"]) if user else None
+            return 200, {"current": current, "acceptance": {"version": accepted, "valid": True} if accepted else None}
+        if (method, path) == ("POST", "/api/lms/terms"):
+            if token != "t":
+                return 403, {"detail": "Missing permission MANAGE_ORGANIZATION"}
+            published = {"version": len(self.terms) + 1, "text": body["text"], "retentionDays": body["retentionDays"]}
+            self.terms.append(published)
+            return 201, published
+        if (method, path) == ("POST", "/api/lms/terms/acceptance"):
+            if user is None:
+                return 401, {"detail": "no session"}
+            if current is None or body.get("version") != current["version"]:
+                return 409, {"detail": "not the current terms"}
+            self.acceptances[user["id"]] = current["version"]
+            return 200, {"version": current["version"], "valid": True}
+        return 404, {"detail": f"no route {method} {path}"}
+
     def enroll(self, token, body):
-        # el comando de matrícula: como la persona, con la versión de la edición publicada
+        # el comando de matrícula: como la persona, con la versión de la edición publicada y los términos aceptados
         student = self.tokens.get(token)
         if student is None:
             return 401, {"detail": "no session"}
+        if student["id"] not in self.acceptances:
+            return 403, {"detail": "accept the terms of use first"}
         offering = next((r for r in self.records.get("edicion_curso", []) if r["attributes"]["codigo"] == body["offering"]), None)
         if offering is None:
             return 404, {"detail": "no offering"}
@@ -770,6 +818,23 @@ class ApplyDemoTest(FakeServerCase):
         self.assertEqual([student["id"]] * 2, [e["attributes"]["estudiante_id"] for e in self.fake.records["matricula"]])
         self.assertIn("POST /api/lms/enrollments", self.fake.writes)
         self.assertNotIn("POST /api/objects/matricula/records", self.fake.writes)
+
+    def test_the_admin_publishes_the_terms_once_and_the_student_accepts_them_as_themselves(self):
+        code, _, err = self.run_main()
+        self.assertEqual(0, code, err)
+        (published,) = self.fake.terms
+        self.assertEqual((DATA["terms"]["text"], DATA["terms"]["retentionDays"]), (published["text"], published["retentionDays"]))
+        ids = {u["email"]: u["id"] for u in self.fake.users.values()}
+        self.assertEqual({ids[e]: 1 for e in DATA["terms"]["acceptedBy"]}, self.fake.acceptances)
+        # aceptar va antes que matricularse: el simulador, como el servidor, responde 403 sin aceptación
+        self.assertLess(self.fake.writes.index("POST /api/lms/terms/acceptance"), self.fake.writes.index("POST /api/lms/enrollments"))
+
+    def test_terms_already_published_are_accepted_as_they_are(self):
+        self.fake.terms.append({"version": 4, "text": "Los de la organización", "retentionDays": 90})
+        code, _, err = self.run_main()
+        self.assertEqual(0, code, err)
+        self.assertEqual(1, len(self.fake.terms))
+        self.assertEqual({4}, set(self.fake.acceptances.values()))
 
     def test_the_short_course_session_is_created_by_its_assigned_teacher(self):
         code, _, err = self.run_main()
@@ -956,7 +1021,7 @@ class ApplyPobladaTest(FakeServerCase):
     def test_everyone_enrolls_completes_lessons_and_takes_attempts_as_themselves(self):
         code, out, err = self.run_main()
         self.assertEqual(0, code, err)
-        self.assertIn("31 usuarios", out)
+        self.assertIn("32 usuarios", out)
         self.assertEqual(len(MERGED["enrollments"]), len(self.fake.records["matricula"]))
         self.assertEqual(sum(len(p["lessons"]) for p in MERGED["progress"]), len(self.fake.progress))
         # cada avance lo envía el propio estudiante, sobre su matrícula

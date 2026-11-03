@@ -96,13 +96,14 @@ edición sin cupo), la **demo poblada** se levanta en su propio entorno, sin toc
 
 Usuarios de demostración (contraseña: la de `WASICHAI_DEMO_PASSWORD`):
 
-| Correo                                        | Roles             |
-| --------------------------------------------- | ----------------- |
-| `estudiante@demo.wasichai-learning.test`      | ESTUDIANTE        |
-| `docente@demo.wasichai-learning.test`         | DOCENTE           |
-| `creador@demo.wasichai-learning.test`         | CREADOR           |
-| `revisor@demo.wasichai-learning.test`         | REVISOR           |
-| `docente.revisor@demo.wasichai-learning.test` | DOCENTE y REVISOR |
+| Correo                                        | Roles               |
+| --------------------------------------------- | ------------------- |
+| `estudiante@demo.wasichai-learning.test`      | ESTUDIANTE          |
+| `docente@demo.wasichai-learning.test`         | DOCENTE             |
+| `creador@demo.wasichai-learning.test`         | CREADOR             |
+| `revisor@demo.wasichai-learning.test`         | REVISOR             |
+| `docente.revisor@demo.wasichai-learning.test` | DOCENTE y REVISOR   |
+| `autoridad@demo.wasichai-learning.test`       | AUTORIDAD_ACADEMICA |
 
 El catálogo público es el de la organización `LMS_PUBLIC_ORGANIZATION` (`demo` en `.env.example`) y se refresca en
 segundo plano cada 30 s ([ADR-0011](../adr/0011-catalogo-publico-leido-de-una-proyeccion.md)):

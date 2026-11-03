@@ -25,14 +25,19 @@
       "email": "docente.revisor@demo.wasichai-learning.test",
       "displayName": "Mara Multirrol (demo)",
       "roles": ["DOCENTE", "REVISOR"]
+    },
+    {
+      "email": "autoridad@demo.wasichai-learning.test",
+      "displayName": "Aurelia Autoridad (demo)",
+      "roles": ["AUTORIDAD_ACADEMICA"]
     }
   ],
   "workflows": {
     "version_curso": {
-      "_comentario": "Como en el flujo editorial real (EditorialWorkflowGuard): la versión nace en borrador, se escribe su temario y la recorre el administrador, que no es su autor. La aprueba por la bandeja, como cualquier revisor (ADR-0021). publicada_en y creditos_aprobados se ponen al llegar.",
+      "_comentario": "Como en el flujo editorial real (EditorialWorkflowGuard): la versión nace en borrador, se escribe su temario y la recorre el administrador, que no es su autor. La aprueba por la bandeja, como cualquier revisor (ADR-0021). publicada_en se pone al llegar; los créditos aprobados solo los registra una autoridad académica con su comando (ADR-0035).",
       "field": "estado",
       "path": ["BORRADOR", "EN_REVISION", "APROBADA", "PUBLICADA"],
-      "deferred": ["publicada_en", "creditos_aprobados"],
+      "deferred": ["publicada_en"],
       "commands": {
         "APROBADA": {
           "path": "/api/lms/review/versions/{id}/decision",
@@ -121,6 +126,90 @@
         "clave": "hoja-de-calculo",
         "nombre": "Hoja de cálculo",
         "descripcion": "Fórmulas, filtros y tablas en una hoja de cálculo."
+      }
+    },
+    {
+      "ref": "dimension-docente-claridad",
+      "object": "dimension_valoracion",
+      "key": ["clave"],
+      "attributes": {
+        "clave": "docente_claridad",
+        "nombre": "Explica con claridad",
+        "destino": "DOCENCIA",
+        "activa": true,
+        "orden": 1
+      }
+    },
+    {
+      "ref": "dimension-docente-disponibilidad",
+      "object": "dimension_valoracion",
+      "key": ["clave"],
+      "attributes": {
+        "clave": "docente_disponibilidad",
+        "nombre": "Responde y está disponible",
+        "destino": "DOCENCIA",
+        "activa": true,
+        "orden": 2
+      }
+    },
+    {
+      "ref": "dimension-docente-retroalimentacion",
+      "object": "dimension_valoracion",
+      "key": ["clave"],
+      "attributes": {
+        "clave": "docente_retroalimentacion",
+        "nombre": "Su retroalimentación ayuda a mejorar",
+        "destino": "DOCENCIA",
+        "activa": true,
+        "orden": 3
+      }
+    },
+    {
+      "ref": "dimension-claridad",
+      "object": "dimension_valoracion",
+      "key": ["clave"],
+      "attributes": {
+        "clave": "claridad",
+        "nombre": "Claridad",
+        "destino": "RECURSO",
+        "activa": true,
+        "orden": 1
+      }
+    },
+    {
+      "ref": "dimension-utilidad",
+      "object": "dimension_valoracion",
+      "key": ["clave"],
+      "attributes": {
+        "clave": "utilidad",
+        "nombre": "Utilidad",
+        "destino": "RECURSO",
+        "activa": true,
+        "orden": 2
+      }
+    },
+    {
+      "ref": "dimension-actualidad",
+      "object": "dimension_valoracion",
+      "key": ["clave"],
+      "attributes": {
+        "clave": "actualidad",
+        "nombre": "Actualidad",
+        "destino": "RECURSO",
+        "activa": true,
+        "orden": 3
+      }
+    },
+    {
+      "ref": "dimension-calidad",
+      "object": "dimension_valoracion",
+      "key": ["clave"],
+      "attributes": {
+        "clave": "calidad",
+        "nombre": "Calidad",
+        "destino": "RECURSO",
+        "activa": true,
+        "orden": 4
       }
     },
     {
@@ -2025,6 +2114,11 @@
       }
     }
   ],
+  "terms": {
+    "text": "Términos de uso de la demostración (ficticios). Para matricularte en un curso, registrar tu progreso y rendir sus evaluaciones aceptas que la plataforma guarde tus datos de aprendizaje durante el plazo de conservación de estos términos. Puedes retirar tu aceptación cuando quieras: tus datos personales se suprimen, y lo que la organización debe conservar (notas emitidas y certificados) queda disociado de tu cuenta.",
+    "retentionDays": 730,
+    "acceptedBy": ["estudiante@demo.wasichai-learning.test"]
+  },
   "enrollments": [
     {
       "user": "estudiante@demo.wasichai-learning.test",

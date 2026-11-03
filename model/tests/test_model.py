@@ -21,13 +21,48 @@ class RealModelTest(unittest.TestCase):
     def test_model_and_roles_are_valid(self):
         apply.validate(MODEL, ROLES)
 
-    def test_the_four_lms_roles_exist(self):
-        self.assertEqual({"ESTUDIANTE", "DOCENTE", "CREADOR", "REVISOR"}, {r["name"] for r in ROLES["roles"]})
+    def test_the_five_lms_roles_exist(self):
+        self.assertEqual({"ESTUDIANTE", "DOCENTE", "CREADOR", "REVISOR", "AUTORIDAD_ACADEMICA"}, {r["name"] for r in ROLES["roles"]})
+
+    # RF-CRE-08 (ADR-0035): aprobar créditos es otra acción que aprobar contenido, y solo la tiene la autoridad académica;
+    # su registro es de solo inserción, lo escribe solo el comando y nunca lo lee un estudiante
+    def test_only_the_academic_authority_approves_credits(self):
+        for role in ROLES["roles"]:
+            self.assertEqual(role["name"] == "AUTORIDAD_ACADEMICA", holds(role["name"], "version_curso", "APROBAR_CREDITOS"), role["name"])
+            self.assertFalse(holds(role["name"], "aprobacion_creditos", "UPDATE") or holds(role["name"], "aprobacion_creditos", "DELETE"), role["name"])
+        for action in ("APROBAR", "PUBLICAR", "ENVIAR_A_REVISION", "CREATE", "DELETE"):
+            self.assertFalse(holds("AUTORIDAD_ACADEMICA", "version_curso", action), action)
+        self.assertFalse(holds("ESTUDIANTE", "aprobacion_creditos", "READ"))
+        approval = next(o for o in MODEL["objects"] if o["name"] == "aprobacion_creditos")
+        self.assertTrue(approval["appendOnly"] and approval["apiOnly"])
+        fields = {f["name"]: f for f in approval["fields"]}
+        for name in ("tipo", "organo", "documento_referencia", "aprobada_por", "aprobada_en"):
+            self.assertTrue(fields[name].get("required"), name)
 
     def test_nobody_but_admin_publishes_or_retires(self):
         for role in ROLES["roles"]:
             for action in ("PUBLICAR", "RETIRAR"):
                 self.assertFalse(holds(role["name"], "version_curso", action), f"{role['name']} no debe {action}")
+
+    # RF-CRE-07 (ADR-0036): las políticas de crédito son datos versionados por clave; las redacta y publica la autoridad
+    # académica, el personal las lee para ligar una versión de curso y el estudiante no las ve
+    def test_credit_policies_are_versioned_data(self):
+        policy = next(o for o in MODEL["objects"] if o["name"] == "politica_credito")
+        self.assertIn(["clave", "numero"], policy["uniqueConstraints"])
+        fields = {f["name"]: f for f in policy["fields"]}
+        self.assertEqual("BORRADOR", fields["estado"]["defaultValue"])
+        for name in ("clave", "numero", "sistema", "metodo", "jurisdiccion", "fuente"):
+            self.assertTrue(fields[name].get("required"), name)
+        self.assertIn("PE_CREDITO", MODEL["enums"]["sistema_credito"])
+        self.assertIn("PE_LEY30220_HORAS_LECTIVAS", MODEL["enums"]["metodo_credito"])
+        links = {(r["source"], r["fieldName"]) for r in MODEL["relationships"] if r["target"] == "politica_credito"}
+        self.assertEqual({("version_curso", "politica_credito"), ("aprobacion_creditos", "politica_credito")}, links)
+        for role in ROLES["roles"]:
+            self.assertEqual(role["name"] == "AUTORIDAD_ACADEMICA", holds(role["name"], "politica_credito", "PUBLICAR"), role["name"])
+        self.assertFalse(holds("ESTUDIANTE", "politica_credito", "READ"))
+        for staff in ("DOCENTE", "CREADOR", "REVISOR"):
+            self.assertTrue(holds(staff, "politica_credito", "READ"), staff)
+            self.assertFalse(holds(staff, "politica_credito", "CREATE"), staff)
 
     def test_creator_does_not_approve_and_reviewer_does_not_author(self):
         self.assertFalse(holds("CREADOR", "version_curso", "APROBAR"))
@@ -67,6 +102,14 @@ class RealModelTest(unittest.TestCase):
         self.assertLessEqual({"codigo", "titulo", "descripcion", "tipo", "idioma", "responsable_editorial_id"}, fields("recurso"))
         self.assertLessEqual({"numero", "autor_id", "estado", "archivo"}, fields("version_recurso"))
 
+    def test_units_and_lessons_carry_their_source_trace(self):
+        # RF-IMP-03: la importación deja en cada unidad y cada lección su origen exacto, repo@sha:ruta#ancla
+        for name in ("unidad", "leccion"):
+            obj = next(o for o in MODEL["objects"] if o["name"] == name)
+            trace = next((f for f in obj["fields"] if f["name"] == "referencia_fuente"), None)
+            self.assertIsNotNone(trace, name)
+            self.assertEqual("TEXT", trace["type"], name)
+
     def test_a_lab_lesson_carries_its_lab_fields_and_its_environments(self):
         # RF-LAB-01 (ADR-0027): lo que es texto va en la lección; los enlaces a entornos, en su objeto, que solo leen los matriculados
         def fields(name: str) -> set[str]:
@@ -91,6 +134,11 @@ class RealModelTest(unittest.TestCase):
             # el docente corrige con la instantánea del intento; las claves de todos los cursos no le hacen falta
             self.assertFalse(holds("DOCENTE", obj, "READ"), obj)
             self.assertTrue(holds("CREADOR", obj, "CREATE"), obj)
+
+    def test_a_question_may_point_to_the_lesson_that_reviews_it(self):
+        # E30.6 (#260): opcional, a una lección; que sea de la misma versión lo exige el servidor (EditorialWorkflowGuard)
+        links = {r["fieldName"]: (r["target"], r.get("required", False)) for r in MODEL["relationships"] if r["source"] == "pregunta"}
+        self.assertEqual(("leccion", False), links["leccion_repaso"])
 
     def test_course_versions_have_every_modality_and_a_kind_of_duration(self):
         # RF-ACA-05: presencial, virtual síncrona, asíncrona o híbrida; por semanas o semestral (el rango, en CourseDurationGuard)
@@ -131,9 +179,25 @@ class RealModelTest(unittest.TestCase):
         # matricula y progreso_leccion son apiOnly: esas escrituras solo pasan por los comandos del aula
         student = next(r for r in ROLES["roles"] if r["name"] == "ESTUDIANTE")
         writes = {"matricula": {"READ", "CREATE", "UPDATE"}, "progreso_leccion": {"READ", "CREATE", "UPDATE"}, "entrega": {"READ", "CREATE", "UPDATE"}}
+        # valoracion y puntaje_valoracion son apiOnly: solo los escribe el comando de valorar (ADR-0038)
+        writes |= {"valoracion": {"READ", "CREATE", "UPDATE", "DELETE", "VALORAR"}, "puntaje_valoracion": {"READ", "CREATE", "UPDATE", "DELETE"}}
         for grant in student["permissions"]:
             expected = writes.get(grant["object"], {"READ"})
             self.assertEqual(expected, set(grant["actions"]), grant["object"])
+
+    # ADR-0038: el valorado nunca lee quién lo valoró; las valoraciones las escribe solo el LMS y solo ADMIN modera
+    def test_whoever_is_rated_never_reads_the_ratings(self):
+        for name in ("valoracion", "puntaje_valoracion"):
+            self.assertTrue(next(o for o in MODEL["objects"] if o["name"] == name)["apiOnly"], name)
+        for role in ROLES["roles"]:
+            for name in ("valoracion", "puntaje_valoracion"):
+                if role["name"] != "ESTUDIANTE":
+                    self.assertFalse(holds(role["name"], name, "READ"), f"{role['name']} {name}")
+            self.assertFalse(holds(role["name"], "valoracion", "MODERAR"), role["name"])
+        for role in ("DOCENTE", "CREADOR"):
+            self.assertTrue(holds(role, "valoracion", "VER_RESUMEN") and holds(role, "valoracion", "DENUNCIAR"), role)
+            self.assertFalse(holds(role, "valoracion", "VALORAR"), role)
+        self.assertFalse(holds("ESTUDIANTE", "valoracion", "VER_RESUMEN"))
 
     def test_enrollments_are_written_only_by_the_command(self):
         matricula = next(o for o in MODEL["objects"] if o["name"] == "matricula")
@@ -207,6 +271,40 @@ class RealModelTest(unittest.TestCase):
             self.assertTrue(holds(role["name"], "conocimiento_previo", "READ"), role["name"])
             for action in ("CREATE", "UPDATE", "DELETE"):
                 self.assertFalse(holds(role["name"], "conocimiento_previo", action), f"{role['name']} no debe {action}")
+
+    # RF-IA-01 (E33.1): el brief de un curso se guarda a medias en borrador; la completitud y las fuentes las exige
+    # BriefGuard al pasarlo a LISTO. lo escribe quien crea versiones del curso; los permisos de IA llegan en E33.3
+    def test_a_course_brief_is_drafted_by_the_creator(self):
+        brief = next(o for o in MODEL["objects"] if o["name"] == "brief")
+        fields = {f["name"]: f for f in brief["fields"]}
+        for name in ("tematica", "publico", "objetivos", "duracion_horas", "idioma", "nivel", "expertos", "fuentes"):
+            self.assertIn(name, fields)
+            self.assertFalse(fields[name].get("required", False), name)
+        self.assertEqual("nivel", fields["nivel"]["enum"])
+        self.assertEqual(["BORRADOR", "LISTO"], MODEL["enums"]["estado_brief"])
+        self.assertEqual("BORRADOR", fields["estado"]["defaultValue"])
+        self.assertTrue(fields["estado"]["required"])
+        link = next(r for r in MODEL["relationships"] if r["source"] == "brief")
+        self.assertEqual(("curso", "curso", "MANY_TO_ONE"), (link["target"], link["fieldName"], link["type"]))
+        self.assertTrue(link["required"])
+        self.assertNotIn("actions", brief)
+        for role in ROLES["roles"]:
+            creates = holds(role["name"], "version_curso", "CREATE")
+            for action in ("READ", "CREATE", "UPDATE", "DELETE"):
+                self.assertEqual(creates, holds(role["name"], "brief", action), f"{role['name']} {action}")
+
+    # RF-IA-07 (ADR-0033 §10): generar y validar con IA son acciones declaradas distintas de aprobar y publicar. quien
+    # genera (CREADOR) no valida lo generado ni lo aprueba; valida quien revisa (REVISOR), que no genera
+    def test_generating_and_validating_are_separate_actions(self):
+        version = next(o for o in MODEL["objects"] if o["name"] == "version_curso")
+        self.assertTrue({"GENERAR", "VALIDAR"} <= {a["name"] for a in version["actions"]})
+        for role in ROLES["roles"]:
+            name = role["name"]
+            self.assertEqual(name == "CREADOR", holds(name, "version_curso", "GENERAR"), name)
+            self.assertEqual(name == "REVISOR", holds(name, "version_curso", "VALIDAR"), name)
+            if holds(name, "version_curso", "GENERAR"):
+                for action in ("VALIDAR", "APROBAR", "PUBLICAR"):
+                    self.assertFalse(holds(name, "version_curso", action), f"{name} genera y no debe {action}")
 
     def test_curriculum_is_separate_from_offering_and_schedule(self):
         # el temario (curso/versión) no tiene fechas; la edición sí, con su zona horaria

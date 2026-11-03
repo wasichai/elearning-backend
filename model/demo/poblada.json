@@ -1,5 +1,34 @@
 {
   "_comentario": "Demo poblada (model/demo/README.md): se aplica después de data.json, con apply.py --demo-data data.json --demo-data poblada.json, o con model/demo/demo.sh sembrar. Todo es ficticio. No es para el entorno de los e2e: cambia los conteos del catálogo y de las ediciones.",
+  "terms": {
+    "acceptedBy": [
+      "ana.alvarado@demo.wasichai-learning.test",
+      "bruno.benites@demo.wasichai-learning.test",
+      "carla.cardenas@demo.wasichai-learning.test",
+      "dario.davila@demo.wasichai-learning.test",
+      "elena.espinoza@demo.wasichai-learning.test",
+      "fabio.flores@demo.wasichai-learning.test",
+      "gloria.gamarra@demo.wasichai-learning.test",
+      "hugo.huaman@demo.wasichai-learning.test",
+      "irene.ibarra@demo.wasichai-learning.test",
+      "julio.jara@demo.wasichai-learning.test",
+      "karen.kong@demo.wasichai-learning.test",
+      "luis.loayza@demo.wasichai-learning.test",
+      "maria.mendoza@demo.wasichai-learning.test",
+      "nicolas.nunez@demo.wasichai-learning.test",
+      "olga.ortiz@demo.wasichai-learning.test",
+      "pedro.paredes@demo.wasichai-learning.test",
+      "raquel.rojas@demo.wasichai-learning.test",
+      "estudiante@demo.wasichai-learning.test",
+      "sofia.salas@demo.wasichai-learning.test",
+      "tomas.torres@demo.wasichai-learning.test",
+      "ursula.urbina@demo.wasichai-learning.test",
+      "victor.vargas@demo.wasichai-learning.test",
+      "wendy.wong@demo.wasichai-learning.test",
+      "ximena.yupanqui@demo.wasichai-learning.test",
+      "zoe.zapata@demo.wasichai-learning.test"
+    ]
+  },
   "users": [
     {
       "email": "teresa.tutora@demo.wasichai-learning.test",

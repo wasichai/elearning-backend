@@ -48,11 +48,13 @@ class ArchitectureTest {
     fun `every capability sits in the dag and uses only what it may`() = assertNoViolations(Rule.PACKAGE_DAG)
 
     // la tabla también se vigila: una línea nueva no puede colar un ciclo, dar dependencias a workload ni hacer que
-    // alguien use catalog (el catálogo solo lee; lo junta la aplicación)
+    // alguien use catalog (el catálogo solo lee; lo junta la aplicación) o reputation (las valoraciones no tocan la
+    // matrícula ni las notas, ADR-0038)
     @Test
-    fun `the table of allowed dependencies is a dag where workload uses nothing and nobody uses catalog`() {
+    fun `the table of allowed dependencies is a dag where workload uses nothing and nobody uses catalog nor reputation`() {
         assertThat(ALLOWED_DEPENDENCIES.getValue("workload")).isEmpty()
         assertThat(ALLOWED_DEPENDENCIES.filterValues { "catalog" in it }.keys).isEmpty()
+        assertThat(ALLOWED_DEPENDENCIES.filterValues { "reputation" in it }.keys).isEmpty()
         assertThat(ALLOWED_DEPENDENCIES.values.flatten()).allSatisfy { assertThat(ALLOWED_DEPENDENCIES).containsKey(it) }
         assertThat(cycleIn(ALLOWED_DEPENDENCIES)).isNull()
     }
@@ -66,19 +68,28 @@ class ArchitectureTest {
                 "workload" to emptySet(),
                 // la cola persistente: no sabe de ninguna capacidad; quien encola y quien maneja la usa a ella
                 "jobs" to setOf("common"),
+                // los términos de uso y la supresión de datos personales (ADR-0037): borra y disocia por SQL y por la API
+                // de registros, sin usar ninguna capacidad; la matrícula y el progreso le preguntan si hay aceptación
+                "privacy" to setOf("common", "jobs"),
                 "course" to setOf("common", "workload"),
                 "catalog" to setOf("common", "course", "workload"),
-                "enrollment" to setOf("common", "course"),
+                "enrollment" to setOf("common", "course", "privacy"),
                 // el aviso de publicación de contenido sale de la cola persistente (RF-AUL-09)
-                "learning" to setOf("common", "enrollment", "course", "workload", "jobs"),
+                "learning" to setOf("common", "enrollment", "course", "workload", "jobs", "privacy"),
                 // el barrido de intentos vencidos corre en la cola persistente (L4 de #183)
                 "assessment" to setOf("common", "learning", "enrollment", "jobs"),
                 "authoring" to setOf("common", "course"),
+                // la aprobación de créditos lee las decisiones de la bandeja para la separación de funciones (ADR-0035)
+                "credits" to setOf("common", "course", "workload", "authoring"),
                 "importer" to setOf("common", "jobs"),
-                "ai" to setOf("common", "authoring"),
+                // el brief (E33.1) se escribe con las guardas de course y sus fuentes son las permitidas del importador; los
+                // pasos son trabajos de la cola persistente y vuelven a mirar los permisos de quien los pidió (ADR-0033 §5)
+                "ai" to setOf("common", "authoring", "course", "importer", "jobs"),
                 // la generación encola y maneja sus trabajos en la cola persistente (ADR-0018 §7)
                 "media" to setOf("common", "authoring", "jobs"),
-                "reputation" to setOf("common", "enrollment"),
+                // las valoraciones (ADR-0038): leen la matrícula y el progreso del aula y sus agregados corren en la cola. nadie
+                // las usa: ni la matrícula ni las notas dependen de ellas (regla 8)
+                "reputation" to setOf("common", "enrollment", "learning", "jobs"),
             )
 
         // un ciclo como lista de nodos, o null si no hay

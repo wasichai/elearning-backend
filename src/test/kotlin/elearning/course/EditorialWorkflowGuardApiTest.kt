@@ -135,7 +135,10 @@ class EditorialWorkflowGuardApiTest : LmsApiTest() {
         // el autor no aprueba lo suyo, aunque tuviera la acción
         assertEquals(HttpStatus.FORBIDDEN, patch(creator, "version_curso", version, mapOf("estado" to "APROBADA")).first)
         assertEquals(HttpStatus.OK, decide(reviewer, version, "APROBAR").first)
-        assertEquals(HttpStatus.OK, patch(reviewer, "version_curso", version, mapOf("creditos_aprobados" to 2)).first)
+        // APROBAR es la acción editorial: no aprueba créditos. solo los escribe el comando de aprobación (ADR-0035, #269)
+        assertEquals(HttpStatus.FORBIDDEN, patch(reviewer, "version_curso", version, mapOf("creditos_aprobados" to 2)).first)
+        assertEquals(HttpStatus.FORBIDDEN, patch(admin, "version_curso", version, mapOf("creditos_aprobados" to 2)).first)
+        assertEquals(HttpStatus.FORBIDDEN, patch(admin, "version_curso", version, mapOf("politica_creditos" to "ects-carga-total@1")).first)
         // el revisor no publica
         assertEquals(HttpStatus.FORBIDDEN, patch(reviewer, "version_curso", version, mapOf("estado" to "PUBLICADA")).first)
     }
@@ -173,6 +176,9 @@ class EditorialWorkflowGuardApiTest : LmsApiTest() {
             assertEquals(HttpStatus.CONFLICT, patch(admin, "version_curso", version, mapOf("objetivos" to "cambiado")).first)
             assertEquals(HttpStatus.CONFLICT, patch(creator, "unidad", unit, mapOf("titulo" to "cambiada")).first)
             assertEquals(HttpStatus.CONFLICT, patch(creator, "leccion", lesson, mapOf("titulo" to "cambiada")).first)
+            // la traza de origen (RF-IMP-03) es contenido de la versión como cualquier otro: tampoco cambia
+            assertEquals(HttpStatus.CONFLICT, patch(creator, "unidad", unit, mapOf("referencia_fuente" to "otra/fuente@abc:x.adoc")).first)
+            assertEquals(HttpStatus.CONFLICT, patch(creator, "leccion", lesson, mapOf("referencia_fuente" to "otra/fuente@abc:x.adoc")).first)
             val (added, _) =
                 call(
                     "POST",

@@ -85,6 +85,11 @@ class ImportApiTest : ClassroomApiTestSupport() {
 
         val detail = ok(call(creator, "/api/lms/studio/versions/$versionId"))
         assertEquals(listOf("Instalación", "Configuración"), detail["units"].values().map { it["title"].asString() })
+        // RF-IMP-03: cada unidad enlaza su capítulo, con su ancla explícita o la que Asciidoctor le generaría
+        assertEquals(
+            listOf("acme/manuales@$SHA:capitulos/uno.adoc#instalar", "acme/manuales@$SHA:capitulos/dos.adoc#_configuración"),
+            detail["units"].values().map { it["sourceRef"].asString() },
+        )
         val install = detail["units"][0]["lessons"].values().toList()
         assertEquals(listOf("Requisitos previos", "Pasos"), install.map { it["title"].asString() })
         assertEquals("acme/manuales@$SHA:capitulos/uno.adoc#_requisitos_previos", install[0]["sourceRef"].asString())
@@ -107,6 +112,21 @@ class ImportApiTest : ClassroomApiTestSupport() {
                 }
         assertTrue(written.none { BODY in it }, written.toString())
         assertTrue(versionId in ok(call(creator, "/api/lms/studio/versions")).values().map { it["id"].asString() })
+    }
+
+    // la traza de la unidad es parte de la versión: la copia la lleva y nace igual a su origen
+    @Test
+    fun `a copy of the imported draft keeps the trace of each unit`() {
+        val course = courseId()
+        val versionId = imported(courseId = course)["versionId"].asString()
+
+        val (status, copy) = call(creator, "/api/lms/studio/courses/$course/versions", mapOf("fromVersionId" to versionId))
+
+        assertEquals(HttpStatus.CREATED, status, copy.toString())
+        val traces = { detail: JsonNode -> detail["units"].values().map { it["sourceRef"].asString() } }
+        assertEquals(traces(ok(call(creator, "/api/lms/studio/versions/$versionId"))), traces(copy!!))
+        val diff = ok(call(creator, "/api/lms/studio/versions/${copy["id"].asString()}/diff"))
+        assertEquals(listOf("SAME", "SAME"), diff["units"].values().map { it["change"].asString() })
     }
 
     // M2 de #216: cada clic no es un trabajo ni un borrador más
@@ -217,6 +237,62 @@ class ImportApiTest : ClassroomApiTestSupport() {
         assertEquals(listOf("INCLUDE_CYCLE"), kinds)
     }
 
+    // E30.1: la gravedad la decide el servidor por el tipo, y los totales cuentan todos los problemas, no solo los mostrados
+    @Test
+    fun `each problem carries its severity and the report counts every problem by severity`() {
+        val report = imported()["report"]
+
+        val severities = report["problems"].values().associate { it["kind"].asString() to it["severity"].asString() }
+        assertEquals("GAP", severities["MISSING_INCLUDE"], severities.toString())
+        assertEquals("CHECK", severities["MISSING_IMAGE"], severities.toString())
+        assertEquals(1, report["problemsBySeverity"]["GAP"].asInt(), report.toString())
+        assertEquals(report["problemCount"].asInt() - 1, report["problemsBySeverity"]["CHECK"].asInt(), report.toString())
+    }
+
+    @Test
+    fun `the counts by severity cover the problems beyond the ones shown`() {
+        val report = imported(source = "acme/manuales@$SHA:referencias/muchas.adoc")["report"]
+
+        assertEquals(MANY_REFERENCES + 1, report["problemCount"].asInt())
+        assertEquals(500, report["problems"].size())
+        assertEquals(MANY_REFERENCES, report["problemsBySeverity"]["CHECK"].asInt())
+        assertEquals(1, report["problemsBySeverity"]["GAP"].asInt())
+    }
+
+    @Test
+    fun `a report stored before the severity is read with it`() {
+        imported()
+        val id = UUID.randomUUID()
+        val old =
+            """{"versionId":null,"failure":null,"report":{"source":"acme/manuales@$SHA:manual.adoc","files":1,"includes":1,"sections":0,""" +
+                """"images":0,"units":0,"lessons":0,"problemCount":2,"problems":[{"kind":"INCLUDE_CYCLE","origin":"o","line":1,"detail":"d"},""" +
+                """{"kind":"BROKEN_REFERENCE","origin":"o","line":2,"detail":"d"}]}}"""
+        val payload = """{"requester":"${userId(creator)}","courseId":"${courseId()}","source":"acme/manuales@$SHA:manual.adoc"}"""
+        runBlocking {
+            db
+                .sql(
+                    """
+                    INSERT INTO lms.trabajo (id, organizacion_id, tipo, solicitante, datos, estado, intentos, max_intentos, resultado,
+                                             disponible_en, creado_en, terminado_en)
+                    SELECT :id, organizacion_id, :type, solicitante, CAST(:payload AS jsonb), 'DONE', 1, 3, CAST(:result AS jsonb), now(), now(), now()
+                    FROM lms.trabajo WHERE tipo = :type LIMIT 1
+                    """.trimIndent(),
+                ).bind("id", id)
+                .bind("type", ImportService.JOB_TYPE)
+                .bind("payload", payload)
+                .bind("result", old)
+                .fetch()
+                .rowsUpdated()
+                .awaitSingle()
+        }
+
+        val report = ok(call(creator, "/api/lms/studio/import/$id"))["report"]
+
+        assertEquals(listOf("GAP", "CHECK"), report["problems"].values().map { it["severity"].asString() })
+        assertEquals(1, report["problemsBySeverity"]["GAP"].asInt())
+        assertEquals(1, report["problemsBySeverity"]["CHECK"].asInt())
+    }
+
     @Test
     fun `a master that does not exist fails without a draft`() {
         val course = courseId()
@@ -267,6 +343,42 @@ class ImportApiTest : ClassroomApiTestSupport() {
         assertEquals(HttpStatus.UNAUTHORIZED, call(null, path).first)
     }
 
+    // E30.2: al recargar, la interfaz recupera sus importaciones; las de otra persona nunca aparecen
+    @Test
+    fun `who imports lists their own import jobs, the newest first, with source, course and dates`() {
+        val course = courseId()
+        val first = imported(source = "acme/manuales@$SHA:ciclo/raiz.adoc", courseId = course)
+        val (_, waiting) = start(creator, "acme/manuales@$SHA:manual.adoc", course)
+
+        val listed = ok(call(creator, "/api/lms/studio/import")).values().toList()
+
+        val ids = listed.map { it["id"].asString() }
+        assertTrue(ids.indexOf(waiting!!["id"].asString()) < ids.indexOf(first["id"].asString()), ids.toString())
+        val newest = listed.first { it["id"].asString() == waiting["id"].asString() }
+        assertEquals("PENDIENTE", newest["status"].asString())
+        assertEquals("acme/manuales@$SHA:manual.adoc", newest["source"].asString())
+        assertEquals(course, newest["courseId"].asString())
+        assertNotNull(newest["createdAt"].asString())
+        assertTrue(newest.lacks("finishedAt"))
+        val done = listed.first { it["id"].asString() == first["id"].asString() }
+        assertEquals("HECHO", done["status"].asString())
+        assertNotNull(done["finishedAt"].asString())
+        drain()
+    }
+
+    @Test
+    fun `nobody else sees my import jobs in a list, and listing asks for the import permissions`() {
+        val (_, job) = start(creator, "acme/manuales@$SHA:manual.adoc", courseId())
+        drain()
+        val id = job!!["id"].asString()
+
+        val (adminStatus, adminList) = call(admin, "/api/lms/studio/import")
+        assertFalse(adminList.toString().contains(id), "$adminStatus $adminList")
+        assertEquals(HttpStatus.FORBIDDEN, call(newStudent(), "/api/lms/studio/import").first)
+        assertEquals(HttpStatus.FORBIDDEN, call(demoUser("revisor"), "/api/lms/studio/import").first)
+        assertEquals(HttpStatus.UNAUTHORIZED, call(null, "/api/lms/studio/import").first)
+    }
+
     @TestConfiguration(proxyBeanMethods = false)
     class FakeSource {
         @Bean
@@ -285,6 +397,7 @@ class ImportApiTest : ClassroomApiTestSupport() {
     companion object {
         const val SHA = "0123456789abcdef0123456789abcdef01234567"
         const val BODY = "TEXTO-PRIVADO-DEL-MANUAL"
+        const val MANY_REFERENCES = 520
 
         val FILES =
             mapOf(
@@ -327,6 +440,8 @@ class ImportApiTest : ClassroomApiTestSupport() {
                     """.trimIndent(),
                 "ciclo/raiz.adoc" to "= Ciclo\n\n== Uno\n\ninclude::otro.adoc[]\n",
                 "ciclo/otro.adoc" to "== Otro\n\ninclude::raiz.adoc[]\n",
+                "referencias/muchas.adoc" to
+                    "= Referencias\n\n== Una\n\n" + (1..MANY_REFERENCES).joinToString("\n\n") { "Ver <<no-existe-$it>>." } + "\n\ninclude::falta.adoc[]\n",
             )
     }
 }
