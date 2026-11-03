@@ -86,7 +86,7 @@ class ReviewService(
             }
         val version = comment.attributes.ref(VERSION) ?: throw NotFoundException(COMMENT_NOT_FOUND)
         reviewable(UUID.fromString(version))
-        if (reader.comment(comment).resolved) return reader.comment(comment)
+        if (comment.attributes[RESOLVED]?.toString() == "true") return reader.comment(comment)
         return reader.comment(records.patch(COMMENT, id, RecordRequest(mapOf(RESOLVED to true)), null, null))
     }
 
