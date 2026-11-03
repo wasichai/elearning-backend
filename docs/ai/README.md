@@ -299,7 +299,10 @@ diseño y, por lección, su `leccion` (tipo `LECTURA`, con su procedencia) y un 
 `fuente_recurso` (RF-CON-03) y una `version_recurso` `BORRADOR` con el HTML que genera `DocumentRenderer` (Asciidoctor en modo
 `secure`), **saneado con la lista blanca de ADR-0022** (`GeneratedHtml`) antes de guardarse, enlazada por `recurso_leccion`.
 Nada de eso cambia de estado por sí mismo: enviarlo a revisión, aprobarlo y publicarlo son de personas, y la versión es
-**generada** (§13), así que no entra en revisión sin un informe de validación al día. Pedir otra vez el mismo borrador
+**generada** (§13), así que no entra en revisión sin un informe de validación al día. Tampoco entra en revisión, ni se
+aprueba ni se publica, mientras alguna de esas versiones de recurso no esté `PUBLICADA` (`409` con las lecciones, #366,
+[ADR-0041](../adr/0041-los-recursos-de-un-curso-se-publican-antes-que-el-curso.md)): la autora envía a revisión cada
+versión de recurso, otra persona la aprueba y quien publica la publica, y después se envía el curso. Pedir otra vez el mismo borrador
 devuelve su ejecución, sin otra versión. El doble hace una lección por lectura de cada unidad con el texto de su sección (o
 una con el resumen y los temas si no tiene ninguna), el primer resultado de la unidad como objetivo y una verificación por
 actividad.

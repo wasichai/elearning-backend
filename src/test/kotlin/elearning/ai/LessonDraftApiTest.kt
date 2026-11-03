@@ -76,6 +76,24 @@ class LessonDraftApiTest : LmsApiTest() {
         return HttpStatus.valueOf(r.status.value()) to r.responseBody?.let { runCatching { json.readTree(it) }.getOrNull() }
     }
 
+    // el estado de una versión de recurso por la API de registros
+    private fun patch(
+        token: String,
+        resourceVersion: String,
+        state: String,
+    ): HttpStatus =
+        HttpStatus.valueOf(
+            client
+                .patch()
+                .uri("/api/objects/version_recurso/records/$resourceVersion")
+                .header("Authorization", token)
+                .bodyValue(mapOf("attributes" to mapOf("estado" to state)))
+                .exchange()
+                .returnResult(String::class.java)
+                .status
+                .value(),
+        )
+
     private fun created(
         path: String,
         attributes: Map<String, Any?>,
@@ -230,7 +248,7 @@ class LessonDraftApiTest : LmsApiTest() {
     }
 
     // #367: el borrador generado de punta a punta con los dobles ya trae sus evaluaciones, así que la validación por código no
-    // lo bloquea con NO_ASSESSMENT y entra en revisión sin que nadie lo toque
+    // lo bloquea con NO_ASSESSMENT y, publicadas sus lecturas (ADR-0041), entra en revisión sin que nadie toque su temario
     @Test
     fun `a draft generated end to end by the double passes the validation without NO_ASSESSMENT and goes to review`() {
         val course = course()
@@ -245,6 +263,21 @@ class LessonDraftApiTest : LmsApiTest() {
         assertFalse("NO_ASSESSMENT" in kinds, report.toString())
         assertFalse(report["blocking"].asBoolean(), report.toString())
         assertEquals(2, report["evaluations"].asInt(), report.toString())
+        // sus lecturas nacen en BORRADOR (ADR-0041, #366): con alguna sin publicar, el curso no va a revisión
+        assertEquals(HttpStatus.CONFLICT, exchange("/api/lms/studio/versions/$versionId/submit", creator, emptyMap<String, Any>()).first)
+        // cada una la envía la autora, la aprueba otra persona y la publica quien publica; después, el curso
+        val resources =
+            list("unidad", "version_curso", versionId)
+                .flatMap { unit -> list("leccion", "unidad", unit["id"].asString()) }
+                .flatMap { lesson -> list("recurso_leccion", "leccion", lesson["id"].asString()) }
+                .map { it["attributes"]["version_recurso"].asString() }
+        assertTrue(resources.isNotEmpty())
+        val admin = bearer()
+        for (resource in resources) {
+            assertEquals(HttpStatus.OK, patch(creator, resource, "EN_REVISION"))
+            assertEquals(HttpStatus.OK, patch(reviewer, resource, "APROBADA"))
+            assertEquals(HttpStatus.OK, patch(admin, resource, "PUBLICADA"))
+        }
         val (submitted, body) = exchange("/api/lms/studio/versions/$versionId/submit", creator, emptyMap<String, Any>())
         assertEquals(HttpStatus.OK, submitted, body.toString())
         assertEquals("EN_REVISION", get("/api/objects/version_curso/records/$versionId", creator)["attributes"]["estado"].asString())

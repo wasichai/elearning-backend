@@ -92,6 +92,19 @@ Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este
   [#367](https://github.com/wasichai/elearning-backend/issues/367), [#368](https://github.com/wasichai/elearning-backend/issues/368)
   (medio, presupuesto por organización) y [#369](https://github.com/wasichai/elearning-backend/issues/369) (bajos). Sin migraciones.
 
+## 2026-11-03 — Un curso no se publica con recursos sin publicar ([#366](https://github.com/wasichai/elearning-backend/issues/366))
+
+- `EditorialWorkflowGuard` responde `409` al llevar una `version_curso` a `EN_REVISION`, `APROBADA` o `PUBLICADA` (estudio,
+  bandeja y API de registros) si alguna lección enlaza una `version_recurso` que no está `PUBLICADA`, nombrando las
+  lecciones y versiones; tras los permisos, así que quien no puede dar el paso sigue recibiendo `403`.
+- Una `version_recurso` en `BORRADOR` enlazada desde una versión de curso fuera de borrador no cambia de contenido ni se
+  borra (`409`); su flujo editorial sí sigue.
+- `CurriculumResources` (`elearning.course`) lo resuelve en una sentencia SQL por comprobación, sin consultas por registro.
+- `ContentReadScope` solo sirve al estudiante versiones de recurso `PUBLICADAS` y sus recursos; `ClassroomReader` las
+  filtra también para quien lee con `VER_TODAS` (defensa en profundidad).
+- Flujo del borrador de lección (#283): cada recurso se envía, revisa y publica antes que el curso (ADR-0041). Pruebas:
+  `UnpublishedResourcesApiTest`. Docs: `docs/security` §4.3 y §4.5, `docs/ai` §5, modelo de dominio. Sin migraciones.
+
 ## 2026-11-03 — Intervenciones humanas y distintivo del doble: E34.3 ([#288](https://github.com/wasichai/elearning-backend/issues/288))
 
 - `DraftInterventionListener` (`elearning.ai`) añade a la ejecución que generó un borrador (`DraftValidationStore.generatingRun`)

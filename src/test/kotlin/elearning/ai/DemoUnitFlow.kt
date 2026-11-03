@@ -29,7 +29,8 @@ import java.util.UUID
 // Lo que deja ver de la canalización real: el borrador trae las lecturas y las evaluaciones del diseño (#367), así que la
 // primera validación ya no bloquea; la corrección de la autora (paso 8) es una edición menor que obliga a validar otra vez,
 // porque el informe deja de corresponder al borrador. Y las versiones de recurso de las lecturas nacen en BORRADOR y pasan
-// su propio flujo (enviar, aprobar, publicar) antes de publicar la versión del curso, para que lo publicado no cambie después
+// su propio flujo (enviar, aprobar, publicar) antes de enviar la versión del curso a revisión (ADR-0041), para que lo revisado
+// y lo publicado no cambien después
 internal class DemoUnitFlow(
     private val client: WebTestClient,
     private val json: JsonMapper,
@@ -127,20 +128,23 @@ internal class DemoUnitFlow(
             assertFalse(second["report"]["blocking"].asBoolean(), second.toString())
             assertTrue(second["current"].asBoolean())
             assertEquals(evaluations.size, second["report"]["evaluations"].asInt(), second.toString())
-            assertEquals("EN_REVISION", ok(submit(author, version))["status"].asString())
-
-            // 7 y 9. revisión y aprobación: nunca la autora (403 aunque tenga APROBAR), sí el revisor, en la bandeja
-            assertEquals(HttpStatus.FORBIDDEN, decide(author, version).first)
-            val inbox = ok(call(HttpMethod.GET, reviewer, "/api/lms/review/versions")).values().single { it["id"].asString() == version }
-            assertEquals(generator, inbox["generator"].asString(), inbox.toString())
-            // las lecturas generadas pasan su propio flujo: la autora las envía y el revisor las aprueba
+            // las lecturas generadas pasan antes su propio flujo (ADR-0041): con alguna sin publicar, el curso no va a revisión
+            assertEquals(HttpStatus.CONFLICT, submit(author, version).first)
+            // la autora las envía, el revisor las aprueba y quien publica las publica
             val resources = readings.map { lesson -> list(author, "recurso_leccion", "leccion", lesson).single()["attributes"]["version_recurso"].asString() }
             for (resource in resources) {
                 assertEquals("BORRADOR", attributes(author, "version_recurso", resource)["estado"].asString())
                 assertEquals(HttpStatus.OK, patch(author, "version_recurso", resource, mapOf("estado" to "EN_REVISION")))
                 assertEquals(HttpStatus.FORBIDDEN, patch(author, "version_recurso", resource, mapOf("estado" to "APROBADA")))
                 assertEquals(HttpStatus.OK, patch(reviewer, "version_recurso", resource, mapOf("estado" to "APROBADA")))
+                assertEquals(HttpStatus.OK, patch(admin, "version_recurso", resource, mapOf("estado" to "PUBLICADA")))
             }
+            assertEquals("EN_REVISION", ok(submit(author, version))["status"].asString())
+
+            // 7 y 9. revisión y aprobación: nunca la autora (403 aunque tenga APROBAR), sí el revisor, en la bandeja
+            assertEquals(HttpStatus.FORBIDDEN, decide(author, version).first)
+            val inbox = ok(call(HttpMethod.GET, reviewer, "/api/lms/review/versions")).values().single { it["id"].asString() == version }
+            assertEquals(generator, inbox["generator"].asString(), inbox.toString())
             assertEquals("APROBADA", ok(decide(reviewer, version))["status"].asString())
             // aceptar el borrador queda en la ejecución que lo generó (RF-IA-03), a nombre del revisor
             val accepted = ok(call(HttpMethod.GET, author, "/api/lms/ai/runs/${draft["id"].asString()}"))["interventions"].values()
@@ -148,7 +152,6 @@ internal class DemoUnitFlow(
 
             // 10. publicación: solo quien tiene PUBLICAR; ni la autora ni el revisor
             for (token in listOf(author, reviewer)) assertEquals(HttpStatus.FORBIDDEN, publish(token, version).first)
-            for (resource in resources) assertEquals(HttpStatus.OK, patch(admin, "version_recurso", resource, mapOf("estado" to "PUBLICADA")))
             assertEquals("PUBLICADA", ok(publish(admin, version))["status"].asString())
             val published = attributes(admin, "version_curso", version)
             assertEquals("PUBLICADA", published["estado"].asString())
