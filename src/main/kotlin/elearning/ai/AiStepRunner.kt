@@ -48,17 +48,19 @@ class AiStepRunner(
         draft: suspend (AgentExecution) -> Unit = {},
     ): String = run(job, { request -> AiStepInput(Unit, request.sources) }, { prompt, _ -> generator.call(prompt) }, draft)
 
-    // un paso que lee antes de llamar: read le da al generador su material y las fuentes que leyó
+    // un paso que lee antes de llamar: read le da al generador su material y las fuentes que leyó. action: la acción que quien
+    // lo pidió debe conservar al ejecutar; GENERAR salvo la opinión de consistencia, que pide quien valida (VALIDAR)
     suspend fun <M> run(
         job: Job,
         read: suspend (AiStepPayload) -> AiStepInput<M>,
         generator: AiStepGenerator<M>,
         draft: suspend (AgentExecution) -> Unit = {},
+        action: AiAction = AiAction.GENERAR,
     ): String {
         val request = AiJobs.payloadOf(job.payload)
         val organization = job.organizationId
-        // antes de gastar: quien lo pidió puede todavía generar (ADR-0022 §4)
-        permissions.requireStillAllowed(organization, request.requester, AiAction.GENERAR)
+        // antes de gastar: quien lo pidió puede todavía generar, o validar (ADR-0022 §4)
+        permissions.requireStillAllowed(organization, request.requester, action)
         store.succeededWithKey(organization, request.key)?.let { done ->
             return deliver(job, done, if (done.jobId == job.id) draft else null)
         }

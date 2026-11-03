@@ -1,0 +1,18 @@
+{
+  "id": "msg_double_consistency-approved",
+  "type": "message",
+  "role": "assistant",
+  "model": "claude-haiku-5-5",
+  "content": [
+    {
+      "type": "text",
+      "text": "{\"verdict\": \"APPROVED\", \"summary\": \"Las preguntas se responden con lo que enseñan las lecciones.\", \"findings\": [{\"origin\": \"pregunta:00000000-0000-0000-0000-000000000000\", \"detail\": \"Una pregunta que el borrador no tiene.\"}]}"
+    }
+  ],
+  "stop_reason": "end_turn",
+  "stop_sequence": null,
+  "usage": {
+    "input_tokens": 900,
+    "output_tokens": 120
+  }
+}
