@@ -6,6 +6,8 @@ import elearning.common.listAllIn
 import elearning.common.listByIds
 import elearning.common.ref
 import org.springframework.stereotype.Service
+import org.springframework.transaction.reactive.TransactionalOperator
+import org.springframework.transaction.reactive.executeAndAwait
 import wasichai.core.common.ConflictException
 import wasichai.core.common.ForbiddenException
 import wasichai.core.common.NotFoundException
@@ -70,6 +72,7 @@ data class StudioVersionDetail(
     val units: List<StudioUnit>,
     val comments: List<ReviewComment>,
     val decisions: List<ReviewDecision>,
+    val history: List<VersionTransition>,
 )
 
 data class ReviewComment(
@@ -98,6 +101,8 @@ class StudioReader(
     private val records: RecordService,
     private val decisions: DecisionStore,
     private val names: DisplayNames,
+    private val history: VersionHistory,
+    private val transactions: TransactionalOperator,
 ) {
     suspend fun mine(): List<StudioVersion> {
         val me = currentUser.require().userId.toString()
@@ -112,8 +117,8 @@ class StudioReader(
 
     suspend fun detail(id: UUID): StudioVersionDetail = detailOf(own(id))
 
-    // el detalle de una versión que quien llama ya puede ver aquí: su temario, sus comentarios y sus decisiones. el temario
-    // se lee por niveles, no lección a lección (L4 de #216)
+    // el detalle de una versión que quien llama ya puede ver aquí: su temario, sus comentarios, sus decisiones y su
+    // historial de estados (ADR-0032). el temario se lee por niveles, no lección a lección (L4 de #216)
     suspend fun detailOf(version: RecordResponse): StudioVersionDetail {
         val organization = currentUser.require().organizationId
         val course = records.get(COURSE, UUID.fromString(version.attributes.ref(COURSE)!!))
@@ -145,8 +150,13 @@ class StudioReader(
                 )
             }
         val decided = decisions.ofVersion(organization, UUID.fromString(version.id))
-        // los nombres de la versión, de sus comentarios y de sus decisiones, en una sola lectura (#258)
-        val named = names.of(organization, people(version) + notes.map { it.attributes[AUTHOR]?.toString() } + decided.map { it.authorId })
+        val moves = history.ofVersion(organization, UUID.fromString(version.id))
+        // los nombres de la versión, de sus comentarios, de sus decisiones y de su historial, en una sola lectura (#258)
+        val named =
+            names.of(
+                organization,
+                people(version) + notes.map { it.attributes[AUTHOR]?.toString() } + decided.map { it.authorId } + moves.map { it.by },
+            )
         val s = summaryOf(version, course, notes, named)
         return StudioVersionDetail(
             s.id,
@@ -162,13 +172,19 @@ class StudioReader(
             units,
             notes.map { comment(it, named) },
             decided.map { it.copy(authorName = named[it.authorId]) },
+            moves.map { it.copy(byName = it.by?.let { by -> named[by] }) },
         )
     }
 
     suspend fun submit(id: UUID): StudioVersion {
         val version = own(id)
         if (version.attributes[STATE]?.toString() != "BORRADOR") throw ConflictException("Solo se envía a revisión un borrador")
-        return summary(records.patch(VERSION, UUID.fromString(version.id), RecordRequest(mapOf(STATE to "EN_REVISION")), null, null))
+        // en una transacción: el cambio de estado y su fila del historial (ADR-0032) se confirman juntos
+        val written =
+            transactions.executeAndAwait {
+                records.patch(VERSION, UUID.fromString(version.id), RecordRequest(mapOf(STATE to "EN_REVISION")), null, null)
+            }
+        return summary(written)
     }
 
     // una versión de quien llama; la de otra persona, o la que no puede leer, no existe (404)

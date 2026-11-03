@@ -84,7 +84,8 @@ class NewVersionService(
         author: String,
     ): UUID {
         val attributes = FIRST_DRAFT + mapOf(COURSE to course, "numero" to 1, "autor_id" to author, "estado" to "BORRADOR")
-        return UUID.fromString(records.create(VERSION, RecordRequest(attributes)).id)
+        // en una transacción: la versión y la primera fila de su historial (ADR-0032) se confirman juntas
+        return transactions.executeAndAwait { UUID.fromString(records.create(VERSION, RecordRequest(attributes)).id) }
     }
 
     // copia los registros bajo sus padres nuevos, en orden y en un lote; devuelve la identidad nueva de cada uno
