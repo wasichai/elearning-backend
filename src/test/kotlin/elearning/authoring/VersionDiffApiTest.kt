@@ -136,6 +136,22 @@ class VersionDiffApiTest : ClassroomApiTestSupport() {
     }
 
     @Test
+    fun `changing the trace of a unit changes the unit`() {
+        val author = account("CREADOR")
+        val id = draft(author, course())
+        val unit = records("unidad", "version_curso", id).single()["id"].asString()
+        patch(author, "unidad", unit, mapOf("referencia_fuente" to "acme/manuales@abc:capitulos/uno.adoc#instalar"))
+
+        val diff = ok(call(author, "/api/lms/studio/versions/$id/diff"))["units"].single()
+
+        assertEquals("CHANGED", diff["change"].asString())
+        assertEquals(listOf("referencia_fuente"), diff["fields"].strings())
+        assertEquals(listOf(1 to "SAME", 2 to "SAME", 3 to "SAME"), diff["lessons"].changes())
+        val detail = ok(call(author, "/api/lms/studio/versions/$id"))
+        assertEquals("acme/manuales@abc:capitulos/uno.adoc#instalar", detail["units"].single()["sourceRef"].asString())
+    }
+
+    @Test
     fun `changing the linked resources changes the lesson`() {
         val fixture = course()
         val author = account("CREADOR")
