@@ -8,6 +8,9 @@ import org.junit.jupiter.api.Test
 import org.springframework.http.HttpStatus
 import tools.jackson.databind.JsonNode
 import java.util.UUID
+import java.util.concurrent.Callable
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.Executors
 
 // una versión nueva a partir de otra (ADR-0018 §1, RF-CON-04): un borrador del autor con su propia copia del temario. lo
 // publicado, y quien lo cursa, no se tocan
@@ -29,6 +32,15 @@ class NewVersionApiTest : ClassroomApiTestSupport() {
     ): List<JsonNode> = get("/api/objects/$obj/records?$field=$value&size=200", admin)["content"].values().toList()
 
     private fun versionOf(course: String) = records("version_curso", "curso", course).single()
+
+    // un curso recién creado, todavía sin versiones
+    private fun bareCourse(): String {
+        val code = uniqueName("NEW-").uppercase()
+        val (status, body) =
+            call(admin, "/api/objects/curso/records", mapOf("attributes" to mapOf("codigo" to code, "slug" to code.lowercase(), "titulo" to "Curso nuevo")))
+        assertEquals(HttpStatus.CREATED, status, body.toString())
+        return body!!["id"].asString()
+    }
 
     @Test
     fun `it copies the curriculum to a draft of the author, with new identities`() {
@@ -138,5 +150,67 @@ class NewVersionApiTest : ClassroomApiTestSupport() {
         assertEquals(HttpStatus.FORBIDDEN, copy(demoUser("revisor"), id).first)
         assertEquals(HttpStatus.UNAUTHORIZED, call(null, "/api/lms/studio/courses/$id/versions", mapOf("fromVersionId" to null)).first)
         assertEquals(HttpStatus.NOT_FOUND, copy(creator, UUID.randomUUID().toString()).first)
+    }
+
+    @Test
+    fun `a course without versions gets an empty first draft of whoever asks`() {
+        val id = bareCourse()
+
+        val (status, created) = copy(creator, id)
+
+        assertEquals(HttpStatus.CREATED, status, created.toString())
+        val draft = created!!["id"].asString()
+        assertEquals(1, created["number"].asInt())
+        assertEquals("BORRADOR", created["status"].asString())
+        assertEquals(id, created["course"]["id"].asString())
+        assertEquals(userId(creator), created["authorId"].asString())
+        assertEquals(0, created["units"].size())
+        val attributes = get("/api/objects/version_curso/records/$draft", admin)["attributes"]
+        assertEquals("ASINCRONA", attributes["modalidad"].asString())
+        assertEquals(1, attributes["semanas"].asInt())
+        assertTrue(ok(call(creator, "/api/lms/studio/versions")).values().any { it["id"].asString() == draft })
+
+        // y la siguiente ya es una copia de esa, la v2
+        assertEquals(2, copy(creator, id).second!!["number"].asInt())
+    }
+
+    @Test
+    fun `two requests at once on a course without versions make a single first draft`() {
+        val id = bareCourse()
+        val go = CountDownLatch(1)
+        val pool = Executors.newFixedThreadPool(2)
+        val answers =
+            try {
+                val calls =
+                    List(2) {
+                        pool.submit(
+                            Callable {
+                                go.await()
+                                copy(creator, id)
+                            },
+                        )
+                    }
+                go.countDown()
+                calls.map { it.get().first }
+            } finally {
+                pool.shutdown()
+            }
+
+        // el número es único por curso: la otra choca con la restricción (409) o, si llegó después, es la v2
+        assertTrue(HttpStatus.CREATED in answers, answers.toString())
+        assertTrue(answers.all { it == HttpStatus.CREATED || it == HttpStatus.CONFLICT }, answers.toString())
+        val numbers = records("version_curso", "curso", id).map { it["attributes"]["numero"].asInt() }.sorted()
+        assertEquals(numbers.distinct(), numbers)
+        assertEquals(1, numbers.first())
+    }
+
+    @Test
+    fun `only who can create versions makes the first draft`() {
+        val id = bareCourse()
+
+        assertEquals(HttpStatus.FORBIDDEN, copy(newStudent(), id).first)
+        assertEquals(HttpStatus.FORBIDDEN, copy(demoUser("revisor"), id).first)
+        assertEquals(HttpStatus.BAD_REQUEST, copy(creator, id, UUID.randomUUID().toString()).first)
+        assertEquals(0, records("version_curso", "curso", id).size)
     }
 }
