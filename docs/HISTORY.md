@@ -11,6 +11,19 @@ Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este
   ([#183](https://github.com/wasichai/elearning-backend/issues/183)) ya estaban cerrados; la fila F3 del
   [roadmap](product/roadmap.md) queda sin pendientes.
 
+## 2026-11-03 — Licencia de Remotion decidida ([#267](https://github.com/wasichai/elearning-backend/issues/267))
+
+- [ADR-0039](adr/0039-remotion-como-motor-de-render-con-licencia-por-despliegue.md): el titular elige Remotion como motor de
+  render de la Fase 5 y, con 3 personas o menos (contratistas incluidos), usa la Free License sin pagar. El render es
+  opcional y desactivado por defecto, en un trabajador Node separado con Remotion solo como dependencia npm; cada
+  despliegue responde de su propia licencia. Sin excepción de enlace en la LGPL mientras el trabajador sea un programa
+  aparte que recibe datos JSON; se revisa al subir a Remotion 5.0.
+- `docs/legal/licensing.md` recoge los términos de 4.x y 5.0 con fuente y fecha (umbral de 3 personas, contratistas,
+  centros educativos y organismos públicos, usuarios sin código, precios y telemetría); `docs/ai/README.md` §12 se
+  corrige y la guía de operación avisa de la licencia a quien active el render.
+- Los criterios de #267 que piden código (build sin Remotion comprobada en CI, informe de licencias, rechazo de
+  peticiones con código, licencia del `ffprobe`) quedan para el trabajador, [#297](https://github.com/wasichai/elearning-backend/issues/297).
+
 ## 2026-11-03 — Logros en la interfaz del aula: RF-AUL-08 implementado ([front#166](https://github.com/wasichai/elearning-frontend/pull/166))
 
 - La interfaz muestra `achievements` junto al avance, con su fecha y enlace a su unidad, evaluación o certificado. El
