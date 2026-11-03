@@ -241,6 +241,18 @@ construye, se configura y se conecta el trabajador se documenta con su implement
 - El trabajador solo recibe datos (el guion como JSON validado); nunca acepta código de los usuarios, como exigen los
   términos de Remotion.
 
+Lo que pedirá activarlo ([ADR-0040](../adr/0040-renderizador-de-video-en-un-trabajador-node.md); nombres de variables a confirmar en E37.2):
+
+- `LMS_RENDER_ENABLED=true`, `LMS_RENDER_WORKER_URL` y `LMS_RENDER_WORKER_TOKEN` (secreto compartido con el trabajador);
+  sin URL o sin secreto el backend no arranca con el render activo.
+- El contenedor del trabajador **en la red interna, sin salida a Internet**: todo lo que renderiza llega en la petición
+  o va en su paquete.
+- `WASICHAI_FILES_MAX_BYTES=256MB` (techo de archivos; los campos que suben personas conservan su tope de 25 MB) y un
+  heap del backend de al menos 1 GB: Wasichai guarda cada archivo leyéndolo entero en memoria.
+- `LMS_RENDER_MAX_CONCURRENT` (1), `LMS_RENDER_TIMEOUT` (30 min, con `lms.jobs.lease` por encima),
+  `LMS_RENDER_MAX_SECONDS` (15 min) y `LMS_RENDER_MAX_BYTES` (256 MB). Un render ocupa una plaza de `lms.jobs.parallelism`
+  mientras dura.
+
 ## Despliegue objetivo (k3s)
 
 Posterior (F6); nada de esto existe aún.

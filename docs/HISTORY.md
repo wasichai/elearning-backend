@@ -11,6 +11,24 @@ Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este
   ([#183](https://github.com/wasichai/elearning-backend/issues/183)) ya estaban cerrados; la fila F3 del
   [roadmap](product/roadmap.md) queda sin pendientes.
 
+## 2026-11-03 — ADR del renderizador de vídeo: E37.1 ([#296](https://github.com/wasichai/elearning-backend/issues/296))
+
+Primer paso de la épica E37 ([#295](https://github.com/wasichai/elearning-backend/issues/295)), sobre la decisión de
+licencia de [ADR-0039](adr/0039-remotion-como-motor-de-render-con-licencia-por-despliegue.md).
+
+- [ADR-0040](adr/0040-renderizador-de-video-en-un-trabajador-node.md): Remotion en un paquete Node aparte,
+  `render-worker/`, con su propio `package.json` y su imagen, que construye quien despliega; ni la raíz ni Gradle lo
+  instalan. Entrada: el guion de RF-MED-01 como JSON validado por los dos lados contra un esquema compartido (secciones,
+  diapositivas de una lista cerrada, subtítulos, fuentes OFL del paquete, 720p/1080p, 25/30 fps, imágenes dentro de la
+  petición), nunca código.
+- El backend encola `VIDEO_RENDER` en `lms.trabajo` y su manejador llama al trabajador por HTTP interno (`PUT` idempotente
+  por trabajo, descarga y borrado) con un secreto compartido; la cola gana límite de concurrencia por tipo al reclamar y
+  tiempo límite por manejador. El trabajador no toca la base ni el almacén.
+- El vídeo se guarda en `wasichai-files`, una sola copia, en un campo que solo escribe la plataforma con tope de 256 MB
+  (el techo sube y los demás campos conservan su tope); se piden a Wasichai subida en streaming, `Range` y detección de
+  MP4. `ffprobe` en el trabajador y validación del informe en el backend (RF-MED-03); render desactivado por defecto.
+- `docs/legal/licensing.md`, `docs/ai/README.md` §12 y la guía de operación enlazan la decisión.
+
 ## 2026-11-03 — Licencia de Remotion decidida ([#267](https://github.com/wasichai/elearning-backend/issues/267))
 
 - [ADR-0039](adr/0039-remotion-como-motor-de-render-con-licencia-por-despliegue.md): el titular elige Remotion como motor de
