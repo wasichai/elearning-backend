@@ -1,12 +1,14 @@
 package elearning.authoring
 
 import elearning.learning.ClassroomApiTestSupport
+import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.springframework.http.HttpStatus
 import tools.jackson.databind.JsonNode
+import wasichai.core.data.RecordRequest
 import java.util.UUID
 import java.util.concurrent.Callable
 import java.util.concurrent.CountDownLatch
@@ -125,6 +127,56 @@ class NewVersionApiTest : ClassroomApiTestSupport() {
         assertEquals(1, view["progress"]["completedLessons"].asInt())
         assertEquals("Lección 1", view["units"][0]["lessons"][0]["title"].asString())
         assertEquals("Lección 1", get("/api/objects/leccion/records/${fixture.reading}", admin)["attributes"]["titulo"].asString())
+    }
+
+    // criterio de la Fase 4 (RF-CON-04): la v2 recorre el estudio y la bandeja hasta publicarse, y la v1, su temario, su
+    // recurso y el progreso de quien la cursa siguen como estaban
+    @Test
+    fun `publishing v2 leaves v1, its resources and the progress on v1 as they were`() {
+        val fixture = course()
+        val id = courseId(fixture.offering)
+        val v1 = versionOf(id)
+        val student = newStudent()
+        val enrollment = enroll(student, fixture)["id"].asString()
+        ok(event(student, enrollment, fixture.reading, "MARKED_COMPLETE"))
+        val before = ok(call(student, "/api/lms/classroom/enrollments/$enrollment"))
+        val lessonBefore = get("/api/objects/leccion/records/${fixture.reading}", admin)["attributes"]
+
+        val v2 = copy(creator, id).second!!["id"].asString()
+        try {
+            val v2Lesson =
+                records("leccion", "unidad", records("unidad", "version_curso", v2).single()["id"].asString())
+                    .first { it["attributes"]["tipo"].asString() == "LECTURA" }["id"]
+                    .asString()
+            val edited =
+                client
+                    .patch()
+                    .uri("/api/objects/leccion/records/$v2Lesson")
+                    .header("Authorization", creator)
+                    .bodyValue(mapOf("attributes" to mapOf("titulo" to "Título de la v2")))
+                    .exchange()
+                    .returnResult(String::class.java)
+                    .status
+                    .value()
+            assertEquals(200, edited)
+            ok(call(creator, "/api/lms/studio/versions/$v2/submit", emptyMap()))
+            ok(call(demoUser("revisor"), "/api/lms/review/versions/$v2/decision", mapOf("decision" to "APROBAR", "reason" to null)))
+            assertEquals("PUBLICADA", ok(call(admin, "/api/lms/review/versions/$v2/publish", emptyMap()))["status"].asString())
+
+            assertEquals(v1["attributes"], get("/api/objects/version_curso/records/${v1["id"].asString()}", admin)["attributes"])
+            assertEquals(lessonBefore, get("/api/objects/leccion/records/${fixture.reading}", admin)["attributes"])
+            assertEquals(fixture.resource, records("recurso_leccion", "leccion", fixture.reading).single()["attributes"]["version_recurso"].asString())
+            val after = ok(call(student, "/api/lms/classroom/enrollments/$enrollment"))
+            assertEquals(1, after["version"].asInt())
+            assertEquals(before["progress"], after["progress"])
+            assertEquals(before["units"], after["units"])
+            assertEquals("Lección 1", after["units"][0]["lessons"][0]["title"].asString())
+        } finally {
+            // fuera del catálogo de las demás pruebas
+            runBlocking {
+                records.asPlatform(ORG) { records.patch("version_curso", UUID.fromString(v2), RecordRequest(mapOf("estado" to "RETIRADA")), null, null) }
+            }
+        }
     }
 
     @Test
