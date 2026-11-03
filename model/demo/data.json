@@ -2025,6 +2025,11 @@
       }
     }
   ],
+  "terms": {
+    "text": "Términos de uso de la demostración (ficticios). Para matricularte en un curso, registrar tu progreso y rendir sus evaluaciones aceptas que la plataforma guarde tus datos de aprendizaje durante el plazo de conservación de estos términos. Puedes retirar tu aceptación cuando quieras: tus datos personales se suprimen, y lo que la organización debe conservar (notas emitidas y certificados) queda disociado de tu cuenta.",
+    "retentionDays": 730,
+    "acceptedBy": ["estudiante@demo.wasichai-learning.test"]
+  },
   "enrollments": [
     {
       "user": "estudiante@demo.wasichai-learning.test",

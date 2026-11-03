@@ -211,6 +211,9 @@ Cuerpo `{ "offering": "<código de la edición>" }`. Cabecera opcional `Idempote
 - `201` → `Enrollment` (nueva) · `200` → la misma `Enrollment` si ya existía.
 - `404` edición desconocida · `409` (`problem+json`, `detail` legible) inscripción cerrada, sin cupo, edición no
   disponible o prerrequisito sin cumplir · `401` sin sesión · `403` sin permiso de matricularse.
+- Sin aceptación vigente de los términos de uso ([Términos de uso](#términos-de-uso-y-supresión-adr-0037)), `403` antes
+  que nada, también para repetir una matrícula, con `detail` «Para matricularte debes aceptar los términos de uso
+  vigentes (…)».
 - Prerrequisitos (RF-ACA-08): si la versión de la edición declara cursos previos (`cursos_previos`), cada uno exige una
   matrícula propia `FINALIZADA` con resultado `APROBADO` en cualquier versión de ese curso. Si falta alguno, `409` con
   `detail` «Para matricularte en esta edición antes debes aprobar: `<código> (<título>)`; …», que nombra todos los que
@@ -294,10 +297,24 @@ legible. Lo mismo vale para sus sesiones y su finalización.
         }
       ]
     }
+  ],
+  "achievements": [
+    { "kind": "UNIT_COMPLETED", "at": "2026-11-03T15:20:00Z", "ref": "<id de la unidad>" },
+    { "kind": "ASSESSMENT_PASSED", "at": "2026-11-04T10:05:00Z", "ref": "<id de la evaluación>" },
+    { "kind": "CERTIFICATE_ISSUED", "at": "2026-11-05T09:00:00Z", "ref": "K7Q2-M9XW-4RTB" }
   ]
 }
 ```
 
+- `achievements` (RF-AUL-08): los logros de la matrícula, derivados al leer el aula de lo que ella misma muestra; no se
+  guardan ni se escriben, y no cuestan otra lectura. Del más antiguo al más reciente (uno sin `at`, al final):
+  - `UNIT_COMPLETED`: la unidad tiene completadas todas sus lecciones contables (las que no son `NOT_YET`; su `progress`
+    es `completedLessons == totalLessons > 0`). `ref` es el `id` de la unidad; `at`, el `completedAt` más reciente de esas
+    lecciones.
+  - `ASSESSMENT_PASSED`: la evaluación está aprobada por un intento calificado (`GRADED`), el que muestra su calificación
+    en `assessment.best`; un intento enviado con preguntas por corregir no cuenta. `ref` es el `id` de la evaluación
+    (`assessment.id` de su lección); `at`, el envío del primer intento que aprobó.
+  - `CERTIFICATE_ISSUED`: hay certificado emitido. `ref` es su código (`certificateCode`); `at`, su `issuedAt`.
 - `completion`: cómo se completa la lección — `EXPLICIT` (el estudiante la marca: `LECTURA`, `PRESENTACION`,
   `LABORATORIO`), `VIDEO_END` (al terminar el vídeo), `NOT_YET` (`EVALUACION`, `SESION`: llegan en F3).
 - `progress.status`: `NO_INICIADA` · `INICIADA` · `COMPLETADA` · `APROBADA` (F3). `evidence` solo cuando está completada:
@@ -331,6 +348,8 @@ otra matrícula, lección o tipo es `409` y no registra nada.
 - Solo la persona matriculada registra su progreso, sobre su matrícula `ACTIVA` (otra → `409`). Los eventos llegan a la
   vez sin carreras: uno por lección a la vez.
 - `400` si `type` no es uno de los tres o `clientEventId` no es un UUID.
+- `403` sin aceptación vigente de los términos de uso, sobre una matrícula propia y antes que las demás reglas («Para
+  registrar tu progreso debes aceptar los términos de uso vigentes (…)»); una ajena sigue siendo `404`.
 
 - `409` si la regla no se cumple: `MARKED_COMPLETE` en un vídeo o en una lección `NOT_YET`; `VIDEO_ENDED` en una
   lección que no es vídeo. El estado nunca retrocede.
@@ -421,13 +440,18 @@ intento ya enviado, lección sin evaluación o matrícula no activa. `400`: resp
   "percent": 70,
   "passed": true,
   "pending": false,
-  "questions": [{ "questionId": "…", "points": 2, "maxPoints": 2, "correct": true, "comment": null, "solution": null }]
+  "questions": [{ "questionId": "…", "points": 2, "maxPoints": 2, "correct": true, "comment": null, "solution": null, "reviewLessonId": "…" }]
 }
 ```
 
 `percent` y `passed` son `null` mientras `pending`. `solution` (`{ "optionIds": [...], "acceptedAnswers": [...] }`) solo si la
 evaluación muestra las soluciones al enviar (`mostrar_soluciones: AL_ENVIAR`) **y la persona ya aprobó o agotó sus intentos**:
 antes servirían para aprobar el siguiente. Con `NUNCA`, siempre `null`.
+
+`reviewLessonId` es la lección que repasa la pregunta (`leccion_repaso` de `pregunta`, #260), o `null` si no tiene. Sale
+con el resultado, una vez enviado el intento, sea cual sea `mostrar_soluciones`: no es una solución, solo dice dónde repasar,
+y es una lección de la misma versión que el estudiante ya puede abrir. Viene de la instantánea: no cambia aunque cambie el
+temario. Nunca está en `questions[]` del intento abierto.
 
 En `answers[]`, `submission` es `null` o `{ "id", "file": null | { "name", "contentType", "size", "url" } }`, tanto para el
 estudiante como para el docente. `deadline` es `null` sin tiempo límite. En `result`, una pregunta pendiente trae `points` y
@@ -465,6 +489,43 @@ tipo que detecta `wasichai-files`; lo demás es `400` en `archivo` (RNF-SEG-07).
 `PROGRAMADA` · `REPROGRAMADA` · `CANCELADA`. `attendance`: `null` o `PRESENTE` · `TARDE` · `AUSENTE` · `JUSTIFICADO`. El
 enlace solo es `https`.
 
+### Panel del estudiante
+
+`GET /api/lms/classroom/panel?page=0&size=25` → `ClassroomPanelItem[]`: una página de «Mis cursos» (las mismas matrículas
+y en el mismo orden que `GET /api/lms/classroom/enrollments`), cada una con lo que antes se leía aparte por matrícula
+(#261). `page` y `size` como en el roster: `size` vale 25 si falta y se acota a 1–200, `page` a ≥ 0; una página con
+menos de `size` elementos es la última. Solo las matrículas propias, también para un docente.
+
+`ClassroomPanelItem` = `Enrollment` más:
+
+```json
+{
+  "upcomingSessions": [{ "id": "…", "title": "…", "start": "…", "end": "…", "status": "PROGRAMADA", "attendance": null }],
+  "pendingAssessments": [
+    {
+      "lessonId": "…",
+      "assessment": {
+        "id": "…",
+        "title": "…",
+        "maxAttempts": 2,
+        "timeLimitMinutes": null,
+        "passingPercent": 60,
+        "attemptsUsed": 0,
+        "openAttemptId": null,
+        "best": null
+      }
+    }
+  ]
+}
+```
+
+- `upcomingSessions`: `Session[]` (como en `GET …/sessions`) sin las canceladas ni las ya terminadas, la más próxima
+  primero; la que está en curso sigue.
+- `pendingAssessments`: las evaluaciones no aprobadas con un intento abierto o con intentos por usar, en el orden del
+  curso. `assessment` es el de la lección en `Classroom`. No hay plazos de evaluación en el modelo.
+- Una matrícula que no está `ACTIVA` o ya tiene certificado no tiene nada por delante: las dos listas van vacías.
+- Se lee por lotes: las sentencias SQL no crecen con el número de matrículas de la página.
+
 ### Finalización y certificado
 
 - `GET /api/lms/classroom/enrollments/{id}/completion` → `{ "met": false, "rules": [{ "rule": "LESSONS", "met": true,
@@ -491,6 +552,36 @@ enlace solo es `https`.
 
 Congelado al emitirse: no cambia aunque cambien después el curso o la matrícula.
 
+## Términos de uso y supresión (ADR-0037)
+
+Con sesión. Los datos personales se conservan el plazo que la persona aprueba en los términos de uso
+([ADR-0030](../adr/0030-lgpl-definitiva-y-conservacion-segun-los-terminos.md)); sin aceptación vigente no hay matrícula ni
+progreso (`403`). El catálogo público no la pide.
+
+- `GET /api/lms/terms` → `{ "current": TermsVersion | null, "acceptance": TermsAcceptance | null }`: los vigentes (`null`
+  si la organización no publicó ninguno: entonces nadie se matricula) y la aceptación de quien pregunta.
+- `POST /api/lms/terms` `{ "text": "…", "retentionDays": 730 }` → `201` `TermsVersion`, la versión siguiente. Solo con
+  `MANAGE_ORGANIZATION` (`403`); `400` texto vacío o de más de 100 000 caracteres, o plazo fuera de 1–36 500 días. Una
+  versión publicada no cambia y publicar otra no altera ninguna aceptación.
+- `POST /api/lms/terms/acceptance` `{ "version": 3 }` → `200` `TermsAcceptance`. Acepta la versión vigente, que se nombra
+  (otra → `409`; sin términos publicados → `409`). Con una aceptación vigente, la renueva con esta versión y su plazo
+  desde ahora. Con una retirada o vencida, sus datos se están suprimiendo: `409` con `Retry-After` hasta que termine.
+- `DELETE /api/lms/terms/acceptance` → `202` `{ "jobId": "…" }`: retira la aceptación y encola la supresión de los datos
+  personales (repetirlo mientras no termina devuelve el mismo trabajo) · `404` sin aceptación.
+
+```json
+{
+  "current": { "version": 3, "text": "…", "retentionDays": 730, "publishedAt": "…" },
+  "acceptance": { "version": 2, "acceptedAt": "…", "expiresAt": "…", "withdrawnAt": null, "valid": true }
+}
+```
+
+`valid`: sin retirar y antes de `expiresAt`. Al retirarla o vencer, la supresión corre en la cola
+(`lms.privacy.sweep-every`, 1 h, encola las vencidas): suprime eventos, progreso, asistencias, entregas, intentos sin
+calificar y trabajos; deja la matrícula (`RETIRADA` si estaba activa), los intentos calificados y el certificado sin la
+persona (`holderName: null` en su verificación) y vacía su perfil docente. Detalle en
+[seguridad §7](../security/README.md#7-privacidad-y-retención).
+
 ## Espacio docente (F3, ADR-0016)
 
 Con sesión, solo sobre las ediciones **asignadas** a la persona (`docente_edicion.usuario_id`); otra edición o un
@@ -501,6 +592,7 @@ cualquier edición, sin asignación; calificar le sigue respondiendo `404`.
 | Método | Ruta                                            | Resultado                                                             |
 | ------ | ----------------------------------------------- | --------------------------------------------------------------------- |
 | GET    | `/api/lms/teaching/offerings`                   | `TeachingOffering[]`                                                  |
+| GET    | `/api/lms/teaching/panel`                       | `TeachingPanelItem[]`; `?page` y `?size`                              |
 | GET    | `/api/lms/teaching/offerings/{code}/students`   | `Roster[]`; `?page` y `?size` opcionales                              |
 | GET    | `/api/lms/teaching/offerings/{code}/attempts`   | cola: intentos `SUBMITTED` → `PendingAttempt[]`; `?page`, `?size`     |
 | GET    | `/api/lms/teaching/attempts/{attemptId}`        | `Attempt` con soluciones, respuestas y entregas                       |
@@ -515,6 +607,12 @@ cualquier edición, sin asignación; calificar le sigue respondiendo `404`.
 - `email` puede ser `null` en `Roster`, `PendingAttempt` y `AttendanceRow`: lo guarda la matrícula al crearse.
 - `TeachingOffering`: `{ "code", "status", "startDate", "endDate", "timeZone", "course": { "slug", "code", "title" },
 "enrolled": 12, "pendingAttempts": 3 }`.
+- `TeachingPanelItem` (#261) = `TeachingOffering` más `upcomingSessions` (`Session[]` sin `attendance`, sin las
+  canceladas ni las ya terminadas, la más próxima primero) y `oldestPending` (`PendingAttempt[]`: los 5 primeros de la
+  cola, en su orden; el total está en `pendingAttempts` y la cola entera en `GET …/attempts`). Una página de las
+  ediciones asignadas en el orden de `GET /offerings` (la de inicio más próximo primero), con `page` y `size` como el
+  roster pero siempre paginada: sin ellos, la primera página de 25. Se lee por lotes: las sentencias SQL no crecen con
+  el número de ediciones de la página.
 - `Roster`: `{ "enrollmentId", "email", "status", "progress": ProgressSummary, "attendance": { "attended": 3,
 "total": 4 }, "assessments": [{ "lessonId", "title", "bestPercent": 80, "passed": true, "pending": false }] }`.
 - `PendingAttempt`: `{ "attemptId", "enrollmentId", "email", "lessonId", "lessonTitle", "submittedAt",
@@ -567,7 +665,8 @@ inexistente o que no puedo leer, `404`. El número es único por curso: dos peti
 mismo número, y la que pierde responde `409`.
 
 El contenido (unidades, lecciones, evaluaciones) se edita con la API de registros de Wasichai, que la guarda deja solo al autor y
-en borrador.
+en borrador. La lección de repaso de una pregunta (`leccion_repaso`, opcional) es una lección de la misma versión: otra es
+`400` en `leccion_repaso`. Copiar la versión la re-apunta a la lección copiada.
 
 `StudioVersion`: `{ "id", "number", "status", "course": { "id", "code", "title" }, "authorId", "authorName", "reviewerId": null,
 "reviewerName": null, "updatedAt", "openComments": 2 }`. `status`: `BORRADOR` · `EN_REVISION` · `APROBADA` · `PUBLICADA` · `RETIRADA`.
