@@ -192,6 +192,14 @@ procedimiento con su _Objetivo_ y _Verificación_). Reglas:
   Embabel, la deserialización y los errores del proveedor sin salir a la red. No sustituye al doble determinista
   ([ADR-0033](../adr/0033-fase-5-ia.md) §11).
 
+**Lo publicado funciona sin el proveedor** (RF-MED-04). Lo generado entra en el temario como registros que una persona
+acepta y publica; el aula lee esos registros, nunca la IA. Sin ninguna clave, `AiProviderGate` saca los proveedores y la
+plataforma de Embabel, y una versión publicada cuyas lecciones salieron de una ejecución de agente se lee entera y se
+completa desde el aula (`ClassroomWithoutAiApiTest`, que además recorre el grafo de beans: ninguno del aula alcanza uno
+de `elearning.ai`). `ArchitectureTest` impide que el aula, las evaluaciones, la matrícula, el catálogo o las valoraciones
+usen `elearning.ai`, ni directamente ni a través de otra capacidad. El e2e de la interfaz con el proveedor desactivado es
+[front#171](https://github.com/wasichai/elearning-frontend/issues/171).
+
 ## 8. Permisos separados
 
 Generar, validar, aprobar y publicar son permisos distintos (acciones declaradas de Wasichai, ADR-042):

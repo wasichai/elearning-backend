@@ -368,7 +368,9 @@ el cuándo, en [`roadmap.md`](roadmap.md).
   resolución, subtítulos), con previsualización.
   _Aceptación:_ un render fallido o incompleto no se ofrece para publicar.
 - **RF-MED-04** · F5 · planificado — Lo publicado funciona sin el proveedor de IA.
-  _Aceptación:_ prueba E2E del aula con el proveedor desactivado.
+  _Aceptación:_ prueba E2E del aula con el proveedor desactivado. La API del aula sin proveedor y la regla de
+  `ArchitectureTest` llegan con [#294](https://github.com/wasichai/elearning-backend/issues/294); falta el e2e de la
+  interfaz ([front#171](https://github.com/wasichai/elearning-frontend/issues/171)).
 
 ### RF-REP — Perfiles, reputación y feedback (§8)
 
