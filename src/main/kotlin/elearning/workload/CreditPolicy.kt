@@ -5,8 +5,8 @@ import java.math.RoundingMode
 
 enum class CreditSystem { ECTS, SCH }
 
-// a propósito sin APROBADO: aprobar créditos lo hace una persona sobre la versión del curso (creditos_aprobados),
-// nunca este cálculo
+// a propósito sin APROBADO: aprobar créditos lo hace una persona con autoridad académica en un acto registrado
+// (aprobacion_creditos, ADR-0035), nunca este cálculo
 enum class CreditStatus { PROPUESTO, }
 
 // lo que hace falta para auditar una propuesta: qué regla, con qué parámetros, de qué fuente, sobre qué carga
@@ -32,6 +32,15 @@ interface CreditPolicy {
     val system: CreditSystem
 
     fun propose(workload: Workload): CreditProposal
+}
+
+// las políticas de referencia de ADR-0007, una por sistema: proponen mientras no haya políticas en datos (#269)
+object ReferencePolicies {
+    fun of(system: CreditSystem): CreditPolicy =
+        when (system) {
+            CreditSystem.ECTS -> EctsPolicy()
+            CreditSystem.SCH -> SemesterCreditHourPolicy()
+        }
 }
 
 private val SCALE = 4

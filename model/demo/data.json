@@ -25,14 +25,19 @@
       "email": "docente.revisor@demo.wasichai-learning.test",
       "displayName": "Mara Multirrol (demo)",
       "roles": ["DOCENTE", "REVISOR"]
+    },
+    {
+      "email": "autoridad@demo.wasichai-learning.test",
+      "displayName": "Aurelia Autoridad (demo)",
+      "roles": ["AUTORIDAD_ACADEMICA"]
     }
   ],
   "workflows": {
     "version_curso": {
-      "_comentario": "Como en el flujo editorial real (EditorialWorkflowGuard): la versión nace en borrador, se escribe su temario y la recorre el administrador, que no es su autor. La aprueba por la bandeja, como cualquier revisor (ADR-0021). publicada_en y creditos_aprobados se ponen al llegar.",
+      "_comentario": "Como en el flujo editorial real (EditorialWorkflowGuard): la versión nace en borrador, se escribe su temario y la recorre el administrador, que no es su autor. La aprueba por la bandeja, como cualquier revisor (ADR-0021). publicada_en se pone al llegar; los créditos aprobados solo los registra una autoridad académica con su comando (ADR-0035).",
       "field": "estado",
       "path": ["BORRADOR", "EN_REVISION", "APROBADA", "PUBLICADA"],
-      "deferred": ["publicada_en", "creditos_aprobados"],
+      "deferred": ["publicada_en"],
       "commands": {
         "APROBADA": {
           "path": "/api/lms/review/versions/{id}/decision",

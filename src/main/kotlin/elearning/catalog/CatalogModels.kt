@@ -51,10 +51,24 @@ data class CreditProposalView(
     val status: String,
 )
 
+// el acto que respalda los créditos aprobados: qué órgano, con qué documento y con qué política (ADR-0035). quién lo
+// registró no se publica
+data class CreditApprovalSummary(
+    val credits: BigDecimal,
+    val policyId: String?,
+    val policyVersion: String?,
+    val approvingBody: String,
+    val documentReference: String,
+    val documentDate: LocalDate?,
+    val approvedAt: Instant?,
+)
+
 data class CreditsView(
     val system: String?,
+    // solo con una aprobación vigente; null: los créditos son propuestos, no oficiales
     val approved: BigDecimal?,
     val proposal: CreditProposalView?,
+    val approval: CreditApprovalSummary? = null,
 )
 
 data class VersionView(

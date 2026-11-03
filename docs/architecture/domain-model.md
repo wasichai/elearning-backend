@@ -137,6 +137,10 @@ LONG_TEXT` · `conocimientos_previos · LONG_TEXT` · `requisitos · LONG_TEXT` 
 - Conocimientos previos (RF-CAT-08, [ADR-0028](../adr/0028-conocimientos-previos-como-claves-de-la-version.md)):
   `conocimientos_previos_claves · LONG_TEXT · claves de conocimiento_previo, una por línea`. Una persona solo declara
   claves del vocabulario [guarda]; se congela con la versión y el catálogo filtra por ellas.
+- Créditos aprobados (F6, RF-CRE-08, [ADR-0035](../adr/0035-aprobacion-de-creditos-por-una-autoridad-academica.md)):
+  `creditos_aprobados · DECIMAL` · `politica_creditos · TEXT · id@versión`. Copia de la aprobación vigente en
+  `aprobacion_creditos`; solo los escribe el comando de aprobación, que exige `APROBAR_CREDITOS` [guarda + comando]. Una
+  versión nueva no los hereda.
 - `uniqueConstraints: [[curso, numero]]`.
 
 Invariantes: solo se edita en `BORRADOR`, y con ella sus unidades y lecciones [guarda]; las transiciones son las de §5.1
@@ -144,9 +148,24 @@ Invariantes: solo se edita en `BORRADOR`, y con ella sus unidades y lecciones [g
 publicar retira la anterior en la misma transacción, bajo `ClusterLock.withXactLock("lms.curso.<id>")` [servicio];
 publicarla avisa a quien cursa otra versión del curso con su matrícula `ACTIVA` (RF-AUL-09) [listener + cola];
 `duracion · ENUM(SEMANAS, SEMESTRAL)` (por defecto `SEMANAS`) y `semanas`: de 1 a 8, o de 12 a 26 si es semestral
-(`CourseDurationGuard`, RF-ACA-05) [guarda]; horas ≥ 0. Los créditos **no se guardan** en F1: `workload` los calcula al
-leer a partir de las horas y de la política configurada, y la respuesta dice «propuestos», con sistema, método, parámetros,
-fuente y versión de la política.
+(`CourseDurationGuard`, RF-ACA-05) [guarda]; horas ≥ 0. Los créditos **propuestos no se guardan**: `workload` los calcula
+al leer a partir de las horas y de la política, y la respuesta dice «propuestos», con sistema, método, parámetros, fuente y
+versión de la política. Los **aprobados** son un acto registrado en `aprobacion_creditos`.
+
+**`aprobacion_creditos`** (CreditApproval) — F6, RF-CRE-08, [ADR-0035](../adr/0035-aprobacion-de-creditos-por-una-autoridad-academica.md).
+`appendOnly` y `apiOnly`.
+`version_curso · RELATION → version_curso · requerido` · `tipo · ENUM(APROBACION, REVOCACION) · requerido` · `sustituye · UUID
+· la aprobación que revoca` · instantánea de la política y del cálculo: `sistema · ENUM sistema_credito` · `politica_id ·
+TEXT` · `politica_version · TEXT` · `metodo · TEXT` · `parametros · LONG_TEXT · JSON` · `fuente · TEXT` · `horas_totales ·
+DECIMAL` · `creditos_calculados · DECIMAL` · `creditos_propuestos · DECIMAL` · `creditos_aprobados · DECIMAL` · `motivo ·
+LONG_TEXT` · el acto: `organo · TEXT · requerido` · `documento_referencia · TEXT · requerido` · `documento_fecha · DATE` ·
+`aprobada_por · UUID · requerido` · `aprobada_en · DATETIME · requerido`.
+Invariantes: la escribe solo el comando de aprobación, como la persona, en la misma transacción que la copia en la versión
+y bajo un candado por versión [comando, `apiOnly`]; nunca cambia: revocar es otra fila [`appendOnly`]; la vigente es la
+última de su versión si es una `APROBACION` [comando + catálogo]; solo para una versión `APROBADA` o `PUBLICADA` con sistema
+de crédito, recalculada en el servidor; un número distinto de lo propuesto y una revocación llevan motivo [comando]; no la
+registra el autor, el revisor asignado, quien aprobó la versión en la bandeja ni un docente del curso, tampoco ADMIN
+[comando, por datos].
 
 **`unidad`** (LearningUnit) — F1.
 `version_curso · RELATION → version_curso · requerido` · `orden · INTEGER` · `titulo · TEXT` · `resumen · LONG_TEXT` ·
@@ -449,9 +468,9 @@ ADR-040 de Wasichai), y su uso en el LMS:
   apunta uno `appendOnly` también es `409`. No es un permiso de base de datos: SQL directo contra la tabla física no
   queda frenado.
   Uso: `certificado`, `revocacion_certificado`, `resultado_evaluacion`, `resultado_criterio`, `entrega`,
-  `artefacto_generado`.
+  `artefacto_generado`, `aprobacion_creditos`.
 - **`apiOnly`**: la API genérica responde `403` a las escrituras (ADMIN incluido); `RecordService` en proceso sí escribe.
-  Uso: `matricula`, `progreso_leccion`, `intento_evaluacion`, `ejecucion_agente`.
+  Uso: `matricula`, `progreso_leccion`, `intento_evaluacion`, `ejecucion_agente`, `aprobacion_creditos`.
 - **`requiresReason`**: toda escritura sin motivo es `400`. Hoy no lo usa ningún objeto: asistencia y calificaciones
   exigen motivo solo al cambiar lo ya registrado, y eso lo comprueban sus servicios (revisión de la Fase 3, #183).
 - **`RELATION`**: el destino debe ser de la misma organización y legible para quien escribe; si no, `400`. Evita

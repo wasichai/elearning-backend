@@ -28,6 +28,12 @@ class ReviewDecisionWrite : AbstractCoroutineContextElement(Key) {
     companion object Key : CoroutineContext.Key<ReviewDecisionWrite>
 }
 
+// la escritura con la que la aprobación de créditos copia a la versión lo aprobado (o lo borra al revocar), en la misma
+// transacción que su fila de aprobacion_creditos (ADR-0035). sin ella, creditos_aprobados y politica_creditos no se escriben
+class CreditApprovalWrite : AbstractCoroutineContextElement(Key) {
+    companion object Key : CoroutineContext.Key<CreditApprovalWrite>
+}
+
 // el flujo editorial de version_curso y la inmutabilidad de su temario, para TODA escritura: la API genérica de
 // registros de Wasichai incluida. las acciones declaradas (PUBLICAR, APROBAR…) no protegen nada por sí solas: se
 // conceden y se consultan, y es esta guarda la que las exige (hallazgo alto de la revisión de seguridad, E10.1).
@@ -40,7 +46,9 @@ class ReviewDecisionWrite : AbstractCoroutineContextElement(Key) {
 //   version_recurso, que no tiene bandeja, por la API de registros con motivo (X-Change-Reason) salvo al aprobar
 // - el contenido solo cambia en BORRADOR y solo lo cambia su autor, también su temario; en revisión, aprobada,
 //   publicada o retirada no se mueve (ni su temario)
-// - créditos aprobados y fecha de publicación solo los pone quien tiene la acción correspondiente
+// - créditos aprobados y su política solo los escribe el comando de aprobación de créditos (ADR-0035): 403 para todos por
+//   la API de registros, ADMIN incluido. antes bastaba APROBAR, la acción editorial (hallazgo de #269)
+// - la fecha de publicación solo se pone al publicar
 // - la lección de repaso de una pregunta es de su misma versión (400 si no)
 // - la plataforma (userId nulo) es código de confianza y no pasa por aquí
 @Component
@@ -98,7 +106,8 @@ class EditorialWorkflowGuard(
                 if (attributes.text(AUTHOR) != user.userId.toString() && !holds(PUBLISH)) {
                     throw ValidationException("A version is written in its author's name", AUTHOR, "must be your own user id")
                 }
-                if (attributes[APPROVED_CREDITS] != null) require(APPROVE)
+                // una versión nace sin créditos aprobados: se aprueban sobre la versión ya aprobada (ADR-0035)
+                if (CREDIT_FIELDS.any { attributes[it] != null }) throw ForbiddenException(APPROVED_BY_COMMAND)
                 if (attributes[PUBLISHED_AT] != null) require(PUBLISH)
                 attributes.text(REVIEWER)?.let { reviewer(it, attributes.text(AUTHOR), state, user, holds(PUBLISH)) }
             }
@@ -121,10 +130,15 @@ class EditorialWorkflowGuard(
                     }
                     if (from == IN_REVIEW && decides(before, to, user, holds(APPROVE))) decision(change, to)
                 }
-                if (APPROVED_CREDITS in changed) require(APPROVE)
+                // los copia solo el comando de aprobación, que ya exigió APROBAR_CREDITOS y la separación de funciones; la
+                // acción se vuelve a exigir por si otro código del proceso pusiera la marca
+                if (changed.any { it in CREDIT_FIELDS }) {
+                    if (currentCoroutineContext()[CreditApprovalWrite] == null) throw ForbiddenException(APPROVED_BY_COMMAND)
+                    require(APPROVE_CREDITS)
+                }
                 if (PUBLISHED_AT in changed && to != PUBLISHED) throw ConflictException("$PUBLISHED_AT is set only when publishing")
                 if (REVIEWER in changed) reviewer(attributes.text(REVIEWER), before.text(AUTHOR), from, user, holds(PUBLISH))
-                val content = changed - setOf(APPROVED_CREDITS, PUBLISHED_AT, REVIEWER)
+                val content = changed - CREDIT_FIELDS - setOf(PUBLISHED_AT, REVIEWER)
                 if (content.isNotEmpty() && from != DRAFT) {
                     throw ConflictException("A version that is $from does not change: create a new version (${content.sorted().joinToString()})")
                 }
@@ -326,6 +340,7 @@ class EditorialWorkflowGuard(
         const val AUTHOR = "autor_id"
         const val REVIEWER = "revisor_id"
         const val APPROVED_CREDITS = "creditos_aprobados"
+        const val CREDIT_POLICY = "politica_creditos"
         const val PUBLISHED_AT = "publicada_en"
         const val LINK = "rel:"
 
@@ -339,7 +354,11 @@ class EditorialWorkflowGuard(
         const val APPROVE = "APROBAR"
         const val PUBLISH = "PUBLICAR"
         const val RETIRE = "RETIRAR"
+        const val APPROVE_CREDITS = "APROBAR_CREDITOS"
 
+        val CREDIT_FIELDS = setOf(APPROVED_CREDITS, CREDIT_POLICY)
+
+        const val APPROVED_BY_COMMAND = "Approved credits are written only by POST /api/lms/credits/versions/{id}/approvals"
         const val DECIDED_IN_THE_INBOX = "A course version review is decided in the review inbox: POST /api/lms/review/versions/{id}/decision"
 
         // (desde, hacia) → acciones que la permiten (basta una)
