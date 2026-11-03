@@ -69,6 +69,20 @@ class ArchitectureTest {
         assertThat(offenders).describedAs("fuentes del aula que nombran elearning.$AI").isEmpty()
     }
 
+    // RF-IA-06 (#284): ningún paso da herramientas al modelo ni conecta un servidor MCP. Cada llamada es una createObject sin
+    // herramientas (ModelCalls); que la petición no las lleve y que el contexto no tenga ninguna lo prueba
+    // PromptInjectionProviderApiTest
+    @Test
+    fun `no step hands tools to the model nor connects an mcp server`() {
+        val tools =
+            Regex("""\b(withToolGroups?|withTools?|withToolObjects?|withToolCallbacks?|ToolCallback\w*|McpSyncClient|McpAsyncClient)\b|@(LlmTool|Tool)\b""")
+        val offenders =
+            readSources(root)
+                .filter { tools.containsMatchIn(withoutComments(it.text)) }
+                .map { "${it.path}: ${tools.findAll(withoutComments(it.text)).map { m -> m.value }.distinct().toList()}" }
+        assertThat(offenders).describedAs("fuentes que dan herramientas al modelo").isEmpty()
+    }
+
     // la tabla también se vigila: una línea nueva no puede colar un ciclo, dar dependencias a workload ni hacer que
     // alguien use catalog (el catálogo solo lee; lo junta la aplicación) o reputation (las valoraciones no tocan la
     // matrícula ni las notas, ADR-0038)

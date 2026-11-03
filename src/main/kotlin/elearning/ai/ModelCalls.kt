@@ -6,6 +6,7 @@ import com.embabel.agent.api.common.OperationContext
 import com.embabel.agent.core.support.InvalidLlmReturnFormatException
 import com.embabel.agent.core.support.InvalidLlmReturnTypeException
 import com.embabel.agent.openai.withOpenAiReasoningEffort
+import com.embabel.agent.spi.loop.ToolNotFoundException
 import com.embabel.common.ai.model.LlmOptions
 import com.embabel.common.ai.model.Thinking
 import com.openai.errors.OpenAIServiceException
@@ -29,7 +30,11 @@ data class ModelReply<T : Any>(
 //
 // Los fallos salen como los espera AiStepRunner (ADR-0033 §6): un estado HTTP del proveedor es AiProviderFailure (408, 429
 // y 5xx pasajeros: la cola los reintenta; 400, 401, 403, 404, 409, 422… no) y una salida que no se deserializa es
-// AiInvalidOutput, con lo que costó (INVALID_OUTPUT); los de red salen tal cual, y la cola los reintenta. Antes de eso,
+// AiInvalidOutput, con lo que costó (INVALID_OUTPUT); los de red salen tal cual, y la cola los reintenta. Una respuesta que
+// pide una herramienta (la de un modelo que obedece a una fuente inyectada, RF-IA-06) también es AiInvalidOutput: el paso no
+// tiene ninguna, el bucle de Embabel no ejecuta nada y falla en la primera
+// (embabel.agent.platform.toolloop.tool-not-found.max-retries=0), sin devolverle al modelo la lista de herramientas, y la
+// cola no la repite. Antes de eso,
 // Embabel hace hasta embabel.agent.platform.llm-operations.data-binding.max-attempts intentos (2) y el SDK del proveedor
 // repite 408, 409, 429 y 5xx dos veces más dentro de cada uno (docs/ai §2).
 //
@@ -96,6 +101,7 @@ class ModelCalls internal constructor(
             if (chain.any { it is InvalidLlmReturnFormatException || it is InvalidLlmReturnTypeException }) {
                 return AiInvalidOutput("the model output does not match the expected type", usage)
             }
+            if (chain.any { it is ToolNotFoundException }) return AiInvalidOutput("the model asked for a tool, and the step has none", usage)
             val status = chain.firstNotNullOfOrNull(::statusOf) ?: return e
             val verdict = if (AiProviderFailure.isTransient(status)) "failed" else "rejected the request"
             return AiProviderFailure(status, "the AI provider $verdict ($status)", e)

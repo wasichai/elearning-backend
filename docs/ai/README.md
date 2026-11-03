@@ -303,6 +303,11 @@ actividad.
   ejecución. Las herramientas, si alguna, son de solo lectura y acotadas a esas entradas.
 - Los agentes **no** publican, no aprueban y no escriben registros: devuelven un objeto tipado que el código valida y
   guarda como borrador.
+- **Ninguna herramienta** (RF-IA-06): cada paso es una `createObject` sin herramientas ni MCP, y la petición al proveedor
+  no lleva `tools` ni `tool_choice`. Si el modelo pide una, el bucle de Embabel falla en la primera
+  (`embabel.agent.platform.toolloop.tool-not-found.max-retries: 0`; con el valor por defecto le contesta hasta tres veces y
+  el contador es compartido entre llamadas) y `ModelCalls` la deja en `INVALID_OUTPUT`. Lo prueba
+  `PromptInjectionProviderApiTest` con una fuente inyectada y respuestas obedientes (`docs/security` §4.5).
 - Las referencias se verifican por código contra la fuente (la cita debe existir en `ruta#ancla` de la revisión
   indicada); los enlaces los comprueba código con la regla anti-SSRF del importador.
 - La salida se trata también como no confiable: HTML saneado, sin enlaces nuevos no presentes en las fuentes salvo

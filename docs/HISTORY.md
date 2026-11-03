@@ -2,6 +2,19 @@
 
 Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este archivo registra lo que se entregó.
 
+## 2026-11-03 — Prueba de inyección de instrucciones: E33.7 ([#284](https://github.com/wasichai/elearning-backend/issues/284))
+
+- `PromptInjectionProviderApiTest` (Anthropic y OpenAI, contra el doble HTTP): una fuente con órdenes inyectadas (publicar y
+  aprobar, darse ADMIN, llamar a una herramienta, cerrar a mano su bloque) recorre análisis, diseño y borrador y el doble
+  contesta como un modelo obediente. La versión queda `BORRADOR` sin publicar ni aprobar, cada escritura va dentro de
+  `AiWork` (#288), los permisos de quien lo pidió no cambian, las órdenes no salen de los bloques delimitados del mensaje
+  de usuario y cada petición lleva exactamente sus campos, sin `tools` ni `tool_choice`. Otra prueba sobre el contexto: ni
+  `ToolCallback`, ni `ToolCallbackProvider`, ni clientes MCP, ni métodos `@Tool` o `@LlmTool`.
+- Un modelo que pide una herramienta ya no se reintenta: `embabel.agent.platform.toolloop.tool-not-found.max-retries: 0` y
+  `ModelCalls` lo clasifica como `INVALID_OUTPUT`, con lo que costó. `ArchitectureTest` vigila que nada en `src/main` dé
+  herramientas al modelo. La prueba encontró que `AiStepRunner.runWriting` (el borrador de lecciones, #283) no llevaba la
+  marca `AiWork` de #288: ahora sí, y `AiWorkGuard` también le niega aprobar o publicar. Docs: `docs/security` §4.5 (qué prueba cubre qué amenaza), `docs/ai` §6. Sin migraciones.
+
 ## 2026-11-03 — Intervenciones humanas y distintivo del doble: E34.3 ([#288](https://github.com/wasichai/elearning-backend/issues/288))
 
 - `DraftInterventionListener` (`elearning.ai`) añade a la ejecución que generó un borrador (`DraftValidationStore.generatingRun`)
