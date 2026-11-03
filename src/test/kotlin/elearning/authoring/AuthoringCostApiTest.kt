@@ -125,6 +125,40 @@ class AuthoringCostApiTest : ClassroomApiTestSupport() {
         return bounded("la bandeja", small, big, MORE, "versión", "versiones", PER_VERSION)
     }
 
+    // #258: los nombres de autores, revisores y de quien comenta se leen de una vez, no por persona
+    @TestFactory
+    fun `the inbox costs about the same however many authors it names`(): List<DynamicTest> {
+        val s = Scene()
+
+        fun inReview(author: String) {
+            val (status, body) = call(author, "/api/lms/studio/courses/${s.courseId}/versions", mapOf("fromVersionId" to null))
+            assertEquals(HttpStatus.CREATED, status, body.toString())
+            ok(call(author, "/api/lms/studio/versions/${body!!["id"].asString()}/submit", emptyMap()))
+        }
+        inReview(s.author)
+        val small = s.cost(s.reviewer, "/api/lms/review/versions")
+        repeat(MORE) { inReview(account("CREADOR")) }
+        val big = s.cost(s.reviewer, "/api/lms/review/versions")
+        return bounded("la bandeja", small, big, MORE, "autor", "autores", PER_PERSON)
+    }
+
+    @TestFactory
+    fun `the studio detail costs about the same however many reviewers commented`(): List<DynamicTest> {
+        val s = Scene()
+        val draft = s.draft()
+        ok(call(s.author, "/api/lms/studio/versions/$draft/submit", emptyMap()))
+
+        fun comment(reviewer: String) {
+            val (status, body) = call(reviewer, "/api/lms/review/versions/$draft/comments", mapOf("section" to "unidad:1", "text" to "Revisar"))
+            assertEquals(HttpStatus.CREATED, status, body.toString())
+        }
+        comment(s.reviewer)
+        val small = s.cost(s.author, "/api/lms/studio/versions/$draft")
+        repeat(MORE) { comment(account("REVISOR")) }
+        val big = s.cost(s.author, "/api/lms/studio/versions/$draft")
+        return bounded("el detalle del estudio", small, big, MORE, "revisor", "revisores", PER_PERSON)
+    }
+
     // la copia escribe cada registro, con su guarda: crece con el temario, pero sin leer cada registro por su padre
     @TestFactory
     fun `a copy reads the curriculum in batches`(): List<DynamicTest> {
@@ -149,6 +183,7 @@ class AuthoringCostApiTest : ClassroomApiTestSupport() {
         // leer por lotes no depende del tamaño; el margen cubre la proyección del catálogo en segundo plano
         const val PER_UNIT = 0.5
         const val PER_VERSION = 0.5
+        const val PER_PERSON = 0.5
 
         // una unidad de dos lecciones con su recurso son cinco registros, cada uno con su escritura, su auditoría y su guarda:
         // ≈23 sentencias por unidad leyendo por niveles y escribiendo en lote; leyendo registro a registro eran ≈40
