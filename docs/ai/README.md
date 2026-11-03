@@ -66,14 +66,27 @@ Decisión en [ADR-0033](../adr/0033-fase-5-ia.md) §1–§4.
   `spring.ai.mcp.client.annotation-scanner.enabled=false`; con Embabel en el classpath no llega Spring MVC ni Tomcat (la
   tarea `noServletStack` de `check` lo vigila).
 - **Uso selectivo**: Embabel solo en los pasos 2–5 (y la opinión del 6), con **una llamada tipada por paso**
-  (`PromptRunner.createObject`, nombre exacto a verificar contra 1.5.4), sin planificador, sin herramientas y con el
-  cliente MCP desactivado. Sin abstracción multi-proveedor propia: una interfaz interna pequeña por paso
+  (`PromptRunner.createObject`), sin planificador, sin herramientas y con el cliente MCP desactivado. Verificado contra
+  1.5.4 en E32.3 ([#274](https://github.com/wasichai/elearning-backend/issues/274)): la llamada es
+  `Ai.withLlm(LlmOptions.withModel(m).withMaxTokens(n)).createObject(prompt, type)`, y `elearning.ai.ModelCalls` la hace
+  sobre un `ExecutingOperationContext` propio por llamada (un bean prototipo de Embabel), cuyo `agentProcess.usage()` da
+  los tokens que informó el proveedor; esos van a `AgentRun`. OpenAI va por la Responses API (`gpt-6-*` se declara así en
+  el catálogo de 1.5.4) y recibe `max_output_tokens` y `text.format` `json_schema`; Anthropic recibe `max_tokens` y el
+  esquema JSON en `system`. Sin abstracción multi-proveedor propia: una interfaz interna pequeña por paso
   (`SourceAnalyzer`, `CourseDesigner`, `LessonDrafter`, `ScriptWriter`) que tiene dos implementaciones, Embabel y el
   doble determinista (§7). Sirve para probar y para comparar modelos (§9). Si algo no fuera compatible, se documenta
   aquí y se entrega la alternativa con Spring AI `ChatClient` directo.
 - **Llamadas bloqueantes**: la canalización corre siempre en un trabajo (§5), en un dispatcher acotado, nunca en el
   event loop de WebFlux.
 - **Reintentos**: el interno de Embabel (10 por defecto) baja a 1–2; la política de reintentos es la de la cola (§5).
+  Medido con el doble HTTP en E32.3: en 1.5.4 el reintento que envuelve cada llamada tipada, con los dos proveedores, es
+  el de `embabel.agent.platform.llm-operations.data-binding.max-attempts` (repite cualquier fallo, un 400 incluido; el
+  segundo intento lleva el error de validación y es la corrección acotada de §5). El `max-attempts` de cada proveedor solo
+  cuenta en el camino Chat Completions de OpenAI, que la canalización no usa. Los dos quedan en 2 y `AiStatus` impide
+  arrancar con más. Debajo, `anthropic-java` y `openai-java` repiten 408, 409, 429 y 5xx dos veces dentro de cada intento
+  (respetan `Retry-After`) y Embabel 1.5.4 no deja configurarlo para Anthropic: un 429 son 2 × 3 = 6 peticiones antes de
+  volver a la cola. `ModelCalls` entrega a la cola 400, 401, 403, 404, 422 y la salida inválida como `PermanentJobFailure`;
+  lo demás, tal cual, para que la reintente.
 - **Perfiles**: `wasichai-test` advierte que un perfil llamado `test` puede desactivar los agentes de Embabel; las
   pruebas no lo usan.
 - **Catálogo de modelos**: 1.5.4 conoce `claude-opus-5-5`, `claude-sonnet-5-5`, `claude-haiku-5-5` y `gpt-6-*`. El
@@ -163,6 +176,13 @@ no una tabla nueva:
   encolar es `429` con `Retry-After`. Un paso es una llamada, más los reintentos de corrección acotados.
 - Corre en un dispatcher acotado, nunca en el event loop de WebFlux.
 
+Implementado en E33.2 ([#279](https://github.com/wasichai/elearning-backend/issues/279)): `AiStepRunner` (`elearning.ai`) es la
+política común que llama el `JobHandler` de cada paso con su generador (`AiModelCall`, una llamada por intento) y su borrador;
+`AiJobs` encola con la clave y los límites (`lms.ai.limits`) y lee y cancela (`GET /api/lms/ai/jobs/{id}`,
+`POST /api/lms/ai/jobs/{id}/cancel`, [docs/api](../api/lms.md#trabajos-de-ia-f5-adr-0033-5-6-y-9)). La cola gana `CANCELLED`
+(`V21`). Con una sola llamada por intento, «entre llamadas» es antes de llamar y al volver; los reintentos de corrección
+acotados llegarán con los pasos que los usen.
+
 ## 6. Protección contra prompt injection
 
 - El texto de manuales, fuentes y borradores es **dato no confiable**: va delimitado en el mensaje de usuario, nunca en
@@ -190,7 +210,15 @@ procedimiento con su _Objetivo_ y _Verificación_). Reglas:
 - No se presenta como «Embabel simulado»: es una implementación distinta de la misma interfaz.
 - Aparte está el **doble HTTP** (WireMock) de las API de Anthropic y OpenAI, solo en pruebas de integración: prueba
   Embabel, la deserialización y los errores del proveedor sin salir a la red. No sustituye al doble determinista
-  ([ADR-0033](../adr/0033-fase-5-ia.md) §11).
+  ([ADR-0033](../adr/0033-fase-5-ia.md) §11). Cómo se usa: [docs/testing](../testing/README.md#doble-http-de-los-proveedores-de-ia).
+
+**Lo publicado funciona sin el proveedor** (RF-MED-04). Lo generado entra en el temario como registros que una persona
+acepta y publica; el aula lee esos registros, nunca la IA. Sin ninguna clave, `AiProviderGate` saca los proveedores y la
+plataforma de Embabel, y una versión publicada cuyas lecciones salieron de una ejecución de agente se lee entera y se
+completa desde el aula (`ClassroomWithoutAiApiTest`, que además recorre el grafo de beans: ninguno del aula alcanza uno
+de `elearning.ai`). `ArchitectureTest` impide que el aula, las evaluaciones, la matrícula, el catálogo o las valoraciones
+usen `elearning.ai`, ni directamente ni a través de otra capacidad. El e2e de la interfaz con el proveedor desactivado es
+[front#171](https://github.com/wasichai/elearning-frontend/issues/171).
 
 ## 8. Permisos separados
 
@@ -257,17 +285,29 @@ concurrencia por organización, presupuesto por curso y tarifas para estimar cos
 **Precedente**: SRTM ya tiene guiones Remotion (`srtm-backend/docs/presentaciones/src/videos/*.ts`) con `objetivo`,
 audiencia, `segundos` por escena y trazas `{ doc, ancla }` al manual ([referencias](../research/reference-repositories.md#5-manuales-srtm-y-sgspe)).
 
-- **Licencia**: Remotion no es software libre OSI; usa su propia licencia (gratuita para particulares, organizaciones
-  con ánimo de lucro de hasta 3 empleados y sin ánimo de lucro; licencia de empresa en los demás casos). Por eso el
-  render es un componente **opcional**; ver [licencias](../legal/licensing.md#dependencias-con-condiciones-especiales).
-- **Entrada del render**: objetivos, guion con secciones y duración, estructura de diapositivas, tipografía (fuentes
-  OFL) y recursos, datos de entrada, subtítulos y transcripción, resolución, duración, fps.
-- **Ejecución**: proceso Node separado (contenedor), invocado por un trabajo (§5) con límite de concurrencia; nunca en
-  el proceso WebFlux. Registro del trabajo con parámetros, salida y errores.
-- **Validación del artefacto**: duración, resolución, pistas y subtítulos comprobados sobre el archivo resultante
-  (p. ej. `ffprobe`); sin validar no es «vídeo terminado».
-- **Almacenamiento**: binarios fuera de PostgreSQL, en almacenamiento de objetos (S3/MinIO). `wasichai-files` lee la
-  subida entera en memoria y su tope por defecto es 10 MB, así que los vídeos necesitan otra vía hacia el `FileStore`
-  (a verificar en F5).
-- **Previsualización** antes de la revisión; la versión publicada referencia el artefacto por hash y sigue
+- **Licencia**: Remotion no es software libre OSI; usa su propia licencia. Con 4.x es gratuita para particulares,
+  organizaciones con ánimo de lucro de **hasta 3 empleados**, organizaciones sin ánimo de lucro y evaluación; con 5.0
+  (anunciado) el umbral es de **3 personas contando contratistas**, y centros educativos y organismos públicos necesitan
+  permiso escrito. En los demás casos, Company License (para un trabajador como el nuestro, «Automators»: desde 100 USD/mes).
+  El usuario puede cambiar parámetros o datos de nuestras composiciones (el guion lo puede escribir la IA), **nunca aportar
+  código Remotion**. La licencia es de quien despliega: el titular usa la Free License; el render es un componente
+  **opcional y desactivado por defecto**, en un trabajador separado, y cada despliegue responde de la suya
+  ([ADR-0039](../adr/0039-remotion-como-motor-de-render-con-licencia-por-despliegue.md),
+  [licencias](../legal/licensing.md#remotion)).
+- **Decisión técnica**: [ADR-0040](../adr/0040-renderizador-de-video-en-un-trabajador-node.md) (E37.1). Resumen:
+- **Entrada del render**: el guion de RF-MED-01 como un documento JSON validado por los dos lados contra
+  `render-worker/schema/guion.schema.json`: objetivos, secciones con duración, diapositiva de una lista cerrada, narración
+  (transcripción), subtítulos y trazas; resolución (720p o 1080p), fps (25 o 30), fuente OFL de una lista cerrada que va
+  en el paquete e imágenes dentro de la petición. Nunca código, URL ni HTML.
+- **Ejecución**: trabajador Node aparte (`render-worker/`, su propio `package.json` y su imagen), al que el `JobHandler`
+  `VIDEO_RENDER` de la cola (§5) llama por HTTP interno con un secreto compartido; la cola limita los renders en curso
+  al reclamar y el render tiene su propio tiempo límite. Nunca en el proceso WebFlux; el trabajador no toca la base ni el
+  almacén.
+- **Validación del artefacto**: `ffprobe` en el trabajador; el backend compara su informe con el guion (contenedor,
+  códec, resolución, fps, duración, pistas, tamaño, sha256) y analiza el VTT. Sin validar no es «vídeo terminado» y no
+  se crea la versión.
+- **Almacenamiento**: en `wasichai-files`, una sola copia, en un campo que solo escribe la plataforma con tope de 256 MB
+  (el techo `wasichai.files.max-bytes` sube a 256 MB y los demás campos conservan su tope explícito). Wasichai junta la
+  subida entera en memoria y no atiende `Range`: se le pide subida en streaming, `Range` y detección de MP4.
+- **Previsualización** antes de la revisión, con el propio MP4 del borrador (sin el Player de Remotion); la versión publicada referencia el artefacto por hash y sigue
   funcionando sin el proveedor de IA ni el renderizador.

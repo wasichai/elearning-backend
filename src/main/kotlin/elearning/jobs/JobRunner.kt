@@ -93,6 +93,10 @@ class JobRunner(
                 } catch (e: CancellationException) {
                     // la réplica se apaga: el reclamo caduca y otra lo retoma
                     throw e
+                } catch (e: JobCancelled) {
+                    // ya es CANCELLED: cerrarlo como fallido no escribiría nada
+                    log.info("job {} ({}) stopped at attempt {}: it was cancelled", job.id, job.type, job.attempt)
+                    return
                 } catch (e: PermanentJobFailure) {
                     // reintentar no lo arregla (ADR-0022): termina en este intento
                     log.info("job {} ({}) failed for good: {}", job.id, job.type, e.message)

@@ -1,0 +1,29 @@
+{
+  "id": "resp_double_outline",
+  "object": "response",
+  "created_at": 1793700000,
+  "status": "completed",
+  "model": "gpt-6-luna",
+  "output": [
+    {
+      "type": "message",
+      "id": "msg_double_outline",
+      "status": "completed",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "output_text",
+          "text": "{\"title\":\"Introducción a Kotlin\",\"lessons\":[{\"title\":\"Variables y tipos\",\"minutes\":30},{\"title\":\"Funciones\",\"minutes\":45}]}",
+          "annotations": []
+        }
+      ]
+    }
+  ],
+  "usage": {
+    "input_tokens": 1100,
+    "input_tokens_details": { "cached_tokens": 0 },
+    "output_tokens": 280,
+    "output_tokens_details": { "reasoning_tokens": 0 },
+    "total_tokens": 1380
+  }
+}

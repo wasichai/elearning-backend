@@ -18,6 +18,7 @@ class AiStatusTest {
         mapOf(
             "embabel.agent.platform.models.anthropic.max-attempts" to "2",
             "embabel.agent.platform.models.openai.max-attempts" to "2",
+            AiStatus.DATA_BINDING_ATTEMPTS to "2",
             "lms.ai.models.anthropic.default" to "claude-sonnet-5-5",
             "lms.ai.models.anthropic.extraction" to "claude-haiku-5-5",
             "lms.ai.models.openai.default" to "gpt-6.1-sol",
@@ -72,6 +73,23 @@ class AiStatusTest {
         val unset = MockEnvironment().withProperty("ANTHROPIC_API_KEY", "k").withProperty(AiProviderGate.DEFAULT_LLM, "claude-sonnet-5-5")
         assertThatThrownBy { AiStatus.verified(unset, registered) }.hasMessageContaining("anthropic.max-attempts is 10")
         assertThat(AiStatus.verified(environment(*anthropic, "embabel.agent.platform.models.anthropic.max-attempts" to "1"), registered).available).isTrue()
+    }
+
+    // el reintento que envuelve cada llamada tipada en 1.5.4 (ProviderDoubleApiTest cuenta sus peticiones): sin configurar
+    // son 10, y repite también los 400
+    @Test
+    fun `more than two embabel data binding attempts, or its default of ten, does not start`() {
+        val anthropic = arrayOf("ANTHROPIC_API_KEY" to "k", AiProviderGate.DEFAULT_LLM to "claude-sonnet-5-5")
+
+        assertThatThrownBy { AiStatus.verified(environment(*anthropic, AiStatus.DATA_BINDING_ATTEMPTS to "3"), registered) }
+            .hasMessageContaining("${AiStatus.DATA_BINDING_ATTEMPTS} is 3: it must be between 1 and 2")
+        val unset =
+            MockEnvironment()
+                .withProperty("ANTHROPIC_API_KEY", "k")
+                .withProperty(AiProviderGate.DEFAULT_LLM, "claude-sonnet-5-5")
+                .withProperty("embabel.agent.platform.models.anthropic.max-attempts", "2")
+        assertThatThrownBy { AiStatus.verified(unset, registered) }.hasMessageContaining("${AiStatus.DATA_BINDING_ATTEMPTS} is 10")
+        assertThat(AiStatus.verified(environment(*anthropic, AiStatus.DATA_BINDING_ATTEMPTS to "1"), registered).available).isTrue()
     }
 
     @Test

@@ -22,7 +22,7 @@ públicos (Maven Central, npm).
 | Spring Boot 4.1.1, Spring AI 2.0.1, Kotlin 2.4.21                             | Apache-2.0                                                                      | POM en Maven Central                                                                                                 |
 | React, Vite, Tailwind CSS, React Router, TanStack Query, Zod, i18next, Vitest | MIT                                                                             | Campo `license` en npm                                                                                               |
 | Playwright                                                                    | Apache-2.0                                                                      | Campo `license` en npm                                                                                               |
-| Remotion 4.0.x                                                                | Licencia propia de Remotion, no OSI                                             | npm: `SEE LICENSE IN LICENSE.md`; `remotion-dev/remotion:LICENSE.md`                                                 |
+| Remotion 4.0.x (`latest` en npm: 4.0.540, 2026-11-03)                         | Licencia propia de Remotion, no OSI ([detalle](#remotion))                      | npm: `SEE LICENSE IN LICENSE.md`; `remotion-dev/remotion:LICENSE.md`                                                 |
 
 El resto del árbol de dependencias se verifica con un informe automático de licencias en CI (planificado F1; la
 herramienta se elige al configurarlo).
@@ -48,13 +48,84 @@ modificarlo ni redistribuirlo fuera de ese uso. Para este proyecto significa:
 
 ## Dependencias con condiciones especiales
 
-- **Remotion**: según su `LICENSE.md`, es gratuito para particulares, organizaciones con ánimo de lucro de hasta 3
-  empleados, organizaciones sin ánimo de lucro y evaluación; el resto necesita una licencia de empresa. Prohíbe vender o
-  sublicenciar derivados de su código. Consecuencia: el renderizado de vídeo (F5) es un componente opcional, separado
-  del núcleo, y quien lo despliegue revisa si necesita licencia de empresa ([IA §12](../ai/README.md#12-remotion-sección-12)).
+- **Remotion**: licencia propia, no OSI, gratuita solo en algunos casos y de pago en los demás; detalle en
+  [Remotion](#remotion). Es el motor de render de la Fase 5, opcional y desactivado por defecto, en un trabajador separado
+  ([ADR-0039](../adr/0039-remotion-como-motor-de-render-con-licencia-por-despliegue.md)).
 - **Fuentes tipográficas**: la OFL permite usar y redistribuir las fuentes con la aplicación, sin venderlas por
   separado y conservando su aviso de licencia.
 - **Embabel y Spring** (Apache-2.0): exigen conservar los avisos de licencia y `NOTICE` al redistribuir.
+
+## Remotion
+
+Términos consultados el **2026-11-03** (issue [#267](https://github.com/wasichai/elearning-backend/issues/267)). El
+`LICENSE.md` de 4.x se volvió a leer ese día en el repositorio de Remotion; `remotion.dev` no se pudo abrir desde la sesión
+que escribió esta sección, así que lo citado de los términos v5.0 y de la FAQ es lo que recogió #267 el mismo día. **No es
+asesoría legal**; la licencia es de quien usa Remotion y lo vinculante es lo que diga Remotion.
+
+### Términos vigentes: Remotion 4.x
+
+Fuente: [`remotion-dev/remotion:LICENSE.md`](https://github.com/remotion-dev/remotion/blob/main/LICENSE.md) (último
+cambio 2026-01-01) y [Términos v4.0](https://www.remotion.pro/terms-4-0).
+
+- **Free License** para: un particular; «a for-profit organization with **up to 3 employees**»; «a non-profit or
+  not-for-profit organization»; y quien evalúa Remotion «and [is] not yet using it in a commercial way». El texto de 4.x no
+  menciona a los contratistas ni excluye a centros educativos u organismos públicos.
+- Todos los demás necesitan una **Company License**.
+- En todos los casos está prohibido copiar o modificar el código de Remotion para venderlo, alquilarlo o licenciarlo, y
+  relicenciar o sublicenciar un derivado propio de Remotion.
+- La evaluación acaba con la decisión de usar Remotion en la propia tecnología: desarrollar la Fase 5 en serio ya no es
+  evaluar.
+
+### Términos anunciados: Remotion 5.0
+
+Fuente: [Términos v5.0](https://www.remotion.dev/docs/terms), [FAQ](https://www.remotion.dev/docs/license/faq) y la PR
+[remotion-dev/remotion#3750](https://github.com/remotion-dev/remotion/pull/3750) (abierta; 5.0 no estaba publicado el
+2026-11-03).
+
+- **Umbral de 3 personas**: la Free License pasa a «an organization or team of individuals with up to 3 people»
+  ([§TeamSize](https://www.remotion.dev/docs/terms#TeamSize)): cuenta todo el personal, use o no Remotion.
+- **Los contratistas cuentan** en ese total.
+- **Centros educativos y organismos públicos**: la exención de las organizaciones sin ánimo de lucro
+  ([§NonProfitOrganization](https://www.remotion.dev/docs/terms#NonProfitOrganization)) excluye «governmental entities,
+  public-sector bodies, educational institutions» salvo **permiso escrito** de Remotion (hi@remotion.dev). Que esta
+  exclusión rija ya para 4.x es **a verificar**: los términos v4.0 no la recogen.
+- **El usuario no aporta código** ([§RenderingService](https://www.remotion.dev/docs/terms#RenderingService)): se permite que
+  los usuarios cambien parámetros de composiciones alojadas o que una IA escriba el guion; está prohibido que aporten su
+  propio código Remotion. La licencia es por usuario
+  ([§EndUserCodeAccess](https://www.remotion.dev/docs/terms#EndUserCodeAccess)): cada despliegue decide la suya.
+- **Telemetría**: con 5.0, el plan Automators **exige** una clave de licencia que envía un evento por render (o un informe
+  mensual verificable). Si la Free License necesita clave o envía algo es a verificar al subir a 5.0.
+- Usar Remotion sin la licencia que corresponde obliga a pagar lo adeudado (§Licensing obligations).
+
+### Precios
+
+Fuente: [FAQ](https://www.remotion.dev/docs/license/faq) y [remotion.pro/license](https://www.remotion.pro/license)
+(compra en autoservicio con Stripe, sin reembolsos). Precios del 2026-11-03.
+
+| Plan                                 | Para qué                                                   | Precio                                      |
+| ------------------------------------ | ---------------------------------------------------------- | ------------------------------------------- |
+| Free License                         | Los casos de arriba                                        | 0 USD, sin registro                         |
+| Company: Remotion for Creators       | Vídeos hechos a mano                                       | 25 USD/mes por puesto                       |
+| Company: **Remotion for Automators** | Automatizaciones (`renderMedia()`, `npx remotion render`…) | 0,01 USD por render, **mínimo 100 USD/mes** |
+| Enterprise                           | Contrato a medida                                          | Desde 500 USD/mes                           |
+
+El trabajador de render de este proyecto encaja en **Automators**; servidor propio y Lambda cuestan lo mismo y las
+previsualizaciones en Studio o Player no cuentan. La licencia no cubre patentes de códecs (H.264, AAC).
+
+### Qué significa aquí
+
+Decisión del titular ([ADR-0039](../adr/0039-remotion-como-motor-de-render-con-licencia-por-despliegue.md)):
+
+- Remotion es el motor de render de la Fase 5. El titular tiene **3 personas o menos, contratistas incluidos**: Free
+  License, sin pagar. Se revisa al subir a 5.0 o si el total pasa de 3.
+- En el producto open source el render es **opcional y desactivado por defecto**, en un trabajador Node separado; Remotion
+  es solo dependencia npm de ese trabajador y el proyecto no lo redistribuye. Sin excepción de enlace en la LGPL mientras
+  siga así.
+- **Cada despliegue de terceros es responsable de su propia licencia**: una organización de más de 3 personas, una
+  universidad o un organismo público que active el render necesita una Company License o un permiso escrito
+  ([guía de despliegue](../operations/README.md#render-de-vídeo-opcional)).
+- Cómo es el trabajador (paquete `render-worker/` con su propio `package.json`, entrada solo de datos, comunicación con la
+  cola, almacenamiento y validación): [ADR-0040](../adr/0040-renderizador-de-video-en-un-trabajador-node.md).
 
 ## Opciones para este proyecto
 
@@ -81,3 +152,7 @@ contenido propio; el derivado de los manuales necesita antes el permiso del titu
    compatible con la LGPL (por ejemplo Apache-2.0, MIT o la propia LGPL).
 3. **Pendiente: términos de contribución** (DCO o CLA) antes de aceptar la primera aportación externa, y, si se quiere,
    una licencia de contenido aparte para los materiales de curso.
+4. **Remotion para el render de vídeo** (2026-11-03, [ADR-0039](../adr/0039-remotion-como-motor-de-render-con-licencia-por-despliegue.md)):
+   motor de la Fase 5 con la Free License del titular (3 personas o menos, contratistas incluidos); opcional y desactivado
+   por defecto, en un trabajador separado; cada despliegue responde de su propia licencia ([Remotion](#remotion)). El
+   renderizador técnico (trabajador `render-worker/`, entrada, cola, almacenamiento y validación) es [ADR-0040](../adr/0040-renderizador-de-video-en-un-trabajador-node.md).

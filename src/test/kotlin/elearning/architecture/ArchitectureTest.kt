@@ -50,6 +50,25 @@ class ArchitectureTest {
     @Test
     fun `every capability sits in the dag and uses only what it may`() = assertNoViolations(Rule.PACKAGE_DAG)
 
+    // RF-MED-04 (#294): lo publicado funciona sin el proveedor. Nada de lo que sirve al estudiante (el aula, sus
+    // evaluaciones, la matrícula, el catálogo y las valoraciones) usa elearning.ai, ni directamente ni a través de otra
+    // capacidad: la tabla no deja llegar y el código no la nombra. Que tampoco llegue por un bean (una interfaz de common
+    // que implementara ai) lo prueba ClassroomWithoutAiApiTest con el grafo de beans de la aplicación sin IA
+    @Test
+    fun `nothing that serves the student depends on elearning ai, not even through another capability`() {
+        assertThat(ALLOWED_DEPENDENCIES.keys).containsAll(CLASSROOM)
+        assertThat(CLASSROOM.associateWith { reachableFrom(ALLOWED_DEPENDENCIES, it) }.filterValues { AI in it }.keys)
+            .describedAs("capacidades del aula que alcanzan elearning.$AI en la tabla")
+            .isEmpty()
+        val reference = Regex("""\belearning\.$AI\b""")
+        val offenders =
+            readSources(root)
+                .filter { source -> CLASSROOM.any { File(source.path).invariantSeparatorsPath.contains("/elearning/$it/") } }
+                .filter { reference.containsMatchIn(withoutComments(it.text)) }
+                .map { it.path }
+        assertThat(offenders).describedAs("fuentes del aula que nombran elearning.$AI").isEmpty()
+    }
+
     // la tabla también se vigila: una línea nueva no puede colar un ciclo, dar dependencias a workload ni hacer que
     // alguien use catalog (el catálogo solo lee; lo junta la aplicación) o reputation (las valoraciones no tocan la
     // matrícula ni las notas, ADR-0038)
@@ -94,6 +113,24 @@ class ArchitectureTest {
                 // las usa: ni la matrícula ni las notas dependen de ellas (regla 8)
                 "reputation" to setOf("common", "enrollment", "learning", "jobs"),
             )
+
+        // lo que sirve al estudiante (RF-MED-04): no debe alcanzar AI
+        val CLASSROOM = setOf("learning", "assessment", "enrollment", "catalog", "reputation")
+        const val AI = "ai"
+
+        // las capacidades que node usa, directa o indirectamente
+        fun reachableFrom(
+            graph: Map<String, Set<String>>,
+            node: String,
+        ): Set<String> {
+            val seen = mutableSetOf<String>()
+            val pending = ArrayDeque(graph[node].orEmpty())
+            while (pending.isNotEmpty()) {
+                val next = pending.removeFirst()
+                if (seen.add(next)) pending.addAll(graph[next].orEmpty())
+            }
+            return seen
+        }
 
         // un ciclo como lista de nodos, o null si no hay
         fun cycleIn(graph: Map<String, Set<String>>): List<String>? {

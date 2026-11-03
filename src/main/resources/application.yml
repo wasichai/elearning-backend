@@ -18,10 +18,16 @@ spring:
 # Embabel (ADR-0033): cada proveedor existe solo con su clave, ANTHROPIC_API_KEY u OPENAI_API_KEY, que Embabel lee del
 # entorno; elearning.ai.AiProviderGate deja fuera al que no la tiene. ANTHROPIC_BASE_URL y OPENAI_BASE_URL tienen
 # precedencia sobre base-url. un solo nivel de reintento: Embabel hace como mucho 2 intentos por llamada y los reintentos
-# son de la cola (§6); con más, la aplicación no arranca
+# son de la cola (§6); con más, la aplicación no arranca. En 1.5.4 el que envuelve cada llamada tipada es el de
+# llm-operations.data-binding (repite cualquier fallo; el segundo intento corrige una salida inválida); el de cada proveedor
+# solo cuenta en el camino Chat Completions de OpenAI. El SDK del proveedor repite además 408, 409, 429 y 5xx dos veces
+# dentro de cada intento (docs/ai §2, comprobado con el doble HTTP)
 embabel:
   agent:
     platform:
+      llm-operations:
+        data-binding:
+          max-attempts: 2
       models:
         anthropic:
           max-attempts: 2
@@ -148,3 +154,12 @@ lms:
         script: ${LMS_AI_OPENAI_MODEL_SCRIPT:gpt-6.1-sol}
         review: ${LMS_AI_OPENAI_MODEL_REVIEW:gpt-6.1-sol}
         reference: ${LMS_AI_OPENAI_MODEL_REFERENCE:gpt-6-astra}
+    # límites de los pasos de IA (ADR-0033 §9): pasos pendientes o en curso por organización y presupuesto por curso (la
+    # suma del coste de sus ejecuciones en currency, con lms.ai.rates; vacío: sin tope). superarlos al encolar es 429 con
+    # Retry-After; agotado el presupuesto, el paso que ya estaba en cola falla sin reintento
+    limits:
+      max-active-per-organization: ${LMS_AI_MAX_CONCURRENT_PER_ORGANIZATION:4}
+      course-budget: ${LMS_AI_COURSE_BUDGET:}
+      currency: ${LMS_AI_BUDGET_CURRENCY:USD}
+      concurrency-retry-after: ${LMS_AI_CONCURRENCY_RETRY_AFTER:1m}
+      budget-retry-after: ${LMS_AI_BUDGET_RETRY_AFTER:1h}

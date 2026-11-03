@@ -9,6 +9,17 @@ Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este
   borrador vacío se sigue creando (#270), quien no tiene la acción sigue recibiendo `403`, y una versión vacía anterior a
   la regla se puede devolver a borrador, rechazar o retirar. La plataforma no pasa por la guarda.
 
+## 2026-11-03 — Lo publicado funciona sin el proveedor ([#294](https://github.com/wasichai/elearning-backend/issues/294))
+
+- `ClassroomWithoutAiApiTest`: la aplicación sin ninguna clave de proveedor (sin la plataforma de Embabel, como
+  `NoAiProviderApiTest`) sirve entera desde el aula una versión publicada cuyo temario salió de una ejecución de agente
+  aceptada (`lms.ejecucion_agente`, paso `LESSON_DRAFT`): unidad, lecciones con su resumen, recurso descargable y progreso
+  hasta el 100 %. Recorre además el grafo de beans: ninguno del aula, las evaluaciones, la matrícula, el catálogo o las
+  valoraciones alcanza un bean de `elearning.ai`.
+- `ArchitectureTest`: esas capacidades no alcanzan `ai` en la tabla de dependencias, ni siquiera a través de otra, y su
+  código no nombra `elearning.ai`. `docs/ai/README.md` §7 lo explica; RF-MED-04 sigue `planificado` hasta el e2e de la
+  interfaz, [front#171](https://github.com/wasichai/elearning-frontend/issues/171).
+
 ## 2026-11-03 — Fase 3 sin pendientes de requisitos ([#231](https://github.com/wasichai/elearning-backend/issues/231))
 
 - Todos los requisitos F3 de [requirements.md](product/requirements.md) están `implementado`. El último, RF-AUL-08, se
@@ -17,6 +28,114 @@ Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este
   docente asignado los ven) y la interfaz los muestra con su e2e real (front#166). Los hallazgos de la revisión de la Fase 3
   ([#183](https://github.com/wasichai/elearning-backend/issues/183)) ya estaban cerrados; la fila F3 del
   [roadmap](product/roadmap.md) queda sin pendientes.
+
+## 2026-11-03 — ADR del renderizador de vídeo: E37.1 ([#296](https://github.com/wasichai/elearning-backend/issues/296))
+
+Primer paso de la épica E37 ([#295](https://github.com/wasichai/elearning-backend/issues/295)), sobre la decisión de
+licencia de [ADR-0039](adr/0039-remotion-como-motor-de-render-con-licencia-por-despliegue.md).
+
+- [ADR-0040](adr/0040-renderizador-de-video-en-un-trabajador-node.md): Remotion en un paquete Node aparte,
+  `render-worker/`, con su propio `package.json` y su imagen, que construye quien despliega; ni la raíz ni Gradle lo
+  instalan. Entrada: el guion de RF-MED-01 como JSON validado por los dos lados contra un esquema compartido (secciones,
+  diapositivas de una lista cerrada, subtítulos, fuentes OFL del paquete, 720p/1080p, 25/30 fps, imágenes dentro de la
+  petición), nunca código.
+- El backend encola `VIDEO_RENDER` en `lms.trabajo` y su manejador llama al trabajador por HTTP interno (`PUT` idempotente
+  por trabajo, descarga y borrado) con un secreto compartido; la cola gana límite de concurrencia por tipo al reclamar y
+  tiempo límite por manejador. El trabajador no toca la base ni el almacén.
+- El vídeo se guarda en `wasichai-files`, una sola copia, en un campo que solo escribe la plataforma con tope de 256 MB
+  (el techo sube y los demás campos conservan su tope); se piden a Wasichai subida en streaming, `Range` y detección de
+  MP4. `ffprobe` en el trabajador y validación del informe en el backend (RF-MED-03); render desactivado por defecto.
+- `docs/legal/licensing.md`, `docs/ai/README.md` §12 y la guía de operación enlazan la decisión.
+
+## 2026-11-03 — Licencia de Remotion decidida ([#267](https://github.com/wasichai/elearning-backend/issues/267))
+
+- [ADR-0039](adr/0039-remotion-como-motor-de-render-con-licencia-por-despliegue.md): el titular elige Remotion como motor de
+  render de la Fase 5 y, con 3 personas o menos (contratistas incluidos), usa la Free License sin pagar. El render es
+  opcional y desactivado por defecto, en un trabajador Node separado con Remotion solo como dependencia npm; cada
+  despliegue responde de su propia licencia. Sin excepción de enlace en la LGPL mientras el trabajador sea un programa
+  aparte que recibe datos JSON; se revisa al subir a Remotion 5.0.
+- `docs/legal/licensing.md` recoge los términos de 4.x y 5.0 con fuente y fecha (umbral de 3 personas, contratistas,
+  centros educativos y organismos públicos, usuarios sin código, precios y telemetría); `docs/ai/README.md` §12 se
+  corrige y la guía de operación avisa de la licencia a quien active el render.
+- Los criterios de #267 que piden código (build sin Remotion comprobada en CI, informe de licencias, rechazo de
+  peticiones con código, licencia del `ffprobe`) quedan para el trabajador, [#297](https://github.com/wasichai/elearning-backend/issues/297).
+
+## 2026-11-03 — Trabajos de IA en la cola: idempotencia, reintentos, cancelación y límites ([#279](https://github.com/wasichai/elearning-backend/issues/279))
+
+Segundo paso de la épica E33 ([#277](https://github.com/wasichai/elearning-backend/issues/277)), según
+[ADR-0033](adr/0033-fase-5-ia.md) §5, §6 y §9 sobre la cola de ADR-0018/0022.
+
+- `lms.trabajo` gana el estado `CANCELLED` (`V21`): `JobQueue.cancel` lo pone a un trabajo pendiente o en curso, que nadie
+  vuelve a reclamar y cuyo cierre ya no escribe; `JobQueue.cancelled` lo mira el manejador y `JobCancelled` lo detiene sin
+  cerrarlo otra vez. Libera su clave y la retención lo borra como a uno terminado.
+- `AiStepRunner` (`elearning.ai`): la política común de los pasos, que cada `JobHandler` llama con su generador
+  (`AiModelCall`) y su borrador. Reutiliza la ejecución `SUCCEEDED` con la misma clave sin llamar al proveedor; `408`, `429`
+  y `5xx` (`AiProviderFailure`) se reintentan con la espera y el tope de la cola; otro `4xx`, `AiInvalidOutput`, el
+  presupuesto agotado o la pérdida de `GENERAR` son `PermanentJobFailure`. Cancelación antes de llamar y al volver; el
+  borrador y el cierre del trabajo en una transacción.
+- `AiJobs`: clave de idempotencia (hash de paso, ámbito, objetivo, entradas, fuentes con su hash, versiones de instrucciones
+  y plantilla, modelo y parámetros, en JSON canónico), límites `lms.ai.limits` (concurrencia por organización y presupuesto
+  por curso, `429` con `Retry-After`) y `GET /api/lms/ai/jobs/{id}` y `POST /api/lms/ai/jobs/{id}/cancel`, solo de quien lo
+  pidió y con `GENERAR`.
+- Pruebas: `AiStepKeyTest` (unitaria) y `AiJobsApiTest` con un paso de prueba y un proveedor falso que cuenta sus llamadas.
+  La prueba equivalente contra el doble WireMock de los proveedores llega con E32.3
+  ([#274](https://github.com/wasichai/elearning-backend/issues/274)).
+
+## 2026-11-03 — `pendingAttempts` del panel docente sin los intentos propios ([#338](https://github.com/wasichai/elearning-backend/issues/338))
+
+- `pendingAttempts` de `GET /api/lms/teaching/panel` y `GET /api/lms/teaching/offerings` cuenta lo que quien llama puede
+  corregir: `AttemptStore.countPending` excluye, como `oldestPending` y la cola, los intentos de quien además es estudiante
+  de su edición. El total coincide con el de `GET …/attempts` y la interfaz ya no promete «Ver N más» de intentos que no
+  puede abrir ([front#168](https://github.com/wasichai/elearning-frontend/issues/168)). Sigue siendo una lectura para todas
+  las ediciones (#261). Documentado en `docs/api/lms.md`.
+
+## 2026-11-03 — Cierre de la Fase 4: estado del criterio ([#179](https://github.com/wasichai/elearning-backend/issues/179))
+
+El criterio de F4 ([roadmap](product/roadmap.md)) todavía no se da por cumplido. Lo que hay de cada parte:
+
+- **Recorridos e2e 8–12** contra el backend real: cumplido
+  ([elearning-frontend#60](https://github.com/wasichai/elearning-frontend/issues/60), cerrado por
+  [front#75](https://github.com/wasichai/elearning-frontend/pull/75)). La revisión de seguridad E29.2
+  ([#180](https://github.com/wasichai/elearning-backend/issues/180), #217) también está cerrada.
+- **Publicar v2 no altera v1 ni el progreso sobre v1**: `NewVersionApiTest` copiaba y editaba la v2 sin publicarla, y
+  `PublicationNoticesApiTest` la publicaba sin mirar la v1. La prueba nueva
+  `publishing v2 leaves v1, its resources and the progress on v1 as they were` lleva la v2 por el estudio y la bandeja
+  (copiar, editar, enviar, aprobar, publicar) y comprueba que el registro de la v1, su lección, el recurso enlazado y el aula
+  de quien la cursa (versión, progreso y temario) quedan igual. No se pudo ejecutar aquí (el proxy del entorno niega
+  GitHub Packages y Gradle no resuelve Wasichai): la valida el CI.
+- **Importación de un capítulo de SRTM y uno de SGSPE con informe y trazas `repositorio@sha:ruta#ancla`**: pendiente. El
+  importador solo lee por la API de contenidos de GitHub (`GitHubSourceFetcher`), y desde este entorno esa API responde
+  `403` para `wasichai/srtm-backend` y `wasichai/sgspe`. `ImportApiTest` prueba las trazas y el informe con un origen
+  simulado (`acme/manuales`), no con estos manuales. Commits de referencia para la importación (`main` el 2026-11-03):
+  `wasichai/srtm-backend@1225b4f5501b4e0526b3824976299c9372691e17` (`docs/manuales/comun/acceso.adoc`) y
+  `wasichai/sgspe@c957a1a2168b30de3c0583ca9bbc8ed1e0a2ab5c` (`docs/manuals/user/manual-usuario.adoc`, con
+  `02-primeros-pasos.adoc`). Falta ejecutarla con `LMS_IMPORTER_ALLOWED_SOURCES` y `LMS_IMPORTER_GITHUB_TOKEN` en un
+  entorno con acceso a la API de GitHub, y dejar aquí el informe y las trazas.
+
+## 2026-11-03 — Doble HTTP de Anthropic y OpenAI con WireMock ([#274](https://github.com/wasichai/elearning-backend/issues/274))
+
+Tercer paso de la épica E32 ([#271](https://github.com/wasichai/elearning-backend/issues/271)), según
+[ADR-0033](adr/0033-fase-5-ia.md) §4, §6 y §11.
+
+- `org.wiremock:wiremock-standalone` 3.13.2 como `testImplementation` (la variante que sombrea su Jetty).
+- Soporte reutilizable en `src/test/kotlin/elearning/ai/ProviderDouble.kt`: `ProviderDouble`, un WireMock por JVM en
+  `127.0.0.1` y puerto dinámico que hace de Anthropic (`/v1/messages`) y de OpenAI (`/v1/responses`), con respuestas en
+  `src/test/resources/ai/{anthropic,openai}/`, recuento y cuerpos de las peticiones; y `ProviderDoubleApiTest`, la base
+  de las pruebas de API con los dos proveedores (claves ficticias, URL base por `@DynamicPropertySource`, tarifas) que vacía
+  el doble antes de cada prueba y falla si quedó una petición sin emparejar.
+- `elearning.ai.ModelCalls`: la llamada tipada de cada paso, `Ai.withLlm(LlmOptions).createObject(prompt, type)` de
+  Embabel 1.5.4 (el nombre que el ADR dejaba por verificar), sobre un contexto de Embabel propio por llamada para leer su
+  consumo de tokens. 400, 401, 403, 404, 422 y una salida que no se deserializa salen como `PermanentJobFailure`; 408, 409,
+  429, 5xx y los de red, tal cual, para que la cola los reintente.
+- Lo que el doble enseñó de 1.5.4: el reintento que envuelve cada llamada tipada es el de
+  `embabel.agent.platform.llm-operations.data-binding` (10 intentos por defecto, también ante un 400), no el
+  `max-attempts` de cada proveedor; queda en 2 en `application.yml` y `AiStatus` impide arrancar con más. Además, el SDK de
+  cada proveedor repite 408, 409, 429 y 5xx dos veces dentro de cada intento: un 429 son 6 peticiones. Documentado en
+  `docs/ai` §2.
+- Pruebas: `ModelCallsApiTest` (salida tipada de ejemplo por cada proveedor con lo que se envía; 400, 429, 500 y JSON
+  inválido con su recuento; petición no emparejada; las URL base en el doble; y el criterio de E32.4 que dependía de él:
+  una ejecución guarda el consumo del proveedor y su coste, leídos en `GET /api/lms/ai/runs/{id}`), `AiStatusTest` y
+  `NoAiProviderApiTest` (sin claves, `ModelCalls` no llama a nada). Documentado en `docs/testing`.
 
 ## 2026-11-03 — Logros en la interfaz del aula: RF-AUL-08 implementado ([front#166](https://github.com/wasichai/elearning-frontend/pull/166))
 

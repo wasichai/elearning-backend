@@ -714,7 +714,9 @@ cualquier edición, sin asignación; calificar le sigue respondiendo `404`.
 
 - `email` puede ser `null` en `Roster`, `PendingAttempt` y `AttendanceRow`: lo guarda la matrícula al crearse.
 - `TeachingOffering`: `{ "code", "status", "startDate", "endDate", "timeZone", "course": { "slug", "code", "title" },
-"enrolled": 12, "pendingAttempts": 3 }`.
+"enrolled": 12, "pendingAttempts": 3 }`. `pendingAttempts` son los intentos `SUBMITTED` que quien llama puede corregir:
+  los de su cola, sin los suyos si además es estudiante de la edición (#338), así que coincide con el total de
+  `GET …/attempts`. Lo mismo en `GET /offerings` y en el panel.
 - `TeachingPanelItem` (#261) = `TeachingOffering` más `upcomingSessions` (`Session[]` sin `attendance`, sin las
   canceladas ni las ya terminadas, la más próxima primero) y `oldestPending` (`PendingAttempt[]`: los 5 primeros de la
   cola, en su orden; el total está en `pendingAttempts` y la cola entera en `GET …/attempts`). Una página de las
@@ -965,6 +967,39 @@ los pasos desde su trabajo; esta API solo la lee.
 - **Sin secretos**: ningún campo guarda claves ni cabeceras; `modelSettings` es tipado (no admite parámetros libres) y una clave
   configurada (`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`) que aparezca en el objetivo, las entradas, la salida, el error o una nota
   se guarda como `[REDACTED]` (RNF-SEG-09).
+
+## Trabajos de IA (F5, ADR-0033 §5, §6 y §9)
+
+Cada paso de la canalización es un trabajo de la cola `lms.trabajo` (tipo `ai.<paso>`, p. ej. `ai.source_analysis`) que encola
+el paso que lo ofrece, como quien llama (`AiJobs.enqueue`); estas rutas lo leen y lo cancelan.
+
+| Método | Ruta                           | Resultado                                                      |
+| ------ | ------------------------------ | -------------------------------------------------------------- |
+| GET    | `/api/lms/ai/jobs/{id}`        | `AiJob`                                                        |
+| POST   | `/api/lms/ai/jobs/{id}/cancel` | `AiJob` ya `CANCELLED`; `409` si había terminado de otra forma |
+
+- `AiJob`: `{ "id", "step", "status": "QUEUED" | "RUNNING" | "DONE" | "FAILED" | "CANCELLED", "attempts", "maxAttempts",
+"error": null, "executionId": null, "createdAt", "finishedAt": null }`. `executionId` es la ejecución (`AgentExecution`) que lo
+  resolvió; `error`, el del último intento.
+- **Permisos**: encolar exige `GENERAR` sobre `version_curso` y que quien llama vea el curso (`403`, `404`). Leer y cancelar
+  exigen `GENERAR` (`403`) y son solo de quien lo pidió: el de otra persona, también frente al administrador, el que no es de
+  IA o de otra organización es `404`. Al ejecutarse se vuelve a mirar `GENERAR` con los roles guardados de quien lo pidió.
+- **Idempotencia**: la clave es el hash del paso, su ámbito (curso, unidad, versión), el objetivo, las entradas, las fuentes con
+  su hash, las versiones de instrucciones y plantilla y el modelo con sus parámetros (JSON canónico: el orden de las
+  propiedades no cuenta). Pedir lo mismo mientras el trabajo espera o corre devuelve ese trabajo; pedirlo cuando ya hay una
+  ejecución `SUCCEEDED` con esa clave hace un trabajo que la devuelve sin llamar al proveedor, sin coste ni borrador nuevos.
+- **Reintentos**: un `408`, `429` o `5xx` del proveedor (o un fallo cualquiera) vuelve a `QUEUED` con la espera creciente de la
+  cola (`lms.jobs.backoff` × intento) hasta `lms.jobs.max-attempts`. Un `400`, `401` u otro `4xx`, una salida que no cumple el
+  esquema (`INVALID_OUTPUT`), el presupuesto agotado o la pérdida de `GENERAR` son `FAILED` en ese intento. Cada intento que
+  llamó al modelo deja su ejecución con su consumo; si la llamada ya terminó bien, el reintento la reutiliza: no paga otra vez
+  ni hace otro borrador (el borrador y el cierre del trabajo van en la misma transacción).
+- **Cancelar**: un trabajo `QUEUED` o `RUNNING` pasa a `CANCELLED` y queda terminado; cancelar otra vez es inocuo. El paso lo
+  mira antes de llamar al modelo y al volver: cancelado, su ejecución se cierra `CANCELLED` con lo que costó la llamada y no
+  deja borrador. Libera su clave como un trabajo terminado y la retención lo borra igual.
+- **Límites** (`lms.ai.limits`): más pasos de IA pendientes o en curso en la organización que `max-active-per-organization`
+  (4), o un curso que ya gastó `course-budget` (en `currency`), es `429` con `Retry-After` al encolar. El presupuesto se vuelve
+  a mirar antes de cada llamada: agotado, el paso es `FAILED` sin llamar. El tope de trabajos activos por persona de la cola
+  (`lms.jobs.max-active-per-requester`) también vale.
 
 ## Créditos aprobados (RF-CRE-08, ADR-0035)
 

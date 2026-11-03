@@ -14,6 +14,9 @@ jsoup = "1.21.2"
 # canalización con IA (ADR-0033 §1): la misma que Wasichai 1.8.0. el BOM de Wasichai no la gestiona (wasichai-agent no se
 # usa) y Spring AI, anthropic-java y openai-java llegan con ella. subirla es una decisión con su prueba
 embabel = "1.5.4"
+# doble HTTP de Anthropic y OpenAI en las pruebas (ADR-0033 §11): la variante standalone sombrea su Jetty, que no debe
+# mezclarse con Netty ni con el classpath de la aplicación
+wiremock = "3.13.2"
 
 [libraries]
 wasichai-bom = { module = "wasichai:wasichai-bom", version.ref = "wasichai" }
@@ -30,6 +33,7 @@ embabel-agent-starter = { module = "com.embabel.agent:embabel-agent-starter", ve
 embabel-agent-starter-anthropic = { module = "com.embabel.agent:embabel-agent-starter-anthropic", version.ref = "embabel" }
 embabel-agent-starter-openai = { module = "com.embabel.agent:embabel-agent-starter-openai", version.ref = "embabel" }
 wasichai-test = { module = "wasichai:wasichai-test" }
+wiremock-standalone = { module = "org.wiremock:wiremock-standalone", version.ref = "wiremock" }
 springdoc-webflux-api = { module = "org.springdoc:springdoc-openapi-starter-webflux-api", version.ref = "springdoc" }
 
 [plugins]

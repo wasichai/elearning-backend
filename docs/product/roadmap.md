@@ -222,6 +222,12 @@ cálculo de diferencias entre versiones, `studioModule` y `reviewModule`.
 cambios, aprobar, publicar, visible al estudiante); importación de un capítulo de SRTM y uno de SGSPE con informe
 y trazas `repositorio@sha:ruta#ancla`; publicar v2 no altera v1 ni el progreso sobre v1.
 
+**Estado (2026-11-03).** Recorridos 8–12 contra el backend real cumplidos
+([front#75](https://github.com/wasichai/elearning-frontend/pull/75)) y revisión de seguridad cerrada
+([#180](https://github.com/wasichai/elearning-backend/issues/180)). Publicar v2 sin alterar v1 ni su progreso lo prueba
+`NewVersionApiTest`. Falta la importación real de un capítulo de SRTM y uno de SGSPE con su informe y sus trazas
+([#179](https://github.com/wasichai/elearning-backend/issues/179)).
+
 **Riesgos.** Que `wasichai-workflow` exprese la revisión independiente está a verificar. Ejecutar Asciidoctor es un
 proceso externo y bloqueante (aislamiento y límites). Sin licencia en los manuales, la demo no puede redistribuir su
 texto: el importador se prueba sobre referencias y fragmentos propios. SSRF en orígenes remotos.

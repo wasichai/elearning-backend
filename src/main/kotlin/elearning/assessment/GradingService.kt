@@ -186,7 +186,8 @@ class AttemptFacts(
     override suspend fun pendingAttempts(
         organization: UUID,
         offerings: Collection<UUID>,
-    ): Map<String, Int> = attempts.countPending(organization, offerings).mapKeys { it.key.toString() }
+        viewer: UUID,
+    ): Map<String, Int> = attempts.countPending(organization, offerings, viewer).mapKeys { it.key.toString() }
 
     override suspend fun enrollmentsLessonAssessments(
         organization: UUID,
