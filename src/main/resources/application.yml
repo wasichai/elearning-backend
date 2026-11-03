@@ -64,6 +64,11 @@ lms:
   assessment:
     # cada cuánto se encola el barrido que cierra los intentos abandonados con el plazo vencido (L4 de #183)
     sweep-every: ${LMS_ASSESSMENT_SWEEP_EVERY:1m}
+  # supresión de datos personales (ADR-0037, RNF-SEG-11): cada cuánto se encola la de las aceptaciones de los términos de
+  # uso vencidas (y la de las retiradas cuya supresión no terminó). una vencida deja de valer al momento; esto es cuánto
+  # tarda como mucho en suprimirse
+  privacy:
+    sweep-every: ${LMS_PRIVACY_SWEEP_EVERY:1h}
   # importador AsciiDoc (ADR-0018 §5): solo lee de estos repositorios, separados por comas, como owner/repo (cualquier
   # commit) u owner/repo@sha (solo ese). vacío: no importa nada. el host de GitHub es fijo, nunca configuración
   importer:

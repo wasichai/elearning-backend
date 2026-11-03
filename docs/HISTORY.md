@@ -19,6 +19,35 @@ Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este
   `CreditApprovalApiTest`, `CatalogBuilderTest`, `EditorialWorkflowGuardApiTest`, `ModelProvisioningApiTest` y las pruebas
   de `model/` lo comprueban.
 
+## 2026-11-03 — Generación de HTML y PDF aceptada con una fuente propia ([#264](https://github.com/wasichai/elearning-backend/issues/264), RF-CON-07)
+
+- [ADR-0031](adr/0031-aceptacion-de-la-generacion-con-una-fuente-propia.md): la aceptación de RF-CON-07 deja de pedir una
+  lección importada (la importación no copia el texto de los manuales, ADR-0018 §6) y pide una `fuente_recurso` propia con
+  `include::`, una imagen y una tabla que produzca en la cola HTML y PDF validados, sin generar en la petición.
+- `RenderApiTest` lo prueba con el doble y con Asciidoctor real: HTML saneado con título, texto, tabla e imagen por su
+  texto alternativo, el `include::` (también `/etc/passwd`) como enlace sin leer nada, y un PDF bien formado con la imagen
+  incrustada y el generador real en cada artefacto. CI instala `asciidoctor` 2.0.26 y `asciidoctor-pdf` 2.3.27 con
+  `gem install` y exige la prueba (`LMS_TEST_ASCIIDOCTOR=required`). RF-CON-07 pasa a implementado; el binario en la
+  imagen de despliegue sigue en F6 (RNF-OPS-04).
+
+## 2026-11-03 — Términos de uso con plazo y supresión de datos personales ([#304](https://github.com/wasichai/elearning-backend/issues/304), RNF-SEG-11)
+
+- [ADR-0037](adr/0037-terminos-de-uso-y-supresion-de-datos-personales.md) implementa ADR-0030: términos de uso
+  versionados e inmutables (`lms.terminos_uso`, V15) que publica quien tiene `MANAGE_ORGANIZATION`, y una aceptación por
+  persona con la versión y el plazo que aprobó (`lms.aceptacion_terminos`). `GET`/`POST /api/lms/terms` y
+  `POST`/`DELETE /api/lms/terms/acceptance`. Publicar otra versión no altera las aceptaciones previas.
+- **Sin aceptación vigente, matricularse y registrar progreso dan `403`** con el motivo; el catálogo público sigue
+  abierto. Sin términos publicados nadie se matricula: una organización existente debe publicar los suyos.
+- Al retirar la aceptación o vencer su plazo (barrido cada `lms.privacy.sweep-every`, 1 h), el trabajo `privacy.erase`
+  de la cola suprime eventos, progreso, asistencias, entregas, intentos sin calificar, trabajos y la aceptación, y
+  disocia matrículas, intentos calificados y certificados (seudónimo aleatorio, sin correo, respuestas ni nombre; el
+  código del certificado sigue verificando) y vacía el perfil docente. Una transacción, idempotente, con constancia sin
+  datos personales en `lms.supresion`. Los disparadores de solo inserción ceden solo dentro de esa transacción.
+- `Certificate.holderName` puede ser `null` (titular suprimido). La semilla publica unos términos ficticios y el
+  estudiante demo los acepta antes de matricularse (`terms` en `model/demo/data.json`, validado por `apply.py`).
+- `TermsApiTest` (puerta `403`, catálogo abierto, versiones y permisos) y `PersonalDataErasureApiTest` (supresión por
+  retirada y por vencimiento, lo disociado, la constancia y la idempotencia) lo prueban; `test_demo`, la semilla.
+
 ## 2026-11-03 — Paneles del estudiante y del docente en una lectura ([#261](https://github.com/wasichai/elearning-backend/issues/261))
 
 - `GET /api/lms/classroom/panel` y `GET /api/lms/teaching/panel`, paginados con `page` y `size`, devuelven por elemento

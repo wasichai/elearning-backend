@@ -228,7 +228,8 @@ abstract class ClassroomApiTestSupport : LmsApiTest() {
         return version
     }
 
-    protected fun newStudent(): String {
+    // con los términos de uso aceptados, salvo acceptingTerms = false (ADR-0037)
+    protected fun newStudent(acceptingTerms: Boolean = true): String {
         val email = "${uniqueName("est")}@demo.wasichai-learning.test"
         client
             .post()
@@ -238,7 +239,8 @@ abstract class ClassroomApiTestSupport : LmsApiTest() {
             .exchange()
             .expectStatus()
             .isCreated
-        return bearer(email, DEMO_PASSWORD)
+        val token = bearer(email, DEMO_PASSWORD)
+        return if (acceptingTerms) acceptTerms(token) else token
     }
 
     protected fun userId(token: String): String = get("/api/auth/me", token)["userId"].asString()
