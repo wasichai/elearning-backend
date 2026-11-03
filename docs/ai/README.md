@@ -31,7 +31,8 @@ que es lógica determinista del módulo `elearning.ai` o de `authoring`; «perso
    (render) → `VideoScript`, `SlideDeck`. Un vídeo solo está «terminado» si se renderizó y validó (§12).
 6. **Validaciones automáticas** — _código_: estructura, referencias, enlaces, recursos, duplicidad (hashes),
    accesibilidad y metadatos → `ValidationReport`. _Embabel_ solo aporta una **opinión** sobre la coherencia
-   contenido-evaluación, que nunca aprueba ni bloquea por sí sola.
+   contenido-evaluación, que nunca aprueba ni bloquea por sí sola. La parte de código está implementada en E34.1
+   ([#286](https://github.com/wasichai/elearning-backend/issues/286)): ver §13.
 7. **Revisión humana** — aprobar, pedir cambios, comentar fragmentos, rechazar. _Persona_ (REVISOR asignado) →
    `ContentReview` y `ReviewComment` ligados a la versión, en la bandeja del revisor.
 8. **Correcciones** — _persona_ (CREADOR), con ayuda opcional de Embabel → nueva versión. No borra versiones anteriores
@@ -311,3 +312,49 @@ audiencia, `segundos` por escena y trazas `{ doc, ancla }` al manual ([referenci
   subida entera en memoria y no atiende `Range`: se le pide subida en streaming, `Range` y detección de MP4.
 - **Previsualización** antes de la revisión, con el propio MP4 del borrador (sin el Player de Remotion); la versión publicada referencia el artefacto por hash y sigue
   funcionando sin el proveedor de IA ni el renderizador.
+
+## 13. Informe de validación (RF-IA-05)
+
+Implementado en E34.1 ([#286](https://github.com/wasichai/elearning-backend/issues/286)). `DraftValidator`
+(`elearning.ai`) valida **por código** una versión en borrador: determinista, sin red, sin modelo. No visita enlaces ni lee
+fuentes; solo mide lo que el borrador dice, y su texto es dato no confiable. Cada problema lleva la forma del informe del
+importador (`kind`, `origin` = `objeto:id`, `field`, `line`, `detail`) más su `category` y su `severity`:
+
+| Categoría       | Problema (`kind`)                                                                                               | Gravedad   |
+| --------------- | --------------------------------------------------------------------------------------------------------------- | ---------- |
+| `STRUCTURE`     | `EMPTY_VERSION`, `EMPTY_UNIT`, `LESSON_WITHOUT_EVALUATION`, `EMPTY_EVALUATION`, `QUESTION_WITHOUT_ANSWER`       | bloqueante |
+| `STRUCTURE`     | `REPEATED_ORDER` (dos hermanas con el mismo orden)                                                              | aviso      |
+| `REFERENCES`    | `INVALID_SOURCE_REF` (la traza no es `repo@sha:ruta#ancla`)                                                     | bloqueante |
+| `REFERENCES`    | `MISSING_SOURCE_REF`, `UNDECLARED_SOURCE` (repositorio y commit fuera de `fuentes` de la versión)               | aviso      |
+| `ALIGNMENT`     | `MISSING_OUTCOMES` (ni objetivos ni resultados de aprendizaje), `NO_ASSESSMENT` (ninguna evaluación)            | bloqueante |
+| `ALIGNMENT`     | `UNASSESSED_OBJECTIVES` (unidad con objetivos sin evaluación), `UNALIGNED_EVALUATION` (evaluación sin objetivo) | aviso      |
+| `LINKS`         | `UNSAFE_LINK`: un enlace de un texto o de un entorno de laboratorio que no pasa `SafeLink` (https público)      | bloqueante |
+| `DUPLICATES`    | `DUPLICATE_CONTENT`: el mismo resumen de lección o enunciado de pregunta, normalizado, por SHA-256              | aviso      |
+| `ACCESSIBILITY` | `IMAGE_WITHOUT_ALT` (AsciiDoc `image::x[]`, Markdown `![](x)`, HTML `<img>` sin `alt`)                          | bloqueante |
+| `ACCESSIBILITY` | `HEADING_LEVEL_SKIPPED` (de `=` a `===`, de `#` a `###`)                                                        | aviso      |
+| `METADATA`      | `MISSING_DURATION` (lección), `MISSING_HOURS` (unidad), `MISSING_ASSESSMENT_SYSTEM` (versión)                   | aviso      |
+
+El informe (`ValidationReport`) lleva además `contentHash`, el SHA-256 de lo validado (`DraftSnapshots`: la versión y su
+temario, ordenados), `blocking`, los totales por gravedad y categoría y la lista recortada a 500.
+
+**Lanzar.** `POST /api/lms/ai/validations` exige `VALIDAR` (`AiPermissions`, `403`), ver la versión (`404`) y que sea un
+borrador (`409`); su autor no la valida (`403`, separación de deberes). Corre en la cola (`ai-validation`), que vuelve a
+mirar `VALIDAR` con los roles guardados de quien la pidió, lee el borrador como la plataforma y deja el informe en una
+ejecución `AgentRun`: paso `VALIDATION`, `generator = DETERMINISTIC`, la versión en `version_curso_id`, el informe en
+`validations` y `draft-validator/1` como versión de instrucciones y de plantilla. Un informe con problemas bloqueantes es
+una ejecución `SUCCEEDED`: lo que falla es el borrador. Lo leen (`GET /api/lms/ai/validations?versionId=`), si ven la
+versión, su autor, su revisor asignado y quien tiene `VALIDAR`; el resto, `403`. Contrato en
+[docs/api](../api/lms.md#validación-de-borradores-f5-rf-ia-05).
+
+**Borrador generado.** Una versión es **generada** si alguna ejecución de un paso que crea borradores
+(`DraftValidationStore.GENERATING_STEPS`, hoy `LESSON_DRAFT`) la nombra: en `version_curso_id` si la versión existía al
+empezar, o en `output.versionId` si la creó la propia ejecución. Es lo que el paso de borrador
+([#283](https://github.com/wasichai/elearning-backend/issues/283)) tiene que respetar: al crear la versión, cerrar su
+ejecución con `output = { "versionId": "<id>", … }`. El vínculo vive en `lms.ejecucion_agente`, que solo escribe la
+plataforma y no se edita, así que el autor no puede quitárselo a su borrador. Un paso nuevo que cree versiones entra en
+`GENERATING_STEPS`.
+
+**Enviar a revisión.** `GeneratedDraftGuard` (`RecordWriteGuard`, toda escritura: el envío del estudio y la API de
+registros) responde `409` al llevar un borrador generado de `BORRADOR` a `EN_REVISION` si no tiene informe, si el último no
+corresponde al contenido actual (otro `contentHash`: se editó después de validarlo) o si tiene problemas bloqueantes. Los
+avisos no bloquean. Un borrador escrito a mano no pasa por aquí. Índices de la búsqueda por versión: `V23`.

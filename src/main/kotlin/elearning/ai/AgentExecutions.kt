@@ -9,8 +9,9 @@ import java.util.UUID
 // el registro AgentRun (RF-IA-03, ADR-0033 §7, docs/ai §4). En Kotlin no se llama AgentRun: ese nombre ya es de
 // wasichai-agent. Una ejecución es una llamada de un paso, con lo que se pidió, con qué modelo, lo que salió y lo que costó
 
-// el paso de la canalización (docs/ai §3); uno nuevo llega aquí y a docs/ai
-enum class AgentStep { SOURCE_ANALYSIS, COURSE_DESIGN, LESSON_DRAFT, SCRIPT, CONSISTENCY_REVIEW, ASSISTANT }
+// el paso de la canalización (docs/ai §3); uno nuevo llega aquí y a docs/ai. VALIDATION es la validación por código del
+// paso 6 (DraftValidator): generator DETERMINISTIC, sin modelo
+enum class AgentStep { SOURCE_ANALYSIS, COURSE_DESIGN, LESSON_DRAFT, SCRIPT, CONSISTENCY_REVIEW, ASSISTANT, VALIDATION }
 
 // MODEL: un proveedor; DETERMINISTIC: el doble sin red de docs/ai §7
 enum class Generator { MODEL, DETERMINISTIC }

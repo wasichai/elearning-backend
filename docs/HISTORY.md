@@ -2,6 +2,17 @@
 
 Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este archivo registra lo que se entregó.
 
+## 2026-11-03 — Informe de validación de borradores ([#286](https://github.com/wasichai/elearning-backend/issues/286))
+
+- `DraftValidator` (`elearning.ai`) valida por código una versión en borrador (RF-IA-05): estructura, referencias,
+  alineación objetivos-evaluación, enlaces con `SafeLink`, duplicidad por hash, accesibilidad (texto alternativo y jerarquía
+  de títulos) y metadatos, con gravedad por problema (`BLOCKING`, `WARNING`) y la forma del informe del importador.
+- `POST /api/lms/ai/validations` exige `VALIDAR` (su autor no la lanza) y encola el trabajo `ai-validation`, que deja el
+  informe en una ejecución `AgentRun` (paso nuevo `VALIDATION`, `DETERMINISTIC`) con el hash del contenido. Lo leen el
+  autor, el revisor asignado y quien tiene `VALIDAR` (`GET /api/lms/ai/validations?versionId=`).
+- `GeneratedDraftGuard`: enviar a revisión un borrador generado sin informe, con uno que ya no corresponde al contenido o con
+  errores bloqueantes es `409`. Generado = una ejecución `LESSON_DRAFT` lo nombra en `version_curso_id` u `output.versionId`
+  ([docs/ai §13](ai/README.md#13-informe-de-validación-rf-ia-05)); #283 lo respetará. `V23` añade los índices por versión.
 ## 2026-11-03 — Una versión sin lecciones no se envía a revisión ([#346](https://github.com/wasichai/elearning-backend/issues/346))
 
 - `EditorialWorkflowGuard` responde `409` al llevar una `version_curso` sin lecciones a `EN_REVISION`, `APROBADA` o
