@@ -22,7 +22,8 @@ import java.util.UUID
 // - ACCEPTED: el revisor aprueba la versión en la bandeja (EN_REVISION -> APROBADA), con el motivo si lo dio
 // - REJECTED: el revisor la rechaza (EN_REVISION -> RETIRADA), con su motivo; o una persona borra el borrador generado
 // - EDITED: una persona guarda un cambio en el contenido del borrador o de su temario (unidades, lecciones, evaluaciones,
-//   preguntas, opciones, criterios, entornos, recursos enlazados). La nota dice qué registro y qué campos, nunca su texto
+//   preguntas, opciones, criterios, entornos, recursos enlazados) o borra un registro del temario. La nota dice qué
+//   registro y qué campos, nunca su texto. Crear un registro no cuenta: no cuesta nada a quien copia una versión
 //
 // Pedir cambios no es ninguna de las tres: lo que venga después lo dejan las ediciones. La plataforma (userId nulo), y con
 // ella todo trabajo de IA, no interviene. Un borrador escrito a mano no tiene ejecución y no deja nada
@@ -60,7 +61,9 @@ class DraftInterventionListener(
             return if (fields.isEmpty()) null else InterventionKind.EDITED to "$record: ${fields.sorted().joinToString()}"
         }
         return when (change.kind) {
-            RecordChangeKind.CREATED -> InterventionKind.EDITED to "$record created"
+            // crear no: una copia de versión crea todo su temario y aquí no se gasta una sentencia por registro
+            // (AuthoringCostApiTest); la versión copiada tampoco es generada. Lo creado se nota al editarlo o borrarlo
+            RecordChangeKind.CREATED -> null
             RecordChangeKind.DELETED -> InterventionKind.EDITED to "$record deleted"
             else -> changed(before, after).takeIf { it.isNotEmpty() }?.let { InterventionKind.EDITED to "$record: ${it.sorted().joinToString()}" }
         }

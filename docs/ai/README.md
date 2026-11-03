@@ -454,17 +454,18 @@ sobre un borrador **generado** (§13) se añade a `intervenciones` de la ejecuci
 reciente. Lo hace `DraftInterventionListener` (`elearning.ai`, un `RecordChangeListener`: authoring no puede usar ai), que
 Wasichai llama justo después de escribir y en la transacción de quien escribe:
 
-| Intervención | Cuándo                                                                                                    | Nota                                  |
-| ------------ | --------------------------------------------------------------------------------------------------------- | ------------------------------------- |
-| `ACCEPTED`   | el revisor aprueba en la bandeja (`EN_REVISION` → `APROBADA`)                                             | la decisión y su motivo, si lo dio    |
-| `REJECTED`   | el revisor la rechaza (`EN_REVISION` → `RETIRADA`), o una persona borra el borrador                       | la decisión y su motivo               |
-| `EDITED`     | una persona guarda un cambio en el contenido de la versión o de su temario (unidad, lección, evaluación…) | el registro y los campos, no su texto |
+| Intervención | Cuándo                                                                                                                                     | Nota                                  |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------- |
+| `ACCEPTED`   | el revisor aprueba en la bandeja (`EN_REVISION` → `APROBADA`)                                                                              | la decisión y su motivo, si lo dio    |
+| `REJECTED`   | el revisor la rechaza (`EN_REVISION` → `RETIRADA`), o una persona borra el borrador                                                        | la decisión y su motivo               |
+| `EDITED`     | una persona guarda un cambio en el contenido de la versión o de su temario (unidad, lección, evaluación…), o borra un registro del temario | el registro y los campos, no su texto |
 
 - **Misma transacción.** La decisión de la bandeja, su fila de `lms.decision_revision`, el cambio de estado y la intervención
   se confirman o se deshacen juntos (lo prueba un disparador que hace fallar la intervención). La API de registros de
   Wasichai no abre transacción (ADR-0032): una edición por ella y su intervención se escriben en la misma llamada, cada
   sentencia con su propia confirmación, como su `audit_log`.
-- **No intervienen**: validar, enviar a revisión, pedir cambios (lo que venga después lo dejan las ediciones), asignar el
+- **No intervienen**: crear un registro del temario (copiar una versión crea todo el suyo y no se gasta una sentencia por
+  registro; lo creado se nota al editarlo o borrarlo), validar, enviar a revisión, pedir cambios (lo que venga después lo dejan las ediciones), asignar el
   revisor ni publicar; tampoco la plataforma ni un trabajo de IA. Un borrador escrito a mano no tiene ejecución y no deja nada.
 - **Solo se añaden**: ninguna ruta las escribe ni las borra (la API de `AgentRun` es de lectura y la tabla no es un objeto de
   Wasichai) y el disparador de V17 rechaza cambiarlas o quitarlas, también con SQL directo. La supresión de datos personales
