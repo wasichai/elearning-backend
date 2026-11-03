@@ -584,6 +584,52 @@ calificar y trabajos; deja la matrícula (`RETIRADA` si estaba activa), los inte
 persona (`holderName: null` en su verificación) y vacía su perfil docente. Detalle en
 [seguridad §7](../security/README.md#7-privacidad-y-retención).
 
+## Valoraciones del estudiante (F6, ADR-0038)
+
+Con sesión y la acción `VALORAR` (ESTUDIANTE; sin ella, `403`), desde una matrícula propia (ajena o inexistente → `404`).
+El valorado no lee nada de esto: DOCENTE y CREADOR no tienen `READ` sobre `valoracion` ni `puntaje_valoracion`, y la API
+de registros los cierra a todos (`apiOnly`).
+
+| Método | Ruta                                          | Resultado                                                         |
+| ------ | --------------------------------------------- | ----------------------------------------------------------------- |
+| GET    | `/api/lms/classroom/enrollments/{id}/ratings` | `RatingEligibility`: a quién puede valorar, con qué dimensiones   |
+| POST   | `/api/lms/classroom/enrollments/{id}/ratings` | `{ type, targetId, scores, comment }` → `201` `Rating`            |
+| GET    | `/api/lms/ratings/mine`                       | `Rating[]`, lo más nuevo primero                                  |
+| PUT    | `/api/lms/ratings/{ratingId}`                 | `{ scores, comment }` → `Rating`; reemplaza puntajes y comentario |
+| DELETE | `/api/lms/ratings/{ratingId}`                 | `204`                                                             |
+
+- `type` es `DOCENCIA` (`targetId`: la asignación, de `teachers[].id`) o `RECURSO` (`targetId`: la versión de recurso, de
+  `resources[].id`). `scores` va por clave de dimensión activa del destino, enteros de 1 a 5, al menos uno (`400`).
+  `comment` es texto plano de hasta 2000 caracteres (`400`); vacío lo quita. La interfaz lo muestra siempre escapado.
+- `403`: matrícula ni `ACTIVA` ni `FINALIZADA`; un destino que no es de la edición o de la versión de la matrícula;
+  progreso del aula bajo `lms.reputation.min-progress` (50 %) sin haber finalizado (docente); ninguna lección que usa el
+  recurso completada; lo propio (docente de la edición, autor del recurso).
+- `409`: ya lo valoró (se edita la suya) o la ventana cerró (`lms.reputation.window-after-end`, 30 días tras `fecha_fin`,
+  también para editar y retirar).
+- `429` con `ProblemDetail` y `Retry-After`: más de `lms.reputation.max-edits-per-day` (5) altas, ediciones o retiradas
+  en el día UTC. Lo rechazado no cuenta.
+- `POST` acepta `Idempotency-Key` (ADR-058 de Wasichai): la misma clave y el mismo cuerpo devuelven la misma respuesta
+  (`Idempotent-Replayed: true`) sin valorar otra vez; otro cuerpo con la clave, `422`.
+- Editar el comentario lo devuelve a `PENDIENTE` (solo se muestra `PUBLICADA`); cambiar solo los puntajes, no. Su
+  historial lo lee el autor en `/api/objects/valoracion/records/{id}/history`.
+
+```json
+{
+  "enrollmentId": "…",
+  "open": true,
+  "closesOn": "2026-12-31",
+  "progressPercent": 50,
+  "minProgress": 50,
+  "teachers": [{ "type": "DOCENCIA", "id": "…", "name": "Ana Quispe", "eligible": true, "reason": null, "ratingId": null }],
+  "resources": [{ "type": "RECURSO", "id": "…", "name": "Lectura de la unidad", "eligible": false, "reason": "LESSON", "ratingId": null }],
+  "dimensions": { "DOCENCIA": [{ "key": "docente_claridad", "name": "Explica con claridad" }], "RECURSO": [] }
+}
+```
+
+`reason`, cuando no puede: `CLOSED`, `ENROLLMENT`, `PROGRESS`, `LESSON`, `OWN` o `RATED` (ya la valoró: `ratingId`).
+`Rating`: `{ id, enrollmentId, type, targetId, targetName, scores: { clave: valor }, comment, moderation, createdAt,
+updatedAt }`, con `moderation` `PENDIENTE`, `PUBLICADA` u `OCULTA` (`null` sin comentario).
+
 ## Espacio docente (F3, ADR-0016)
 
 Con sesión, solo sobre las ediciones **asignadas** a la persona (`docente_edicion.usuario_id`); otra edición o un

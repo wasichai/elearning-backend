@@ -365,8 +365,13 @@ el cuándo, en [`roadmap.md`](roadmap.md).
 - **RF-REP-01** · F6 · planificado — Valoración de docentes por estudiantes matriculados en su edición, con
   dimensiones configurables; una por estudiante y edición, editable con registro de cambios.
   _Aceptación:_ un no matriculado o un visitante recibe `403`; un duplicado se rechaza.
+  _Avance:_ política en [ADR-0038](../adr/0038-politica-de-valoraciones.md); valorar, editar y retirar desde la matrícula
+  con progreso mínimo, ventana de 30 días tras el fin, conflicto de interés y una por par, sin que el valorado lea nada
+  ([#322](https://github.com/wasichai/elearning-backend/issues/322), `RatingApiTest`). Resúmenes y moderación en #323 y #324.
 - **RF-REP-02** · F6 · planificado — Valoración de recursos por claridad, utilidad, actualidad y calidad.
   _Aceptación:_ mismas reglas de RF-REP-01 aplicadas a recursos.
+  _Avance:_ como RF-REP-01, con las cuatro dimensiones en `dimension_valoracion` y la lección que usa el recurso completada
+  ([#322](https://github.com/wasichai/elearning-backend/issues/322)).
 - **RF-REP-03** · F6 · planificado — Feedback contextual por unidad o lección con estado de resolución.
   _Aceptación:_ el responsable cambia el estado y el autor del feedback lo ve.
 - **RF-REP-04** · F6 · planificado — Moderación y privacidad de valoraciones y feedback.
@@ -460,6 +465,8 @@ el cuándo, en [`roadmap.md`](roadmap.md).
   _Aceptación:_ prueba que busca la clave de prueba en registros y persistencia.
 - **RNF-SEG-10** · F6 · planificado — Límites de abuso y spam en endpoints públicos y de valoración.
   _Aceptación:_ superar el límite configurado → `429`. Si Wasichai ofrece limitación de tasa está a verificar.
+  _Avance:_ los cambios de valoraciones por persona y día (`lms.reputation.max-edits-per-day`) responden `429` con
+  `Retry-After` ([#322](https://github.com/wasichai/elearning-backend/issues/322), ADR-0038); el límite global, en el ingress (#73).
 - **RNF-SEG-11** · F6 · implementado — Privacidad por defecto, conservación y eliminación de datos personales.
   _Aceptación:_ política escrita y prueba de eliminación de un usuario de demostración.
   _Avance:_ política en [ADR-0030](../adr/0030-lgpl-definitiva-y-conservacion-segun-los-terminos.md) (se conserva lo que aprueban los términos de uso) y

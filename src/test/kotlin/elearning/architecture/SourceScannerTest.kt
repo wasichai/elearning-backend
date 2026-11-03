@@ -251,6 +251,17 @@ class SourceScannerTest {
         assertThat(offenders).hasSize(ArchitectureTest.ALLOWED_DEPENDENCIES.size - 1)
     }
 
+    // ADR-0038: las valoraciones no tocan la matrícula ni las notas
+    @Test
+    fun `assessment or enrollment using reputation is caught`() {
+        for (capability in listOf("assessment", "enrollment")) {
+            val path = "src/main/kotlin/elearning/$capability/UsesRatings.kt"
+            val violations = scan(path, "package elearning.$capability\n\nimport elearning.reputation.RatingService\n\nclass UsesRatings")
+
+            assertSingle(violations, Rule.PACKAGE_DAG, path, 3)
+        }
+    }
+
     @Test
     fun `an arrow against the diagram is caught, even fully qualified`() {
         val path = "src/main/kotlin/elearning/course/Upwards.kt"

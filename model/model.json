@@ -20,7 +20,9 @@
     "estado_sesion": ["PROGRAMADA", "REPROGRAMADA", "CANCELADA"],
     "estado_asistencia": ["PRESENTE", "TARDE", "AUSENTE", "JUSTIFICADO"],
     "formato_artefacto": ["HTML", "PDF"],
-    "tipo_aprobacion_creditos": ["APROBACION", "REVOCACION"]
+    "tipo_aprobacion_creditos": ["APROBACION", "REVOCACION"],
+    "destino_valoracion": ["DOCENCIA", "RECURSO"],
+    "estado_moderacion": ["PENDIENTE", "PUBLICADA", "OCULTA"]
   },
   "objects": [
     {
@@ -1380,6 +1382,132 @@
           "required": true
         }
       ]
+    },
+    {
+      "name": "dimension_valoracion",
+      "label": "Dimensión de valoración",
+      "pluralLabel": "Dimensiones de valoración",
+      "description": "Lo que se valora de un docente o de un recurso, de 1 a 5 (RF-REP-01/02, ADR-0038). La clave no cambia: la nombran los puntajes y los agregados congelados; para dejar de pedirla se desactiva.",
+      "fields": [
+        {
+          "name": "clave",
+          "label": "Clave (minúsculas, dígitos y guiones bajos)",
+          "type": "TEXT",
+          "required": true,
+          "unique": true
+        },
+        {
+          "name": "nombre",
+          "label": "Nombre",
+          "type": "TEXT",
+          "required": true
+        },
+        {
+          "name": "destino",
+          "label": "Qué se valora",
+          "type": "ENUM",
+          "enum": "destino_valoracion",
+          "required": true
+        },
+        {
+          "name": "activa",
+          "label": "Se pide al valorar",
+          "type": "BOOLEAN",
+          "required": true,
+          "defaultValue": "true"
+        },
+        {
+          "name": "orden",
+          "label": "Orden",
+          "type": "INTEGER",
+          "defaultValue": "0"
+        }
+      ]
+    },
+    {
+      "name": "valoracion",
+      "label": "Valoración",
+      "pluralLabel": "Valoraciones",
+      "description": "Valoración de un docente o de un recurso por un estudiante de la edición (Rating, ADR-0038). La escribe solo el LMS: elegibilidad, ventana, conflicto de interés y moderación. El valorado no la lee: solo resúmenes con muestra mínima.",
+      "apiOnly": true,
+      "actions": [
+        {
+          "name": "VALORAR",
+          "label": "Valorar a los docentes y los recursos de sus matrículas"
+        },
+        {
+          "name": "VER_RESUMEN",
+          "label": "Ver el resumen anónimo de las valoraciones que lo tienen como destino"
+        },
+        {
+          "name": "DENUNCIAR",
+          "label": "Denunciar un comentario que lo tiene como destino"
+        },
+        {
+          "name": "MODERAR",
+          "label": "Publicar u ocultar comentarios con motivo y decidir apelaciones"
+        }
+      ],
+      "fields": [
+        {
+          "name": "estudiante_id",
+          "label": "Estudiante que valora (usuario de Wasichai)",
+          "type": "UUID",
+          "required": true,
+          "indexed": true
+        },
+        {
+          "name": "destino",
+          "label": "Qué se valora",
+          "type": "ENUM",
+          "enum": "destino_valoracion",
+          "required": true
+        },
+        {
+          "name": "docente_edicion",
+          "label": "Asignación docente valorada (id de docente_edicion; el estudiante no lee asignaciones)",
+          "type": "UUID",
+          "indexed": true
+        },
+        {
+          "name": "comentario",
+          "label": "Comentario (texto plano)",
+          "type": "LONG_TEXT"
+        },
+        {
+          "name": "estado_moderacion",
+          "label": "Moderación del comentario",
+          "type": "ENUM",
+          "enum": "estado_moderacion"
+        }
+      ],
+      "uniqueConstraints": [
+        ["matricula", "docente_edicion"],
+        ["matricula", "version_recurso"]
+      ]
+    },
+    {
+      "name": "puntaje_valoracion",
+      "label": "Puntaje de valoración",
+      "pluralLabel": "Puntajes de valoración",
+      "description": "El valor de 1 a 5 de una dimensión en una valoración (ADR-0038). Lo escribe solo el LMS.",
+      "apiOnly": true,
+      "fields": [
+        {
+          "name": "estudiante_id",
+          "label": "Estudiante que valora (usuario de Wasichai)",
+          "type": "UUID",
+          "required": true,
+          "indexed": true
+        },
+        {
+          "name": "valor",
+          "label": "Valor (1 a 5)",
+          "type": "INTEGER",
+          "required": true
+        }
+      ],
+      "uniqueConstraints": [["valoracion", "dimension"]]
     }
   ],
   "relationships": [
@@ -1669,6 +1797,55 @@
       "source": "aprobacion_creditos",
       "target": "version_curso",
       "fieldName": "version_curso",
+      "required": true
+    },
+    {
+      "name": "valoracion_matricula",
+      "label": "Matrícula",
+      "inverseLabel": "Valoraciones",
+      "type": "MANY_TO_ONE",
+      "source": "valoracion",
+      "target": "matricula",
+      "fieldName": "matricula",
+      "required": true
+    },
+    {
+      "name": "valoracion_edicion",
+      "label": "Edición",
+      "inverseLabel": "Valoraciones",
+      "type": "MANY_TO_ONE",
+      "source": "valoracion",
+      "target": "edicion_curso",
+      "fieldName": "edicion",
+      "required": true
+    },
+    {
+      "name": "valoracion_version_recurso",
+      "label": "Versión de recurso valorada",
+      "inverseLabel": "Valoraciones",
+      "type": "MANY_TO_ONE",
+      "source": "valoracion",
+      "target": "version_recurso",
+      "fieldName": "version_recurso"
+    },
+    {
+      "name": "puntaje_valoracion_valoracion",
+      "label": "Valoración",
+      "inverseLabel": "Puntajes",
+      "type": "MANY_TO_ONE",
+      "source": "puntaje_valoracion",
+      "target": "valoracion",
+      "fieldName": "valoracion",
+      "required": true
+    },
+    {
+      "name": "puntaje_valoracion_dimension",
+      "label": "Dimensión",
+      "inverseLabel": "Puntajes",
+      "type": "MANY_TO_ONE",
+      "source": "puntaje_valoracion",
+      "target": "dimension_valoracion",
+      "fieldName": "dimension",
       "required": true
     }
   ]

@@ -66,6 +66,9 @@ Acciones declaradas:
 | `version_curso` | `APROBAR`                                | REVISOR (o el rol que fije la política), nunca el autor (§3) | En el modelo F1, uso F4 |
 | `version_curso` | `PUBLICAR`                               | ADMIN o un rol editorial designado                           | En el modelo F1, uso F4 |
 | `version_curso` | `APROBAR_CREDITOS`                       | AUTORIDAD_ACADEMICA, con separación de funciones (§3)        | F6 (ADR-0035)           |
+| `valoracion`    | `VALORAR`                                | ESTUDIANTE, desde su matrícula (§4.8)                        | F6 (ADR-0038)           |
+| `valoracion`    | `VER_RESUMEN`, `DENUNCIAR`               | DOCENTE y CREADOR, sobre lo que los tiene como destino       | F6 (ADR-0038)           |
+| `valoracion`    | `MODERAR`                                | ADMIN; nunca sobre lo propio ni lo que lo tiene como destino | F6 (ADR-0038)           |
 | A decidir       | p. ej. `CALIFICAR`, `GENERAR`, `VALIDAR` | Ver [IA §8](../ai/README.md#8-permisos-separados)            | F3/F5                   |
 
 `GET /api/auth/me/permissions` informa al frontend de lo que el usuario puede hacer, acciones declaradas incluidas.
@@ -276,6 +279,16 @@ el único sitio del código que lanza un proceso (`ArchitectureTest`, regla `EXT
   (`GeneratedHtml`, jsoup; sin scripts, manejadores, `iframe`, formularios ni hojas externas, ADR-0022) y además se
   descarga como adjunto con `nosniff`, como cualquier HTML (§4.4).
 
+### 4.8 Valoraciones (F6, ADR-0038)
+
+| Amenaza                                                 | Control                                                                                                             |
+| ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| Represalia: el docente averigua quién lo valoró         | Sin `READ` del valorado sobre `valoracion` ni `puntaje_valoracion` (API de registros, historial y auditoría: `403`) |
+| Valorar sin haber cursado, o a nombre de otro           | Matrícula propia `ACTIVA` o `FINALIZADA`, progreso mínimo, `RatingWriteGuard` para toda escritura                   |
+| Conflicto de interés                                    | Ni el docente de la edición a sus colegas ni el autor su recurso (`403`), comprobado por datos y no por rol         |
+| Manipular el estado de moderación o la API de registros | `apiOnly`; solo `MODERAR` publica u oculta; lo que identifica una valoración no cambia                              |
+| Inundar de cambios                                      | `429` pasado el límite diario por persona                                                                           |
+
 ## 5. Controles transversales
 
 1. **Validación de entradas**: DTO propios validados en el borde; filtros y orden por lista blanca; errores
@@ -288,7 +301,10 @@ el único sitio del código que lanza un proceso (`ArchitectureTest`, regla `EXT
    `.internal` ni IPv4 privadas o escritas de otra forma; `LabEnvironmentGuard` para toda escritura, RNF-SEG-08). El
    servidor no los resuelve ni los visita, así que no hay redirección que seguir; los entornos solo los leen los
    matriculados (ADR-0027).
-4. **Abuso y spam** (valoraciones y feedback, F6): solo matriculados, una valoración por par, moderación, límite de tasa.
+4. **Abuso y spam** (valoraciones y feedback, F6): solo matriculados con progreso mínimo, una valoración por par,
+   moderación y límites diarios por persona (`lms.reputation.max-edits-per-day`, 5; `max-reports-per-day`, 10) que
+   responden `429` con `Retry-After`, contados en `lms.cuota_valoracion` en la transacción del cambio (ADR-0038,
+   RNF-SEG-10). El límite global de peticiones queda en el ingress (#73).
 5. **Idempotencia**: `Idempotency-Key` (ADR-058 de Wasichai) en creaciones y comandos con efecto.
 6. **Concurrencia**: ETag e `If-Match` en las ediciones.
 7. **CORS**: `wasichai.web.cors-allowed-origin-patterns` limitado al origen de la UI de cada entorno.
@@ -336,6 +352,9 @@ aplicación se conecta con un rol que no es dueño de las tablas, para que nadie
 - **Privado por defecto**: un `perfil_docente` solo aparece en el catálogo público si `perfil_publico` es verdadero
   (falso por omisión; implementado en F1, #66): sin consentimiento no sale ni su nombre. Las valoraciones agregadas
   exigen muestra suficiente y consentimiento explícito (F6). Ningún visitante publica valoraciones académicas verificadas.
+- **Valoraciones** ([ADR-0038](../adr/0038-politica-de-valoraciones.md)): el valorado nunca ve quién lo valoró (sin
+  `READ` sobre `valoracion` ni `puntaje_valoracion`, su historial ni su auditoría); se conservan mientras quien valora
+  mantenga aceptados los términos de uso, y su supresión entra en la de ADR-0037 (paso 4 de #268).
 - **`calendario` de una edición** es texto público: sin enlaces de reunión ni datos de contacto personales. Los enlaces
   de las sesiones síncronas llegan por el adaptador de videoconferencia (F3) y solo a los matriculados.
 - **IA**: la canalización editorial no recibe datos de estudiantes; el asistente de Wasichai, si se habilita, filtra
