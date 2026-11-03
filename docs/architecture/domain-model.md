@@ -145,7 +145,8 @@ LONG_TEXT` · `conocimientos_previos · LONG_TEXT` · `requisitos · LONG_TEXT` 
 - `uniqueConstraints: [[curso, numero]]`.
 
 Invariantes: solo se edita en `BORRADOR`, y con ella sus unidades y lecciones [guarda]; las transiciones son las de §5.1
-[guarda + comando]; quien aprueba no es el autor [guarda, F4]; un curso tiene a lo sumo una versión `PUBLICADA` a la vez:
+[guarda + comando]; una versión sin lecciones no entra en `EN_REVISION`, `APROBADA` ni `PUBLICADA`, aunque el borrador
+vacío sí existe (#346) [guarda]; quien aprueba no es el autor [guarda, F4]; un curso tiene a lo sumo una versión `PUBLICADA` a la vez:
 publicar retira la anterior en la misma transacción, bajo `ClusterLock.withXactLock("lms.curso.<id>")` [servicio];
 publicarla avisa a quien cursa otra versión del curso con su matrícula `ACTIVA` (RF-AUL-09) [listener + cola];
 `duracion · ENUM(SEMANAS, SEMESTRAL)` (por defecto `SEMANAS`) y `semanas`: de 1 a 8, o de 12 a 26 si es semestral

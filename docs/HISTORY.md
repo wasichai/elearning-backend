@@ -2,6 +2,13 @@
 
 Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este archivo registra lo que se entregó.
 
+## 2026-11-03 — Una versión sin lecciones no se envía a revisión ([#346](https://github.com/wasichai/elearning-backend/issues/346))
+
+- `EditorialWorkflowGuard` responde `409` al llevar una `version_curso` sin lecciones a `EN_REVISION`, `APROBADA` o
+  `PUBLICADA`, por el estudio, la bandeja o la API de registros, y al crearla directamente en uno de esos estados. El
+  borrador vacío se sigue creando (#270), quien no tiene la acción sigue recibiendo `403`, y una versión vacía anterior a
+  la regla se puede devolver a borrador, rechazar o retirar. La plataforma no pasa por la guarda.
+
 ## 2026-11-03 — Lo publicado funciona sin el proveedor ([#294](https://github.com/wasichai/elearning-backend/issues/294))
 
 - `ClassroomWithoutAiApiTest`: la aplicación sin ninguna clave de proveedor (sin la plataforma de Embabel, como

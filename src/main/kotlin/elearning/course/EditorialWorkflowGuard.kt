@@ -1,5 +1,6 @@
 package elearning.course
 
+import elearning.common.existsIn
 import elearning.common.listAll
 import kotlinx.coroutines.currentCoroutineContext
 import org.springframework.beans.factory.ObjectProvider
@@ -48,6 +49,8 @@ class CreditApprovalWrite : AbstractCoroutineContextElement(Key) {
 //   publicada o retirada no se mueve (ni su temario)
 // - créditos aprobados y su política solo los escribe el comando de aprobación de créditos (ADR-0035): 403 para todos por
 //   la API de registros, ADMIN incluido. antes bastaba APROBAR, la acción editorial (hallazgo de #269)
+// - una versión de curso sin lecciones no entra en revisión, ni se aprueba ni se publica (409, #346). el borrador vacío sí
+//   existe: sin él no se añade la primera unidad. tampoco queda atascada: se devuelve a borrador, se rechaza o se retira
 // - la fecha de publicación solo se pone al publicar
 // - la lección de repaso de una pregunta es de su misma versión (400 si no)
 // - la plataforma (userId nulo) es código de confianza y no pasa por aquí
@@ -110,6 +113,8 @@ class EditorialWorkflowGuard(
                 if (CREDIT_FIELDS.any { attributes[it] != null }) throw ForbiddenException(APPROVED_BY_COMMAND)
                 if (attributes[PUBLISHED_AT] != null) require(PUBLISH)
                 attributes.text(REVIEWER)?.let { reviewer(it, attributes.text(AUTHOR), state, user, holds(PUBLISH)) }
+                // recién creada no tiene temario: nacer en estos estados es saltarse la regla, sea cual sea la acción que se tenga
+                if (change.objectName == VERSION && state in NEEDS_LESSONS) throw ConflictException(NO_LESSONS)
             }
             RecordChangeKind.DELETED -> {
                 if (change.before.text(STATE) ?: DRAFT != DRAFT) throw ConflictException("Only a draft version can be deleted")
@@ -129,6 +134,10 @@ class EditorialWorkflowGuard(
                         throw ForbiddenException("A version is approved by someone other than its author")
                     }
                     if (from == IN_REVIEW && decides(before, to, user, holds(APPROVE))) decision(change, to)
+                    // al final: quien no puede dar el paso recibe su 403, no noticias del temario
+                    if (change.objectName == VERSION && to in NEEDS_LESSONS && !hasLessons(change.recordId.toString())) {
+                        throw ConflictException(NO_LESSONS)
+                    }
                 }
                 // los copia solo el comando de aprobación, que ya exigió APROBAR_CREDITOS y la separación de funciones; la
                 // acción se vuelve a exigir por si otro código del proceso pusiera la marca
@@ -198,6 +207,13 @@ class EditorialWorkflowGuard(
         if (reviewer != null && reviewer == author) {
             throw ValidationException("The author does not review their own version", REVIEWER, "must not be the author")
         }
+    }
+
+    // se lee como quien escribe, igual que el resto de esta guarda: un alcance que oculte las lecciones falla cerrado (409),
+    // nunca deja pasar una versión vacía. dos lecturas, con independencia del tamaño del temario
+    private suspend fun hasLessons(version: String): Boolean {
+        val units = records.getObject().listAll(UNIT, mapOf(VERSION to version)).map { it.id }
+        return records.getObject().existsIn(LESSON, UNIT, units)
     }
 
     // unidades y lecciones de una versión que no está en borrador no se crean, cambian, mueven ni borran. el temario de
@@ -358,7 +374,11 @@ class EditorialWorkflowGuard(
 
         val CREDIT_FIELDS = setOf(APPROVED_CREDITS, CREDIT_POLICY)
 
+        // retirarla o devolverla a borrador no pide temario: es como una versión vacía sale del flujo
+        val NEEDS_LESSONS = setOf(IN_REVIEW, APPROVED, PUBLISHED)
+
         const val APPROVED_BY_COMMAND = "Approved credits are written only by POST /api/lms/credits/versions/{id}/approvals"
+        const val NO_LESSONS = "A version without lessons cannot be submitted for review, approved or published: add a lesson first"
         const val DECIDED_IN_THE_INBOX = "A course version review is decided in the review inbox: POST /api/lms/review/versions/{id}/decision"
 
         // (desde, hacia) → acciones que la permiten (basta una)

@@ -774,6 +774,14 @@ llama con el número siguiente. Un curso sin versiones recibe la v1 `BORRADOR` v
 inexistente o que no puedo leer, `404`. El número es único por curso: dos peticiones a la vez no crean dos versiones con el
 mismo número, y la que pierde responde `409`.
 
+**Una versión sin lecciones no avanza** (#346): enviarla a revisión responde `409`, tenga o no unidades, con el `detail` «A version
+without lessons cannot be submitted for review, approved or published: add a lesson first». El borrador vacío sí se crea, porque
+sin él no se añade la primera unidad. La regla está en `EditorialWorkflowGuard` y vale igual para aprobar (`decision` con `APROBAR`),
+publicar (`publish`), un `PATCH` o `PUT` de `estado` por `/api/objects/version_curso/records` y crear una versión en `EN_REVISION`
+o `PUBLICADA`. Quien no tiene la acción sigue recibiendo `403`. Una versión vacía de antes de esta regla se sale del flujo: se
+devuelve a borrador, se rechaza o se retira. `submit` también responde `409` si la versión no está en borrador: para distinguirlos,
+el cliente mira `units[].lessons` del detalle, no el texto.
+
 El contenido (unidades, lecciones, evaluaciones) se edita con la API de registros de Wasichai, que la guarda deja solo al autor y
 en borrador. La lección de repaso de una pregunta (`leccion_repaso`, opcional) es una lección de la misma versión: otra es
 `400` en `leccion_repaso`. Copiar la versión la re-apunta a la lección copiada.

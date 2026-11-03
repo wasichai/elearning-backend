@@ -35,15 +35,31 @@ suspend fun RecordService.listAllIn(
     parents: Collection<String>,
 ): List<RecordResponse> {
     if (parents.isEmpty()) return emptyList()
+    return listAll(objectName, criteria = listOf(inParents(field, parents)))
+}
+
+// si quien llama puede leer algún registro cuya relación [field] apunta a alguno de [parents]: lee una fila, no todas
+suspend fun RecordService.existsIn(
+    objectName: String,
+    field: String,
+    parents: Collection<String>,
+): Boolean {
+    if (parents.isEmpty()) return false
+    val query = RecordQuery(page = PageRequest(0, 1), criteria = listOf(inParents(field, parents)), count = false)
+    return list(objectName, query).content.isNotEmpty()
+}
+
+private fun inParents(
+    field: String,
+    parents: Collection<String>,
+): RecordCriterion {
     val ids = parents.distinct().map(UUID::fromString).toTypedArray()
-    val inParents =
-        RecordCriterion { definition, bind ->
-            // sin el campo no hay de quién colgar: nada (falla cerrada)
-            definition.fields
-                .firstOrNull { it.name == field }
-                ?.let { "${SqlIdentifier.quote(it.columnName)} = ANY(${bind(ids)})" } ?: "false"
-        }
-    return listAll(objectName, criteria = listOf(inParents))
+    return RecordCriterion { definition, bind ->
+        // sin el campo no hay de quién colgar: nada (falla cerrada)
+        definition.fields
+            .firstOrNull { it.name == field }
+            ?.let { "${SqlIdentifier.quote(it.columnName)} = ANY(${bind(ids)})" } ?: "false"
+    }
 }
 
 // los registros con esas identidades que quien llama puede leer, en lecturas de a lo sumo una página
