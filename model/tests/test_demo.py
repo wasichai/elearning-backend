@@ -277,6 +277,15 @@ class DemoValidationTest(unittest.TestCase):
         self.assertTrue(any("'no-existe', que no está antes" in p for p in found))
         self.assertTrue(any("'nadie@demo.wasichai-learning.test', que no está en 'users'" in p for p in found))
 
+    def test_a_read_only_field_is_the_servers_and_whoever_creates_is_a_demo_user(self):
+        def change(data):
+            self.record(data, "curso-srtm")["attributes"]["propietario_id"] = "00000000-0000-0000-0000-000000000001"
+            self.record(data, "curso-sgspe")["users"] = {"propietario_id": "creador@demo.wasichai-learning.test"}
+            self.record(data, "curso-ia")["as"] = "nadie@demo.wasichai-learning.test"
+        found = self.broken(change)
+        self.assertEqual(2, sum("'propietario_id' es de solo lectura" in p for p in found), found)
+        self.assertTrue(any("'as' apunta al usuario 'nadie@demo.wasichai-learning.test'" in p for p in found))
+
     def test_keys_must_be_unique_in_the_model_and_in_the_file(self):
         def change(data):
             self.record(data, "curso-ia")["attributes"]["codigo"] = "SRTM-ANU-101"
@@ -451,7 +460,7 @@ class FakeWasichai:
             self.users[m[1]]["roles"] = body["roles"]
             return 200, {}
         if m := re.fullmatch(r"/api/objects/(\w+)/records", path):
-            return self.handle_records(method, m[1], query, body)
+            return self.handle_records(method, m[1], query, body, self.tokens.get((auth or "").removeprefix("Bearer ")))
         if m := re.fullmatch(r"/api/objects/(\w+)/records/([\w-]+)", path):
             record = next((r for r in self.records.get(m[1], []) if r["id"] == m[2]), None)
             if record is None:
@@ -667,7 +676,7 @@ class FakeWasichai:
         self.records.setdefault("matricula", []).append(enrollment)
         return 201, enrollment
 
-    def handle_records(self, method, obj, query, body):
+    def handle_records(self, method, obj, query, body, caller=None):
         if obj not in self.objects:
             return 404, {"detail": f"unknown object {obj}"}
         if method == "POST" and self.objects[obj].get("apiOnly"):
@@ -697,6 +706,11 @@ class FakeWasichai:
         attributes = body["attributes"]
         if unknown := set(attributes) - set(fields):
             return 400, {"detail": f"unknown fields {sorted(unknown)}"}
+        if obj == "curso":
+            # como CourseOwner (#345): el dueño es quien crea; otro valor es un 400 y el administrador del fake no es nadie
+            if attributes.get("propietario_id") not in (None, caller and caller["id"]):
+                return 400, {"detail": "the course owner is whoever creates it"}
+            attributes = {**attributes, "propietario_id": caller and caller["id"]}
         for rel in self.relationships.values():
             if rel["source"] == obj and rel["fieldName"] in attributes:
                 if not any(r["id"] == attributes[rel["fieldName"]] for r in self.records.get(rel["target"], [])):
@@ -810,6 +824,13 @@ class ApplyDemoTest(FakeServerCase):
         open_offering = next(r for r in self.fake.records["edicion_curso"] if r["attributes"]["codigo"] == "SRTM-ANU-101-A")
         self.assertEqual((today + datetime.timedelta(days=12)).isoformat(), open_offering["attributes"]["fecha_inicio"])
         self.assertEqual((today - datetime.timedelta(days=2)).isoformat(), open_offering["attributes"]["inscripcion_desde"])
+
+    def test_courses_are_created_by_the_demo_creator_who_owns_them(self):
+        code, out, err = self.run_main()
+        self.assertEqual(0, code, err)
+        creator = next(u for u in self.fake.users.values() if u["email"] == "creador@demo.wasichai-learning.test")
+        self.assertEqual([creator["id"]] * len(records("curso")), [r["attributes"]["propietario_id"] for r in self.fake.records["curso"]])
+        self.assertIn("curso curso-srtm como creador@demo.wasichai-learning.test", out)
 
     def test_the_demo_student_enrolls_through_the_command_as_themselves(self):
         code, _, err = self.run_main()

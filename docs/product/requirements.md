@@ -476,7 +476,7 @@ el cuándo, en [`roadmap.md`](roadmap.md).
 ### RNF-ARQ — Arquitectura y stack (stack, §5, §15)
 
 - **RNF-ARQ-01** · F1 · implementado ([#48](https://github.com/wasichai/elearning-backend/pull/48)) — Kotlin 2.4.21, Spring Boot 4.1.2 WebFlux, JDK 25, PostgreSQL 18 y la BOM de
-  Wasichai 1.8.0; frontend React 19, Vite 8, Tailwind 4 y `@wasichai/*` 1.3.0.
+  Wasichai 1.10.0; frontend React 19, Vite 8, Tailwind 4 y `@wasichai/*` 1.3.0.
   _Aceptación:_ `./gradlew build` y `yarn build` pasan con esas versiones fijadas.
 - **RNF-ARQ-02** · F1 · implementado ([#53](https://github.com/wasichai/elearning-backend/pull/53)) — Sin JPA, Hibernate, Spring Data ni JDBC bloqueante en flujos reactivos.
   _Aceptación:_ la prueba de arquitectura falla ante esas importaciones en `src/main`.

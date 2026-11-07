@@ -6,7 +6,8 @@ declara el modelo y solo envía la diferencia, así que una segunda ejecución n
 cambia el tipo de un campo, ni quita opciones de un ENUM: eso es una migración de datos y se decide a mano.
 
 Fases (cada una necesita la anterior):
-  1. objetos con sus campos propios (sin relaciones) y opciones de ENUM nuevas;
+  1. objetos con sus campos propios (sin relaciones), opciones de ENUM nuevas y, en un campo existente, visible y
+     editable como dice el modelo;
   2. acciones declaradas por objeto (ADR-042 de Wasichai);
   3. relaciones (crean los campos RELATION), su obligatoriedad y las restricciones/índices que las nombran;
   4. roles y sus permisos (el PUT de permisos reemplaza el conjunto completo del rol);
@@ -51,7 +52,11 @@ RECORD_ACTIONS = {"READ", "CREATE", "UPDATE", "DELETE"}
 BUILT_IN_ACTIONS = RECORD_ACTIONS | {"MANAGE_METADATA", "MANAGE_ORGANIZATION", "MANAGE_TENANTS"}
 # los que la plataforma se reserva (GET /api/metadata/system-fields)
 RESERVED_FIELDS = {"id", "organization_id", "created_at", "updated_at", "created_by", "updated_by", "workflow_state", "version", "count", "after"}
-FIELD_KEYS = ("name", "label", "type", "required", "unique", "enumOptions", "defaultValue", "indexed", "timeZone", "maxBytes", "contentTypes")
+FIELD_KEYS = ("name", "label", "type", "required", "unique", "enumOptions", "defaultValue", "indexed", "timeZone", "maxBytes", "contentTypes", "visible",
+              "editable")
+# lo que una instalación existente recibe si difiere del modelo: no toca datos, solo si el formulario lo muestra y si se
+# escribe después de crear (#345). required y unique, en cambio, se avisan y lo decide una persona
+CONVERGED_FIELD_KEYS = ("visible", "editable")
 DEMO_DOMAIN = "demo.wasichai-learning.test"
 DEMO_EMAIL = re.compile(r"^[a-z0-9][a-z0-9._-]*@" + re.escape(DEMO_DOMAIN) + "$")
 ALIAS = re.compile(r"^[a-z0-9][a-z0-9-]{0,79}$")
@@ -157,6 +162,9 @@ def validate(model: dict, roles: dict | None = None) -> None:
                 problems.append(f"campo '{where}': un FILE declara su maxBytes (si no, hereda el techo de wasichai.files.max-bytes)")
             if f.get("indexed") and ftype == "LONG_TEXT":
                 problems.append(f"campo '{where}': un LONG_TEXT no se indexa")
+            for prop in CONVERGED_FIELD_KEYS:
+                if prop in f and not isinstance(f[prop], bool):
+                    problems.append(f"campo '{where}': {prop} es true o false")
         actions: set[str] = set()
         for a in obj.get("actions", []):
             aname = a.get("name", "")
@@ -362,7 +370,7 @@ def validate_demo(data: dict, model: dict, roles: dict | None = None, base: Path
         elif alias in aliases:
             problems.append(f"{where}: 'ref' repetido")
         for key in record:
-            if key not in ("ref", "object", "key", "attributes", "refs", "users", "files"):
+            if key not in ("ref", "object", "key", "attributes", "refs", "users", "files", "as"):
                 problems.append(f"{where}: clave desconocida '{key}'")
         if oname not in objects:
             problems.append(f"{where}: objeto desconocido")
@@ -389,6 +397,12 @@ def validate_demo(data: dict, model: dict, roles: dict | None = None, base: Path
                 problems.append(f"{where}: '{fname}' no es un campo UUID donde poner un usuario")
             elif email not in emails:
                 problems.append(f"{where}: '{fname}' apunta al usuario '{email}', que no está en 'users'")
+        # lo de solo lectura lo pone el servidor (curso.propietario_id, #345): el archivo no lo escribe
+        for fname in sorted((set(attributes) | set(users)) & {n for n, f in fields.items() if f.get("editable") is False}):
+            problems.append(f"{where}: '{fname}' es de solo lectura: lo pone el servidor")
+        # quién crea el registro, si no es el administrador: el dueño de un curso es quien lo crea
+        if "as" in record and record["as"] not in emails:
+            problems.append(f"{where}: 'as' apunta al usuario {record['as']!r}, que no está en 'users'")
         # archivos: rutas dentro de la carpeta de la demo, a un campo FILE o IMAGE y dentro de su límite
         for fname, rel_path in record.get("files", {}).items():
             spec = fields.get(fname, {})
@@ -725,6 +739,11 @@ def apply_model(client: Client, model: dict, report: Report) -> None:
                 for prop in ("required", "unique"):
                     if bool(f.get(prop)) != bool(current[f["name"]].get(prop)):
                         report.warn(f"{name}.{f['name']}: {prop} es {bool(current[f['name']].get(prop))} en el servidor y {bool(f.get(prop))} en el modelo (no se cambia)")
+                # los dos valen true si no se declaran, en el modelo y en Wasichai
+                changed = {p: f.get(p, True) for p in CONVERGED_FIELD_KEYS if f.get(p, True) != current[f["name"]].get(p, True)}
+                if changed:
+                    client.call("PUT", f"/api/metadata/objects/{name}/fields/{f['name']}", changed)
+                    report.add(f"{', '.join(f'{p}={str(v).lower()}' for p, v in changed.items())} en {name}.{f['name']}")
             if f["name"] in current and f.get("type") == "ENUM":
                 have = list(current[f["name"]].get("enumOptions") or [])
                 missing = [o for o in enums[f["enum"]] if o not in have]
@@ -889,8 +908,13 @@ def apply_demo(client: Client, data: dict, password: str, report: Report, base: 
             attributes[flow["field"]] = flow["path"][0]
         found = _find_record(client, obj, {k: attributes[k] for k in record["key"]})
         if found is None:
-            found = client.call("POST", f"/api/objects/{obj}/records", {"attributes": attributes})
-            report.add(f"{obj} {record['ref']}")
+            creator = client
+            if "as" in record:
+                # como esa persona, sin pasar por el administrador: el servidor pone lo que es de quien crea (#345)
+                creator = Client(client.base)
+                creator.login(record["as"], password)
+            found = creator.call("POST", f"/api/objects/{obj}/records", {"attributes": attributes})
+            report.add(f"{obj} {record['ref']}" + (f" como {record['as']}" if "as" in record else ""))
         ids[record["ref"]] = found["id"]
         for fname, rel_path in record.get("files", {}).items():
             if not (found.get("attributes") or {}).get(fname):
