@@ -268,6 +268,46 @@ class PersonalDataErasureApiTest : ClassroomApiTestSupport() {
     }
 
     @Test
+    fun `the owner of a course keeps it after the erasure, it is authorship of the organization`() {
+        // #345: dueño de un curso es quien lo crea; como la autoría, se conserva con el id de cuenta (ADR-0037 §5)
+        val email = "${uniqueName("cre")}@demo.wasichai-learning.test"
+        val created =
+            call(
+                admin,
+                "/api/users",
+                mapOf(
+                    "email" to email,
+                    "displayName" to "Creadora",
+                    "password" to DEMO_PASSWORD,
+                    "roles" to listOf("ESTUDIANTE", "CREADOR"),
+                ),
+            )
+        assertEquals(HttpStatus.CREATED, created.first, created.second.toString())
+        val creator = acceptTerms(bearer(email, DEMO_PASSWORD))
+        val id = userId(creator)
+        val slug = uniqueName("dueno-").lowercase()
+        val (status, course) =
+            call(
+                creator,
+                "/api/objects/curso/records",
+                mapOf("attributes" to mapOf("codigo" to slug.uppercase(), "slug" to slug, "titulo" to "Suyo")),
+            )
+        assertEquals(HttpStatus.CREATED, status, course.toString())
+
+        client
+            .delete()
+            .uri("/api/lms/terms/acceptance")
+            .header("Authorization", creator)
+            .exchange()
+            .expectStatus()
+            .isAccepted
+        drain()
+
+        assertEquals(0, count("aceptacion_terminos", "usuario_id = '$id'"))
+        assertEquals(id, record("curso", course!!["id"].asString())["propietario_id"].toString())
+    }
+
+    @Test
     fun `an expired acceptance is erased by the sweep, and then the person can accept afresh`() {
         val student = newStudent()
         val id = userId(student)

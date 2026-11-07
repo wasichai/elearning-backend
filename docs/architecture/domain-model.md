@@ -113,11 +113,15 @@ nombran versiones publicadas [guarda].
 
 **`curso`** (CourseDefinition) — identidad estable de un curso reutilizable, independiente de sus versiones y ediciones. F1.
 `codigo · TEXT · unique` · `slug · TEXT · unique, URL pública` · `categoria · RELATION → categoria` ·
-`nivel · ENUM(INTRODUCTORIO, INTERMEDIO, AVANZADO)` · `responsable_id · UUID · creador responsable` ·
+`nivel · ENUM(INTRODUCTORIO, INTERMEDIO, AVANZADO)` · `propietario_id · UUID · indexado, oculto y de solo lectura: quien lo creó` ·
 `version_vigente · RELATION → version_curso · la publicada que muestra el catálogo` ·
 `contenido_ilustrativo · BOOLEAN · demo no validada`.
 Invariantes: `version_vigente` es una versión de este curso en estado `PUBLICADA` y solo la cambia el comando de
 publicar [guarda + servicio]; el `slug` no cambia una vez publicado (rompería enlaces) [guarda].
+`propietario_id` lo pone el servidor al crear: es quien llama, `ADMIN` incluido, y otro valor es un `400`; una creación
+de la plataforma no tiene dueño; ningún `PUT` ni `PATCH` lo cambia (`400` y `403`) [`CourseOwner`, `RecordValueProvider`
+de Wasichai, #345]. Los cursos anteriores quedan sin dueño. No da ni quita permisos: el primer borrador de un curso lo
+crea cualquiera con `CREATE` sobre `version_curso` (#270).
 
 **`version_curso`** (CourseVersion) — una versión del temario: lo que se revisa, se aprueba y se publica. F1.
 

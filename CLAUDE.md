@@ -19,7 +19,7 @@ dominio.
 ## Stack (no negociable sin ADR nuevo)
 
 Kotlin 2.4.21, Spring Boot 4.1.2 **WebFlux**, Gradle 9.8.2 (wrapper, Kotlin DSL, `gradle/libs.versions.toml`), JDK 25,
-PostgreSQL 18, Wasichai 1.8.0 (BOM + starters desde GitHub Packages). Python 3 stdlib solo para `model/apply.py`.
+PostgreSQL 18, Wasichai 1.10.0 (BOM + starters desde GitHub Packages). Python 3 stdlib solo para `model/apply.py`.
 
 ## Reglas
 

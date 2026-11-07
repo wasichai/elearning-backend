@@ -139,6 +139,14 @@
           "name": "conocimientos_previos",
           "label": "Conocimientos previos",
           "type": "LONG_TEXT"
+        },
+        {
+          "name": "propietario_id",
+          "label": "Propietario (usuario de Wasichai)",
+          "type": "UUID",
+          "indexed": true,
+          "visible": false,
+          "editable": false
         }
       ]
     },
