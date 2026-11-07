@@ -54,8 +54,10 @@ servidor tiene dos registros con la misma clave natural, el script se detiene co
 | `attributes` | Campos propios con su tipo: fechas ISO 8601, `DATETIME` con zona, opciones de ENUM válidas.                                           |
 | `refs`       | Campo RELATION → `ref` de un registro **anterior** en el archivo y del objeto destino de la relación; se envía su `id` del servidor.  |
 | `users`      | Campo UUID → correo de un usuario de `users`; se envía su `id` de Wasichai (así se enlaza `perfil_docente.usuario_id`).               |
+| `as`         | Correo de un usuario de `users` que crea el registro, en vez del administrador. Así un curso tiene dueño (`propietario_id`, #345).    |
 
-Los registros van ordenados por dependencias. `apply.py --validate-only --demo` comprueba todo lo anterior, además de
+Un campo de solo lectura (`editable: false`) no se escribe: lo pone el servidor. Los registros van ordenados por
+dependencias. `apply.py --validate-only --demo` comprueba todo lo anterior, además de
 los campos y relaciones obligatorios y que ninguna clave natural se repita.
 
 Con `--demo-data` repetido, los archivos se suman en orden: un registro, un avance o un intento puede nombrar `ref` y

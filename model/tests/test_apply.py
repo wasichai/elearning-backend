@@ -56,6 +56,11 @@ class ValidationTest(unittest.TestCase):
         bad["objects"][0]["fields"].append({"name": "Mal", "type": "TEXTO"})
         self.assertGreaterEqual(len(self.problems(bad)), 3)
 
+    def test_visible_and_editable_are_booleans(self):
+        bad = copy.deepcopy(MODEL)
+        bad["objects"][0]["fields"][0]["visible"] = "no"
+        self.assertTrue(any("visible es true o false" in p for p in self.problems(bad)))
+
     def test_relation_is_declared_as_relationship(self):
         bad = copy.deepcopy(MODEL)
         bad["objects"][0]["fields"].append({"name": "otro", "type": "RELATION"})
@@ -246,6 +251,24 @@ class IdempotencyTest(unittest.TestCase):
         changes = self.run_once(grown)
         # en el orden del modelo: nivel ya existía (gana una opción), resumen es nuevo
         self.assertEqual(["opciones curso.nivel: INTERMEDIO", "campo curso.resumen"], changes)
+
+    def test_visible_and_editable_are_sent_and_converged_on_an_existing_field(self):
+        hidden = copy.deepcopy(MODEL)
+        hidden["objects"][0]["fields"].append({"name": "propietario_id", "type": "UUID", "visible": False, "editable": False})
+        self.run_once(hidden)
+        sent = next(f for f in self.fake.objects["curso"]["fields"] if f["name"] == "propietario_id")
+        self.assertEqual((False, False), (sent["visible"], sent["editable"]))
+        self.assertEqual([], self.run_once(hidden))
+        # una instalación que ya tenía el campo visible y editable lo recibe como dice el modelo, una vez
+        sent.update({"visible": True, "editable": True})
+        self.assertEqual(["visible=false, editable=false en curso.propietario_id"], self.run_once(hidden))
+        self.assertEqual((False, False), (sent["visible"], sent["editable"]))
+        self.assertEqual([], self.run_once(hidden))
+
+    def test_a_field_without_visible_or_editable_is_left_as_both_true(self):
+        self.run_once()
+        self.assertNotIn("visible", self.fake.objects["curso"]["fields"][0])
+        self.assertEqual([], self.run_once())
 
     def test_api_error_carries_problem_detail(self):
         with self.assertRaises(apply.ApiError) as raised:

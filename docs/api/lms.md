@@ -758,6 +758,13 @@ cualquier edición, sin asignación; calificar le sigue respondiendo `404`.
 
 Con sesión. Los permisos son las acciones declaradas sobre `version_curso`; lo ajeno responde `404`.
 
+### Dueño del curso (#345)
+
+El curso se crea por la API genérica (`POST /api/objects/curso/records`). Su dueño, `propietario_id`, lo pone el servidor:
+es quien llama y la respuesta del `POST` ya lo trae. Mandar otro id es `400` (también para `ADMIN`; el propio no cambia
+nada). Al actualizar, un `PUT` que lo cambie es `400` y un `PATCH` que lo nombre, `403` (campo de solo lectura); un `PUT`
+sin él lo deja como está. `GET /api/objects/curso/records?propietario_id=<id>` lista los cursos de esa persona.
+
 ### Estudio del creador
 
 | Método | Ruta                                          | Resultado                                                    |

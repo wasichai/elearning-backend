@@ -245,6 +245,7 @@
     {
       "ref": "curso-srtm",
       "object": "curso",
+      "as": "creador@demo.wasichai-learning.test",
       "key": ["codigo"],
       "attributes": {
         "codigo": "SRTM-ANU-101",
@@ -665,6 +666,7 @@
     {
       "ref": "curso-sgspe",
       "object": "curso",
+      "as": "creador@demo.wasichai-learning.test",
       "key": ["codigo"],
       "attributes": {
         "codigo": "SGSPE-101",
@@ -980,6 +982,7 @@
     {
       "ref": "curso-ia",
       "object": "curso",
+      "as": "creador@demo.wasichai-learning.test",
       "key": ["codigo"],
       "attributes": {
         "codigo": "IA-AGT-201",
@@ -1258,6 +1261,7 @@
     {
       "ref": "curso-borrador",
       "object": "curso",
+      "as": "creador@demo.wasichai-learning.test",
       "key": ["codigo"],
       "attributes": {
         "codigo": "SRTM-ATC-001",
@@ -1662,6 +1666,7 @@
     {
       "ref": "curso-corto",
       "object": "curso",
+      "as": "creador@demo.wasichai-learning.test",
       "key": ["codigo"],
       "attributes": {
         "codigo": "CORTO-101",
@@ -1950,6 +1955,7 @@
     {
       "ref": "curso-tramite",
       "object": "curso",
+      "as": "creador@demo.wasichai-learning.test",
       "key": ["codigo"],
       "attributes": {
         "codigo": "TRAMITE-101",

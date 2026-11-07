@@ -1,7 +1,7 @@
 # Seguridad
 
 Cómo se autentica, se autoriza, se audita y se protege wasichai-learning. Este proyecto **no** construye un sistema
-de identidad, permisos ni auditoría propio: usa los de Wasichai 1.8.0 y los extiende por sus SPI. Lo que Wasichai hace
+de identidad, permisos ni auditoría propio: usa los de Wasichai 1.10.0 y los extiende por sus SPI. Lo que Wasichai hace
 está verificado en [`docs/research/reference-repositories.md`](../research/reference-repositories.md) y en
 `wasichai/wasichai@a9ad74d56338:docs/security/authentication.md`; lo que este proyecto añade se marca como
 **implementado**, **planificado (Fx)** o **a verificar**. Hoy no hay código: todo lo propio está planificado.
@@ -436,20 +436,20 @@ aplicación se conecta con un rol que no es dueño de las tablas, para que nadie
   `lms.privacy.sweep-every`), el trabajo `privacy.erase` de la cola, como la plataforma y en una transacción, suprime y
   disocia; es idempotente y deja una constancia en `lms.supresion` (motivo y cuántos de cada clase) sin la persona:
 
-  | Dato                                                                    | Destino                                                                             |
-  | ----------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
-  | Eventos de aprendizaje, progreso, asistencias                           | Se suprimen                                                                         |
-  | Entregas                                                                | Se suprimen; el archivo, por la limpieza de huérfanos de wasichai-files             |
-  | Intentos sin calificar (y sus notas parciales)                          | Se suprimen                                                                         |
-  | Intentos calificados y sus notas                                        | Se disocian: seudónimo aleatorio y sin respuestas                                   |
-  | Matrículas                                                              | Se disocian: seudónimo, sin correo, `RETIRADA` si estaba activa; queda el resultado |
-  | Certificados                                                            | Se disocian: seudónimo y sin nombre; el código sigue verificando el impreso         |
-  | Perfil docente                                                          | Se vacía y deja de publicarse; sigue enlazado a la cuenta por sus asignaciones      |
-  | Valoraciones, sus puntajes, comentarios y apelaciones; su cuota diaria  | Se suprimen; lo congelado (anónimo, n ≥ k) se queda y lo de recurso se recalcula    |
-  | Denuncias de valoraciones                                               | Las resueltas se suprimen; las abiertas quedan sin la persona                       |
-  | Trabajos que pidió y la aceptación misma                                | Se suprimen                                                                         |
-  | Ejecuciones de agente que pidió o en las que intervino                  | Se disocian: seudónimo como solicitante y en sus intervenciones; la ejecución queda |
-  | Autoría, revisiones, notas puestas, sesiones y asistencias que registró | Se conservan con el id de cuenta: son actos de la organización                      |
+  | Dato                                                                   | Destino                                                                             |
+  | ---------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+  | Eventos de aprendizaje, progreso, asistencias                          | Se suprimen                                                                         |
+  | Entregas                                                               | Se suprimen; el archivo, por la limpieza de huérfanos de wasichai-files             |
+  | Intentos sin calificar (y sus notas parciales)                         | Se suprimen                                                                         |
+  | Intentos calificados y sus notas                                       | Se disocian: seudónimo aleatorio y sin respuestas                                   |
+  | Matrículas                                                             | Se disocian: seudónimo, sin correo, `RETIRADA` si estaba activa; queda el resultado |
+  | Certificados                                                           | Se disocian: seudónimo y sin nombre; el código sigue verificando el impreso         |
+  | Perfil docente                                                         | Se vacía y deja de publicarse; sigue enlazado a la cuenta por sus asignaciones      |
+  | Valoraciones, sus puntajes, comentarios y apelaciones; su cuota diaria | Se suprimen; lo congelado (anónimo, n ≥ k) se queda y lo de recurso se recalcula    |
+  | Denuncias de valoraciones                                              | Las resueltas se suprimen; las abiertas quedan sin la persona                       |
+  | Trabajos que pidió y la aceptación misma                               | Se suprimen                                                                         |
+  | Ejecuciones de agente que pidió o en las que intervino                 | Se disocian: seudónimo como solicitante y en sus intervenciones; la ejecución queda |
+  | Autoría, dueño de un curso, revisiones, notas, sesiones y asistencias  | Se conservan con el id de cuenta: son actos de la organización                      |
 
   Las intervenciones en una ejecución de agente son, como las revisiones, actos de la organización, pero se disocian:
   la ejecución guarda qué pidió y qué aceptó o editó la persona sobre material generado, y la decisión editorial que

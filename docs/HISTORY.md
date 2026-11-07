@@ -2,6 +2,33 @@
 
 Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este archivo registra lo que se entregó.
 
+## 2026-11-07 — Dueño del curso en `propietario_id`, rellenado por el servidor ([#345](https://github.com/wasichai/elearning-backend/issues/345))
+
+- **Wasichai 1.10.0** (desde 1.8.0). 1.9.0 trae la SPI `RecordValueProvider` (su ADR-077, pedida en
+  [wasichai/wasichai#153](https://github.com/wasichai/wasichai/issues/153)) y el alcance de lectura por subconsulta;
+  1.10.0, textos por idioma de objetos, campos y opciones. Kotlin, Spring Boot, Embabel y el AWS SDK no cambian.
+- **Modelo**: `curso.propietario_id` (`UUID`, indexado, no obligatorio), oculto y de solo lectura (`visible: false`,
+  `editable: false`), así que el formulario de core no lo muestra y sigue creando cursos.
+- **`model/apply.py`** envía `visible` y `editable` al crear un campo y los alinea en un campo existente (no tocan
+  datos; `required` y `unique` se siguen avisando sin cambiarlos). Es idempotente y añade el campo a una instalación
+  existente. En la demo, un registro con `as` lo crea esa persona en vez del administrador, y un campo de solo lectura no
+  se puede escribir desde el archivo.
+- **`CourseOwner`** (`RecordValueProvider` + `RecordWriteGuard`): al crear un curso con usuario, el dueño es quien llama
+  (`ADMIN` incluido), en la misma fila y con una sola entrada de auditoría; la respuesta del `POST` lo trae. Otro id es un
+  `400`. Al actualizar, un `PUT` que lo cambie es un `400` (el `PUT` de Wasichai lo ignoraría en silencio) y un `PATCH`
+  que lo nombre, el `403` de un campo de solo lectura; un `PUT` sin el campo no lo borra. La plataforma (`asPlatform`)
+  crea cursos sin dueño y no puede nombrar uno (`400`); hoy ningún código suyo crea cursos.
+- **Sin cambios de autorización**: el campo no da ni quita permisos ni se compara con nadie; el primer borrador lo sigue
+  creando cualquiera con `CREATE` sobre `version_curso`, también en un curso ajeno (#270).
+- **Datos**: los cursos existentes quedan con `propietario_id` nulo (no se inventa un dueño). Los cursos de
+  `model/demo/` los crea el creador demo, que queda como su dueño. `GET /api/objects/curso/records?propietario_id=<id>`
+  filtra por dueño.
+- **Datos personales**: la supresión de ADR-0037 no lo toca: como la autoría, se conserva con el id de cuenta
+  (`docs/security/README.md` §7).
+- Pruebas: `CourseOwnerApiTest` (metadata, creación, `400` con un dueño ajeno también para `ADMIN`, `PUT`/`PATCH`,
+  filtro, semilla, plataforma y #270), `PersonalDataErasureApiTest` (el dueño sobrevive a la supresión) y
+  `model/tests` (`visible`/`editable` en `apply.py` y `as` en la demo).
+
 ## 2026-11-03 — Hallazgos bajos de la revisión de seguridad de la Fase 5 ([#369](https://github.com/wasichai/elearning-backend/issues/369))
 
 - **L1**: la opinión de consistencia acota su entrada. Si el JSON del borrador pasa de `lms.ai.limits.consistency-max-chars`
