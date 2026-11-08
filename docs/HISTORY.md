@@ -2,6 +2,17 @@
 
 Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este archivo registra lo que se entregó.
 
+## 2026-11-08 — Cierre de la Fase 4: importación real de SRTM y SGSPE ([#179](https://github.com/wasichai/elearning-backend/issues/179))
+
+- Lo último del criterio de F4: el importador, contra la API de contenidos de GitHub y con solo dos commits permitidos,
+  importó `wasichai/srtm-backend@1225b4f:docs/manuales/comun/acceso.adoc` (un capítulo suelto: 1 unidad, 4 lecciones, 3
+  `GAP` por `{capturas}`, que define el maestro, y 3 `CHECK` por referencias a otros capítulos) y
+  `wasichai/sgspe@c957a1a:docs/manuals/user/manual-usuario.adoc` (12 capítulos, 11 inclusiones, 46 imágenes: 12 unidades,
+  45 lecciones, sin problemas). Cada unidad y lección lleva su traza `repositorio@sha:ruta#ancla` con la ruta del capítulo
+  incluido. Informe completo, procedimiento y temario en
+  [docs/testing/importacion-srtm-sgspe.md](testing/importacion-srtm-sgspe.md). Sin cambios de código ni migraciones.
+- F4 queda con el criterio cumplido en el [roadmap](product/roadmap.md).
+
 ## 2026-11-08 — El nombre de cada matriculado en el roster y la asistencia ([#378](https://github.com/wasichai/elearning-backend/issues/378))
 
 - **API**: `Roster` (`GET /api/lms/teaching/offerings/{code}/students`, entero o paginado) y `AttendanceRow` (`GET` y
