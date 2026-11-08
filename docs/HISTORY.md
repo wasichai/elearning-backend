@@ -2,6 +2,20 @@
 
 Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este archivo registra lo que se entregó.
 
+## 2026-11-09 — El panel del estudiante Colofón ([#223](https://github.com/wasichai/elearning-frontend/issues/223))
+
+- **Frontend** (`elearning-frontend`, tarea 6 del rediseño Colofón, épica #217): «Mis cursos» sigue `Dashboard.dc.html`.
+  Arriba, «Mis cursos» y la fecha sobre el filete de tinta; el saludo en Newsreader grande con lo que de verdad hay: las
+  sesiones en vivo de los próximos 7 días y las evaluaciones por hacer. «Continuar» es la única superficie blanca: el curso,
+  «Unidad n · §n.m», la lección siguiente, el progreso segmentado por lección y la única acción primaria.
+- **Esta semana** sale de la agenda (`GET /api/lms/classroom/sessions?from&to`) en una sola petición, en lugar de leer las
+  sesiones matrícula por matrícula; agrupada por día en la zona de cada edición, y una sesión reprogramada o cancelada lo
+  dice en su fila. **Por hacer** son las evaluaciones pendientes del panel; cada bloque falla y se reintenta por su cuenta.
+- El progreso por lección de «Continuar» sale del aula de esa matrícula (una lectura, la misma que abre el aula). El resto de
+  cursos va en filas con filetes, con una barra continua y su cuenta: el resumen de la matrícula no trae el estado de cada
+  lección y no se inventa. Los completados llevan su certificado; las cifras «En curso / Completados» dejan de destacarse.
+- **Se retira** la barra de progreso heredada (`ProgressBar`).
+
 ## 2026-11-08 — El aula Colofón: índice, notas al margen y modo foco ([#222](https://github.com/wasichai/elearning-frontend/issues/222))
 
 - **Frontend** (`elearning-frontend`, tarea 5 del rediseño Colofón, épica #217): el aula sigue `Classroom.dc.html`. La
