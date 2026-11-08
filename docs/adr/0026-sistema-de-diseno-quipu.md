@@ -1,7 +1,8 @@
 # ADR-0026: La interfaz se viste con el sistema de diseño Quipu como tema de app sobre `@wasichai/ui`
 
-**Estado**: reemplazada por [ADR-0044](0044-sistema-de-diseno-colofon.md) · 2026-11-01 · desarrolla [ADR-0005](0005-lms-en-el-registro-de-wasichai-ui.md) para el aspecto de
-la interfaz y no cambia el aislamiento de la lectura de [ADR-0012](0012-aula-del-estudiante.md)
+**Estado**: reemplazada por [ADR-0044](0044-sistema-de-diseno-colofon.md) · 2026-11-01 ·
+desarrolla [ADR-0005](0005-lms-en-el-registro-de-wasichai-ui.md) para el aspecto de la interfaz y no cambia el aislamiento de la lectura de
+[ADR-0012](0012-aula-del-estudiante.md)
 
 ## Contexto
 
