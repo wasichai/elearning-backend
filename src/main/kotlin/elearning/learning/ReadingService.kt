@@ -5,8 +5,11 @@ import elearning.media.ReadingDocuments
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.reactor.awaitSingle
 import kotlinx.coroutines.withContext
+import org.springframework.core.io.buffer.DataBuffer
+import org.springframework.core.io.buffer.DataBufferLimitException
 import org.springframework.core.io.buffer.DataBufferUtils
 import org.springframework.stereotype.Service
+import reactor.core.publisher.Flux
 import wasichai.core.common.NotFoundException
 import wasichai.files.FileService
 import java.util.UUID
@@ -25,23 +28,34 @@ class ReadingService(
     ): ReadingDocument {
         val resource = reader.resource(enrollmentId, resourceVersionId)
         if (resource.type != HTML || resource.file == null) throw NotFoundException("El recurso no es una lectura HTML")
-        val download = files.open(ClassroomReader.RESOURCE_VERSION, resourceVersionId, ClassroomReader.FILE)
-        // el campo admite hasta MAX_BYTES; el tope solo protege la memoria
-        val joined = DataBufferUtils.join(download.content, MAX_BYTES).awaitSingle()
-        val bytes =
-            try {
-                ByteArray(joined.readableByteCount()).also { joined.read(it) }
-            } finally {
-                DataBufferUtils.release(joined)
-            }
+        val bytes = bytesOf(files.open(ClassroomReader.RESOURCE_VERSION, resourceVersionId, ClassroomReader.FILE).content)
         // jsoup es CPU puro y un archivo puede rondar el tope: fuera del hilo de WebFlux, en el despachador de cálculo
         return withContext(Dispatchers.Default) { ReadingDocuments.read(bytes) }
     }
 
-    private companion object {
-        const val HTML = "HTML"
+    internal companion object {
+        private const val HTML = "HTML"
 
         // el maxBytes de version_recurso.archivo en model/model.json
-        const val MAX_BYTES = 25 * 1024 * 1024
+        private const val MAX_BYTES = 25 * 1024 * 1024
+
+        // el archivo entero, con tope: el campo admite hasta MAX_BYTES y el tope solo protege la memoria. uno mayor no
+        // tiene lectura en bloques: 404, como lo que no es una lectura HTML
+        suspend fun bytesOf(
+            content: Flux<DataBuffer>,
+            max: Int = MAX_BYTES,
+        ): ByteArray {
+            val joined =
+                try {
+                    DataBufferUtils.join(content, max).awaitSingle()
+                } catch (_: DataBufferLimitException) {
+                    throw NotFoundException("El recurso no es una lectura HTML")
+                }
+            try {
+                return ByteArray(joined.readableByteCount()).also { joined.read(it) }
+            } finally {
+                DataBufferUtils.release(joined)
+            }
+        }
     }
 }

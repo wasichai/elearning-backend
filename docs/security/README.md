@@ -247,7 +247,7 @@ zip y texto solo si coinciden con el tipo declarado), aplica una lista blanca po
   `src` que haga una petición; `id` saneados a `[A-Za-z0-9_-]` y únicos; anidamiento con tope. La interfaz lo pinta con
   sus componentes, sin `dangerouslySetInnerHTML`. Alcance: matrícula propia no retirada, versión publicada enlazada desde
   su temario y archivo leído como quien llama (`ContentReadScope`); lo demás, `404`. **D**: el archivo tiene el tope de
-  su campo (25 MB) y jsoup corre en `Dispatchers.Default`, fuera del hilo de WebFlux. Pruebas: `ReadingDocumentsTest`,
+  su campo (25 MB; uno mayor, `404`) y jsoup corre en `Dispatchers.Default`, fuera del hilo de WebFlux. Pruebas: `ReadingDocumentsTest`,
   `ReadingApiTest`.
 
 ### 4.5 Agentes IA (F5)

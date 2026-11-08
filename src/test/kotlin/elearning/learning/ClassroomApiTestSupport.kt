@@ -211,13 +211,14 @@ abstract class ClassroomApiTestSupport : LmsApiTest() {
         html: String = "<h1>Lectura</h1>",
     ): String = publishedResource("HTML", "lectura.html", html.toByteArray(), MediaType.TEXT_HTML, authorId)
 
-    // una versión de recurso del tipo dado con su archivo, publicada, como publishedHtml
+    // una versión de recurso del tipo dado con su archivo, publicada (o en borrador, con publish = false), como publishedHtml
     protected fun publishedResource(
         type: String,
         name: String,
         bytes: ByteArray,
         contentType: MediaType,
         authorId: String? = null,
+        publish: Boolean = true,
     ): String {
         val author = authorId ?: get("/api/auth/me", admin)["userId"].asString()
         val version =
@@ -244,8 +245,12 @@ abstract class ClassroomApiTestSupport : LmsApiTest() {
             .exchange()
             .expectStatus()
             .isOk
-        runBlocking {
-            records.asPlatform(ORG) { records.patch("version_recurso", UUID.fromString(version), RecordRequest(mapOf("estado" to "PUBLICADA")), null, null) }
+        if (publish) {
+            runBlocking {
+                records.asPlatform(
+                    ORG,
+                ) { records.patch("version_recurso", UUID.fromString(version), RecordRequest(mapOf("estado" to "PUBLICADA")), null, null) }
+            }
         }
         return version
     }

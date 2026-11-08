@@ -15,7 +15,8 @@ import java.net.URI
 // - enlaces solo http, https, mailto y #ancla; cualquier otro, texto
 // - imágenes solo data:image/(png|jpeg|gif|webp) en base64; cualquier otra, su alt como párrafo
 // - el índice (#toc) y el pie (#footer) de Asciidoctor son envoltorio: la interfaz arma su índice con los encabezados
-// - un anidamiento más hondo que MAX_DEPTH se aplana a su texto: la recursión y el JSON tienen tope
+// - un anidamiento más hondo que MAX_DEPTH se aplana a su texto: la recursión y el JSON tienen tope. todo bloque que
+//   contiene bloques suma un nivel, así que ningún bloque queda a más de MAX_DEPTH niveles
 // jsoup es CPU puro: quien llama lo ejecuta fuera del hilo de WebFlux (ReadingService)
 object ReadingDocuments {
     fun read(html: ByteArray): ReadingDocument = convert(String(GeneratedHtml.sanitize(html), Charsets.UTF_8))
@@ -64,6 +65,8 @@ object ReadingDocuments {
             element: Element,
             depth: Int,
         ): List<Block> {
+            // un camino que no pase por blocks (una lista dentro de otra sin li) también tiene tope
+            if (depth > MAX_DEPTH) return listOfNotNull(paragraph(listOf(Text(element.text()))))
             val tag = element.normalName()
             return when {
                 tag in DROPPED -> emptyList()
@@ -78,7 +81,7 @@ object ReadingDocuments {
                 tag == "ul" || tag == "ol" -> list(element, depth)
                 tag == "table" -> table(element, depth)
                 tag == "pre" -> listOf(code(element))
-                tag == "blockquote" -> listOf(Quote(blocks(element, depth), null))
+                tag == "blockquote" -> listOf(Quote(blocks(element, depth + 1), null))
                 tag == "hr" -> listOf(Rule)
                 tag == "img" -> figure(element, null)
                 tag == "figure" -> imageBlock(element, element.children().firstOrNull { it.normalName() == "figcaption" }, depth)
@@ -103,7 +106,7 @@ object ReadingDocuments {
             element: Element,
             depth: Int,
         ): List<Block> {
-            val items = element.children().map { if (it.normalName() == "li") blocks(it, depth) else block(it, depth) }.filter { it.isNotEmpty() }
+            val items = element.children().map { if (it.normalName() == "li") blocks(it, depth + 1) else block(it, depth + 1) }.filter { it.isNotEmpty() }
             return if (items.isEmpty()) emptyList() else listOf(ListBlock(element.normalName() == "ol", items))
         }
 
@@ -133,7 +136,7 @@ object ReadingDocuments {
                 element
                     .children()
                     .filter { it.normalName() == "td" || it.normalName() == "th" }
-                    .map { Cell(blocks(it, depth), span(it.attr("colspan")), span(it.attr("rowspan")), it.normalName() == "th") }
+                    .map { Cell(blocks(it, depth + 1), span(it.attr("colspan")), span(it.attr("rowspan")), it.normalName() == "th") }
             return cells.ifEmpty { null }
         }
 
@@ -153,7 +156,7 @@ object ReadingDocuments {
         ): List<Block> {
             val kind = element.classNames().firstOrNull { it in ADMONITIONS } ?: return blocks(element, depth)
             val content = element.selectFirst("> table > tbody > tr > td.content") ?: return blocks(element, depth)
-            return listOf(Admonition(kind, blocks(content, depth)))
+            return listOf(Admonition(kind, blocks(content, depth + 1)))
         }
 
         private fun quote(
@@ -167,7 +170,7 @@ object ReadingDocuments {
                     val first = content.firstOrNull()
                     optional(if (first is Text) listOf(Text(first.text.trimStart('—', ' '))) + content.drop(1) else content)
                 }
-            return listOf(Quote(blocks(quoted, depth), attribution))
+            return listOf(Quote(blocks(quoted, depth + 1), attribution))
         }
 
         // un bloque de imagen de Asciidoctor o un figure: la imagen con su leyenda; sin imagen, su contenido
@@ -324,7 +327,7 @@ object ReadingDocuments {
             }.take(MAX_ID)
             .ifEmpty { null }
 
-    private const val MAX_DEPTH = 48
+    internal const val MAX_DEPTH = 48
     private const val MAX_ID = 100
 
     // el colspan máximo de HTML

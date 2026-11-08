@@ -372,6 +372,8 @@ sus componentes: el texto es siempre texto, nunca HTML.
 ```
 
 - `title`: el texto del `h1` del documento, o `null`. El `h1` no aparece en `blocks`.
+- Como en el resto de la API, un campo sin valor llega como `null` y nunca falta (`"id": null`, `"caption": null`); las
+  listas nunca son `null`.
 - Cada bloque y cada elemento en línea lleva `type`. Lo que no es de esta lista no llega: no hay otros tipos ni otros campos.
 
 | Bloque (`type`) | Campos                                                                                                                                               |
@@ -400,7 +402,8 @@ sus componentes: el texto es siempre texto, nunca HTML.
 - Una figura nunca lleva una URL: abrir la lectura no hace peticiones a otro sitio. Un `#<id>` puede apuntar a un
   encabezado; la interfaz puede prefijar los `id` al pintarlos.
 - `404` si la matrícula no es propia o está retirada, si la versión de recurso no es una publicada que enlace una lección
-  de su temario, si el recurso no es de tipo `HTML` o no tiene archivo. `401` sin sesión.
+  de su temario, si el recurso no es de tipo `HTML`, si no tiene archivo o si el archivo supera el tope de su campo
+  (25 MB). `401` sin sesión.
 
 ### POST /api/lms/classroom/enrollments/{id}/lessons/{lessonId}/events
 

@@ -266,6 +266,30 @@ class ReadingDocumentsTest {
         assertThat(json).contains("fondo")
     }
 
+    @Test
+    fun `lists nested without li are flattened at the depth cap`() {
+        listOf("ul", "ol").forEach { tag ->
+            val html = "<$tag>".repeat(5000) + "<li>fondo</li>" + "</$tag>".repeat(5000)
+
+            val document = read(html)
+
+            assertThat(document.blocks.maxOf { listDepth(it) }).isPositive().isLessThanOrEqualTo(ReadingDocuments.MAX_DEPTH)
+            val json = MAPPER.writeValueAsString(document)
+            assertThat(json).contains("fondo")
+            assertThat(MAPPER.readTree(json)).isNotNull()
+        }
+    }
+
+    // cuántas listas hay, una dentro de otra, en el camino más hondo del bloque
+    private fun listDepth(block: Block): Int =
+        when (block) {
+            is ListBlock -> 1 + (block.items.flatten().maxOfOrNull { listDepth(it) } ?: 0)
+            is Quote -> block.content.maxOfOrNull { listDepth(it) } ?: 0
+            is Admonition -> block.content.maxOfOrNull { listDepth(it) } ?: 0
+            is Table -> (block.head + block.body).flatten().flatMap { it.content }.maxOfOrNull { listDepth(it) } ?: 0
+            else -> 0
+        }
+
     private companion object {
         val MAPPER: JsonMapper = JsonMapper.builder().findAndAddModules().build()
     }

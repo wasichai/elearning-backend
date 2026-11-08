@@ -102,7 +102,7 @@ la API genérica de Wasichai (`/api/objects/{o}/records`) salvo los marcados `ap
 | `authoring`  | Objetos                              | Revisor: sus revisiones; sin autoaprobación          | Importación (trabajo); avisos de revisión | `studio`, `review`              |
 | `credits`    | Objeto `aprobacion_creditos`         | `APROBAR_CREDITOS`; separación de funciones          | —                                         | `studio`                        |
 | `ai`         | Objeto `ejecucion_agente`            | Generar ≠ validar ≠ aprobar ≠ publicar               | Ejecuciones en cola persistente           | `studio`                        |
-| `media`      | Objeto `artefacto_generado` + `FILE` | Hereda del recurso                                   | Renderizado en cola persistente           | `studio`                        |
+| `media`      | Objeto `artefacto_generado` + `FILE` | Hereda del recurso                                   | Renderizado en cola persistente           | `studio`, `classroom` (lectura) |
 | `reputation` | Objetos                              | Solo matriculados valoran; moderación                | Agregados periódicos                      | `classroom`, `teaching`         |
 
 «Objetos» son Custom Objects aplicados por `model/apply.py`. Las tablas fijas del esquema `lms` se crean con
