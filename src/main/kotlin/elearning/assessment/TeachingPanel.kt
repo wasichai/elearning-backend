@@ -1,6 +1,7 @@
 package elearning.assessment
 
 import com.fasterxml.jackson.annotation.JsonUnwrapped
+import elearning.common.DisplayNames
 import elearning.common.listAllIn
 import elearning.common.listByIds
 import elearning.common.ref
@@ -37,9 +38,10 @@ class TeachingPanel(
     private val records: RecordService,
     private val teaching: TeachingReader,
     private val attempts: AttemptStore,
+    private val names: DisplayNames,
     private val clock: Clock,
 ) {
-    // una página de las ediciones asignadas en el orden de GET /offerings. las sesiones, la cola, sus correos y sus lecciones
+    // una página de las ediciones asignadas en el orden de GET /offerings. las sesiones, la cola, sus correos, nombres y lecciones
     // se leen en una lectura cada uno para toda la página: las sentencias no crecen con ella
     suspend fun page(page: PageRequest): List<TeachingPanelItem> {
         val user = currentUser.require()
@@ -50,6 +52,7 @@ class TeachingPanel(
         val queues = attempts.oldestPending(user.organizationId, found.map { UUID.fromString(it.id) }, user.userId, QUEUE_PREVIEW)
         val lines = queues.values.flatten()
         val emails = records.listByIds(ENROLLMENT, lines.map { it.enrollmentId.toString() }).associate { it.id to it.attributes[EMAIL]?.toString() }
+        val named = names.of(user.organizationId, lines.map { it.studentId.toString() })
         val titles = records.listByIds(LESSON, lines.map { it.lessonId.toString() }).associate { it.id to it.attributes[TITLE].toString() }
         val now = Instant.now(clock)
         return found.zip(offerings) { record, offering ->
@@ -62,6 +65,7 @@ class TeachingPanel(
                         attemptId = a.id.toString(),
                         enrollmentId = a.enrollmentId.toString(),
                         email = emails[a.enrollmentId.toString()],
+                        name = named[a.studentId.toString()],
                         lessonId = a.lessonId.toString(),
                         lessonTitle = titles[a.lessonId.toString()].orEmpty(),
                         submittedAt = a.submittedAt,

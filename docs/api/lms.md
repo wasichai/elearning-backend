@@ -725,10 +725,11 @@ cualquier edición, sin asignación; calificar le sigue respondiendo `404`.
   el número de ediciones de la página.
 - `Roster`: `{ "enrollmentId", "email", "status", "progress": ProgressSummary, "attendance": { "attended": 3,
 "total": 4 }, "assessments": [{ "lessonId", "title", "bestPercent": 80, "passed": true, "pending": false }] }`.
-- `PendingAttempt`: `{ "attemptId", "enrollmentId", "email", "lessonId", "lessonTitle", "submittedAt",
-"pendingQuestions": 1 }`.
+- `PendingAttempt`: `{ "attemptId", "enrollmentId", "email", "name", "lessonId", "lessonTitle", "submittedAt",
+"pendingQuestions": 1 }`. `name` es el nombre para mostrar de quien entregó (#376, ADR-0042), `null` si la persona fue
+  deshabilitada o borrada; el correo sigue.
 - La cola admite `?status=GRADED` para encontrar un intento ya corregido (por defecto `SUBMITTED`). El `Attempt` del docente
-  añade `enrollmentId`, `email` e `history` (`[{ questionId, points, comment, reason, authorId, at }]`).
+  añade `enrollmentId`, `email`, `name` (como en `PendingAttempt`) e `history` (`[{ questionId, points, comment, reason, authorId, at }]`).
 - El roster y la cola se leen por lotes (M4 de #183): las sentencias SQL crecen con el temario y las sesiones, no con el
   número de estudiantes, y la cola no carga la instantánea ni las respuestas.
 - El roster y la cola admiten `?page` (desde 0) y `?size` como la API de registros: `size` vale 25 si falta y se acota a

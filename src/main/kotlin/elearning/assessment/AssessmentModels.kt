@@ -157,11 +157,13 @@ data class GradeEntry(
     val at: Instant,
 )
 
-// el intento tal como lo ve su docente: con soluciones siempre, su correo y el historial de calificaciones
+// el intento tal como lo ve su docente: con soluciones siempre, su correo, su nombre para mostrar (null si la persona fue
+// deshabilitada o borrada, ADR-0042) y el historial de calificaciones
 data class TeacherAttemptView(
     @get:JsonUnwrapped val attempt: AttemptView,
     val enrollmentId: String,
     val email: String?,
+    val name: String?,
     val history: List<GradeEntry>,
 )
 
@@ -169,6 +171,7 @@ data class PendingAttempt(
     val attemptId: String,
     val enrollmentId: String,
     val email: String?,
+    val name: String?,
     val lessonId: String,
     val lessonTitle: String,
     val submittedAt: Instant?,

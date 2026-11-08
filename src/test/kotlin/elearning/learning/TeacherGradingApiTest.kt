@@ -70,6 +70,33 @@ class TeacherGradingApiTest : ClassroomApiTestSupport() {
         assertEquals("Por su fecha", seen["answers"].values().single { it["questionId"].asString() == s.open }["text"].asString())
     }
 
+    // el nombre para mostrar de quien entregó, junto a su correo (#376, ADR-0042): en la cola, en el panel y en el intento
+    @Test
+    fun `the queue, the panel and the attempt name who submitted it`() {
+        val s = Scene()
+        s.answerOpenAndSubmit()
+
+        val row = ok(call(s.teacher, "/api/lms/teaching/offerings/${s.course.offering}/attempts")).single()
+        assertEquals("Estudiante", row["name"].asString(), row.toString())
+        assertEquals("Estudiante", ok(call(s.teacher, "/api/lms/teaching/panel")).single()["oldestPending"].single()["name"].asString())
+        assertEquals("Estudiante", ok(call(s.teacher, "/api/lms/teaching/attempts/${s.attempt}"))["name"].asString())
+    }
+
+    // como en el estudio (ADR-0034): quien fue deshabilitado o borrado pierde el nombre; el correo es de la matrícula y sigue
+    @Test
+    fun `a disabled student keeps the email and loses the name`() {
+        val s = Scene()
+        s.answerOpenAndSubmit()
+        val me = get("/api/auth/me", s.student)
+
+        assertEquals(HttpStatus.OK, put(admin, "/api/users/${me["userId"].asString()}", mapOf("enabled" to false)).first)
+
+        val row = ok(call(s.teacher, "/api/lms/teaching/offerings/${s.course.offering}/attempts")).single()
+        assertEquals(me["email"].asString(), row["email"].asString())
+        assertTrue(row["name"].isNull, row.toString())
+        assertTrue(ok(call(s.teacher, "/api/lms/teaching/attempts/${s.attempt}"))["name"].isNull)
+    }
+
     @Test
     fun `grading the last pending question closes the attempt and the student sees it`() {
         val s = Scene()

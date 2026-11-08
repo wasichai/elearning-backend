@@ -1,5 +1,6 @@
 package elearning.assessment
 
+import elearning.common.DisplayNames
 import elearning.common.listAll
 import elearning.common.listByIds
 import elearning.learning.AssessmentFacts
@@ -33,6 +34,7 @@ class GradingService(
     private val teaching: TeachingReader,
     private val attempts: AttemptStore,
     private val submissions: SubmissionService,
+    private val names: DisplayNames,
     private val transactions: TransactionalOperator,
     private val clock: Clock,
 ) {
@@ -56,12 +58,15 @@ class GradingService(
         // correos y títulos por lotes, no por intento (M4 de #183): las matrículas de esos intentos, también las retiradas, y
         // cada lección una vez
         val emails = records.listByIds(ENROLLMENT, lines.map { it.enrollmentId.toString() }).associate { it.id to it.attributes[EMAIL]?.toString() }
+        // los nombres de quienes entregaron, en una lectura (ADR-0042): solo los de los intentos que ya se devuelven
+        val named = names.of(user.organizationId, lines.map { it.studentId.toString() })
         val titles = lines.map { it.lessonId }.distinct().associateWith { records.get(LESSON, it).attributes[TITLE].toString() }
         return lines.map { a ->
             PendingAttempt(
                 attemptId = a.id.toString(),
                 enrollmentId = a.enrollmentId.toString(),
                 email = emails[a.enrollmentId.toString()],
+                name = named[a.studentId.toString()],
                 lessonId = a.lessonId.toString(),
                 lessonTitle = titles.getValue(a.lessonId),
                 submittedAt = a.submittedAt,
@@ -126,7 +131,13 @@ class GradingService(
     private suspend fun audits(user: AuthenticatedUser): Boolean = currentUser.hasPermission(user, Actions.MANAGE_ORGANIZATION)
 
     private suspend fun view(attempt: Attempt) =
-        TeacherAttemptView(AttemptViews.teacher(attempt, submissions.of(attempt)), attempt.enrollmentId.toString(), email(attempt), attempts.grades(attempt.id))
+        TeacherAttemptView(
+            AttemptViews.teacher(attempt, submissions.of(attempt)),
+            attempt.enrollmentId.toString(),
+            email(attempt),
+            names.of(attempt.organizationId, listOf(attempt.studentId.toString()))[attempt.studentId.toString()],
+            attempts.grades(attempt.id),
+        )
 
     private suspend fun email(attempt: Attempt): String? = records.get(ENROLLMENT, attempt.enrollmentId).attributes[EMAIL]?.toString()
 
