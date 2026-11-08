@@ -2,6 +2,13 @@
 
 Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este archivo registra lo que se entregó.
 
+## 2026-11-08 — Colofón sustituye a Quipu como sistema de diseño ([#382](https://github.com/wasichai/elearning-backend/issues/382))
+
+- **Decisión**: [ADR-0044](adr/0044-sistema-de-diseno-colofon.md) adopta Colofón (dirección A de la auditoría) y retira
+  Quipu; reemplaza a ADR-0026 y ADR-0029. Sin código: la fuente de verdad (artboards, tokens y plan) queda en
+  `elearning-frontend/docs/design-system/colofon/` (wasichai/elearning-frontend#218; épica #217).
+- **Después**: la agenda del estudiante (#383) y la lectura nativa sin iframe (ADR-0045, #384).
+
 ## 2026-11-08 — El nombre de cada matriculado en el roster y la asistencia ([#378](https://github.com/wasichai/elearning-backend/issues/378))
 
 - **API**: `Roster` (`GET /api/lms/teaching/offerings/{code}/students`, entero o paginado) y `AttendanceRow` (`GET` y

@@ -1,6 +1,6 @@
 # ADR-0029: Sistema de diseño Quipu aplicado: composición y piezas compartidas del frontend
 
-**Estado**: aceptada · 2026-11-03 · parte de [ADR-0026](0026-sistema-de-diseno-quipu.md) (propuesta) y mantiene [ADR-0005](0005-lms-en-el-registro-de-wasichai-ui.md)
+**Estado**: reemplazada por [ADR-0044](0044-sistema-de-diseno-colofon.md) · 2026-11-03 · parte de [ADR-0026](0026-sistema-de-diseno-quipu.md) (propuesta) y mantiene [ADR-0005](0005-lms-en-el-registro-de-wasichai-ui.md)
 
 ## Contexto
 
