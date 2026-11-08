@@ -2,6 +2,20 @@
 
 Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este archivo registra lo que se entregó.
 
+## 2026-11-08 — Primitivas compartidas de Colofón ([#220](https://github.com/wasichai/elearning-frontend/issues/220))
+
+- **Frontend** (`elearning-frontend`, tarea 4 del plan de Colofón): `SegmentedProgress` (un segmento por lección en una
+  fila, agrupado por unidades; relleno = completada, rayado = iniciada, contorno = no iniciada, anillo = actual; texto
+  «0 de 14 completadas · 1 iniciada» y `aria-label` con las dos cifras), `SectionHead` («§n Título» sobre el filete
+  fuerte, con meta a la derecha), `RunningHead` (migas y folio; la miga actual se corta con elipsis y lleva el título
+  completo) y `ColofonMark` (monograma «c» de Newsreader en un cuadrado `brand`, que es ahora el `appLogo`).
+- **Armazón**: `ScreenHeader` con título `text-h1 font-read`, meta en versalitas y cuerpo hasta `--content-max`;
+  `Section` usa `SectionHead`; `StatusBadge` sin maíz (el logro va en tinta con filete). La sombra de lo que flota es la
+  utilidad `shadow-overlay` sobre la variable del tema, así respeta el oscuro.
+- **Se retiran** `CordBanner` y `QuipuMark`, y el banner de `CourseCard`, `CourseDetailPage`, `MyCoursesPage`,
+  `VersionsPage` y `OfferingsPage`. El maíz y la escala `text-title-*` quedan hasta que las pantallas del aula y el
+  panel (tareas 5 y 6) dejen de usarlos.
+
 ## 2026-11-08 — La agenda del estudiante en un intervalo ([#383](https://github.com/wasichai/elearning-backend/issues/383))
 
 - **Qué**: `GET /api/lms/classroom/sessions?from&to` devuelve, en una lista plana, las sesiones de todas las matrículas no
