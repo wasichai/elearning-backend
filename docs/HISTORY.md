@@ -2,6 +2,16 @@
 
 Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este archivo registra lo que se entregó.
 
+## 2026-11-08 — El nombre de quien entregó en el espacio docente ([#376](https://github.com/wasichai/elearning-backend/issues/376))
+
+- **API**: `PendingAttempt` (la cola de corrección y `oldestPending` del panel docente) y el `Attempt` del docente ganan
+  `name`, el nombre para mostrar de quien entregó, junto a su correo. `null` si la persona fue deshabilitada o
+  borrada; ningún campo cambia de sentido.
+- **Alcance**: el de siempre. Solo donde ya va el correo de esa persona, decidido por la asignación (o por
+  `MANAGE_ORGANIZATION`, solo leer); lo ajeno sigue siendo `404` antes de buscar nombres. Se lee con `DisplayNames`
+  (ADR-0034), una vez por respuesta: las sentencias no crecen con los intentos. Decisión en
+  [ADR-0042](adr/0042-el-nombre-de-quien-entrego-en-el-espacio-docente.md).
+
 ## 2026-11-07 — Dueño del curso en `propietario_id`, rellenado por el servidor ([#345](https://github.com/wasichai/elearning-backend/issues/345))
 
 - **Wasichai 1.10.0** (desde 1.8.0). 1.9.0 trae la SPI `RecordValueProvider` (su ADR-077, pedida en
