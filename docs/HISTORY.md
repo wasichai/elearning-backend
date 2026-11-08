@@ -2,6 +2,19 @@
 
 Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este archivo registra lo que se entregó.
 
+## 2026-11-08 — El tema, las fuentes y los controles de Colofón ([#219](https://github.com/wasichai/elearning-frontend/issues/219))
+
+- **Frontend** (`elearning-frontend`, tarea 2 del plan de Colofón): los temas `colofon`, `colofon-dark` y `colofon-lectura`
+  (sepia, solo como subárbol de la lección) sustituyen a Quipu con los tokens de `tokens.json`; el oscuro y el sepia
+  derivan los que Foundations no fija y un test comprueba los pares AA. La hoja de controles da a los `data-slot` de
+  `@wasichai/ui` botones e inputs de 44 px con radio 3 px, pestañas subrayadas en `brand`, menú con el ítem actual en
+  `brand-soft` y filete de tinta, y cabeceras de tabla en versalitas.
+- **Letras y escala**: Newsreader (con eje `opsz`) y Source Sans 3, variables, autoalojadas en woff2 (latin y latin-ext)
+  con su OFL; escala `text-display`…`text-reading`, espaciados `--space-1`…`--space-9` y anchos `measure`, `index-col`,
+  `margin-col`. Se retiran `quipu*.css`, Figtree y Literata.
+- **Quien tenía Quipu guardado**: el script de arranque de `index.html` pasa `quipu` a `colofon` y `quipu-dark` a
+  `colofon-dark`. Quedan valores temporales del maíz y de la escala antigua hasta las tareas 4 y 5 (pantallas).
+
 ## 2026-11-08 — Colofón sustituye a Quipu como sistema de diseño ([#382](https://github.com/wasichai/elearning-backend/issues/382))
 
 - **Decisión**: [ADR-0044](adr/0044-sistema-de-diseno-colofon.md) adopta Colofón (dirección A de la auditoría) y retira
