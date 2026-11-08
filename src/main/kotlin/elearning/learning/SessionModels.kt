@@ -20,6 +20,26 @@ data class SessionView(
     val attendance: String?,
 )
 
+// una sesión de la agenda del estudiante: la sesión (con su asistencia y la zona de su edición) más la matrícula y el curso
+data class AgendaSessionView(
+    val id: String,
+    val title: String,
+    val type: String,
+    val modality: String,
+    val start: Instant,
+    val end: Instant,
+    val timeZone: String,
+    val status: String,
+    val link: String?,
+    val location: String?,
+    val lessonId: String?,
+    val originalSessionId: String?,
+    val attendance: String?,
+    val enrollmentId: String,
+    val courseTitle: String,
+    val offeringCode: String,
+)
+
 data class RescheduleRequest(
     val date: String? = null,
     val localTime: String? = null,

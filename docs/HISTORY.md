@@ -2,6 +2,13 @@
 
 Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este archivo registra lo que se entregó.
 
+## 2026-11-08 — La agenda del estudiante en un intervalo ([#383](https://github.com/wasichai/elearning-backend/issues/383))
+
+- **Qué**: `GET /api/lms/classroom/sessions?from&to` devuelve, en una lista plana, las sesiones de todas las matrículas no
+  retiradas del estudiante cuyo inicio cae en `[from, to)` (máximo 62 días), con su asistencia, el título del curso, el
+  código de la edición y la zona de la edición. La usarán la pantalla «Horario» y el panel. Solo lectura, por lotes (una
+  lectura de ediciones, sesiones, asistencia, versiones y cursos), sin permiso propio: lee como la persona.
+
 ## 2026-11-08 — El tema, las fuentes y los controles de Colofón ([#219](https://github.com/wasichai/elearning-frontend/issues/219))
 
 - **Frontend** (`elearning-frontend`, tarea 2 del plan de Colofón): los temas `colofon`, `colofon-dark` y `colofon-lectura`

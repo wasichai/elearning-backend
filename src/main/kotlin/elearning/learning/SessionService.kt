@@ -3,6 +3,8 @@ package elearning.learning
 import elearning.common.DisplayNames
 import elearning.common.instantOf
 import elearning.common.listAll
+import elearning.common.listAllIn
+import elearning.common.listByIds
 import elearning.common.ref
 import elearning.course.meeting.MeetingProvider
 import kotlinx.coroutines.reactor.awaitSingleOrNull
@@ -64,6 +66,62 @@ class SessionService(
                     it.attributes[STATE]?.toString()
             }
         return sessionsOf(offering).map { view(it, zone(offering), attended[it.id]) }
+    }
+
+    // mis sesiones de todas las matrículas no retiradas cuyo inicio cae en [from, to). como forStudent, se lee como la persona:
+    // EnrollmentReadScope y el permiso de lectura de RecordService deciden, así que no hay un permiso aparte. por lotes: las
+    // ediciones, sus sesiones, la asistencia, las versiones y los cursos en una lectura cada uno, no una por sesión
+    suspend fun agendaForStudent(
+        from: Instant,
+        to: Instant,
+    ): List<AgendaSessionView> {
+        if (!from.isBefore(to)) throw ValidationException("Invalid agenda", "to", "must be after from")
+        if (Duration.between(from, to) > MAX_AGENDA) throw ValidationException("Invalid agenda", "to", "must be at most $MAX_AGENDA_DAYS days after from")
+        val me = currentUser.require().userId.toString()
+        val enrollments = records.listAll(ENROLLMENT, mapOf(STUDENT to me)).filter { it.attributes[STATE]?.toString() != WITHDRAWN }
+        if (enrollments.isEmpty()) return emptyList()
+        val offerings = records.listByIds(OFFERING, enrollments.mapNotNull { it.attributes.ref(OFFERING_FIELD) }).associateBy { it.id }
+        val sessions = records.listAllIn(SESSION, OFFERING_FIELD, offerings.keys).groupBy { it.attributes.ref(OFFERING_FIELD) }
+        val attended =
+            records.listAllIn(ATTENDANCE, ENROLLMENT, enrollments.map { it.id }).associate {
+                (it.attributes.ref(ENROLLMENT) to it.attributes.ref(SESSION)) to it.attributes[STATE]?.toString()
+            }
+        val versions = records.listByIds(VERSION, enrollments.mapNotNull { it.attributes.ref(VERSION) }).associateBy { it.id }
+        val courses = records.listByIds(COURSE, versions.values.mapNotNull { it.attributes.ref(COURSE) }).associateBy { it.id }
+        return enrollments
+            .flatMap { enrollment ->
+                val offering = offerings[enrollment.attributes.ref(OFFERING_FIELD)] ?: return@flatMap emptyList()
+                val zone = zone(offering)
+                val title =
+                    courses[versions[enrollment.attributes.ref(VERSION)]?.attributes?.ref(COURSE)]
+                        ?.attributes
+                        ?.get("titulo")
+                        ?.toString()
+                        .orEmpty()
+                sessions[offering.id].orEmpty().mapNotNull { session ->
+                    val start = instantOf(session.attributes["inicio"])!!
+                    if (start < from || start >= to) return@mapNotNull null
+                    val v = view(session, zone, attended[enrollment.id to session.id])
+                    AgendaSessionView(
+                        v.id,
+                        v.title,
+                        v.type,
+                        v.modality,
+                        v.start,
+                        v.end,
+                        v.timeZone,
+                        v.status,
+                        v.link,
+                        v.location,
+                        v.lessonId,
+                        v.originalSessionId,
+                        v.attendance,
+                        enrollment.id,
+                        title,
+                        offering.attributes["codigo"]?.toString().orEmpty(),
+                    )
+                }
+            }.sortedWith(compareBy({ it.start }, { it.id }))
     }
 
     suspend fun attendance(id: UUID): List<AttendanceRow> {
@@ -373,6 +431,7 @@ class SessionService(
         const val OFFERING_FIELD = "edicion"
         const val LESSON = "leccion"
         const val UNIT = "unidad"
+        const val COURSE = "curso"
         const val VERSION = "version_curso"
         const val STUDENT = "estudiante_id"
         const val RECOVERY = "RECUPERACION"
@@ -382,6 +441,8 @@ class SessionService(
         const val NOTICE_SOURCE = "lms.sesiones"
         const val NOT_FOUND = "No encontrado"
         const val MAX_MINUTES = 1440
+        const val MAX_AGENDA_DAYS = 62
+        val MAX_AGENDA: Duration = Duration.ofDays(MAX_AGENDA_DAYS.toLong())
         val TYPES = setOf("TEORIA", "LABORATORIO", "CONSULTA", RECOVERY)
         val MODALITIES = setOf("PRESENCIAL", "VIRTUAL")
 
