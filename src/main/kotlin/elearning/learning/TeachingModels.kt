@@ -28,9 +28,11 @@ data class RosterAssessment(
     val pending: Boolean,
 )
 
+// name: el nombre para mostrar de quien se matriculó, null si la persona fue deshabilitada o borrada (ADR-0043)
 data class RosterRow(
     val enrollmentId: String,
     val email: String?,
+    val name: String?,
     val status: String,
     val progress: ProgressSummary,
     val attendance: AttendanceSummary,

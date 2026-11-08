@@ -83,6 +83,15 @@ class AttendanceApiTest : ClassroomApiTestSupport() {
         assertEquals(1, roster["attendance"]["total"].asInt())
     }
 
+    // el nombre para mostrar de cada matriculado, junto a su correo (#378, ADR-0043): al leer la lista y al registrarla
+    @Test
+    fun `the attendance list names each student`() {
+        val s = Scene()
+
+        assertEquals("Estudiante", ok(call(s.teacher, "/api/lms/teaching/sessions/${s.session}/attendance")).single()["name"].asString())
+        assertEquals("Estudiante", ok(s.mark(s.teacher, "PRESENTE")).single()["name"].asString())
+    }
+
     @Test
     fun `changing a recorded attendance needs a reason, and repeating it does not`() {
         val s = Scene()

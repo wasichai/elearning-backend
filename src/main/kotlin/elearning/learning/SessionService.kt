@@ -1,5 +1,6 @@
 package elearning.learning
 
+import elearning.common.DisplayNames
 import elearning.common.instantOf
 import elearning.common.listAll
 import elearning.common.ref
@@ -44,6 +45,7 @@ class SessionService(
     private val transactions: TransactionalOperator,
     private val notifications: Notifications,
     private val db: DatabaseClient,
+    private val names: DisplayNames,
 ) {
     suspend fun forTeacher(code: String): List<SessionView> {
         val offering = teaching.assignedOffering(code)
@@ -67,7 +69,12 @@ class SessionService(
     suspend fun attendance(id: UUID): List<AttendanceRow> {
         val (session, offering) = assigned(id)
         val taken = records.listAll(ATTENDANCE, mapOf(SESSION to session.id)).associate { it.attributes.ref(ENROLLMENT) to it.attributes[STATE]?.toString() }
-        return studentsOf(offering).map { AttendanceRow(it.id, it.attributes["estudiante_correo"]?.toString(), taken[it.id]) }
+        val students = studentsOf(offering)
+        // los nombres de la lista, en una lectura (ADR-0043)
+        val named = names.of(currentUser.require().organizationId, students.map { it.attributes[STUDENT]?.toString() })
+        return students.map {
+            AttendanceRow(it.id, it.attributes["estudiante_correo"]?.toString(), named[it.attributes[STUDENT]?.toString()], taken[it.id])
+        }
     }
 
     // repetir lo mismo no cambia nada; cambiar lo ya registrado exige motivo. todo o nada

@@ -1,5 +1,6 @@
 package elearning.learning
 
+import elearning.common.DisplayNames
 import elearning.common.instantOf
 import elearning.common.listAll
 import elearning.common.listAllIn
@@ -28,6 +29,7 @@ class TeachingReader(
     private val records: RecordService,
     private val classroom: ClassroomReader,
     private val facts: AssessmentFacts,
+    private val names: DisplayNames,
     private val clock: Clock,
 ) {
     suspend fun offerings(): List<TeachingOffering> = offerings(assignedOfferings())
@@ -84,11 +86,15 @@ class TeachingReader(
             }
         val taken = attendance.groupBy { it.attributes.ref(ENROLLMENT).orEmpty() }
         val progress = classroom.progress(offering.id, enrollments, sessions, attendance, byEnrollment = page != null)
-        val assessments = facts.offeringAssessments(currentUser.require().organizationId, UUID.fromString(offering.id))
+        val organization = currentUser.require().organizationId
+        val assessments = facts.offeringAssessments(organization, UUID.fromString(offering.id))
+        // los nombres de los matriculados de la respuesta (o de la página), en una lectura (ADR-0043)
+        val named = names.of(organization, enrollments.map { it.attributes[STUDENT]?.toString() })
         return enrollments.map { enrollment ->
             RosterRow(
                 enrollmentId = enrollment.id,
                 email = enrollment.attributes[STUDENT_EMAIL]?.toString(),
+                name = named[enrollment.attributes[STUDENT]?.toString()],
                 status = enrollment.attributes[STATE].toString(),
                 progress = progress.getValue(enrollment.id),
                 attendance = attendanceOf(taken[enrollment.id].orEmpty(), sessions),
@@ -155,6 +161,7 @@ class TeachingReader(
         const val TEACHER = "usuario_id"
         const val OFFERING_FIELD = "edicion_curso"
         const val ENROLLMENT_OFFERING = "edicion"
+        const val STUDENT = "estudiante_id"
         const val STUDENT_EMAIL = "estudiante_correo"
         const val STATE = "estado"
         const val CODE = "codigo"

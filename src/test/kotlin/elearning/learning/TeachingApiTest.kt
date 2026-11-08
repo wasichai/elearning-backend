@@ -1,6 +1,7 @@
 package elearning.learning
 
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.springframework.http.HttpStatus
 
@@ -29,6 +30,35 @@ class TeachingApiTest : ClassroomApiTestSupport() {
         assertEquals(get("/api/auth/me", first)["email"].asString(), row["email"].asString())
         assertEquals(1, row["progress"]["completedLessons"].asInt())
         assertEquals("ACTIVA", row["status"].asString())
+    }
+
+    // el nombre para mostrar de cada matriculado, junto a su correo (#378, ADR-0043): en el roster entero y en una página
+    @Test
+    fun `the roster names each student, whole and paged`() {
+        val course = course()
+        val teacher = newTeacher()
+        assign(teacher, course)
+        enroll(newStudent(), course)
+
+        assertEquals("Estudiante", ok(call(teacher, "/api/lms/teaching/offerings/${course.offering}/students")).single()["name"].asString())
+        assertEquals("Estudiante", ok(call(teacher, "/api/lms/teaching/offerings/${course.offering}/students?page=0&size=10")).single()["name"].asString())
+    }
+
+    // como en la cola (ADR-0042): quien fue deshabilitado pierde el nombre; el correo es de la matrícula y sigue
+    @Test
+    fun `a disabled student keeps the email in the roster and loses the name`() {
+        val course = course()
+        val teacher = newTeacher()
+        assign(teacher, course)
+        val student = newStudent()
+        enroll(student, course)
+        val me = get("/api/auth/me", student)
+
+        assertEquals(HttpStatus.OK, put(admin, "/api/users/${me["userId"].asString()}", mapOf("enabled" to false)).first)
+
+        val row = ok(call(teacher, "/api/lms/teaching/offerings/${course.offering}/students")).single()
+        assertEquals(me["email"].asString(), row["email"].asString())
+        assertTrue(row["name"].isNull, row.toString())
     }
 
     @Test
