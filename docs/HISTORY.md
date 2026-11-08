@@ -12,8 +12,8 @@ Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este
 - **Encabezado y filtros**: filete fuerte y meta sobre el título, y la búsqueda con las categorías (índice de colecciones con
   su recuento) en una sola barra; «Más filtros» sigue en el desplegable o la hoja inferior. Los filtros no cambian de
   comportamiento ni de parámetros.
-- **«Contenido ilustrativo»** sale una sola vez, en el encabezado, cuando lo son todos los cursos de la página; si no, solo
-  en la ficha.
+- **«Contenido ilustrativo»** sale una sola vez, en el encabezado, cuando lo son todos los cursos de la página; si la página
+  es mixta, cada fila ilustrativa lleva su marca junto a la colección.
 
 ## 2026-11-09 — El panel del estudiante Colofón ([#223](https://github.com/wasichai/elearning-frontend/issues/223))
 
