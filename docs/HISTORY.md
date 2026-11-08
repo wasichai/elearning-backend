@@ -2,6 +2,19 @@
 
 Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este archivo registra lo que se entregó.
 
+## 2026-11-08 — La lectura se pinta en la página, sin iframe ([#221](https://github.com/wasichai/elearning-frontend/issues/221))
+
+- **Frontend** (`elearning-frontend`, tarea R2 de la épica «lectura nativa», #385): la lección `HTML` deja el `iframe`
+  aislado y se pinta con componentes propios (`ReadingDocument`) desde `GET …/resources/{id}/reading`, en Newsreader a la
+  medida de 66ch, con la nota entre filetes de Classroom. El A−/A+ y el interlineado abierto siguen; el modo sepia y el
+  oscuro llegan por los tokens. `outline()` da los encabezados con su `id` para el índice al margen (tarea 5).
+- **Seguridad**: el contenido es dato no confiable. Sin `dangerouslySetInnerHTML`; los `id` se pintan con el prefijo
+  `lectura-` (y las anclas internas se reescriben con él), así el autor no pisa los de la aplicación; la interfaz vuelve a
+  filtrar lo que el servidor ya filtra: solo son enlace `http(s)`, `mailto:` y `#ancla` (los externos, en otra pestaña con
+  `noopener noreferrer` y aviso), y una figura solo con `data:image/(png|jpeg|gif|webp)` en base64. Lo que el vocabulario
+  no tiene se descarta nodo a nodo.
+- **Se retiran** `reading.ts` (la CSP, la paleta y el `srcdoc` del iframe) y la descarga del HTML para leerlo.
+
 ## 2026-11-08 — La lección de lectura como documento de bloques ([#384](https://github.com/wasichai/elearning-backend/issues/384))
 
 - **API**: `GET /api/lms/classroom/enrollments/{id}/resources/{resourceVersionId}/reading` devuelve el HTML de un recurso
