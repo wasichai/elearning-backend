@@ -2,6 +2,19 @@
 
 Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este archivo registra lo que se entregó.
 
+## 2026-11-08 — La lección de lectura como documento de bloques ([#384](https://github.com/wasichai/elearning-backend/issues/384))
+
+- **API**: `GET /api/lms/classroom/enrollments/{id}/resources/{resourceVersionId}/reading` devuelve el HTML de un recurso
+  del aula como `ReadingDocument`: título y bloques de vocabulario cerrado (`heading`, `paragraph`, `list`, `table`,
+  `code`, `quote`, `admonition`, `figure`, `rule`; en línea `text`, `em`, `strong`, `code`, `link`, `break`), con `type`
+  en cada uno. Contrato en [docs/api/lms.md](api/lms.md).
+- **Seguridad**: se calcula en cada petición, sin tabla ni migración, desde el archivo leído con el alcance de su descarga;
+  pasa otra vez por `GeneratedHtml` y solo sale el vocabulario: enlaces `http`, `https`, `mailto` y `#ancla`, imágenes
+  solo `data:image/*` en base64, ningún atributo del autor. Matrícula ajena o retirada, recurso de otro curso, de otro
+  tipo o sin archivo: `404`. La conversión corre fuera del hilo de WebFlux.
+- **Decisión**: [ADR-0045](adr/0045-lectura-nativa-en-bloques.md) reemplaza el `iframe` de ADR-0012 §3. Después, la
+  tarea R2 del frontend pinta el documento y borra el `iframe` (épica #385).
+
 ## 2026-11-08 — Primitivas compartidas de Colofón ([#220](https://github.com/wasichai/elearning-frontend/issues/220))
 
 - **Frontend** (`elearning-frontend`, tarea 4 del plan de Colofón): `SegmentedProgress` (un segmento por lección en una

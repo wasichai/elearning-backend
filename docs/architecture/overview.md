@@ -129,6 +129,7 @@ flowchart BT
     learning --> workload
     learning --> jobs
     learning --> privacy
+    learning --> media
     assessment --> learning
     assessment --> enrollment
     assessment --> jobs
