@@ -2,6 +2,17 @@
 
 Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este archivo registra lo que se entregó.
 
+## 2026-11-08 — El nombre de cada matriculado en el roster y la asistencia ([#378](https://github.com/wasichai/elearning-backend/issues/378))
+
+- **API**: `Roster` (`GET /api/lms/teaching/offerings/{code}/students`, entero o paginado) y `AttendanceRow` (`GET` y
+  `PUT /api/lms/teaching/sessions/{id}/attendance`) ganan `name`, el nombre para mostrar de cada matriculado, junto a su
+  correo. `null` si la persona fue deshabilitada o borrada; ningún campo cambia de sentido.
+- **Alcance**: el de siempre, decidido por la asignación a la edición; lo ajeno sigue siendo `404` antes de buscar
+  nombres. Una lectura de `DisplayNames` por respuesta (o por página). `ScopeCostApiTest` admite que el roster ligue los
+  ids de las filas que devuelve, y nada más. Decisión en
+  [ADR-0043](adr/0043-el-nombre-de-cada-matriculado-en-el-roster-y-la-asistencia.md). Pedido desde
+  wasichai/elearning-frontend#179 (H11).
+
 ## 2026-11-08 — El nombre de quien entregó en el espacio docente ([#376](https://github.com/wasichai/elearning-backend/issues/376))
 
 - **API**: `PendingAttempt` (la cola de corrección y `oldestPending` del panel docente) y el `Attempt` del docente ganan

@@ -723,8 +723,10 @@ cualquier edición, sin asignación; calificar le sigue respondiendo `404`.
   ediciones asignadas en el orden de `GET /offerings` (la de inicio más próximo primero), con `page` y `size` como el
   roster pero siempre paginada: sin ellos, la primera página de 25. Se lee por lotes: las sentencias SQL no crecen con
   el número de ediciones de la página.
-- `Roster`: `{ "enrollmentId", "email", "status", "progress": ProgressSummary, "attendance": { "attended": 3,
+- `Roster`: `{ "enrollmentId", "email", "name", "status", "progress": ProgressSummary, "attendance": { "attended": 3,
 "total": 4 }, "assessments": [{ "lessonId", "title", "bestPercent": 80, "passed": true, "pending": false }] }`.
+  `name` es el nombre para mostrar de quien se matriculó (#378, ADR-0043), `null` si la persona fue deshabilitada o
+  borrada; el correo sigue.
 - `PendingAttempt`: `{ "attemptId", "enrollmentId", "email", "name", "lessonId", "lessonTitle", "submittedAt",
 "pendingQuestions": 1 }`. `name` es el nombre para mostrar de quien entregó (#376, ADR-0042), `null` si la persona fue
   deshabilitada o borrada; el correo sigue.
@@ -752,7 +754,8 @@ cualquier edición, sin asignación; calificar le sigue respondiendo `404`.
   sesión `RECUPERACION` lleva `originalSessionId`.
 - Reprogramar o cancelar avisa a los matriculados de esa edición (y a nadie más) por las alertas de Wasichai y, si está
   configurado, por correo. Ambas guardan el motivo en el historial de la sesión.
-- `AttendanceRow`: `{ "enrollmentId", "email", "status": null | "PRESENTE" | "TARDE" | "AUSENTE" | "JUSTIFICADO" }`.
+- `AttendanceRow`: `{ "enrollmentId", "email", "name", "status": null | "PRESENTE" | "TARDE" | "AUSENTE" | "JUSTIFICADO" }`.
+  `name` como en `Roster` (ADR-0043).
   Cambiar una asistencia ya registrada exige `reason` (`409` sin él). La asistencia no toca el progreso de materiales.
 
 ## Estudio y revisión (F4, ADR-0018)

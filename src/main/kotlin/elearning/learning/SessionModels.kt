@@ -30,9 +30,11 @@ data class CancelRequest(
     val reason: String? = null,
 )
 
+// name: como en el roster (ADR-0043)
 data class AttendanceRow(
     val enrollmentId: String,
     val email: String?,
+    val name: String?,
     val status: String?,
 )
 

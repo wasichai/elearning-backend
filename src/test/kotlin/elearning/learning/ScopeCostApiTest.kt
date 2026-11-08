@@ -62,10 +62,12 @@ class ScopeCostApiTest : ClassroomApiTestSupport() {
         repeat(MORE) { enroll(newStudent(), course) }
         val big = cost(teacher, path) { assertEquals(FEW + MORE, it) }
 
+        // los nombres de los matriculados (ADR-0043) ligan los ids de las filas que devuelve: crecen con lo que la pantalla
+        // muestra, nunca más. el alcance sigue sin ligar nada que crezca
         val figures =
             "roster: arreglo ligado más largo ${small.largestArray} con $FEW estudiantes, ${big.largestArray} con ${FEW + MORE} " +
                 "(sentencias ${small.statements} → ${big.statements})"
-        return listOf(dynamicTest(figures) { assertTrue(big.largestArray <= small.largestArray, figures) })
+        return listOf(dynamicTest(figures) { assertTrue(big.largestArray <= maxOf(small.largestArray, FEW + MORE), figures) })
     }
 
     companion object {
