@@ -1,11 +1,15 @@
 package elearning.learning
 
+import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.springframework.http.HttpStatus
+import wasichai.core.data.RecordRequest
+import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
+import java.util.UUID
 
 // las sesiones (ADR-0016 §5, RF-SES-01/02/04): las crea el docente de la edición, las leen él y sus matriculados
 class SessionApiTest : ClassroomApiTestSupport() {
@@ -105,5 +109,150 @@ class SessionApiTest : ClassroomApiTestSupport() {
         assertEquals(HttpStatus.OK, call(student, "/api/objects/sesion/records/$session").first)
         // ni por la API genérica
         assertTrue(call(teacher, "/api/objects/sesion/records", mapOf("attributes" to mapOf("titulo" to "x"))).first.is4xxClientError)
+    }
+
+    private fun agendaPath(
+        from: Any?,
+        to: Any?,
+    ) = "/api/lms/classroom/sessions" +
+        listOfNotNull(from?.let { "from=$it" }, to?.let { "to=$it" }).joinToString("&", if (from != null || to != null) "?" else "")
+
+    // mañana a las 08:00 de Lima: 13:00 Z
+    private val tomorrow get() = Instant.parse("${today.plusDays(1)}T00:00:00Z")
+
+    private fun withdraw(enrollment: String) =
+        runBlocking {
+            records.asPlatform(ORG) {
+                records.patch("matricula", UUID.fromString(enrollment), RecordRequest(mapOf("estado" to "RETIRADA")), "Baja de prueba", null)
+            }
+        }
+
+    @Test
+    fun `agenda includes sessions of every active enrollment in range`() {
+        val first = course()
+        val second = course()
+        val teacher =
+            newTeacher().also {
+                assign(it, first)
+                assign(it, second)
+            }
+        val student = newStudent()
+        val firstEnrollment = enroll(student, first)["id"].asString()
+        val secondEnrollment = enroll(student, second)["id"].asString()
+        call(teacher, sessionsPath(first.offering), body("DAILY", endOffset = 1))
+        call(teacher, sessionsPath(second.offering), body(extra = mapOf("title" to "Laboratorio")))
+        // fuera del intervalo: pasado mañana en adelante
+        call(teacher, sessionsPath(first.offering), body("DAILY", endOffset = 5))
+
+        val agenda = ok(call(student, agendaPath(tomorrow, tomorrow.plusSeconds(2 * 86_400))))
+        // [from, to) con inicio a las 13:00 Z: mañana y pasado mañana, en cada edición (3 con la serie de endOffset 5 que empieza mañana)
+        val starts = agenda.toList().map { it["start"].asString() }
+        assertEquals(starts.sorted(), starts)
+        assertEquals(setOf(firstEnrollment, secondEnrollment), agenda.toList().map { it["enrollmentId"].asString() }.toSet())
+        assertEquals(5, agenda.size(), agenda.toString())
+        val lab = agenda.toList().single { it["title"].asString() == "Laboratorio" }
+        assertEquals(secondEnrollment, lab["enrollmentId"].asString())
+        assertEquals(second.offering, lab["offeringCode"].asString())
+        assertTrue(lab["courseTitle"].asString().isNotBlank())
+        assertEquals("PROGRAMADA", lab["status"].asString())
+        assertTrue(lab["attendance"].isNull)
+        // el intervalo es semiabierto: el instante exacto de un inicio entra por from y no por to
+        val exact = Instant.parse(lab["start"].asString())
+        assertEquals(1, ok(call(student, agendaPath(exact, exact.plusSeconds(1)))).toList().filter { it["id"].asString() == lab["id"].asString() }.size)
+        assertEquals(0, ok(call(student, agendaPath(exact.minusSeconds(1), exact))).size())
+    }
+
+    @Test
+    fun `agenda excludes withdrawn enrollments`() {
+        val kept = course()
+        val dropped = course()
+        val teacher =
+            newTeacher().also {
+                assign(it, kept)
+                assign(it, dropped)
+            }
+        val student = newStudent()
+        enroll(student, kept)
+        withdraw(enroll(student, dropped)["id"].asString())
+        call(teacher, sessionsPath(kept.offering), body())
+        call(teacher, sessionsPath(dropped.offering), body())
+
+        val agenda = ok(call(student, agendaPath(tomorrow, tomorrow.plusSeconds(86_400))))
+        assertEquals(listOf(kept.offering), agenda.toList().map { it["offeringCode"].asString() })
+    }
+
+    @Test
+    fun `agenda excludes other students sessions`() {
+        val mine = course()
+        val theirs = course()
+        val teacher =
+            newTeacher().also {
+                assign(it, mine)
+                assign(it, theirs)
+            }
+        val student = newStudent()
+        enroll(student, mine)
+        enroll(newStudent(), theirs)
+        call(teacher, sessionsPath(mine.offering), body())
+        call(teacher, sessionsPath(theirs.offering), body())
+
+        val agenda = ok(call(student, agendaPath(tomorrow, tomorrow.plusSeconds(86_400))))
+        assertEquals(listOf(mine.offering), agenda.toList().map { it["offeringCode"].asString() })
+        // quien no cursa nada ve una agenda vacía, no la de otro
+        assertEquals(0, ok(call(newStudent(), agendaPath(tomorrow, tomorrow.plusSeconds(86_400)))).size())
+    }
+
+    @Test
+    fun `agenda rejects inverted or over 62 day range`() {
+        val student = newStudent()
+        val from = tomorrow
+        val invalid =
+            listOf(
+                agendaPath(null, null),
+                agendaPath(from, null),
+                agendaPath(null, from.plusSeconds(86_400)),
+                agendaPath("ayer", from),
+                agendaPath(from, "mañana"),
+                agendaPath(from, from),
+                agendaPath(from.plusSeconds(86_400), from),
+                agendaPath(from, from.plusSeconds(63 * 86_400L)),
+            )
+        for (path in invalid) assertEquals(HttpStatus.BAD_REQUEST, call(student, path).first, path)
+        // 62 días justos sí
+        assertEquals(HttpStatus.OK, call(student, agendaPath(from, from.plusSeconds(62 * 86_400L))).first)
+    }
+
+    // CREADOR no lee matrículas: no tiene aula
+    private fun creator(): String {
+        val email = "${uniqueName("cre")}@demo.wasichai-learning.test"
+        client
+            .post()
+            .uri("/api/users")
+            .header("Authorization", admin)
+            .bodyValue(mapOf("email" to email, "displayName" to "Creador", "password" to DEMO_PASSWORD, "roles" to listOf("CREADOR")))
+            .exchange()
+            .expectStatus()
+            .isCreated
+        return bearer(email, DEMO_PASSWORD)
+    }
+
+    @Test
+    fun `agenda requires classroom permission`() {
+        val range = agendaPath(tomorrow, tomorrow.plusSeconds(86_400))
+        assertEquals(HttpStatus.UNAUTHORIZED, call(null, range).first)
+        assertEquals(HttpStatus.FORBIDDEN, call(creator(), range).first)
+    }
+
+    @Test
+    fun `agenda keeps the offering time zone`() {
+        val course = course()
+        val teacher = newTeacher().also { assign(it, course) }
+        val student = newStudent()
+        enroll(student, course)
+        call(teacher, sessionsPath(course.offering), body())
+
+        val session = ok(call(student, agendaPath(tomorrow, tomorrow.plusSeconds(86_400))))[0]
+        assertEquals("America/Lima", session["timeZone"].asString())
+        assertEquals("${today.plusDays(1)}T13:00:00Z", session["start"].asString())
     }
 }

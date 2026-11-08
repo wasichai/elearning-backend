@@ -496,6 +496,15 @@ tipo que detecta `wasichai-files`; lo demás es `400` en `archivo` (RNF-SEG-07).
 `PROGRAMADA` · `REPROGRAMADA` · `CANCELADA`. `attendance`: `null` o `PRESENTE` · `TARDE` · `AUSENTE` · `JUSTIFICADO`. El
 enlace solo es `https`.
 
+`GET /api/lms/classroom/sessions?from=…&to=…` → `AgendaSession[]`: la agenda de todas mis matrículas que no estén
+`RETIRADA` (una `FINALIZADA` sigue apareciendo), con las sesiones, de cualquier estado, cuyo `start` cae en el intervalo
+semiabierto `[from, to)`, por `start` y luego `id`. Es una lista plana: los campos de `Session` (con su `attendance` y el
+`timeZone` de su edición; las horas se muestran en esa zona) más `enrollmentId`, `courseTitle` (el título del curso de la
+versión matriculada) y `offeringCode`. `from` y `to` son obligatorios y ISO-8601 con zona (`2026-11-10T00:00:00Z`); si
+falta uno, está mal formado, el intervalo es vacío o invertido, o pasa de 62 días, es `400` con el problema en el campo.
+Sin permiso de lectura de matrículas, `403`. Como `…/enrollments/{id}/sessions`, no hay un permiso propio: lee como la
+persona, y solo sus matrículas.
+
 ### Panel del estudiante
 
 `GET /api/lms/classroom/panel?page=0&size=25` → `ClassroomPanelItem[]`: una página de «Mis cursos» (las mismas matrículas
