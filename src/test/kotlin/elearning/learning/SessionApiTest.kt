@@ -141,7 +141,7 @@ class SessionApiTest : ClassroomApiTestSupport() {
         val secondEnrollment = enroll(student, second)["id"].asString()
         call(teacher, sessionsPath(first.offering), body("DAILY", endOffset = 1))
         call(teacher, sessionsPath(second.offering), body(extra = mapOf("title" to "Laboratorio")))
-        // fuera del intervalo: pasado mañana en adelante
+        // la tercera serie sigue días más allá del intervalo de la consulta; solo cuentan mañana y pasado mañana
         call(teacher, sessionsPath(first.offering), body("DAILY", endOffset = 5))
 
         val agenda = ok(call(student, agendaPath(tomorrow, tomorrow.plusSeconds(2 * 86_400))))
@@ -222,14 +222,75 @@ class SessionApiTest : ClassroomApiTestSupport() {
         assertEquals(HttpStatus.OK, call(student, agendaPath(from, from.plusSeconds(62 * 86_400L))).first)
     }
 
+    private fun finish(enrollment: String) =
+        runBlocking {
+            records.asPlatform(ORG) {
+                records.patch("matricula", UUID.fromString(enrollment), RecordRequest(mapOf("estado" to "FINALIZADA")), null, null)
+            }
+        }
+
+    @Test
+    fun `agenda keeps the sessions of a finished enrollment with its course title`() {
+        val course = course()
+        val teacher = newTeacher().also { assign(it, course) }
+        val student = newStudent()
+        val enrollment = enroll(student, course)["id"].asString()
+        call(teacher, sessionsPath(course.offering), body())
+        finish(enrollment)
+
+        val agenda = ok(call(student, agendaPath(tomorrow, tomorrow.plusSeconds(86_400))))
+        assertEquals(1, agenda.size(), agenda.toString())
+        assertEquals(enrollment, agenda[0]["enrollmentId"].asString())
+        assertTrue(agenda[0]["courseTitle"].asString().isNotBlank())
+    }
+
+    @Test
+    fun `agenda returns the attendance the teacher took`() {
+        val course = course()
+        val teacher = newTeacher().also { assign(it, course) }
+        val student = newStudent()
+        val enrollment = enroll(student, course)["id"].asString()
+        val sessions = call(teacher, sessionsPath(course.offering), body("DAILY", endOffset = 1)).second!!
+        val marked = sessions[0]["id"].asString()
+        val taken =
+            put(
+                teacher,
+                "/api/lms/teaching/sessions/$marked/attendance",
+                mapOf("records" to listOf(mapOf("enrollmentId" to enrollment, "status" to "TARDE"))),
+            )
+        assertEquals(HttpStatus.OK, taken.first, taken.second.toString())
+
+        val agenda = ok(call(student, agendaPath(tomorrow, tomorrow.plusSeconds(3 * 86_400)))).toList()
+        assertEquals("TARDE", agenda.single { it["id"].asString() == marked }["attendance"].asString())
+        assertTrue(agenda.single { it["id"].asString() != marked }["attendance"].isNull)
+    }
+
+    @Test
+    fun `agenda of someone who sees every enrollment is still only their own`() {
+        val taught = course()
+        val studied = course()
+        val teacher = acceptTerms(userWith("DOCENTE", "ESTUDIANTE")).also { assign(it, taught) }
+        val other = newTeacher().also { assign(it, studied) }
+        enroll(newStudent(), taught)
+        val mine = enroll(teacher, studied)["id"].asString()
+        call(teacher, sessionsPath(taught.offering), body())
+        call(other, sessionsPath(studied.offering), body())
+
+        val agenda = ok(call(teacher, agendaPath(tomorrow, tomorrow.plusSeconds(86_400))))
+        assertEquals(listOf(mine), agenda.toList().map { it["enrollmentId"].asString() })
+        assertEquals(listOf(studied.offering), agenda.toList().map { it["offeringCode"].asString() })
+    }
+
     // CREADOR no lee matrículas: no tiene aula
-    private fun creator(): String {
-        val email = "${uniqueName("cre")}@demo.wasichai-learning.test"
+    private fun creator(): String = userWith("CREADOR")
+
+    private fun userWith(vararg roles: String): String {
+        val email = "${uniqueName("mix")}@demo.wasichai-learning.test"
         client
             .post()
             .uri("/api/users")
             .header("Authorization", admin)
-            .bodyValue(mapOf("email" to email, "displayName" to "Creador", "password" to DEMO_PASSWORD, "roles" to listOf("CREADOR")))
+            .bodyValue(mapOf("email" to email, "displayName" to "Persona", "password" to DEMO_PASSWORD, "roles" to roles.toList()))
             .exchange()
             .expectStatus()
             .isCreated

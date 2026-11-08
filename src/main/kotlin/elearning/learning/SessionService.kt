@@ -118,7 +118,7 @@ class SessionService(
                         v.attendance,
                         enrollment.id,
                         title,
-                        offering.attributes["codigo"].toString(),
+                        offering.attributes["codigo"]?.toString().orEmpty(),
                     )
                 }
             }.sortedWith(compareBy({ it.start }, { it.id }))
