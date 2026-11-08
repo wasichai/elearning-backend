@@ -1,6 +1,7 @@
 package elearning.learning
 
 import elearning.enrollment.EnrollmentService
+import elearning.media.ReadingDocument
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.GetMapping
@@ -23,6 +24,7 @@ class ClassroomController(
     private val progress: LessonProgressService,
     private val completion: CompletionService,
     private val certificates: CertificateService,
+    private val reading: ReadingService,
 ) {
     // 201 si se creó, 200 si ya existía: repetir la matrícula devuelve la misma
     @PostMapping("/enrollments")
@@ -75,6 +77,14 @@ class ClassroomController(
     suspend fun verify(
         @PathVariable code: String,
     ): Certificate = certificates.verify(code)
+
+    // la lectura HTML de un recurso del aula como documento de bloques (ADR-0045). mismo alcance que la descarga de su
+    // archivo: de otra matrícula, retirada, de otro tipo o sin archivo, 404
+    @GetMapping("/classroom/enrollments/{enrollmentId}/resources/{resourceVersionId}/reading")
+    suspend fun reading(
+        @PathVariable enrollmentId: UUID,
+        @PathVariable resourceVersionId: UUID,
+    ): ReadingDocument = reading.read(enrollmentId, resourceVersionId)
 
     // un evento de aprendizaje → el progreso de la lección. idempotente por clientEventId
     @PostMapping("/classroom/enrollments/{enrollmentId}/lessons/{lessonId}/events")

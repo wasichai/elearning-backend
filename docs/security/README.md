@@ -225,8 +225,9 @@ zip y texto solo si coinciden con el tipo declarado), aplica una lista blanca po
   | `entrega` (del estudiante) | PDF, zip, `text/plain`, `text/csv`, imágenes, ofimática OOXML y ODF; nunca `octet-stream` |
 
   Riesgo aceptado: `HTML` y `VIDEO` admiten lo que Wasichai no reconoce; se mitiga con la descarga como adjunto y
-  `nosniff`, el `iframe` sin scripts y el flujo editorial (lo revisa una persona antes de publicarse). Cuando Wasichai
-  detecte HTML y vídeo, sus listas se estrechan.
+  `nosniff`, la lectura en bloques de vocabulario cerrado (ADR-0045: el HTML nunca llega al navegador del estudiante como
+  HTML) y el flujo editorial (lo revisa una persona antes de publicarse). Cuando Wasichai detecte HTML y vídeo, sus
+  listas se estrechan.
 
 - **R** Subidas y reemplazos quedan en el historial del registro.
 - **I** Metadatos (autor, GPS) en PDF e imágenes; nombres sensibles → limpieza de metadatos (a verificar, F2);
@@ -239,6 +240,15 @@ zip y texto solo si coinciden con el tipo declarado), aplica una lista blanca po
   (`/api/lms/studio/resource-versions/{id}/video`) la ven el autor y quien decide o publica, y se sirve `nosniff`.
 - **E** Contenido activo subido (HTML, SVG con script) → no se sirve con su tipo; `Content-Disposition: attachment` y
   `nosniff` (a verificar en `wasichai-files`).
+- **E/T** La lectura HTML en la página (`GET /api/lms/classroom/enrollments/{id}/resources/{rv}/reading`, ADR-0045) →
+  el servidor la vuelve a sanear con `GeneratedHtml` y la convierte a un vocabulario cerrado de bloques
+  (`ReadingDocuments`): ni etiquetas, ni clases, ni estilos, ni atributos del autor; enlaces solo `http`/`https` con
+  servidor, `mailto` y `#ancla` (lo demás, texto); imágenes solo `data:image/(png|jpeg|gif|webp)` en base64, nunca un
+  `src` que haga una petición; `id` saneados a `[A-Za-z0-9_-]` y únicos; anidamiento con tope. La interfaz lo pinta con
+  sus componentes, sin `dangerouslySetInnerHTML`. Alcance: matrícula propia no retirada, versión publicada enlazada desde
+  su temario y archivo leído como quien llama (`ContentReadScope`); lo demás, `404`. **D**: el archivo tiene el tope de
+  su campo (25 MB; uno mayor, `404`) y jsoup corre en `Dispatchers.Default`, fuera del hilo de WebFlux. Pruebas: `ReadingDocumentsTest`,
+  `ReadingApiTest`.
 
 ### 4.5 Agentes IA (F5)
 
@@ -360,7 +370,9 @@ el único sitio del código que lanza un proceso (`ArchitectureTest`, regla `EXT
 1. **Validación de entradas**: DTO propios validados en el borde; filtros y orden por lista blanca; errores
    `ProblemDetail` de Wasichai sin trazas internas.
 2. **HTML de lecciones**: generado por el servidor desde la fuente canónica y saneado con lista blanca antes de
-   guardarse (F2/F4). El que genera Asciidoctor lo sanea `GeneratedHtml` con jsoup (ADR-0022).
+   guardarse (F2/F4). El que genera Asciidoctor lo sanea `GeneratedHtml` con jsoup (ADR-0022). Al estudiante no le llega
+   como HTML: se vuelve a sanear y se convierte en un documento de bloques de vocabulario cerrado que la interfaz pinta
+   con sus componentes (ADR-0045, §4.4). El texto del documento es dato no confiable: se muestra, nunca se interpreta.
 3. **URL externas**: enlaces a reuniones y recursos con esquema `https` y host público; el servidor solo hace peticiones
    salientes donde una función lo exige (comprobar enlaces, proveedor IA, almacenamiento). Los de las sesiones y los de
    los entornos de laboratorio pasan por `SafeLink` (sin `http`, `file:`, credenciales, `localhost`, `.local`,

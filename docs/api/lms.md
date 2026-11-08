@@ -331,7 +331,8 @@ legible. Lo mismo vale para sus sesiones y su finalización.
 - `file` puede ser `null` (recurso sin archivo); su `url` es siempre una ruta del mismo origen,
   `/api/objects/version_recurso/records/<id>/files/archivo`: la descarga de `wasichai-files`, con la misma sesión y el
   mismo alcance que el registro. Un
-  `HTML` se muestra en un `iframe` con `sandbox` sin `allow-scripts`; `PDF` se descarga; `VIDEO` se reproduce.
+  `HTML` se pinta en la página desde su lectura en bloques (`GET …/resources/{id}/reading`, ADR-0045); `PDF` tiene visor
+  y descarga; `VIDEO` se reproduce; los demás se descargan.
 - `lab` (RF-LAB-01, ADR-0027): solo en una lección `LABORATORIO`; `null` en las demás. `objective` puede ser `null`;
   `requirements`, `milestones` (en orden), `acceptanceCriteria` y `deliverables` son los campos «uno por línea» de la
   lección, sin las líneas vacías. La guía y los archivos son sus `resources`; la entrega y la rúbrica, su `assessment`.
@@ -341,6 +342,68 @@ legible. Lo mismo vale para sus sesiones y su finalización.
   La interfaz lo abre en otra pestaña con `rel="noopener noreferrer"`; el servidor nunca lo visita.
 - Subir a una versión de recurso un archivo cuyo tipo detectado no admite el `tipo` del recurso es `400` en `archivo`
   (lista en [seguridad §4.4](../security/README.md#44-archivos-f2-en-adelante), RNF-SEG-07).
+
+### GET /api/lms/classroom/enrollments/{id}/resources/{resourceVersionId}/reading
+
+La lectura de un recurso `HTML` del aula como documento de bloques de vocabulario cerrado (ADR-0045). Se calcula en cada
+petición desde el archivo de la versión, que pasa otra vez por el saneado de `GeneratedHtml`. La interfaz lo pinta con
+sus componentes: el texto es siempre texto, nunca HTML.
+
+```json
+{
+  "title": "Portal del estudiante",
+  "blocks": [
+    { "type": "heading", "level": 2, "id": "_entrar_y_salir_del_portal", "content": [{ "type": "text", "text": "Entrar y salir del portal" }] },
+    {
+      "type": "paragraph",
+      "content": [
+        { "type": "text", "text": "Con " },
+        { "type": "strong", "content": [{ "type": "text", "text": "su cuenta" }] },
+        { "type": "text", "text": " y " },
+        { "type": "link", "href": "https://example.org", "content": [{ "type": "text", "text": "el portal" }] },
+        { "type": "break" }
+      ]
+    },
+    { "type": "admonition", "kind": "note", "content": [{ "type": "paragraph", "content": [{ "type": "text", "text": "Una nota." }] }] },
+    { "type": "code", "language": "kotlin", "text": "fun main() = println(\"hola\")" },
+    { "type": "rule" }
+  ]
+}
+```
+
+- `title`: el texto del `h1` del documento, o `null`. El `h1` no aparece en `blocks`.
+- Como en el resto de la API, un campo sin valor llega como `null` y nunca falta (`"id": null`, `"caption": null`); las
+  listas nunca son `null`.
+- Cada bloque y cada elemento en línea lleva `type`. Lo que no es de esta lista no llega: no hay otros tipos ni otros campos.
+
+| Bloque (`type`) | Campos                                                                                                                                               |
+| --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `heading`       | `level` (2, 3 o 4; `h5` y `h6` llegan como 4), `id` (`[A-Za-z0-9_-]`, único en el documento, o `null`), `content` (en línea)                         |
+| `paragraph`     | `content` (en línea)                                                                                                                                 |
+| `list`          | `ordered` (booleano), `items`: cada elemento es una lista de bloques                                                                                 |
+| `table`         | `caption` (en línea o `null`), `head` y `body`: filas de celdas `{ content (bloques), colspan, rowspan, header }`; `colspan` y `rowspan` de 1 a 1000 |
+| `code`          | `language` (un nombre como `kotlin`, o `null`), `text` tal cual, con sus espacios y saltos                                                           |
+| `quote`         | `content` (bloques), `attribution` (en línea o `null`)                                                                                               |
+| `admonition`    | `kind` (`note`, `tip`, `important`, `warning` o `caution`), `content` (bloques)                                                                      |
+| `figure`        | `src` (solo `data:image/png`, `jpeg`, `gif` o `webp` en base64), `alt` (puede ser vacío), `caption` (en línea o `null`)                              |
+| `rule`          | ninguno                                                                                                                                              |
+
+| En línea (`type`) | Campos                                                                                                                     |
+| ----------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `text`            | `text`                                                                                                                     |
+| `em`, `strong`    | `content` (en línea)                                                                                                       |
+| `code`            | `text`                                                                                                                     |
+| `link`            | `href` (`http://` o `https://` con servidor, `mailto:` o `#<id>` saneado como el de los encabezados), `content` (en línea) |
+| `break`           | ninguno                                                                                                                    |
+
+- Lo que el vocabulario no tiene se descarta y su texto queda como párrafo. Un enlace con otro destino (`javascript:`,
+  `data:`, relativo) llega como su texto; una imagen que no es `data:image/…` en base64 llega como su `alt` en un párrafo
+  (o nada, si está vacío). El índice y el pie de Asciidoctor no llegan: el índice se arma con los `heading`.
+- Una figura nunca lleva una URL: abrir la lectura no hace peticiones a otro sitio. Un `#<id>` puede apuntar a un
+  encabezado; la interfaz puede prefijar los `id` al pintarlos.
+- `404` si la matrícula no es propia o está retirada, si la versión de recurso no es una publicada que enlace una lección
+  de su temario, si el recurso no es de tipo `HTML`, si no tiene archivo o si el archivo supera el tope de su campo
+  (25 MB). `401` sin sesión.
 
 ### POST /api/lms/classroom/enrollments/{id}/lessons/{lessonId}/events
 
