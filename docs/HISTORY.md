@@ -2,6 +2,24 @@
 
 Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este archivo registra lo que se entregó.
 
+## 2026-11-08 — El aula Colofón: índice, notas al margen y modo foco ([#222](https://github.com/wasichai/elearning-frontend/issues/222))
+
+- **Frontend** (`elearning-frontend`, tarea 5 del rediseño Colofón, épica #217): el aula sigue `Classroom.dc.html`. La
+  lección abre con el shell estrecho (`shellChrome` de `@wasichai/core` en `/mis-cursos/:id?leccion=…`). A 1280 px o más,
+  tres columnas: el índice del curso como el de un libro (progreso segmentado y «Unidad n — x de y»), el texto en su medida
+  de 66ch y las notas al margen; por debajo, las notas pasan tras el texto en dos columnas y, bajo 1024, el índice se abre
+  en una hoja inferior. La cabecera corrida dice «Mis cursos · Unidad n · §n.m» con el folio «posición / total».
+- **Notas al margen**: el objetivo (el del laboratorio, el único que da el aula), los archivos con «Ver» y «Descargar», las
+  sesiones vinculadas a la lección (de `GET …/enrollments/{id}/sessions`, sin petición nueva) con el camino a las del curso,
+  y «En esta lección», el índice de la lectura con anclas.
+- **Herramientas**: A−/A+, modo lectura (sepia `colofon-lectura`) y modo foco, que pliega el índice y las notas y se guarda
+  con las demás preferencias de lectura. El cierre es un filete con «Marcar como completada», la única acción primaria, y
+  anterior y siguiente con su título.
+- **Seguridad**: «Ver» abre el PDF en `PdfDialog`, cuyo `iframe` es del origen de la aplicación: solo llega un archivo que
+  empieza por `%PDF-`, con tipo `application/pdf`; cualquier otro (un HTML con extensión `.pdf`) se rechaza antes.
+- **Se retiran** el progreso en nudos de Quipu (`Quipu.tsx`), el color maíz y la escala tipográfica de Quipu: los estados
+  pasan a `StateMark`, y la escala vieja, a la de Colofón. La barra de «Mis cursos» queda, sin nudos, hasta la tarea 6.
+
 ## 2026-11-08 — La lectura se pinta en la página, sin iframe ([#221](https://github.com/wasichai/elearning-frontend/issues/221))
 
 - **Frontend** (`elearning-frontend`, tarea R2 de la épica «lectura nativa», #385): la lección `HTML` deja el `iframe`
