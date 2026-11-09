@@ -33,6 +33,7 @@ import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
+import java.time.OffsetDateTime
 import java.time.ZoneId
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
@@ -77,8 +78,8 @@ class SessionService(
     // EnrollmentReadScope y el permiso de lectura de RecordService deciden, así que no hay un permiso aparte. por lotes: las
     // ediciones, sus sesiones, la asistencia, las versiones y los cursos en una lectura cada uno, no una por sesión
     suspend fun agendaForStudent(
-        from: Instant,
-        to: Instant,
+        fromText: String?,
+        toText: String?,
     ): List<AgendaSessionView> {
         // el permiso va antes que la validación: quien no puede leer matrículas recibe 403 aunque el intervalo sea inválido
         val user = currentUser.require()
@@ -90,6 +91,9 @@ class SessionService(
                 .loadDefinition(user.organizationId, ENROLLMENT)
                 .obj.id,
         )
+        // los dos son texto hasta aquí: la presencia y el formato se validan después del permiso, siempre con 400
+        val from = instant("from", fromText)
+        val to = instant("to", toText)
         if (!from.isBefore(to)) throw ValidationException("Invalid agenda", "to", "must be after from")
         if (Duration.between(from, to) > MAX_AGENDA) throw ValidationException("Invalid agenda", "to", "must be at most $MAX_AGENDA_DAYS days after from")
         val me = user.userId.toString()
@@ -143,6 +147,16 @@ class SessionService(
                 }
             }.sortedWith(compareBy({ it.start }, { it.id }))
     }
+
+    private fun instant(
+        field: String,
+        value: String?,
+    ): Instant =
+        try {
+            OffsetDateTime.parse(value ?: throw ValidationException("Invalid agenda", field, "required")).toInstant()
+        } catch (_: DateTimeParseException) {
+            throw ValidationException("Invalid agenda", field, "must be an ISO-8601 date and time, like 2026-11-10T00:00:00Z")
+        }
 
     suspend fun attendance(id: UUID): List<AttendanceRow> {
         val (session, offering) = assigned(id)
