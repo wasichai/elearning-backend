@@ -10,10 +10,6 @@ import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestController
-import wasichai.core.common.ValidationException
-import java.time.Instant
-import java.time.OffsetDateTime
-import java.time.format.DateTimeParseException
 import java.util.UUID
 
 // las sesiones en el aula y en el espacio docente (docs/api/lms.md)
@@ -32,7 +28,7 @@ class SessionController(
     suspend fun agenda(
         @RequestParam(required = false) from: String?,
         @RequestParam(required = false) to: String?,
-    ): List<AgendaSessionView> = sessions.agendaForStudent(instant("from", from), instant("to", to))
+    ): List<AgendaSessionView> = sessions.agendaForStudent(from, to)
 
     @GetMapping("/teaching/offerings/{code}/sessions")
     suspend fun forTeacher(
@@ -68,14 +64,4 @@ class SessionController(
         @PathVariable id: UUID,
         @RequestBody body: CancelRequest,
     ): SessionView = sessions.cancel(id, body)
-
-    private fun instant(
-        field: String,
-        value: String?,
-    ): Instant =
-        try {
-            OffsetDateTime.parse(value ?: throw ValidationException("Invalid agenda", field, "required")).toInstant()
-        } catch (_: DateTimeParseException) {
-            throw ValidationException("Invalid agenda", field, "must be an ISO-8601 date and time, like 2026-11-10T00:00:00Z")
-        }
 }

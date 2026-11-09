@@ -8,7 +8,9 @@ import org.springframework.http.HttpStatus
 import wasichai.core.data.RecordRequest
 import java.time.Instant
 import java.time.LocalDate
+import java.time.LocalTime
 import java.time.ZoneId
+import java.time.ZonedDateTime
 import java.util.UUID
 
 // las sesiones (ADR-0016 §5, RF-SES-01/02/04): las crea el docente de la edición, las leen él y sus matriculados
@@ -220,6 +222,59 @@ class SessionApiTest : ClassroomApiTestSupport() {
         for (path in invalid) assertEquals(HttpStatus.BAD_REQUEST, call(student, path).first, path)
         // 62 días justos sí
         assertEquals(HttpStatus.OK, call(student, agendaPath(from, from.plusSeconds(62 * 86_400L))).first)
+    }
+
+    @Test
+    fun `agenda keeps each session's own zone and applies the range to instants`() {
+        val lima = course()
+        val madrid = course(timeZone = "Europe/Madrid")
+        val student = newStudent()
+        enroll(student, lima)
+        enroll(student, madrid)
+        for (course in listOf(lima, madrid)) {
+            val teacher = newTeacher().also { assign(it, course) }
+            assertEquals(HttpStatus.CREATED, call(teacher, sessionsPath(course.offering), body()).first)
+        }
+        // las 08:00 de cada zona, calculadas con su regla (el horario de verano de Madrid no se fija a mano)
+        val day = today.plusDays(1)
+        val madridStart = ZonedDateTime.of(day, LocalTime.of(8, 0), ZoneId.of("Europe/Madrid")).toInstant()
+        val limaStart = ZonedDateTime.of(day, LocalTime.of(8, 0), ZoneId.of("America/Lima")).toInstant()
+        val agenda = ok(call(student, agendaPath(madridStart, limaStart.plusSeconds(1)))).toList()
+        assertEquals(
+            listOf(madrid.offering to "Europe/Madrid", lima.offering to "America/Lima"),
+            agenda.map {
+                it["offeringCode"].asString() to
+                    it["timeZone"].asString()
+            },
+        )
+        assertEquals(listOf(madridStart.toString(), limaStart.toString()), agenda.map { it["start"].asString() })
+        // [from, to): el fin excluye la de Lima; el inicio incluye la de Madrid y un segundo después ya no
+        assertEquals(listOf(madrid.offering), ok(call(student, agendaPath(madridStart, limaStart))).toList().map { it["offeringCode"].asString() })
+        assertEquals(
+            listOf(lima.offering),
+            ok(call(student, agendaPath(madridStart.plusSeconds(1), limaStart.plusSeconds(1)))).toList().map {
+                it["offeringCode"].asString()
+            },
+        )
+    }
+
+    @Test
+    fun `agenda answers forbidden before bad request to someone who cannot read enrollments`() {
+        val email = "${uniqueName("cre")}@demo.wasichai-learning.test"
+        client
+            .post()
+            .uri("/api/users")
+            .header("Authorization", admin)
+            .bodyValue(mapOf("email" to email, "displayName" to "Creadora", "password" to DEMO_PASSWORD, "roles" to listOf("CREADOR")))
+            .exchange()
+            .expectStatus()
+            .isCreated
+        val creator = bearer(email, DEMO_PASSWORD)
+        val from = tomorrow
+        assertEquals(HttpStatus.FORBIDDEN, call(creator, agendaPath(from, from.plusSeconds(86_400))).first)
+        for (path in listOf(agendaPath(null, null), agendaPath(from, from), agendaPath("ayer", from))) {
+            assertEquals(HttpStatus.FORBIDDEN, call(creator, path).first, path)
+        }
     }
 
     private fun finish(enrollment: String) =
