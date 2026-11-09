@@ -2,6 +2,16 @@
 
 Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este archivo registra lo que se entregó.
 
+## 2026-11-09 — Revisión final del rediseño Colofón ([#238](https://github.com/wasichai/elearning-frontend/issues/238))
+
+- **Frontend** (`elearning-frontend`, épica #217): el progreso segmentado tiene un segmento por cada lección del índice. Las
+  que el servidor no cuenta (`NOT_YET`) van con contorno discontinuo y quedan fuera de la cifra «x de y». La lección abierta
+  lleva siempre su anillo. El folio «1 / 15» se lee «Lección 1 de 15», y «Unidad n — x de y» dice cuántas no cuentan.
+- **Detalle de curso**: solo la edición recomendada queda fija al desplazar. «En esta página» va justo después y se ve
+  entero a 1440 × 900; las demás ediciones, al final, en su propia sección.
+- **Menores**: «iniciada» es el mismo medio círculo en la insignia y en la marca, y «hecho» va en tinta en las marcas y en
+  el progreso (`success` queda para las insignias semánticas). En «Completados» ya no se dice la fase de la edición.
+
 ## 2026-11-09 — Anclas para los encabezados de una lectura subida a mano ([#400](https://github.com/wasichai/elearning-backend/issues/400))
 
 - **Backend** (`GET …/resources/{id}/reading`): un encabezado `h2`–`h4` que no trae `id` lo saca de su texto, como hace
