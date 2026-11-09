@@ -8,7 +8,9 @@ import org.springframework.http.HttpStatus
 import wasichai.core.data.RecordRequest
 import java.time.Instant
 import java.time.LocalDate
+import java.time.LocalTime
 import java.time.ZoneId
+import java.time.ZonedDateTime
 import java.util.UUID
 
 // las sesiones (ADR-0016 §5, RF-SES-01/02/04): las crea el docente de la edición, las leen él y sus matriculados
@@ -233,9 +235,10 @@ class SessionApiTest : ClassroomApiTestSupport() {
             val teacher = newTeacher().also { assign(it, course) }
             assertEquals(HttpStatus.CREATED, call(teacher, sessionsPath(course.offering), body()).first)
         }
-        // las 08:00 de Madrid (CET, UTC+1) son las 07:00 Z; las 08:00 de Lima (UTC-5), las 13:00 Z
-        val madridStart = Instant.parse("${today.plusDays(1)}T07:00:00Z")
-        val limaStart = Instant.parse("${today.plusDays(1)}T13:00:00Z")
+        // las 08:00 de cada zona, calculadas con su regla (el horario de verano de Madrid no se fija a mano)
+        val day = today.plusDays(1)
+        val madridStart = ZonedDateTime.of(day, LocalTime.of(8, 0), ZoneId.of("Europe/Madrid")).toInstant()
+        val limaStart = ZonedDateTime.of(day, LocalTime.of(8, 0), ZoneId.of("America/Lima")).toInstant()
         val agenda = ok(call(student, agendaPath(madridStart, limaStart.plusSeconds(1)))).toList()
         assertEquals(
             listOf(madrid.offering to "Europe/Madrid", lima.offering to "America/Lima"),

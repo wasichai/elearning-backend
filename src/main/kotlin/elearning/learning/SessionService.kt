@@ -92,7 +92,7 @@ class SessionService(
         )
         if (!from.isBefore(to)) throw ValidationException("Invalid agenda", "to", "must be after from")
         if (Duration.between(from, to) > MAX_AGENDA) throw ValidationException("Invalid agenda", "to", "must be at most $MAX_AGENDA_DAYS days after from")
-        val me = currentUser.require().userId.toString()
+        val me = user.userId.toString()
         val enrollments = records.listAll(ENROLLMENT, mapOf(STUDENT to me)).filter { it.attributes[STATE]?.toString() != WITHDRAWN }
         if (enrollments.isEmpty()) return emptyList()
         val offerings = records.listByIds(OFFERING, enrollments.mapNotNull { it.attributes.ref(OFFERING_FIELD) }).associateBy { it.id }

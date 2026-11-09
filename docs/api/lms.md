@@ -569,8 +569,10 @@ semiabierto `[from, to)`, por `start` y luego `id`. Es una lista plana: los camp
 versión matriculada) y `offeringCode`. `from` y `to` son obligatorios y ISO-8601 con zona (`2026-11-10T00:00:00Z`); si
 falta uno, está mal formado, el intervalo es vacío o invertido, o pasa de 62 días, es `400` con el problema en el campo.
 Sin permiso de lectura de matrículas, `403`, y se comprueba antes de validar `from` y `to`: quien no puede leer recibe `403`
-aunque el intervalo sea inválido. El intervalo se aplica sobre instantes y en la lectura de las sesiones, no en memoria. Como `…/enrollments/{id}/sessions`, no hay un permiso propio: lee como la
-persona, y solo sus matrículas. Un desplazamiento `+hh:mm` va en la query como `%2B`.
+aunque el intervalo sea inválido.
+El intervalo se aplica en la consulta, sobre instantes.
+Como `…/enrollments/{id}/sessions`, no hay un permiso propio: lee como la persona, y solo sus matrículas. Un
+desplazamiento `+hh:mm` va en la query como `%2B`.
 
 ### Panel del estudiante
 
