@@ -2,6 +2,19 @@
 
 Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este archivo registra lo que se entregó.
 
+## 2026-11-09 — El catálogo Colofón, en lista ([#224](https://github.com/wasichai/elearning-frontend/issues/224))
+
+- **Frontend** (`elearning-frontend`, tarea 7 del rediseño Colofón, épica #217): `/cursos` sigue `Catalog.dc.html`. Las
+  tarjetas en cuadrícula pasan a una lista de filas (`ul`/`li`) con filetes: la colección en meta, el título en Newsreader
+  como único enlace de la fila (dos líneas como máximo y el título completo en `title`), el resumen en dos líneas, los datos
+  de nivel, modalidad y semanas · horas, y a la derecha la próxima edición con su insignia de inscripción (abierta, completa,
+  aún no abierta o cerrada) con icono y palabra a 14 px. Sin fotos, precios ni valoraciones.
+- **Encabezado y filtros**: filete fuerte y meta sobre el título, y la búsqueda con las categorías (índice de colecciones con
+  su recuento) en una sola barra; «Más filtros» sigue en el desplegable o la hoja inferior. Los filtros no cambian de
+  comportamiento ni de parámetros.
+- **«Contenido ilustrativo»** sale una sola vez, en el encabezado, cuando lo son todos los cursos de la página; si la página
+  es mixta, cada fila ilustrativa lleva su marca junto a la colección.
+
 ## 2026-11-09 — El panel del estudiante Colofón ([#223](https://github.com/wasichai/elearning-frontend/issues/223))
 
 - **Frontend** (`elearning-frontend`, tarea 6 del rediseño Colofón, épica #217): «Mis cursos» sigue `Dashboard.dc.html`.
