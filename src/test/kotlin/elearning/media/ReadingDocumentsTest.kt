@@ -54,7 +54,7 @@ class ReadingDocumentsTest {
                 Heading(3, "_sub", listOf(Text("Sub"))),
                 Heading(4, "_subsub", listOf(Text("Subsub"))),
                 Heading(4, "_cinco", listOf(Text("Cinco"))),
-                Heading(4, null, listOf(Text("Seis"))),
+                Heading(4, "_seis", listOf(Text("Seis"))),
             )
     }
 
@@ -210,6 +210,14 @@ class ReadingDocumentsTest {
         val document = read("<h2 id=\"_año\">a</h2><h2 id=\"_ao\">b</h2><h2 id=\"\\&quot;&gt;&lt;x\">c</h2><h2 id=\"_ao\">d</h2>")
 
         assertThat(document.blocks.map { (it as Heading).id }).containsExactly("_ao", "_ao-2", "x", "_ao-3")
+    }
+
+    @Test
+    fun `heading without id gets a stable unique id`() {
+        // el HTML subido a mano no trae id: sin ellos la interfaz no puede armar el índice
+        val document = read("<h2>x</h2><h2>X</h2><h3>Acción y   Año: ¿qué?</h3><h2 id=\"_x-3\">y</h2><h4>¿¡—!?</h4><h2>x</h2>")
+
+        assertThat(document.blocks.map { (it as Heading).id }).containsExactly("_x", "_x-2", "_accion-y-ano-que", "_x-3", null, "_x-4")
     }
 
     @Test

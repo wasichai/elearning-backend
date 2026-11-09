@@ -5,13 +5,15 @@ import org.jsoup.nodes.Element
 import org.jsoup.nodes.Node
 import org.jsoup.nodes.TextNode
 import java.net.URI
+import java.text.Normalizer
 
 // el HTML de una lectura como documento de bloques (ADR-0045). el texto del documento es dato no confiable (regla 6): pasa
 // antes por GeneratedHtml, aunque ya se saneó al guardarse, y de lo que queda solo sale el vocabulario cerrado de
 // ReadingDocument. nada se copia tal cual salvo el texto: ni etiquetas, ni clases, ni estilos, ni atributos del autor.
 // - lo que no es del vocabulario desaparece y su texto queda como párrafo; script, estilos, marcos, objetos, SVG y
 //   formularios desaparecen con su texto
-// - el h1 es el título; h5 y h6 se aplanan a 4; los id, saneados a [A-Za-z0-9_-] y únicos
+// - el h1 es el título; h5 y h6 se aplanan a 4; los id, saneados a [A-Za-z0-9_-] y únicos. un encabezado sin id (el HTML
+//   subido a mano) lo saca de su texto, como Asciidoctor: _ y el texto en minúsculas, sin acentos, con - entre palabras
 // - enlaces solo http, https, mailto y #ancla; cualquier otro, texto
 // - imágenes solo data:image/(png|jpeg|gif|webp) en base64; cualquier otra, su alt como párrafo
 // - el índice (#toc) y el pie (#footer) de Asciidoctor son envoltorio: la interfaz arma su índice con los encabezados
@@ -98,7 +100,8 @@ object ReadingDocuments {
         ): List<Block> {
             val content = trimmed(inlines(element, 0))
             if (!meaningful(content)) return emptyList()
-            return listOf(Heading(level, cleanId(element.id())?.let(::unique), content))
+            val id = cleanId(element.id()) ?: slug(element.text())
+            return listOf(Heading(level, id?.let(::unique), content))
         }
 
         // cada hijo es un elemento: los li, y lo que el analizador haya dejado suelto, para no perder su texto
@@ -320,6 +323,16 @@ object ReadingDocuments {
         }
     }
 
+    // estable: el mismo texto da el mismo id, así un enlace a #_<slug> sobrevive a otra subida del archivo
+    private fun slug(text: String): String? =
+        NON_SLUG
+            .replace(MARKS.replace(Normalizer.normalize(text.lowercase(), Normalizer.Form.NFD), ""), "-")
+            .trim('-')
+            .take(MAX_ID - 1)
+            .trimEnd('-')
+            .ifEmpty { null }
+            ?.let { "_$it" }
+
     private fun cleanId(value: String): String? =
         value
             .filter {
@@ -332,6 +345,8 @@ object ReadingDocuments {
 
     // el colspan máximo de HTML
     private const val MAX_SPAN = 1000
+    private val MARKS = Regex("\\p{M}+")
+    private val NON_SLUG = Regex("[^a-z0-9]+")
     private val WHITESPACE = Regex("[ \\t\\n\\r\\u000C]+")
     private val DATA_IMAGE = Regex("data:image/(png|jpeg|gif|webp);base64,[A-Za-z0-9+/]+={0,2}")
     private const val LANGUAGE_CLASS = "language-"

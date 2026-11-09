@@ -2,6 +2,13 @@
 
 Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este archivo registra lo que se entregó.
 
+## 2026-11-09 — Anclas para los encabezados de una lectura subida a mano ([#400](https://github.com/wasichai/elearning-backend/issues/400))
+
+- **Backend** (`GET …/resources/{id}/reading`): un encabezado `h2`–`h4` que no trae `id` lo saca de su texto, como hace
+  Asciidoctor: `_`, minúsculas, sin acentos y `-` entre palabras, único en el documento. Así el HTML subido a mano (por
+  ejemplo, `lectura-entrar-y-salir.html` de la demo) también tiene su índice «En esta lección» en el aula. Si del texto no
+  queda nada, el `id` sigue siendo `null`.
+
 ## 2026-11-09 — Cierre del rediseño Colofón ([#227](https://github.com/wasichai/elearning-frontend/issues/227))
 
 - **Frontend** (`elearning-frontend`, tarea 10 del rediseño Colofón, épica #217): las pantallas que faltaban pasan al

@@ -28,7 +28,7 @@ class ReadingApiTest : ClassroomApiTestSupport() {
 
         assertEquals("Portal del estudiante", document["title"].asString())
         val blocks = document["blocks"].values().toList()
-        assertEquals(listOf("heading", "paragraph", "admonition", "heading"), blocks.map { it["type"].asString() })
+        assertEquals(listOf("heading", "paragraph", "admonition", "heading", "heading"), blocks.map { it["type"].asString() })
         assertEquals("_entrar_y_salir_del_portal", blocks[0]["id"].asString())
         assertEquals(2, blocks[0]["level"].asInt())
         val inlines = blocks[1]["content"].values().toList()
@@ -37,8 +37,9 @@ class ReadingApiTest : ClassroomApiTestSupport() {
         assertEquals(". mal enlace", inlines[4]["text"].asString())
         assertEquals("https://example.org", inlines[3]["href"].asString())
         assertEquals("note", blocks[2]["kind"].asString())
-        // la API de registros y la del aula escriben los nulos: un encabezado sin ancla lleva "id": null
-        assertTrue(blocks[3].has("id") && blocks[3]["id"].isNull, blocks[3].toString())
+        // un encabezado sin id lo saca de su texto; si el texto no da ninguno, la API escribe el nulo: "id": null
+        assertEquals("_sin-ancla", blocks[3]["id"].asString())
+        assertTrue(blocks[4].has("id") && blocks[4]["id"].isNull, blocks[4].toString())
         val raw = document.toString()
         listOf("script", "evil", "javascript", "class", "onclick").forEach { assertFalse(raw.contains(it, ignoreCase = true), "$it en $raw") }
         assertEquals(HttpStatus.NOT_FOUND, call(student, reading(enrollment, UUID.randomUUID().toString())).first)
@@ -137,6 +138,7 @@ class ReadingApiTest : ClassroomApiTestSupport() {
             <div class="admonitionblock note" onclick="alert(2)"><table><tr><td class="icon"><div class="title">Note</div></td>
             <td class="content">Una nota.</td></tr></table></div>
             <h3>Sin ancla</h3>
+            <h4>¿?</h4>
             </div></div></div>
             </body></html>
             """.trimIndent()
