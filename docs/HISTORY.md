@@ -18,8 +18,14 @@ Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este
   `networkidle` en lugar de un `waitForTimeout(1000)`.
 - **Sin cambio de comportamiento**: se documentan el enlace `#recurso` de las notas (fragmento nativo) y el título recortado
   del catálogo (`title` no sirve en táctil; el título entero está en el DOM y el resumen describe el enlace).
-- **Pendiente en #239**: agrupar el catálogo por colección y pasar «Otros cursos» a `SegmentedProgress`; ambos necesitan una
-  decisión de producto.
+- **Catálogo por colección**: las filas consecutivas de una misma colección van bajo su encabezado, con su recuento, dentro de
+  la página de resultados. El orden y la paginación del servidor no cambian: una colección que reaparece repite su encabezado.
+  Con una categoría elegida no hay encabezados y la fila conserva su meta.
+- **«Otros cursos»**: el progreso va por lección (`SegmentedProgress sm`) con el aula de cada curso en curso, que comparte caché con
+  el aula. Solo los seis primeros piden su aula, para no lanzar decenas de lecturas; el resto, y cualquier fallo o carga, queda con
+  la barra continua.
+- **Queda como estaba**: los `waitForTimeout` de los escenarios visuales esperan transiciones y asentamiento de capas sin señal
+  observable; cambiarlos arriesga los baselines. El de `home.spec` sí pasa a `networkidle`.
 
 ## 2026-11-09 — Seguimientos de la agenda del estudiante ([#401](https://github.com/wasichai/elearning-backend/issues/401))
 
