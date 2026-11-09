@@ -2,6 +2,20 @@
 
 Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este archivo registra lo que se entregó.
 
+## 2026-11-09 — El detalle de curso Colofón ([#225](https://github.com/wasichai/elearning-frontend/issues/225))
+
+- **Frontend** (`elearning-frontend`, tarea 8 del rediseño Colofón, épica #217): `/cursos/:slug` sigue `CourseDetail.dc.html`.
+  Portadilla con la colección sobre el filete de tinta, el título en Newsreader display, el resumen y una línea de datos
+  (semanas · horas, créditos, modalidad, nivel e idioma; solo los que da la API).
+- **Contenido en secciones «§» numeradas** sin huecos (Qué aprenderás, Temario, Antes de empezar, Evaluación y certificación,
+  Docentes, Carga de trabajo y créditos, Fuentes, Datos del curso); una sección sin datos no se pinta ni gasta número.
+- **El temario, como índice de libro**: unidades plegables con su número y horas estimadas, y lecciones «n.m» con tipo y
+  minutos. **La carga de trabajo**, tabla compacta con cifras tabulares: un componente sin horas no tiene fila.
+- **Columna fija** en escritorio: la edición recomendada (la de la matrícula, si no la primera abierta) con su acción, las
+  demás ediciones debajo y el índice «En esta página» con anclas. La columna empieza junto a la portadilla para que la acción
+  se vea al abrir la ficha. En una columna, la acción sigue en el pie fijo. Matricularse, iniciar sesión, ir al aula,
+  edición completa o cerrada, el 409 y los términos no cambian.
+
 ## 2026-11-09 — El catálogo Colofón, en lista ([#224](https://github.com/wasichai/elearning-frontend/issues/224))
 
 - **Frontend** (`elearning-frontend`, tarea 7 del rediseño Colofón, épica #217): `/cursos` sigue `Catalog.dc.html`. Las
