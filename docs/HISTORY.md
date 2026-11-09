@@ -2,6 +2,22 @@
 
 Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este archivo registra lo que se entregó.
 
+## 2026-11-09 — Cierre del rediseño Colofón ([#227](https://github.com/wasichai/elearning-frontend/issues/227))
+
+- **Frontend** (`elearning-frontend`, tarea 10 del rediseño Colofón, épica #217): las pantallas que faltaban pasan al
+  lenguaje Colofón. Son docencia (matriculados, cola de corrección, corrección de un intento, sesiones y asistencia), estudio,
+  revisión, términos y su publicación, certificado, finalización y evaluación. Usan la escala de Colofón, títulos en
+  Newsreader y filetes en lugar de cajas. Ningún comportamiento ni contrato cambia.
+- **Las cifras de cabecera** (matriculados, panel docente, términos, cambios de una versión, importación) tienen la misma
+  forma: filete, etiqueta en versalitas, cifra en tinta y nota. Van en columnas iguales que alinean sus filas. La de
+  «Evaluaciones por corregir» ya no cambia de color: su nota dice que están en la cola de corrección.
+- **Tablas**: el encabezado de una fila (un estudiante, un componente de la carga) se lee como texto, sin versalitas.
+- **Menores de tareas anteriores**: la barra del aula crece con el zoom de texto y mide su altura para el índice y la cabecera
+  de un intento. En el detalle de curso, el aviso de un 409 en el pie móvil ocupa toda la fila, y sin horas no se pinta la
+  tabla de carga. Un tipo de recurso fuera del vocabulario se nombra «Archivo».
+- **QA**: no queda ningún color fijo ni tamaño arbitrario en los `.tsx` de la aplicación. Se regeneraron las capturas de
+  referencia, en claro y en oscuro, y se corrigieron siete escenarios visuales con selectores antiguos.
+
 ## 2026-11-09 — El horario del estudiante ([#226](https://github.com/wasichai/elearning-frontend/issues/226))
 
 - **Frontend** (`elearning-frontend`, tarea 9 del rediseño Colofón, épica #217): pantalla nueva «Horario» (`/horario`),
