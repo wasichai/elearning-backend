@@ -2,6 +2,22 @@
 
 Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este archivo registra lo que se entregó.
 
+## 2026-11-09 — El horario del estudiante ([#226](https://github.com/wasichai/elearning-frontend/issues/226))
+
+- **Frontend** (`elearning-frontend`, tarea 9 del rediseño Colofón, épica #217): pantalla nueva «Horario» (`/horario`),
+  según `Schedule.dc.html`. Es la semana del estudiante, de lunes a domingo, con las sesiones de todas sus matrículas no
+  retiradas. Las lee de `GET /api/lms/classroom/sessions` con la semana visible más un día de margen a cada lado.
+- **Cada sesión, en el día y la hora de su edición**, con la nota de zona. Lleva título, curso, tipo, modalidad, lugar o
+  «Entrar a la sesión», y su insignia: programada, reprogramada o cancelada. La cancelada va tachada.
+- **La semana va en la URL** (`?semana=<lunes>`): se comparte, y atrás y adelante la recorren. Se navega con anterior,
+  siguiente y «Hoy».
+- **Dos vistas**: la rejilla por horas, con el detalle debajo, o la lista por días. A 390 px solo hay lista, y la elección se
+  guarda en el navegador. Una semana sin sesiones muestra un estado vacío.
+- **Al lado, «Por hacer»**, con las evaluaciones pendientes. Como no tienen fecha, salen todas y no solo las de la semana; la
+  pantalla lo dice.
+- La pestaña Sesiones de cada curso usa la misma fila de sesión. El menú «Aprendizaje» gana «Horario», solo para quien puede
+  aprender. «Esta semana», en el panel, y las notas al margen de la lección enlazan al horario.
+
 ## 2026-11-09 — El detalle de curso Colofón ([#225](https://github.com/wasichai/elearning-frontend/issues/225))
 
 - **Frontend** (`elearning-frontend`, tarea 8 del rediseño Colofón, épica #217): `/cursos/:slug` sigue `CourseDetail.dc.html`.
