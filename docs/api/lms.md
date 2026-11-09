@@ -401,6 +401,9 @@ sus componentes: el texto es siempre texto, nunca HTML.
   (o nada, si está vacío). El índice y el pie de Asciidoctor no llegan: el índice se arma con los `heading`.
 - Una figura nunca lleva una URL: abrir la lectura no hace peticiones a otro sitio. Un `#<id>` puede apuntar a un
   encabezado; la interfaz puede prefijar los `id` al pintarlos.
+- Un encabezado sin `id` (el HTML subido a mano) lo saca de su texto, como Asciidoctor: `_` y el texto en minúsculas, sin
+  acentos, con `-` en lugar de lo que no es `[a-z0-9]` («Acción y año» da `_accion-y-ano`). Es estable: el mismo texto da
+  el mismo `id`. Si se repite, lleva `-2`, `-3`…; si del texto no queda nada (`¿?`), el `id` es `null`.
 - `404` si la matrícula no es propia o está retirada, si la versión de recurso no es una publicada que enlace una lección
   de su temario, si el recurso no es de tipo `HTML`, si no tiene archivo o si el archivo supera el tope de su campo
   (25 MB). `401` sin sesión.
