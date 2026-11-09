@@ -222,6 +222,58 @@ class SessionApiTest : ClassroomApiTestSupport() {
         assertEquals(HttpStatus.OK, call(student, agendaPath(from, from.plusSeconds(62 * 86_400L))).first)
     }
 
+    @Test
+    fun `agenda keeps each session's own zone and applies the range to instants`() {
+        val lima = course()
+        val madrid = course(timeZone = "Europe/Madrid")
+        val student = newStudent()
+        enroll(student, lima)
+        enroll(student, madrid)
+        for (course in listOf(lima, madrid)) {
+            val teacher = newTeacher().also { assign(it, course) }
+            assertEquals(HttpStatus.CREATED, call(teacher, sessionsPath(course.offering), body()).first)
+        }
+        // las 08:00 de Madrid (CET, UTC+1) son las 07:00 Z; las 08:00 de Lima (UTC-5), las 13:00 Z
+        val madridStart = Instant.parse("${today.plusDays(1)}T07:00:00Z")
+        val limaStart = Instant.parse("${today.plusDays(1)}T13:00:00Z")
+        val agenda = ok(call(student, agendaPath(madridStart, limaStart.plusSeconds(1)))).toList()
+        assertEquals(
+            listOf(madrid.offering to "Europe/Madrid", lima.offering to "America/Lima"),
+            agenda.map {
+                it["offeringCode"].asString() to
+                    it["timeZone"].asString()
+            },
+        )
+        assertEquals(listOf(madridStart.toString(), limaStart.toString()), agenda.map { it["start"].asString() })
+        // [from, to): el fin excluye la de Lima; el inicio incluye la de Madrid y un segundo después ya no
+        assertEquals(listOf(madrid.offering), ok(call(student, agendaPath(madridStart, limaStart))).toList().map { it["offeringCode"].asString() })
+        assertEquals(
+            listOf(lima.offering),
+            ok(call(student, agendaPath(madridStart.plusSeconds(1), limaStart.plusSeconds(1)))).toList().map {
+                it["offeringCode"].asString()
+            },
+        )
+    }
+
+    @Test
+    fun `agenda answers forbidden before bad request to someone who cannot read enrollments`() {
+        val email = "${uniqueName("cre")}@demo.wasichai-learning.test"
+        client
+            .post()
+            .uri("/api/users")
+            .header("Authorization", admin)
+            .bodyValue(mapOf("email" to email, "displayName" to "Creadora", "password" to DEMO_PASSWORD, "roles" to listOf("CREADOR")))
+            .exchange()
+            .expectStatus()
+            .isCreated
+        val creator = bearer(email, DEMO_PASSWORD)
+        val from = tomorrow
+        assertEquals(HttpStatus.FORBIDDEN, call(creator, agendaPath(from, from.plusSeconds(86_400))).first)
+        for (path in listOf(agendaPath(null, null), agendaPath(from, from), agendaPath("ayer", from))) {
+            assertEquals(HttpStatus.FORBIDDEN, call(creator, path).first, path)
+        }
+    }
+
     private fun finish(enrollment: String) =
         runBlocking {
             records.asPlatform(ORG) {

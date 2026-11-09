@@ -59,6 +59,8 @@ abstract class ClassroomApiTestSupport : LmsApiTest() {
         assessmentLessonType: String = "EVALUACION",
         completionRules: Map<String, Any?> = emptyMap(),
         lab: Boolean = false,
+        // la zona horaria de la edición
+        timeZone: String = "America/Lima",
         // la cuenta autora de la versión del recurso de la lectura; sin ella, el administrador
         resourceAuthor: String? = null,
         // el archivo HTML del recurso de la lectura
@@ -125,7 +127,7 @@ abstract class ClassroomApiTestSupport : LmsApiTest() {
                             "estado" to "INSCRIPCION_ABIERTA",
                             "fecha_inicio" to today.plusDays(startsIn).toString(),
                             "fecha_fin" to today.plusDays(startsIn + 30).toString(),
-                            "zona_horaria" to "America/Lima",
+                            "zona_horaria" to timeZone,
                             "inscripcion_desde" to today.minusDays(1).toString(),
                             "inscripcion_hasta" to today.plusDays(5).toString(),
                         ),

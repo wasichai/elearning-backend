@@ -2,6 +2,14 @@
 
 Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este archivo registra lo que se entregó.
 
+## 2026-11-09 — Seguimientos de la agenda del estudiante ([#401](https://github.com/wasichai/elearning-backend/issues/401))
+
+- **Backend** (`GET /api/lms/classroom/sessions`): el intervalo `[from, to)` se aplica en la consulta de las sesiones (un
+  criterio sobre `inicio` junto al filtro por ediciones), ya no en memoria. El permiso de lectura de matrículas se
+  comprueba antes que el intervalo: sin él, `403` aunque `from` y `to` sean inválidos (antes, `400`).
+- **Pruebas**: una edición en Europe/Madrid junto a una de Lima comprueba el `timeZone` de cada sesión y que el
+  intervalo corta por instantes; y un `CREADOR` con intervalo inválido recibe `403`.
+
 ## 2026-11-09 — Revisión final del rediseño Colofón ([#238](https://github.com/wasichai/elearning-frontend/issues/238))
 
 - **Frontend** (`elearning-frontend`, épica #217): el progreso segmentado tiene un segmento por cada lección del índice. Las

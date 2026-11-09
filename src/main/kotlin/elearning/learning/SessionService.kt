@@ -6,12 +6,15 @@ import elearning.common.listAll
 import elearning.common.listAllIn
 import elearning.common.listByIds
 import elearning.common.ref
+import elearning.common.startingIn
 import elearning.course.meeting.MeetingProvider
 import kotlinx.coroutines.reactor.awaitSingleOrNull
+import org.springframework.beans.factory.ObjectProvider
 import org.springframework.r2dbc.core.DatabaseClient
 import org.springframework.stereotype.Service
 import org.springframework.transaction.reactive.TransactionalOperator
 import org.springframework.transaction.reactive.executeAndAwait
+import wasichai.core.common.Actions
 import wasichai.core.common.ConflictException
 import wasichai.core.common.ForbiddenException
 import wasichai.core.common.NotFoundException
@@ -20,6 +23,7 @@ import wasichai.core.data.RecordRequest
 import wasichai.core.data.RecordResponse
 import wasichai.core.data.RecordService
 import wasichai.core.identity.CurrentUser
+import wasichai.core.metadata.MetadataService
 import wasichai.notifications.Audience
 import wasichai.notifications.NotificationDraft
 import wasichai.notifications.NotificationKind
@@ -48,6 +52,7 @@ class SessionService(
     private val notifications: Notifications,
     private val db: DatabaseClient,
     private val names: DisplayNames,
+    private val metadata: ObjectProvider<MetadataService>,
 ) {
     suspend fun forTeacher(code: String): List<SessionView> {
         val offering = teaching.assignedOffering(code)
@@ -75,13 +80,30 @@ class SessionService(
         from: Instant,
         to: Instant,
     ): List<AgendaSessionView> {
+        // el permiso va antes que la validación: quien no puede leer matrículas recibe 403 aunque el intervalo sea inválido
+        val user = currentUser.require()
+        currentUser.requirePermission(
+            user,
+            Actions.READ,
+            metadata
+                .getObject()
+                .loadDefinition(user.organizationId, ENROLLMENT)
+                .obj.id,
+        )
         if (!from.isBefore(to)) throw ValidationException("Invalid agenda", "to", "must be after from")
         if (Duration.between(from, to) > MAX_AGENDA) throw ValidationException("Invalid agenda", "to", "must be at most $MAX_AGENDA_DAYS days after from")
         val me = currentUser.require().userId.toString()
         val enrollments = records.listAll(ENROLLMENT, mapOf(STUDENT to me)).filter { it.attributes[STATE]?.toString() != WITHDRAWN }
         if (enrollments.isEmpty()) return emptyList()
         val offerings = records.listByIds(OFFERING, enrollments.mapNotNull { it.attributes.ref(OFFERING_FIELD) }).associateBy { it.id }
-        val sessions = records.listAllIn(SESSION, OFFERING_FIELD, offerings.keys).groupBy { it.attributes.ref(OFFERING_FIELD) }
+        val sessions =
+            records
+                .listAllIn(
+                    SESSION,
+                    OFFERING_FIELD,
+                    offerings.keys,
+                    listOf(startingIn("inicio", from, to)),
+                ).groupBy { it.attributes.ref(OFFERING_FIELD) }
         val attended =
             records.listAllIn(ATTENDANCE, ENROLLMENT, enrollments.map { it.id }).associate {
                 (it.attributes.ref(ENROLLMENT) to it.attributes.ref(SESSION)) to it.attributes[STATE]?.toString()
@@ -98,9 +120,7 @@ class SessionService(
                         ?.get("titulo")
                         ?.toString()
                         .orEmpty()
-                sessions[offering.id].orEmpty().mapNotNull { session ->
-                    val start = instantOf(session.attributes["inicio"])!!
-                    if (start < from || start >= to) return@mapNotNull null
+                sessions[offering.id].orEmpty().map { session ->
                     val v = view(session, zone, attended[enrollment.id to session.id])
                     AgendaSessionView(
                         v.id,

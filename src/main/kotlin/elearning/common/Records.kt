@@ -8,6 +8,7 @@ import wasichai.core.data.RecordService
 import wasichai.core.platform.SqlIdentifier
 import java.time.Instant
 import java.time.OffsetDateTime
+import java.time.ZoneOffset
 import java.util.UUID
 
 // todos los registros que la persona puede leer con esos filtros exactos, página a página por cursor (keyset)
@@ -33,9 +34,27 @@ suspend fun RecordService.listAllIn(
     objectName: String,
     field: String,
     parents: Collection<String>,
+    // más criterios que se suman al de los padres, por ejemplo un rango de fechas
+    also: List<RecordCriterion> = emptyList(),
 ): List<RecordResponse> {
     if (parents.isEmpty()) return emptyList()
-    return listAll(objectName, criteria = listOf(inParents(field, parents)))
+    return listAll(objectName, criteria = listOf(inParents(field, parents)) + also)
+}
+
+// los registros cuyo DATETIME [field] cae en [from, to). sin el campo, nada (falla cerrada)
+fun startingIn(
+    field: String,
+    from: Instant,
+    to: Instant,
+): RecordCriterion {
+    val lower = from.atOffset(ZoneOffset.UTC)
+    val upper = to.atOffset(ZoneOffset.UTC)
+    return RecordCriterion { definition, bind ->
+        definition.fields
+            .firstOrNull { it.name == field }
+            ?.let { SqlIdentifier.quote(it.columnName) }
+            ?.let { "($it >= ${bind(lower)} AND $it < ${bind(upper)})" } ?: "false"
+    }
 }
 
 // si quien llama puede leer algún registro cuya relación [field] apunta a alguno de [parents]: lee una fila, no todas
