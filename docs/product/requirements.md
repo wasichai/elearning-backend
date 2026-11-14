@@ -454,7 +454,8 @@ el cuándo, en [`roadmap.md`](roadmap.md).
 ### RF-ADM — Administración, auditoría e informes (§13, §14, §15)
 
 - **RF-ADM-01** · F1 · implementado ([#48](https://github.com/wasichai/elearning-backend/pull/48), [#13 web](https://github.com/wasichai/elearning-frontend/pull/13)) — El nombre del producto es configurable (`lms.product-name`, `VITE_APP_NAME`) y
-  no aparece en el dominio.
+  no aparece en el dominio. El logo también, en el frontend (`VITE_APP_LOGO`,
+  [#244 web](https://github.com/wasichai/elearning-frontend/issues/244)).
   _Aceptación:_ prueba de arquitectura sin el literal del nombre en el código de dominio.
 - **RF-ADM-02** · F3 · implementado ([#149](https://github.com/wasichai/elearning-backend/pull/149)) — Usuarios, roles y categorías se administran con las pantallas de Wasichai.
   _Aceptación:_ recorrido manual documentado; no existen pantallas LMS paralelas para ello.
