@@ -16,7 +16,7 @@ ejecutando las pruebas y los recorridos indicados, en local y en CI, y el result
 | F1   | Esqueleto ejecutable y primer incremento: catálogo público con carga y créditos propuestos | completada (2026-10-28): épicas E2–E10, 42 requisitos implementados          |
 | F2   | LMS básico: aula, matrícula, unidades, lecciones, recursos y progreso                      | criterio cumplido (2026-10-28): épicas E12–E16; pendientes a F3/F4/F6 (#103) |
 | F3   | Evaluaciones y operación docente                                                           | cumplida (2026-10-31): épicas E18–E23; sin pendientes (#183, #231)           |
-| F4   | Estudio editorial e importador AsciiDoc                                                    | integrada (2026-10-31): épicas E24–E28; criterio pendiente (#179)            |
+| F4   | Estudio editorial e importador AsciiDoc                                                    | criterio cumplido (2026-11-08): épicas E24–E29 (#179)                        |
 | F5   | IA y multimedia                                                                            | en curso: épicas E32–E38 (ADR-0033); criterio pendiente (#300)               |
 | F6   | Calidad, reputación y despliegue                                                           | planificada                                                                  |
 
@@ -222,10 +222,11 @@ cálculo de diferencias entre versiones, `studioModule` y `reviewModule`.
 cambios, aprobar, publicar, visible al estudiante); importación de un capítulo de SRTM y uno de SGSPE con informe
 y trazas `repositorio@sha:ruta#ancla`; publicar v2 no altera v1 ni el progreso sobre v1.
 
-**Estado (2026-11-03).** Recorridos 8–12 contra el backend real cumplidos
+**Estado (2026-11-08).** Criterio cumplido. Recorridos 8–12 contra el backend real
 ([front#75](https://github.com/wasichai/elearning-frontend/pull/75)) y revisión de seguridad cerrada
 ([#180](https://github.com/wasichai/elearning-backend/issues/180)). Publicar v2 sin alterar v1 ni su progreso lo prueba
-`NewVersionApiTest`. Falta la importación real de un capítulo de SRTM y uno de SGSPE con su informe y sus trazas
+`NewVersionApiTest`. La importación real de un capítulo de SRTM y del manual de usuario de SGSPE, con su informe y sus
+trazas, está en [docs/testing/importacion-srtm-sgspe.md](../testing/importacion-srtm-sgspe.md)
 ([#179](https://github.com/wasichai/elearning-backend/issues/179)).
 
 **Riesgos.** Que `wasichai-workflow` exprese la revisión independiente está a verificar. Ejecutar Asciidoctor es un
