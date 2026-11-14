@@ -2,6 +2,145 @@
 
 Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este archivo registra lo que se entregó.
 
+## 2026-11-14 — Portada pública en `/` (épica [#406](https://github.com/wasichai/elearning-backend/issues/406))
+
+- **Wasichai** (`wasichai-ui` 1.9.0): `publicHome` en `@wasichai/core`. Sin sesión, `/` muestra un componente de la app
+  fuera del shell; el resto de rutas sigue pidiendo login, y con sesión `/` lleva a `homeRoute`.
+- **Frontend** (`elearning-frontend`): `catalog/LandingPage.tsx` muestra el curso destacado o el producto, la búsqueda,
+  las cifras públicas (cursos y áreas), las áreas, una fila por área con más cursos, «cómo se aprende aquí» y el pie.
+  Es Colofón, sin las cifras ni el registro del diseño de referencia.
+- **Backend** ([#405](https://github.com/wasichai/elearning-backend/issues/405)):
+  - Custom Object `curso_destacado` (curso y orden), sin permisos para ningún rol del LMS: solo ADMIN destaca
+    ([ADR-0046](adr/0046-curso-destacado-en-la-portada.md)).
+  - La proyección copia la marca a `lms.catalogo_publicado.destacado_orden` (`V32`), solo para cursos publicados.
+  - `GET /api/lms/public/catalog/courses` gana el filtro `featured=true|false`, y el resumen y la ficha el campo
+    `featured`. Con `featured=true`, el orden es el de la marca. La cadena de seguridad no cambia.
+  - Pruebas: `CatalogFeaturedApiTest` (orden y solo publicados; ningún rol del LMS ni un anónimo destaca, y no cambia
+    nada; `featured` inválido es 400), más casos nuevos en `CatalogBuilderTest` y `test_model.py`.
+
+## 2026-11-09 — Seguimientos menores del rediseño Colofón ([#239](https://github.com/wasichai/elearning-frontend/issues/239))
+
+- **Frontend** (`elearning-frontend`): el progreso segmentado agrupa por unidad en cursos de más de 60 lecciones, con el relleno
+  proporcional a lo completado; el texto y el `aria-label` no cambian. La marca `ColofonMark` dibuja su «c» como trazado y ya
+  no depende de Newsreader. En la lectura nativa, una celda que el esquema descarta queda vacía en lugar de desplazar las
+  columnas.
+- **Aula**: la barra de herramientas sigue el patrón ARIA toolbar: un solo tabstop y flechas, Inicio y Fin entre botones.
+  `RunningHead` toma sus textos de un espacio compartido (`runningHeadMessages`). `useElementHeight` vuelve a observar si
+  cambia el nodo. «Mis cursos» no pide la agenda si no hay matrículas.
+- **Horario**: una sesión que cruza la medianoche continúa en el día siguiente, marcada como continuación. Con ediciones en
+  varias zonas, el eje rotula la suya y cada bloque de otra zona indica la suya. El horario y las sesiones refrescan la hora
+  cada minuto y al volver a la pestaña (`useNow`).
+- **Pruebas**: el test de `opsz` lee el eje real de los woff2 (tabla `fvar`, con `node:zlib`). El e2e de la lectura espera a
+  `networkidle` en lugar de un `waitForTimeout(1000)`.
+- **Sin cambio de comportamiento**: se documentan el enlace `#recurso` de las notas (fragmento nativo) y el título recortado
+  del catálogo (`title` no sirve en táctil; el título entero está en el DOM y el resumen describe el enlace).
+- **Catálogo por colección**: las filas consecutivas de una misma colección van bajo su encabezado, con su recuento, dentro de
+  la página de resultados. El orden y la paginación del servidor no cambian: una colección que reaparece repite su encabezado.
+  Con una categoría elegida no hay encabezados y la fila conserva su meta.
+- **«Otros cursos»**: el progreso va por lección (`SegmentedProgress sm`) con el aula de cada curso en curso, que comparte caché con
+  el aula. Solo los seis primeros piden su aula, para no lanzar decenas de lecturas; el resto, y cualquier fallo o carga, queda con
+  la barra continua.
+- **Queda como estaba**: los `waitForTimeout` de los escenarios visuales esperan transiciones y asentamiento de capas sin señal
+  observable; cambiarlos arriesga los baselines. El de `home.spec` sí pasa a `networkidle`.
+
+## 2026-11-09 — Seguimientos de la agenda del estudiante ([#401](https://github.com/wasichai/elearning-backend/issues/401))
+
+- **Backend** (`GET /api/lms/classroom/sessions`): el intervalo `[from, to)` se aplica en la consulta de las sesiones (un
+  criterio sobre `inicio` junto al filtro por ediciones), ya no en memoria. El permiso de lectura de matrículas se
+  comprueba antes que el intervalo: sin él, `403` aunque `from` y `to` sean inválidos (antes, `400`).
+- **Pruebas**: una edición en Europe/Madrid junto a una de Lima comprueba el `timeZone` de cada sesión y que el
+  intervalo corta por instantes; y un `CREADOR` con intervalo inválido recibe `403`.
+
+## 2026-11-09 — Revisión final del rediseño Colofón ([#238](https://github.com/wasichai/elearning-frontend/issues/238))
+
+- **Frontend** (`elearning-frontend`, épica #217): el progreso segmentado tiene un segmento por cada lección del índice. Las
+  que el servidor no cuenta (`NOT_YET`) van con contorno discontinuo y quedan fuera de la cifra «x de y». La lección abierta
+  lleva siempre su anillo. El folio «1 / 15» se lee «Lección 1 de 15», y «Unidad n — x de y» dice cuántas no cuentan.
+- **Detalle de curso**: solo la edición recomendada queda fija al desplazar. «En esta página» va justo después y se ve
+  entero a 1440 × 900; las demás ediciones, al final, en su propia sección.
+- **Menores**: «iniciada» es el mismo medio círculo en la insignia y en la marca, y «hecho» va en tinta en las marcas y en
+  el progreso (`success` queda para las insignias semánticas). En «Completados» ya no se dice la fase de la edición.
+
+## 2026-11-09 — Anclas para los encabezados de una lectura subida a mano ([#400](https://github.com/wasichai/elearning-backend/issues/400))
+
+- **Backend** (`GET …/resources/{id}/reading`): un encabezado `h2`–`h4` que no trae `id` lo saca de su texto, como hace
+  Asciidoctor: `_`, minúsculas, sin acentos y `-` entre palabras, único en el documento. Así el HTML subido a mano (por
+  ejemplo, `lectura-entrar-y-salir.html` de la demo) también tiene su índice «En esta lección» en el aula. Si del texto no
+  queda nada, el `id` sigue siendo `null`.
+
+## 2026-11-09 — Cierre del rediseño Colofón ([#227](https://github.com/wasichai/elearning-frontend/issues/227))
+
+- **Frontend** (`elearning-frontend`, tarea 10 del rediseño Colofón, épica #217): las pantallas que faltaban pasan al
+  lenguaje Colofón. Son docencia (matriculados, cola de corrección, corrección de un intento, sesiones y asistencia), estudio,
+  revisión, términos y su publicación, certificado, finalización y evaluación. Usan la escala de Colofón, títulos en
+  Newsreader y filetes en lugar de cajas. Ningún comportamiento ni contrato cambia.
+- **Las cifras de cabecera** (matriculados, panel docente, términos, cambios de una versión, importación) tienen la misma
+  forma: filete, etiqueta en versalitas, cifra en tinta y nota. Van en columnas iguales que alinean sus filas. La de
+  «Evaluaciones por corregir» ya no cambia de color: su nota dice que están en la cola de corrección.
+- **Tablas**: el encabezado de una fila (un estudiante, un componente de la carga) se lee como texto, sin versalitas.
+- **Menores de tareas anteriores**: la barra del aula crece con el zoom de texto y mide su altura para el índice y la cabecera
+  de un intento. En el detalle de curso, el aviso de un 409 en el pie móvil ocupa toda la fila, y sin horas no se pinta la
+  tabla de carga. Un tipo de recurso fuera del vocabulario se nombra «Archivo».
+- **QA**: no queda ningún color fijo ni tamaño arbitrario en los `.tsx` de la aplicación. Se regeneraron las capturas de
+  referencia, en claro y en oscuro, y se corrigieron siete escenarios visuales con selectores antiguos.
+
+## 2026-11-09 — El horario del estudiante ([#226](https://github.com/wasichai/elearning-frontend/issues/226))
+
+- **Frontend** (`elearning-frontend`, tarea 9 del rediseño Colofón, épica #217): pantalla nueva «Horario» (`/horario`),
+  según `Schedule.dc.html`. Es la semana del estudiante, de lunes a domingo, con las sesiones de todas sus matrículas no
+  retiradas. Las lee de `GET /api/lms/classroom/sessions` con la semana visible más un día de margen a cada lado.
+- **Cada sesión, en el día y la hora de su edición**, con la nota de zona. Lleva título, curso, tipo, modalidad, lugar o
+  «Entrar a la sesión», y su insignia: programada, reprogramada o cancelada. La cancelada va tachada.
+- **La semana va en la URL** (`?semana=<lunes>`): se comparte, y atrás y adelante la recorren. Se navega con anterior,
+  siguiente y «Hoy».
+- **Dos vistas**: la rejilla por horas, con el detalle debajo, o la lista por días. A 390 px solo hay lista, y la elección se
+  guarda en el navegador. Una semana sin sesiones muestra un estado vacío.
+- **Al lado, «Por hacer»**, con las evaluaciones pendientes. Como no tienen fecha, salen todas y no solo las de la semana; la
+  pantalla lo dice.
+- La pestaña Sesiones de cada curso usa la misma fila de sesión. El menú «Aprendizaje» gana «Horario», solo para quien puede
+  aprender. «Esta semana», en el panel, y las notas al margen de la lección enlazan al horario.
+
+## 2026-11-09 — El detalle de curso Colofón ([#225](https://github.com/wasichai/elearning-frontend/issues/225))
+
+- **Frontend** (`elearning-frontend`, tarea 8 del rediseño Colofón, épica #217): `/cursos/:slug` sigue `CourseDetail.dc.html`.
+  Portadilla con la colección sobre el filete de tinta, el título en Newsreader display, el resumen y una línea de datos
+  (semanas · horas, créditos, modalidad, nivel e idioma; solo los que da la API).
+- **Contenido en secciones «§» numeradas** sin huecos (Qué aprenderás, Temario, Antes de empezar, Evaluación y certificación,
+  Docentes, Carga de trabajo y créditos, Fuentes, Datos del curso); una sección sin datos no se pinta ni gasta número.
+- **El temario, como índice de libro**: unidades plegables con su número y horas estimadas, y lecciones «n.m» con tipo y
+  minutos. **La carga de trabajo**, tabla compacta con cifras tabulares: un componente sin horas no tiene fila.
+- **Columna fija** en escritorio: la edición recomendada (la de la matrícula, si no la primera abierta) con su acción, las
+  demás ediciones debajo y el índice «En esta página» con anclas. La columna empieza junto a la portadilla para que la acción
+  se vea al abrir la ficha. En una columna, la acción sigue en el pie fijo. Matricularse, iniciar sesión, ir al aula,
+  edición completa o cerrada, el 409 y los términos no cambian.
+
+## 2026-11-09 — El catálogo Colofón, en lista ([#224](https://github.com/wasichai/elearning-frontend/issues/224))
+
+- **Frontend** (`elearning-frontend`, tarea 7 del rediseño Colofón, épica #217): `/cursos` sigue `Catalog.dc.html`. Las
+  tarjetas en cuadrícula pasan a una lista de filas (`ul`/`li`) con filetes: la colección en meta, el título en Newsreader
+  como único enlace de la fila (dos líneas como máximo y el título completo en `title`), el resumen en dos líneas, los datos
+  de nivel, modalidad y semanas · horas, y a la derecha la próxima edición con su insignia de inscripción (abierta, completa,
+  aún no abierta o cerrada) con icono y palabra a 14 px. Sin fotos, precios ni valoraciones.
+- **Encabezado y filtros**: filete fuerte y meta sobre el título, y la búsqueda con las categorías (índice de colecciones con
+  su recuento) en una sola barra; «Más filtros» sigue en el desplegable o la hoja inferior. Los filtros no cambian de
+  comportamiento ni de parámetros.
+- **«Contenido ilustrativo»** sale una sola vez, en el encabezado, cuando lo son todos los cursos de la página; si la página
+  es mixta, cada fila ilustrativa lleva su marca junto a la colección.
+
+## 2026-11-09 — El panel del estudiante Colofón ([#223](https://github.com/wasichai/elearning-frontend/issues/223))
+
+- **Frontend** (`elearning-frontend`, tarea 6 del rediseño Colofón, épica #217): «Mis cursos» sigue `Dashboard.dc.html`.
+  Arriba, «Mis cursos» y la fecha sobre el filete de tinta; el saludo en Newsreader grande con lo que de verdad hay: las
+  sesiones en vivo de los próximos 7 días y las evaluaciones por hacer. «Continuar» es la única superficie blanca: el curso,
+  «Unidad n · §n.m», la lección siguiente, el progreso segmentado por lección y la única acción primaria.
+- **Esta semana** sale de la agenda (`GET /api/lms/classroom/sessions?from&to`) en una sola petición, en lugar de leer las
+  sesiones matrícula por matrícula; agrupada por día en la zona de cada edición, y una sesión reprogramada o cancelada lo
+  dice en su fila. **Por hacer** son las evaluaciones pendientes del panel; cada bloque falla y se reintenta por su cuenta.
+- El progreso por lección de «Continuar» sale del aula de esa matrícula (una lectura, la misma que abre el aula). El resto de
+  cursos va en filas con filetes, con una barra continua y su cuenta: el resumen de la matrícula no trae el estado de cada
+  lección y no se inventa. Los completados llevan su certificado; las cifras «En curso / Completados» dejan de destacarse.
+- **Se retira** la barra de progreso heredada (`ProgressBar`).
+
 ## 2026-11-08 — Cierre de la Fase 4: importación real de SRTM y SGSPE ([#179](https://github.com/wasichai/elearning-backend/issues/179))
 
 - Lo último del criterio de F4: el importador, contra la API de contenidos de GitHub y con solo dos commits permitidos,
@@ -12,6 +151,91 @@ Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este
   incluido. Informe completo, procedimiento y temario en
   [docs/testing/importacion-srtm-sgspe.md](testing/importacion-srtm-sgspe.md). Sin cambios de código ni migraciones.
 - F4 queda con el criterio cumplido en el [roadmap](product/roadmap.md).
+
+## 2026-11-08 — El aula Colofón: índice, notas al margen y modo foco ([#222](https://github.com/wasichai/elearning-frontend/issues/222))
+
+- **Frontend** (`elearning-frontend`, tarea 5 del rediseño Colofón, épica #217): el aula sigue `Classroom.dc.html`. La
+  lección abre con el shell estrecho (`shellChrome` de `@wasichai/core` en `/mis-cursos/:id?leccion=…`). A 1280 px o más,
+  tres columnas: el índice del curso como el de un libro (progreso segmentado y «Unidad n — x de y»), el texto en su medida
+  de 66ch y las notas al margen; por debajo, las notas pasan tras el texto en dos columnas y, bajo 1024, el índice se abre
+  en una hoja inferior. La cabecera corrida dice «Mis cursos · Unidad n · §n.m» con el folio «posición / total».
+- **Notas al margen**: el objetivo (el del laboratorio, el único que da el aula), los archivos con «Ver» y «Descargar», las
+  sesiones vinculadas a la lección (de `GET …/enrollments/{id}/sessions`, sin petición nueva) con el camino a las del curso,
+  y «En esta lección», el índice de la lectura con anclas.
+- **Herramientas**: A−/A+, modo lectura (sepia `colofon-lectura`) y modo foco, que pliega el índice y las notas y se guarda
+  con las demás preferencias de lectura. El cierre es un filete con «Marcar como completada», la única acción primaria, y
+  anterior y siguiente con su título.
+- **Seguridad**: «Ver» abre el PDF en `PdfDialog`, cuyo `iframe` es del origen de la aplicación: solo llega un archivo que
+  empieza por `%PDF-`, con tipo `application/pdf`; cualquier otro (un HTML con extensión `.pdf`) se rechaza antes.
+- **Se retiran** el progreso en nudos de Quipu (`Quipu.tsx`), el color maíz y la escala tipográfica de Quipu: los estados
+  pasan a `StateMark`, y la escala vieja, a la de Colofón. La barra de «Mis cursos» queda, sin nudos, hasta la tarea 6.
+
+## 2026-11-08 — La lectura se pinta en la página, sin iframe ([#221](https://github.com/wasichai/elearning-frontend/issues/221))
+
+- **Frontend** (`elearning-frontend`, tarea R2 de la épica «lectura nativa», #385): la lección `HTML` deja el `iframe`
+  aislado y se pinta con componentes propios (`ReadingDocument`) desde `GET …/resources/{id}/reading`, en Newsreader a la
+  medida de 66ch, con la nota entre filetes de Classroom. El A−/A+ y el interlineado abierto siguen; el modo sepia y el
+  oscuro llegan por los tokens. `outline()` da los encabezados con su `id` para el índice al margen (tarea 5).
+- **Seguridad**: el contenido es dato no confiable. Sin `dangerouslySetInnerHTML`; los `id` se pintan con el prefijo
+  `lectura-` (y las anclas internas se reescriben con él), así el autor no pisa los de la aplicación; la interfaz vuelve a
+  filtrar lo que el servidor ya filtra: solo son enlace `http(s)`, `mailto:` y `#ancla` (los externos, en otra pestaña con
+  `noopener noreferrer` y aviso), y una figura solo con `data:image/(png|jpeg|gif|webp)` en base64. Lo que el vocabulario
+  no tiene se descarta nodo a nodo.
+- **Se retiran** `reading.ts` (la CSP, la paleta y el `srcdoc` del iframe) y la descarga del HTML para leerlo.
+
+## 2026-11-08 — La lección de lectura como documento de bloques ([#384](https://github.com/wasichai/elearning-backend/issues/384))
+
+- **API**: `GET /api/lms/classroom/enrollments/{id}/resources/{resourceVersionId}/reading` devuelve el HTML de un recurso
+  del aula como `ReadingDocument`: título y bloques de vocabulario cerrado (`heading`, `paragraph`, `list`, `table`,
+  `code`, `quote`, `admonition`, `figure`, `rule`; en línea `text`, `em`, `strong`, `code`, `link`, `break`), con `type`
+  en cada uno. Contrato en [docs/api/lms.md](api/lms.md).
+- **Seguridad**: se calcula en cada petición, sin tabla ni migración, desde el archivo leído con el alcance de su descarga;
+  pasa otra vez por `GeneratedHtml` y solo sale el vocabulario: enlaces `http`, `https`, `mailto` y `#ancla`, imágenes
+  solo `data:image/*` en base64, ningún atributo del autor. Matrícula ajena o retirada, recurso de otro curso, de otro
+  tipo o sin archivo: `404`. La conversión corre fuera del hilo de WebFlux.
+- **Decisión**: [ADR-0045](adr/0045-lectura-nativa-en-bloques.md) reemplaza el `iframe` de ADR-0012 §3. Después, la
+  tarea R2 del frontend pinta el documento y borra el `iframe` (épica #385).
+
+## 2026-11-08 — Primitivas compartidas de Colofón ([#220](https://github.com/wasichai/elearning-frontend/issues/220))
+
+- **Frontend** (`elearning-frontend`, tarea 4 del plan de Colofón): `SegmentedProgress` (un segmento por lección en una
+  fila, agrupado por unidades; relleno = completada, rayado = iniciada, contorno = no iniciada, anillo = actual; texto
+  «0 de 14 completadas · 1 iniciada» y `aria-label` con las dos cifras), `SectionHead` («§n Título» sobre el filete
+  fuerte, con meta a la derecha), `RunningHead` (migas y folio; la miga actual se corta con elipsis y lleva el título
+  completo) y `ColofonMark` (monograma «c» de Newsreader en un cuadrado `brand`, que es ahora el `appLogo`).
+- **Armazón**: `ScreenHeader` con título `text-h1 font-read`, meta en versalitas y cuerpo hasta `--content-max`;
+  `Section` usa `SectionHead`; `StatusBadge` sin maíz (el logro va en tinta con filete). La sombra de lo que flota es la
+  utilidad `shadow-overlay` sobre la variable del tema, así respeta el oscuro.
+- **Se retiran** `CordBanner` y `QuipuMark`, y el banner de `CourseCard`, `CourseDetailPage`, `MyCoursesPage`,
+  `VersionsPage` y `OfferingsPage`. El maíz y la escala `text-title-*` quedan hasta que las pantallas del aula y el
+  panel (tareas 5 y 6) dejen de usarlos.
+
+## 2026-11-08 — La agenda del estudiante en un intervalo ([#383](https://github.com/wasichai/elearning-backend/issues/383))
+
+- **Qué**: `GET /api/lms/classroom/sessions?from&to` devuelve, en una lista plana, las sesiones de todas las matrículas no
+  retiradas del estudiante cuyo inicio cae en `[from, to)` (máximo 62 días), con su asistencia, el título del curso, el
+  código de la edición y la zona de la edición. La usarán la pantalla «Horario» y el panel. Solo lectura, por lotes (una
+  lectura de ediciones, sesiones, asistencia, versiones y cursos), sin permiso propio: lee como la persona.
+
+## 2026-11-08 — El tema, las fuentes y los controles de Colofón ([#219](https://github.com/wasichai/elearning-frontend/issues/219))
+
+- **Frontend** (`elearning-frontend`, tarea 2 del plan de Colofón): los temas `colofon`, `colofon-dark` y `colofon-lectura`
+  (sepia, solo como subárbol de la lección) sustituyen a Quipu con los tokens de `tokens.json`; el oscuro y el sepia
+  derivan los que Foundations no fija y un test comprueba los pares AA. La hoja de controles da a los `data-slot` de
+  `@wasichai/ui` botones e inputs de 44 px con radio 3 px, pestañas subrayadas en `brand`, menú con el ítem actual en
+  `brand-soft` y filete de tinta, y cabeceras de tabla en versalitas.
+- **Letras y escala**: Newsreader (con eje `opsz`) y Source Sans 3, variables, autoalojadas en woff2 (latin y latin-ext)
+  con su OFL; escala `text-display`…`text-reading`, espaciados `--space-1`…`--space-9` y anchos `measure`, `index-col`,
+  `margin-col`. Se retiran `quipu*.css`, Figtree y Literata.
+- **Quien tenía Quipu guardado**: el script de arranque de `index.html` pasa `quipu` a `colofon` y `quipu-dark` a
+  `colofon-dark`. Quedan valores temporales del maíz y de la escala antigua hasta las tareas 4 y 5 (pantallas).
+
+## 2026-11-08 — Colofón sustituye a Quipu como sistema de diseño ([#382](https://github.com/wasichai/elearning-backend/issues/382))
+
+- **Decisión**: [ADR-0044](adr/0044-sistema-de-diseno-colofon.md) adopta Colofón (dirección A de la auditoría) y retira
+  Quipu; reemplaza a ADR-0026 y ADR-0029. Sin código: la fuente de verdad (artboards, tokens y plan) queda en
+  `elearning-frontend/docs/design-system/colofon/` (wasichai/elearning-frontend#218; épica #217).
+- **Después**: la agenda del estudiante (#383) y la lectura nativa sin iframe (ADR-0045, #384).
 
 ## 2026-11-08 — El nombre de cada matriculado en el roster y la asistencia ([#378](https://github.com/wasichai/elearning-backend/issues/378))
 

@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestController
 import java.util.UUID
@@ -21,6 +22,13 @@ class SessionController(
     suspend fun forStudent(
         @PathVariable enrollmentId: UUID,
     ): List<SessionView> = sessions.forStudent(enrollmentId)
+
+    // la agenda de todas mis matrículas no retiradas en [from, to), ISO-8601 los dos
+    @GetMapping("/classroom/sessions")
+    suspend fun agenda(
+        @RequestParam(required = false) from: String?,
+        @RequestParam(required = false) to: String?,
+    ): List<AgendaSessionView> = sessions.agendaForStudent(from, to)
 
     @GetMapping("/teaching/offerings/{code}/sessions")
     suspend fun forTeacher(

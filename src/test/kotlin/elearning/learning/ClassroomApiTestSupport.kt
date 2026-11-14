@@ -59,10 +59,16 @@ abstract class ClassroomApiTestSupport : LmsApiTest() {
         assessmentLessonType: String = "EVALUACION",
         completionRules: Map<String, Any?> = emptyMap(),
         lab: Boolean = false,
+        // la zona horaria de la edición
+        timeZone: String = "America/Lima",
         // la cuenta autora de la versión del recurso de la lectura; sin ella, el administrador
         resourceAuthor: String? = null,
+        // el archivo HTML del recurso de la lectura
+        html: String = "<h1>Lectura</h1>",
+        // otras versiones de recurso publicadas que enlaza la lectura, detrás de la suya
+        extraResources: List<String> = emptyList(),
     ): Course {
-        val resource = publishedHtml(resourceAuthor)
+        val resource = publishedHtml(resourceAuthor, html)
         return runBlocking {
             records.asPlatform(ORG) {
                 val code = uniqueName("PRG-").uppercase()
@@ -105,6 +111,9 @@ abstract class ClassroomApiTestSupport : LmsApiTest() {
                 val assessment = lesson(3, if (lab) "LABORATORIO" else assessmentLessonType)
                 val environment = if (lab) labOf(assessment.id) else null
                 records.create("recurso_leccion", RecordRequest(mapOf("leccion" to reading.id, "version_recurso" to resource, "orden" to 1)))
+                extraResources.forEachIndexed { i, extra ->
+                    records.create("recurso_leccion", RecordRequest(mapOf("leccion" to reading.id, "version_recurso" to extra, "orden" to i + 2)))
+                }
                 val (evaluation, questions) = if (withEvaluation) evaluation(assessment.id, reading.id, withFileQuestion) else null to emptyMap()
                 records.patch("version_curso", UUID.fromString(version.id), RecordRequest(mapOf("estado" to "PUBLICADA")), null, null)
                 published += version.id
@@ -118,7 +127,7 @@ abstract class ClassroomApiTestSupport : LmsApiTest() {
                             "estado" to "INSCRIPCION_ABIERTA",
                             "fecha_inicio" to today.plusDays(startsIn).toString(),
                             "fecha_fin" to today.plusDays(startsIn + 30).toString(),
-                            "zona_horaria" to "America/Lima",
+                            "zona_horaria" to timeZone,
                             "inscripcion_desde" to today.minusDays(1).toString(),
                             "inscripcion_hasta" to today.plusDays(5).toString(),
                         ),
@@ -199,12 +208,25 @@ abstract class ClassroomApiTestSupport : LmsApiTest() {
 
     // una versión de recurso HTML con su archivo, publicada: la sube el administrador (su autor salvo que se diga otro) y la
     // publica la plataforma
-    protected fun publishedHtml(authorId: String? = null): String {
+    protected fun publishedHtml(
+        authorId: String? = null,
+        html: String = "<h1>Lectura</h1>",
+    ): String = publishedResource("HTML", "lectura.html", html.toByteArray(), MediaType.TEXT_HTML, authorId)
+
+    // una versión de recurso del tipo dado con su archivo, publicada (o en borrador, con publish = false), como publishedHtml
+    protected fun publishedResource(
+        type: String,
+        name: String,
+        bytes: ByteArray,
+        contentType: MediaType,
+        authorId: String? = null,
+        publish: Boolean = true,
+    ): String {
         val author = authorId ?: get("/api/auth/me", admin)["userId"].asString()
         val version =
             runBlocking {
                 records.asPlatform(ORG) {
-                    val resource = records.create("recurso", RecordRequest(mapOf("titulo" to "Lectura de la unidad", "tipo" to "HTML", "idioma" to "es")))
+                    val resource = records.create("recurso", RecordRequest(mapOf("titulo" to "Lectura de la unidad", "tipo" to type, "idioma" to "es")))
                     records.create("version_recurso", RecordRequest(mapOf("recurso" to resource.id, "numero" to 1, "autor_id" to author))).id
                 }
             }
@@ -212,10 +234,10 @@ abstract class ClassroomApiTestSupport : LmsApiTest() {
         parts
             .part(
                 "file",
-                object : ByteArrayResource("<h1>Lectura</h1>".toByteArray()) {
-                    override fun getFilename() = "lectura.html"
+                object : ByteArrayResource(bytes) {
+                    override fun getFilename() = name
                 },
-            ).contentType(MediaType.TEXT_HTML)
+            ).contentType(contentType)
         client
             .post()
             .uri("/api/objects/version_recurso/records/$version/files/archivo")
@@ -225,8 +247,12 @@ abstract class ClassroomApiTestSupport : LmsApiTest() {
             .exchange()
             .expectStatus()
             .isOk
-        runBlocking {
-            records.asPlatform(ORG) { records.patch("version_recurso", UUID.fromString(version), RecordRequest(mapOf("estado" to "PUBLICADA")), null, null) }
+        if (publish) {
+            runBlocking {
+                records.asPlatform(
+                    ORG,
+                ) { records.patch("version_recurso", UUID.fromString(version), RecordRequest(mapOf("estado" to "PUBLICADA")), null, null) }
+            }
         }
         return version
     }

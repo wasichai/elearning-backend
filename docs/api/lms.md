@@ -15,23 +15,24 @@ como el modelo (`INICIAL`, `ASINCRONA`, …).
 
 Parámetros (todos opcionales):
 
-| nombre                  | tipo                                                   | regla                                                              |
-| ----------------------- | ------------------------------------------------------ | ------------------------------------------------------------------ |
-| `q`                     | texto ≤ 100                                            | búsqueda sin distinguir mayúsculas en título y resumen             |
-| `category`              | slug                                                   | slug de la categoría                                               |
-| `level`                 | `INICIAL` \| `INTERMEDIO` \| `AVANZADO`                |                                                                    |
-| `modality`              | `ASINCRONA` \| `SINCRONA` \| `HIBRIDA` \| `PRESENCIAL` |                                                                    |
-| `startsFrom`            | `YYYY-MM-DD`                                           | con una edición abierta o programada que empieza ese día o después |
-| `minWeeks`              | entero 1–26                                            | duración (`weeks`) mayor o igual                                   |
-| `maxWeeks`              | entero 1–26, ≥ `minWeeks`                              | duración (`weeks`) menor o igual; un semestral dura de 12 a 26     |
-| `enrollmentOpen`        | `true` \| `false`                                      | `true`: alguna edición con `enrollmentOpen` hoy; `false`: ninguna  |
-| `minTheoryHours`        | número 0–10000, ≤ 2 decimales                          | `workload.theoryHours` (horas totales de teoría) mayor o igual     |
-| `minPracticeHours`      | número 0–10000, ≤ 2 decimales                          | `workload.practiceHours` (práctica o laboratorio) mayor o igual    |
-| `minAutonomousHours`    | número 0–10000, ≤ 2 decimales                          | `workload.autonomousHours` (trabajo autónomo) mayor o igual        |
-| `prerequisiteKnowledge` | clave (minúsculas, dígitos, guiones) \| `none`         | la clave en `prerequisiteKnowledgeTags`; `none`: ninguna clave     |
-| `sort`                  | `upcoming` (defecto) \| `title` \| `duration`          | `upcoming`: próxima edición primero, sin edición al final          |
-| `page`                  | entero ≥ 0 (defecto 0)                                 |                                                                    |
-| `size`                  | 1–50 (defecto 12)                                      | fuera de rango → **400** con `errors[{field:"size"}]`              |
+| nombre                  | tipo                                                   | regla                                                                                 |
+| ----------------------- | ------------------------------------------------------ | ------------------------------------------------------------------------------------- |
+| `q`                     | texto ≤ 100                                            | búsqueda sin distinguir mayúsculas en título y resumen                                |
+| `category`              | slug                                                   | slug de la categoría                                                                  |
+| `level`                 | `INICIAL` \| `INTERMEDIO` \| `AVANZADO`                |                                                                                       |
+| `modality`              | `ASINCRONA` \| `SINCRONA` \| `HIBRIDA` \| `PRESENCIAL` |                                                                                       |
+| `startsFrom`            | `YYYY-MM-DD`                                           | con una edición abierta o programada que empieza ese día o después                    |
+| `minWeeks`              | entero 1–26                                            | duración (`weeks`) mayor o igual                                                      |
+| `maxWeeks`              | entero 1–26, ≥ `minWeeks`                              | duración (`weeks`) menor o igual; un semestral dura de 12 a 26                        |
+| `enrollmentOpen`        | `true` \| `false`                                      | `true`: alguna edición con `enrollmentOpen` hoy; `false`: ninguna                     |
+| `minTheoryHours`        | número 0–10000, ≤ 2 decimales                          | `workload.theoryHours` (horas totales de teoría) mayor o igual                        |
+| `minPracticeHours`      | número 0–10000, ≤ 2 decimales                          | `workload.practiceHours` (práctica o laboratorio) mayor o igual                       |
+| `minAutonomousHours`    | número 0–10000, ≤ 2 decimales                          | `workload.autonomousHours` (trabajo autónomo) mayor o igual                           |
+| `prerequisiteKnowledge` | clave (minúsculas, dígitos, guiones) \| `none`         | la clave en `prerequisiteKnowledgeTags`; `none`: ninguna clave                        |
+| `featured`              | `true` \| `false`                                      | `true`: solo los destacados de la portada, por su orden y luego por `sort` (ADR-0046) |
+| `sort`                  | `upcoming` (defecto) \| `title` \| `duration`          | `upcoming`: próxima edición primero, sin edición al final                             |
+| `page`                  | entero ≥ 0 (defecto 0)                                 |                                                                                       |
+| `size`                  | 1–50 (defecto 12)                                      | fuera de rango → **400** con `errors[{field:"size"}]`                                 |
 
 Los filtros se combinan (intersección). Un valor inválido (enum desconocido, fecha mal formada, `size` fuera de rango,
 `q` > 100, semanas fuera de 1–26 o `minWeeks` > `maxWeeks`, `enrollmentOpen` distinto de `true`/`false`, horas negativas,
@@ -86,7 +87,8 @@ filtros). Una clave que ningún curso de esa consulta declara no aparece.
     "enrollmentOpen": true,
     "enrollmentStatus": "OPEN"
   },
-  "illustrative": true
+  "illustrative": true,
+  "featured": false // destacado en la portada pública (curso_destacado, ADR-0046)
 }
 ```
 
@@ -331,7 +333,8 @@ legible. Lo mismo vale para sus sesiones y su finalización.
 - `file` puede ser `null` (recurso sin archivo); su `url` es siempre una ruta del mismo origen,
   `/api/objects/version_recurso/records/<id>/files/archivo`: la descarga de `wasichai-files`, con la misma sesión y el
   mismo alcance que el registro. Un
-  `HTML` se muestra en un `iframe` con `sandbox` sin `allow-scripts`; `PDF` se descarga; `VIDEO` se reproduce.
+  `HTML` se pinta en la página desde su lectura en bloques (`GET …/resources/{id}/reading`, ADR-0045); `PDF` tiene visor
+  y descarga; `VIDEO` se reproduce; los demás se descargan.
 - `lab` (RF-LAB-01, ADR-0027): solo en una lección `LABORATORIO`; `null` en las demás. `objective` puede ser `null`;
   `requirements`, `milestones` (en orden), `acceptanceCriteria` y `deliverables` son los campos «uno por línea» de la
   lección, sin las líneas vacías. La guía y los archivos son sus `resources`; la entrega y la rúbrica, su `assessment`.
@@ -341,6 +344,71 @@ legible. Lo mismo vale para sus sesiones y su finalización.
   La interfaz lo abre en otra pestaña con `rel="noopener noreferrer"`; el servidor nunca lo visita.
 - Subir a una versión de recurso un archivo cuyo tipo detectado no admite el `tipo` del recurso es `400` en `archivo`
   (lista en [seguridad §4.4](../security/README.md#44-archivos-f2-en-adelante), RNF-SEG-07).
+
+### GET /api/lms/classroom/enrollments/{id}/resources/{resourceVersionId}/reading
+
+La lectura de un recurso `HTML` del aula como documento de bloques de vocabulario cerrado (ADR-0045). Se calcula en cada
+petición desde el archivo de la versión, que pasa otra vez por el saneado de `GeneratedHtml`. La interfaz lo pinta con
+sus componentes: el texto es siempre texto, nunca HTML.
+
+```json
+{
+  "title": "Portal del estudiante",
+  "blocks": [
+    { "type": "heading", "level": 2, "id": "_entrar_y_salir_del_portal", "content": [{ "type": "text", "text": "Entrar y salir del portal" }] },
+    {
+      "type": "paragraph",
+      "content": [
+        { "type": "text", "text": "Con " },
+        { "type": "strong", "content": [{ "type": "text", "text": "su cuenta" }] },
+        { "type": "text", "text": " y " },
+        { "type": "link", "href": "https://example.org", "content": [{ "type": "text", "text": "el portal" }] },
+        { "type": "break" }
+      ]
+    },
+    { "type": "admonition", "kind": "note", "content": [{ "type": "paragraph", "content": [{ "type": "text", "text": "Una nota." }] }] },
+    { "type": "code", "language": "kotlin", "text": "fun main() = println(\"hola\")" },
+    { "type": "rule" }
+  ]
+}
+```
+
+- `title`: el texto del `h1` del documento, o `null`. El `h1` no aparece en `blocks`.
+- Como en el resto de la API, un campo sin valor llega como `null` y nunca falta (`"id": null`, `"caption": null`); las
+  listas nunca son `null`.
+- Cada bloque y cada elemento en línea lleva `type`. Lo que no es de esta lista no llega: no hay otros tipos ni otros campos.
+
+| Bloque (`type`) | Campos                                                                                                                                               |
+| --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `heading`       | `level` (2, 3 o 4; `h5` y `h6` llegan como 4), `id` (`[A-Za-z0-9_-]`, único en el documento, o `null`), `content` (en línea)                         |
+| `paragraph`     | `content` (en línea)                                                                                                                                 |
+| `list`          | `ordered` (booleano), `items`: cada elemento es una lista de bloques                                                                                 |
+| `table`         | `caption` (en línea o `null`), `head` y `body`: filas de celdas `{ content (bloques), colspan, rowspan, header }`; `colspan` y `rowspan` de 1 a 1000 |
+| `code`          | `language` (un nombre como `kotlin`, o `null`), `text` tal cual, con sus espacios y saltos                                                           |
+| `quote`         | `content` (bloques), `attribution` (en línea o `null`)                                                                                               |
+| `admonition`    | `kind` (`note`, `tip`, `important`, `warning` o `caution`), `content` (bloques)                                                                      |
+| `figure`        | `src` (solo `data:image/png`, `jpeg`, `gif` o `webp` en base64), `alt` (puede ser vacío), `caption` (en línea o `null`)                              |
+| `rule`          | ninguno                                                                                                                                              |
+
+| En línea (`type`) | Campos                                                                                                                     |
+| ----------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `text`            | `text`                                                                                                                     |
+| `em`, `strong`    | `content` (en línea)                                                                                                       |
+| `code`            | `text`                                                                                                                     |
+| `link`            | `href` (`http://` o `https://` con servidor, `mailto:` o `#<id>` saneado como el de los encabezados), `content` (en línea) |
+| `break`           | ninguno                                                                                                                    |
+
+- Lo que el vocabulario no tiene se descarta y su texto queda como párrafo. Un enlace con otro destino (`javascript:`,
+  `data:`, relativo) llega como su texto; una imagen que no es `data:image/…` en base64 llega como su `alt` en un párrafo
+  (o nada, si está vacío). El índice y el pie de Asciidoctor no llegan: el índice se arma con los `heading`.
+- Una figura nunca lleva una URL: abrir la lectura no hace peticiones a otro sitio. Un `#<id>` puede apuntar a un
+  encabezado; la interfaz puede prefijar los `id` al pintarlos.
+- Un encabezado sin `id` (el HTML subido a mano) lo saca de su texto, como Asciidoctor: `_` y el texto en minúsculas, sin
+  acentos, con `-` en lugar de lo que no es `[a-z0-9]` («Acción y año» da `_accion-y-ano`). Es estable: el mismo texto da
+  el mismo `id`. Si se repite, lleva `-2`, `-3`…; si del texto no queda nada (`¿?`), el `id` es `null`.
+- `404` si la matrícula no es propia o está retirada, si la versión de recurso no es una publicada que enlace una lección
+  de su temario, si el recurso no es de tipo `HTML`, si no tiene archivo o si el archivo supera el tope de su campo
+  (25 MB). `401` sin sesión.
 
 ### POST /api/lms/classroom/enrollments/{id}/lessons/{lessonId}/events
 
@@ -495,6 +563,18 @@ tipo que detecta `wasichai-files`; lo demás es `400` en `archivo` (RNF-SEG-07).
 `type`: `TEORIA` · `LABORATORIO` · `CONSULTA` · `RECUPERACION`. `modality`: `PRESENCIAL` · `VIRTUAL`. `status`:
 `PROGRAMADA` · `REPROGRAMADA` · `CANCELADA`. `attendance`: `null` o `PRESENTE` · `TARDE` · `AUSENTE` · `JUSTIFICADO`. El
 enlace solo es `https`.
+
+`GET /api/lms/classroom/sessions?from=…&to=…` → `AgendaSession[]`: la agenda de todas mis matrículas que no estén
+`RETIRADA` (una `FINALIZADA` sigue apareciendo), con las sesiones, de cualquier estado, cuyo `start` cae en el intervalo
+semiabierto `[from, to)`, por `start` y luego `id`. Es una lista plana: los campos de `Session` (con su `attendance` y el
+`timeZone` de su edición; las horas se muestran en esa zona) más `enrollmentId`, `courseTitle` (el título del curso de la
+versión matriculada) y `offeringCode`. `from` y `to` son obligatorios y ISO-8601 con zona (`2026-11-10T00:00:00Z`); si
+falta uno, está mal formado, el intervalo es vacío o invertido, o pasa de 62 días, es `400` con el problema en el campo.
+Sin permiso de lectura de matrículas, `403`, y se comprueba antes de validar `from` y `to`: quien no puede leer recibe `403`
+aunque el intervalo sea inválido.
+El intervalo se aplica en la consulta, sobre instantes.
+Como `…/enrollments/{id}/sessions`, no hay un permiso propio: lee como la persona, y solo sus matrículas. Un
+desplazamiento `+hh:mm` va en la query como `%2B`.
 
 ### Panel del estudiante
 

@@ -99,12 +99,35 @@ class ClassroomReader(
             .filter { (_, a) -> a.passedAt == null && (a.openAttemptId != null || a.attemptsUsed < a.maxAttempts) }
             .map { (lesson, a) -> PendingAssessment(lesson, assessment(a)) }
 
-    suspend fun classroom(id: UUID): ClassroomView {
+    // la matrícula propia y no retirada; cualquier otra se lee como inexistente
+    private suspend fun own(id: UUID): RecordResponse {
         val enrollment = records.get(ENROLLMENT, id)
         if (enrollment.attributes[STUDENT]?.toString() != currentUser.require().userId.toString()) throw NotFoundException("Matrícula no encontrada")
         // una retirada no está en «Mis cursos» ni abre su aula: antes la devolvía con recursos vacíos (revisión de la Fase 2, L7).
         // una finalizada sigue legible (ADR-0016)
         if (enrollment.attributes[STATE]?.toString() == WITHDRAWN) throw NotFoundException("Matrícula no encontrada")
+        return enrollment
+    }
+
+    // un recurso del aula de una matrícula propia, tal como lo muestra el aula: publicado y enlazado desde una lección de su
+    // versión. lo demás (de otra matrícula, de otro curso, inexistente) es 404, como la descarga de su archivo (ADR-0045)
+    suspend fun resource(
+        enrollmentId: UUID,
+        resourceVersionId: UUID,
+    ): ResourceView {
+        val enrollment = own(enrollmentId)
+        val lessons =
+            syllabus(enrollment.attributes.ref(VERSION)!!)
+                .units
+                .flatMap { it.lessons }
+                .map { it.id }
+                .toSet()
+        return resources(lessons).values.flatten().firstOrNull { it.id == resourceVersionId.toString() }
+            ?: throw NotFoundException("Recurso no encontrado")
+    }
+
+    suspend fun classroom(id: UUID): ClassroomView {
+        val enrollment = own(id)
         val content = content(enrollment)
         val lessonIds =
             content.units

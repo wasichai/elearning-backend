@@ -39,6 +39,17 @@ class RealModelTest(unittest.TestCase):
         for name in ("tipo", "organo", "documento_referencia", "aprobada_por", "aprobada_en"):
             self.assertTrue(fields[name].get("required"), name)
 
+    # la portada pública (ADR-0046): destacar un curso es una decisión de la institución, no del autor. ningún rol del LMS
+    # escribe curso_destacado (CREADOR edita curso, por eso la marca no es un campo suyo); la lee el catálogo proyectado
+    def test_nobody_but_admin_features_a_course(self):
+        featured = next(o for o in MODEL["objects"] if o["name"] == "curso_destacado")
+        self.assertEqual({"orden"}, {f["name"] for f in featured["fields"]})
+        relation = next(r for r in MODEL["relationships"] if r["source"] == "curso_destacado")
+        self.assertEqual(("curso", "curso", True), (relation["target"], relation["fieldName"], relation.get("required")))
+        for role in ROLES["roles"]:
+            for action in ("READ", "CREATE", "UPDATE", "DELETE"):
+                self.assertFalse(holds(role["name"], "curso_destacado", action), f"{role['name']} no debe {action}")
+
     def test_nobody_but_admin_publishes_or_retires(self):
         for role in ROLES["roles"]:
             for action in ("PUBLICAR", "RETIRAR"):

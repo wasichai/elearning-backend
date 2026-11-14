@@ -28,6 +28,7 @@ class CatalogSource(
             approvals = all(CREDIT_APPROVAL),
             policies = all(CreditPolicyRecords.POLICY),
             dimensions = all(RATING_DIMENSION),
+            featured = all(FEATURED),
         )
 
     private suspend fun all(
@@ -49,5 +50,6 @@ class CatalogSource(
         private const val PAGE = PageRequest.MAX_SIZE
         const val CREDIT_APPROVAL = "aprobacion_creditos"
         const val RATING_DIMENSION = "dimension_valoracion"
+        const val FEATURED = "curso_destacado"
     }
 }

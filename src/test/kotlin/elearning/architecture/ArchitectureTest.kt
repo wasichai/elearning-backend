@@ -110,8 +110,9 @@ class ArchitectureTest {
                 "course" to setOf("common", "workload"),
                 "catalog" to setOf("common", "course", "workload"),
                 "enrollment" to setOf("common", "course", "privacy"),
-                // el aviso de publicación de contenido sale de la cola persistente (RF-AUL-09)
-                "learning" to setOf("common", "enrollment", "course", "workload", "jobs", "privacy"),
+                // el aviso de publicación de contenido sale de la cola persistente (RF-AUL-09); la lectura en bloques es la
+                // conversión de media (ADR-0045)
+                "learning" to setOf("common", "enrollment", "course", "workload", "jobs", "privacy", "media"),
                 // el barrido de intentos vencidos corre en la cola persistente (L4 de #183)
                 "assessment" to setOf("common", "learning", "enrollment", "jobs"),
                 "authoring" to setOf("common", "course"),

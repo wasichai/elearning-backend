@@ -3,13 +3,18 @@ package elearning.learning
 import elearning.common.DisplayNames
 import elearning.common.instantOf
 import elearning.common.listAll
+import elearning.common.listAllIn
+import elearning.common.listByIds
 import elearning.common.ref
+import elearning.common.startingIn
 import elearning.course.meeting.MeetingProvider
 import kotlinx.coroutines.reactor.awaitSingleOrNull
+import org.springframework.beans.factory.ObjectProvider
 import org.springframework.r2dbc.core.DatabaseClient
 import org.springframework.stereotype.Service
 import org.springframework.transaction.reactive.TransactionalOperator
 import org.springframework.transaction.reactive.executeAndAwait
+import wasichai.core.common.Actions
 import wasichai.core.common.ConflictException
 import wasichai.core.common.ForbiddenException
 import wasichai.core.common.NotFoundException
@@ -18,6 +23,7 @@ import wasichai.core.data.RecordRequest
 import wasichai.core.data.RecordResponse
 import wasichai.core.data.RecordService
 import wasichai.core.identity.CurrentUser
+import wasichai.core.metadata.MetadataService
 import wasichai.notifications.Audience
 import wasichai.notifications.NotificationDraft
 import wasichai.notifications.NotificationKind
@@ -27,6 +33,7 @@ import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
+import java.time.OffsetDateTime
 import java.time.ZoneId
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
@@ -46,6 +53,7 @@ class SessionService(
     private val notifications: Notifications,
     private val db: DatabaseClient,
     private val names: DisplayNames,
+    private val metadata: ObjectProvider<MetadataService>,
 ) {
     suspend fun forTeacher(code: String): List<SessionView> {
         val offering = teaching.assignedOffering(code)
@@ -65,6 +73,90 @@ class SessionService(
             }
         return sessionsOf(offering).map { view(it, zone(offering), attended[it.id]) }
     }
+
+    // mis sesiones de todas las matrículas no retiradas cuyo inicio cae en [from, to). como forStudent, se lee como la persona:
+    // EnrollmentReadScope y el permiso de lectura de RecordService deciden, así que no hay un permiso aparte. por lotes: las
+    // ediciones, sus sesiones, la asistencia, las versiones y los cursos en una lectura cada uno, no una por sesión
+    suspend fun agendaForStudent(
+        fromText: String?,
+        toText: String?,
+    ): List<AgendaSessionView> {
+        // el permiso va antes que la validación: quien no puede leer matrículas recibe 403 aunque el intervalo sea inválido
+        val user = currentUser.require()
+        currentUser.requirePermission(
+            user,
+            Actions.READ,
+            metadata
+                .getObject()
+                .loadDefinition(user.organizationId, ENROLLMENT)
+                .obj.id,
+        )
+        // los dos son texto hasta aquí: la presencia y el formato se validan después del permiso, siempre con 400
+        val from = instant("from", fromText)
+        val to = instant("to", toText)
+        if (!from.isBefore(to)) throw ValidationException("Invalid agenda", "to", "must be after from")
+        if (Duration.between(from, to) > MAX_AGENDA) throw ValidationException("Invalid agenda", "to", "must be at most $MAX_AGENDA_DAYS days after from")
+        val me = user.userId.toString()
+        val enrollments = records.listAll(ENROLLMENT, mapOf(STUDENT to me)).filter { it.attributes[STATE]?.toString() != WITHDRAWN }
+        if (enrollments.isEmpty()) return emptyList()
+        val offerings = records.listByIds(OFFERING, enrollments.mapNotNull { it.attributes.ref(OFFERING_FIELD) }).associateBy { it.id }
+        val sessions =
+            records
+                .listAllIn(
+                    SESSION,
+                    OFFERING_FIELD,
+                    offerings.keys,
+                    listOf(startingIn("inicio", from, to)),
+                ).groupBy { it.attributes.ref(OFFERING_FIELD) }
+        val attended =
+            records.listAllIn(ATTENDANCE, ENROLLMENT, enrollments.map { it.id }).associate {
+                (it.attributes.ref(ENROLLMENT) to it.attributes.ref(SESSION)) to it.attributes[STATE]?.toString()
+            }
+        val versions = records.listByIds(VERSION, enrollments.mapNotNull { it.attributes.ref(VERSION) }).associateBy { it.id }
+        val courses = records.listByIds(COURSE, versions.values.mapNotNull { it.attributes.ref(COURSE) }).associateBy { it.id }
+        return enrollments
+            .flatMap { enrollment ->
+                val offering = offerings[enrollment.attributes.ref(OFFERING_FIELD)] ?: return@flatMap emptyList()
+                val zone = zone(offering)
+                val title =
+                    courses[versions[enrollment.attributes.ref(VERSION)]?.attributes?.ref(COURSE)]
+                        ?.attributes
+                        ?.get("titulo")
+                        ?.toString()
+                        .orEmpty()
+                sessions[offering.id].orEmpty().map { session ->
+                    val v = view(session, zone, attended[enrollment.id to session.id])
+                    AgendaSessionView(
+                        v.id,
+                        v.title,
+                        v.type,
+                        v.modality,
+                        v.start,
+                        v.end,
+                        v.timeZone,
+                        v.status,
+                        v.link,
+                        v.location,
+                        v.lessonId,
+                        v.originalSessionId,
+                        v.attendance,
+                        enrollment.id,
+                        title,
+                        offering.attributes["codigo"]?.toString().orEmpty(),
+                    )
+                }
+            }.sortedWith(compareBy({ it.start }, { it.id }))
+    }
+
+    private fun instant(
+        field: String,
+        value: String?,
+    ): Instant =
+        try {
+            OffsetDateTime.parse(value ?: throw ValidationException("Invalid agenda", field, "required")).toInstant()
+        } catch (_: DateTimeParseException) {
+            throw ValidationException("Invalid agenda", field, "must be an ISO-8601 date and time, like 2026-11-10T00:00:00Z")
+        }
 
     suspend fun attendance(id: UUID): List<AttendanceRow> {
         val (session, offering) = assigned(id)
@@ -373,6 +465,7 @@ class SessionService(
         const val OFFERING_FIELD = "edicion"
         const val LESSON = "leccion"
         const val UNIT = "unidad"
+        const val COURSE = "curso"
         const val VERSION = "version_curso"
         const val STUDENT = "estudiante_id"
         const val RECOVERY = "RECUPERACION"
@@ -382,6 +475,8 @@ class SessionService(
         const val NOTICE_SOURCE = "lms.sesiones"
         const val NOT_FOUND = "No encontrado"
         const val MAX_MINUTES = 1440
+        const val MAX_AGENDA_DAYS = 62
+        val MAX_AGENDA: Duration = Duration.ofDays(MAX_AGENDA_DAYS.toLong())
         val TYPES = setOf("TEORIA", "LABORATORIO", "CONSULTA", RECOVERY)
         val MODALITIES = setOf("PRESENCIAL", "VIRTUAL")
 
