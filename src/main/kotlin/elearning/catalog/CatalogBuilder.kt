@@ -38,6 +38,8 @@ data class CatalogRecords(
     val dimensions: List<RecordResponse> = emptyList(),
     // la muestra mínima de un indicador (lms.reputation.min-sample, con su piso); sin ella no se publica nada
     val ratingSample: Int = Int.MAX_VALUE,
+    // curso_destacado: los cursos del banner de la portada, con su orden (ADR-0046)
+    val featured: List<RecordResponse> = emptyList(),
 )
 
 // una cifra congelada de una asignación docente: dimensión, n y media
@@ -54,11 +56,14 @@ data class PublishedCourse(
     // inicios y fines de las ediciones vigentes (no canceladas ni finalizadas), alineados: «desde» y «próximos»
     val startDates: List<LocalDate>,
     val endDates: List<LocalDate> = emptyList(),
+    // el orden en el banner de la portada; null = no destacado (ADR-0046). va en su columna, no en la ficha
+    val featuredOrder: Int? = null,
 ) {
     fun json(): String = MAPPER.writeValueAsString(detail)
 
+    // el orden no está en la ficha: entra en el hash para que cambiarlo también se proyecte
     val hash: String by lazy {
-        MessageDigest.getInstance("SHA-256").digest(json().toByteArray()).joinToString("") { "%02x".format(it) }
+        MessageDigest.getInstance("SHA-256").digest((json() + "|" + featuredOrder).toByteArray()).joinToString("") { "%02x".format(it) }
     }
 
     companion object {
@@ -86,6 +91,11 @@ class CatalogBuilder {
         // la vigente: la última de cada versión si es una aprobación; tras una revocación, ninguna
         val policies = records.policies.associateBy { it.id }
         val ratings = publicRatings(records, profiles)
+        // varias marcas del mismo curso: cuenta la de menor orden
+        val featured =
+            records.featured
+                .groupBy { it.ref("curso") }
+                .mapValues { (_, marks) -> marks.minOf { it.int("orden") ?: 0 } }
         val approvals =
             records.approvals
                 .groupBy { it.ref("version_curso") }
@@ -116,7 +126,7 @@ class CatalogBuilder {
                         approvals[version.id],
                         policies,
                         ratings,
-                    )
+                    ).let { featured[course.id]?.let { order -> it.copy(detail = it.detail.copy(featured = true), featuredOrder = order) } ?: it }
                 } catch (e: IllegalArgumentException) {
                     onReject(course.text("codigo") ?: course.id, e)
                     null

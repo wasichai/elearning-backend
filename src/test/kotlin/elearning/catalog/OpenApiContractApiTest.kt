@@ -97,6 +97,7 @@ class OpenApiContractApiTest : WasichaiIntegrationTest() {
                 "minPracticeHours",
                 "minAutonomousHours",
                 "prerequisiteKnowledge",
+                "featured",
                 "sort",
                 "page",
                 "size",

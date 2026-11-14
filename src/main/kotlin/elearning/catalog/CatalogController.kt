@@ -40,6 +40,7 @@ class CatalogController(
         @RequestParam(required = false) minPracticeHours: String?,
         @RequestParam(required = false) minAutonomousHours: String?,
         @RequestParam(required = false) prerequisiteKnowledge: String?,
+        @RequestParam(required = false) featured: String?,
         @RequestParam(required = false) sort: String?,
         @RequestParam(required = false) page: String?,
         @RequestParam(required = false) size: String?,
@@ -58,6 +59,7 @@ class CatalogController(
                 minPracticeHours,
                 minAutonomousHours,
                 prerequisiteKnowledge,
+                featured,
                 sort,
                 page,
                 size,
@@ -88,6 +90,7 @@ class CatalogController(
         val minPracticeHours: String?,
         val minAutonomousHours: String?,
         val prerequisiteKnowledge: String?,
+        val featured: String?,
         val sort: String?,
         val page: String?,
         val size: String?,
@@ -116,16 +119,8 @@ class CatalogController(
         val minWeeks = weeks("minWeeks", raw.minWeeks, errors)
         val maxWeeks = weeks("maxWeeks", raw.maxWeeks, errors)
         if (minWeeks != null && maxWeeks != null && minWeeks > maxWeeks) errors += FieldViolation("maxWeeks", "must be >= minWeeks")
-        val open =
-            when (raw.enrollmentOpen) {
-                null -> null
-                "true" -> true
-                "false" -> false
-                else -> {
-                    errors += FieldViolation("enrollmentOpen", "must be true or false")
-                    null
-                }
-            }
+        val open = flag("enrollmentOpen", raw.enrollmentOpen, errors)
+        val featured = flag("featured", raw.featured, errors)
         val hours =
             HoursFilter(
                 theory = hours("minTheoryHours", raw.minTheoryHours, errors),
@@ -155,11 +150,27 @@ class CatalogController(
             enrollmentOpen = open,
             minHours = hours,
             prerequisiteKnowledge = knowledge,
+            featured = featured,
             sort = order!!,
             page = pageNumber,
             size = pageSize,
         )
     }
+
+    private fun flag(
+        name: String,
+        value: String?,
+        errors: MutableList<FieldViolation>,
+    ): Boolean? =
+        when (value) {
+            null -> null
+            "true" -> true
+            "false" -> false
+            else -> {
+                errors += FieldViolation(name, "must be true or false")
+                null
+            }
+        }
 
     // la duración de un curso va de 1 a 26 semanas (RF-ACA-05): fuera de eso no hay nada que filtrar
     private fun weeks(

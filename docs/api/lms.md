@@ -15,23 +15,24 @@ como el modelo (`INICIAL`, `ASINCRONA`, …).
 
 Parámetros (todos opcionales):
 
-| nombre                  | tipo                                                   | regla                                                              |
-| ----------------------- | ------------------------------------------------------ | ------------------------------------------------------------------ |
-| `q`                     | texto ≤ 100                                            | búsqueda sin distinguir mayúsculas en título y resumen             |
-| `category`              | slug                                                   | slug de la categoría                                               |
-| `level`                 | `INICIAL` \| `INTERMEDIO` \| `AVANZADO`                |                                                                    |
-| `modality`              | `ASINCRONA` \| `SINCRONA` \| `HIBRIDA` \| `PRESENCIAL` |                                                                    |
-| `startsFrom`            | `YYYY-MM-DD`                                           | con una edición abierta o programada que empieza ese día o después |
-| `minWeeks`              | entero 1–26                                            | duración (`weeks`) mayor o igual                                   |
-| `maxWeeks`              | entero 1–26, ≥ `minWeeks`                              | duración (`weeks`) menor o igual; un semestral dura de 12 a 26     |
-| `enrollmentOpen`        | `true` \| `false`                                      | `true`: alguna edición con `enrollmentOpen` hoy; `false`: ninguna  |
-| `minTheoryHours`        | número 0–10000, ≤ 2 decimales                          | `workload.theoryHours` (horas totales de teoría) mayor o igual     |
-| `minPracticeHours`      | número 0–10000, ≤ 2 decimales                          | `workload.practiceHours` (práctica o laboratorio) mayor o igual    |
-| `minAutonomousHours`    | número 0–10000, ≤ 2 decimales                          | `workload.autonomousHours` (trabajo autónomo) mayor o igual        |
-| `prerequisiteKnowledge` | clave (minúsculas, dígitos, guiones) \| `none`         | la clave en `prerequisiteKnowledgeTags`; `none`: ninguna clave     |
-| `sort`                  | `upcoming` (defecto) \| `title` \| `duration`          | `upcoming`: próxima edición primero, sin edición al final          |
-| `page`                  | entero ≥ 0 (defecto 0)                                 |                                                                    |
-| `size`                  | 1–50 (defecto 12)                                      | fuera de rango → **400** con `errors[{field:"size"}]`              |
+| nombre                  | tipo                                                   | regla                                                                                 |
+| ----------------------- | ------------------------------------------------------ | ------------------------------------------------------------------------------------- |
+| `q`                     | texto ≤ 100                                            | búsqueda sin distinguir mayúsculas en título y resumen                                |
+| `category`              | slug                                                   | slug de la categoría                                                                  |
+| `level`                 | `INICIAL` \| `INTERMEDIO` \| `AVANZADO`                |                                                                                       |
+| `modality`              | `ASINCRONA` \| `SINCRONA` \| `HIBRIDA` \| `PRESENCIAL` |                                                                                       |
+| `startsFrom`            | `YYYY-MM-DD`                                           | con una edición abierta o programada que empieza ese día o después                    |
+| `minWeeks`              | entero 1–26                                            | duración (`weeks`) mayor o igual                                                      |
+| `maxWeeks`              | entero 1–26, ≥ `minWeeks`                              | duración (`weeks`) menor o igual; un semestral dura de 12 a 26                        |
+| `enrollmentOpen`        | `true` \| `false`                                      | `true`: alguna edición con `enrollmentOpen` hoy; `false`: ninguna                     |
+| `minTheoryHours`        | número 0–10000, ≤ 2 decimales                          | `workload.theoryHours` (horas totales de teoría) mayor o igual                        |
+| `minPracticeHours`      | número 0–10000, ≤ 2 decimales                          | `workload.practiceHours` (práctica o laboratorio) mayor o igual                       |
+| `minAutonomousHours`    | número 0–10000, ≤ 2 decimales                          | `workload.autonomousHours` (trabajo autónomo) mayor o igual                           |
+| `prerequisiteKnowledge` | clave (minúsculas, dígitos, guiones) \| `none`         | la clave en `prerequisiteKnowledgeTags`; `none`: ninguna clave                        |
+| `featured`              | `true` \| `false`                                      | `true`: solo los destacados de la portada, por su orden y luego por `sort` (ADR-0046) |
+| `sort`                  | `upcoming` (defecto) \| `title` \| `duration`          | `upcoming`: próxima edición primero, sin edición al final                             |
+| `page`                  | entero ≥ 0 (defecto 0)                                 |                                                                                       |
+| `size`                  | 1–50 (defecto 12)                                      | fuera de rango → **400** con `errors[{field:"size"}]`                                 |
 
 Los filtros se combinan (intersección). Un valor inválido (enum desconocido, fecha mal formada, `size` fuera de rango,
 `q` > 100, semanas fuera de 1–26 o `minWeeks` > `maxWeeks`, `enrollmentOpen` distinto de `true`/`false`, horas negativas,
@@ -86,7 +87,8 @@ filtros). Una clave que ningún curso de esa consulta declara no aparece.
     "enrollmentOpen": true,
     "enrollmentStatus": "OPEN"
   },
-  "illustrative": true
+  "illustrative": true,
+  "featured": false // destacado en la portada pública (curso_destacado, ADR-0046)
 }
 ```
 

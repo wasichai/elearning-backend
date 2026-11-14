@@ -2,6 +2,7 @@ package elearning.catalog
 
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertNotEquals
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -96,6 +97,32 @@ class CatalogBuilderTest {
     fun `only courses with a published version enter the catalog`() {
         assertTrue(CatalogBuilder().build(records(version("v1", 1, "BORRADOR"))).isEmpty())
         assertEquals(1, CatalogBuilder().build(records(version("v1", 1, "PUBLICADA"))).size)
+    }
+
+    @Test
+    fun `a featured mark carries its lowest order and changes the hash`() {
+        val plain = CatalogBuilder().build(records(version("v1", 1, "PUBLICADA"))).single()
+        val featured =
+            CatalogBuilder()
+                .build(
+                    records(version("v1", 1, "PUBLICADA")).copy(
+                        featured = listOf(record("d1", "curso" to "c1", "orden" to 3), record("d2", "curso" to "c1", "orden" to 1)),
+                    ),
+                ).single()
+
+        assertFalse(plain.detail.featured)
+        assertNull(plain.featuredOrder)
+        assertTrue(featured.detail.featured)
+        assertEquals(1, featured.featuredOrder)
+        assertNotEquals(plain.hash, featured.hash)
+    }
+
+    @Test
+    fun `a featured draft stays out of the catalog`() {
+        val built =
+            CatalogBuilder().build(records(version("v1", 1, "BORRADOR")).copy(featured = listOf(record("d1", "curso" to "c1", "orden" to 0))))
+
+        assertTrue(built.isEmpty())
     }
 
     @Test

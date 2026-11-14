@@ -2,6 +2,22 @@
 
 Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este archivo registra lo que se entregó.
 
+## 2026-11-14 — Portada pública en `/` (épica [#406](https://github.com/wasichai/elearning-backend/issues/406))
+
+- **Wasichai** (`wasichai-ui` 1.9.0): `publicHome` en `@wasichai/core`. Sin sesión, `/` muestra un componente de la app
+  fuera del shell; el resto de rutas sigue pidiendo login, y con sesión `/` lleva a `homeRoute`.
+- **Frontend** (`elearning-frontend`): `catalog/LandingPage.tsx` muestra el curso destacado o el producto, la búsqueda,
+  las cifras públicas (cursos y áreas), las áreas, una fila por área con más cursos, «cómo se aprende aquí» y el pie.
+  Es Colofón, sin las cifras ni el registro del diseño de referencia.
+- **Backend** ([#405](https://github.com/wasichai/elearning-backend/issues/405)):
+  - Custom Object `curso_destacado` (curso y orden), sin permisos para ningún rol del LMS: solo ADMIN destaca
+    ([ADR-0046](adr/0046-curso-destacado-en-la-portada.md)).
+  - La proyección copia la marca a `lms.catalogo_publicado.destacado_orden` (`V32`), solo para cursos publicados.
+  - `GET /api/lms/public/catalog/courses` gana el filtro `featured=true|false`, y el resumen y la ficha el campo
+    `featured`. Con `featured=true`, el orden es el de la marca. La cadena de seguridad no cambia.
+  - Pruebas: `CatalogFeaturedApiTest` (orden y solo publicados; ningún rol del LMS ni un anónimo destaca, y no cambia
+    nada; `featured` inválido es 400), más casos nuevos en `CatalogBuilderTest` y `test_model.py`.
+
 ## 2026-11-09 — Seguimientos menores del rediseño Colofón ([#239](https://github.com/wasichai/elearning-frontend/issues/239))
 
 - **Frontend** (`elearning-frontend`): el progreso segmentado agrupa por unidad en cursos de más de 60 lecciones, con el relleno
