@@ -2,6 +2,14 @@
 
 Lo más nuevo primero. El razonamiento de arquitectura vive en `docs/adr/`; este archivo registra lo que se entregó.
 
+## 2026-11-14 — Nombre y logo del producto configurables ([#244](https://github.com/wasichai/elearning-frontend/issues/244))
+
+- **Frontend** (`elearning-frontend`): `VITE_APP_LOGO`, que se lee al compilar como `VITE_APP_NAME`, es una ruta del sitio
+  (el archivo va en `public/`) o una URL http(s). Sustituye a la «c» de Colofón en el menú, el login y las páginas
+  públicas, y además es el icono de la pestaña. Otro esquema se ignora. Las páginas públicas toman la marca de
+  `config.appLogo`, igual que el shell, y el `<title>` de `index.html` es el nombre desde el primer pintado
+  (`src/brand.ts`, `src/brandHtml.ts`).
+
 ## 2026-11-14 — Portada pública en `/` (épica [#406](https://github.com/wasichai/elearning-backend/issues/406))
 
 - **Wasichai** (`wasichai-ui` 1.9.0): `publicHome` en `@wasichai/core`. Sin sesión, `/` muestra un componente de la app

@@ -288,7 +288,8 @@ las ejecuciones de IA está en [docs/ai](../ai/README.md).
 
 - Backend: propiedad `lms.product-name` (valor por defecto `wasichai-learning`), usada solo en textos visibles (correos,
   documentos emitidos, OpenAPI).
-- Frontend: `VITE_APP_NAME` → `config.appName` de `<WasichaiApp>` (verificado en `packages/core/src/app/config.ts`).
+- Frontend: `VITE_APP_NAME` → `config.appName` de `<WasichaiApp>` (verificado en `packages/core/src/app/config.ts`), y
+  también el `<title>` de `index.html`. El logo sale de `VITE_APP_LOGO` → `config.appLogo`; sin él, la marca Colofón.
   `storagePrefix` es técnico y estable (`lms`), no el nombre del producto.
 - Nunca en paquetes (`elearning`), nombres de objetos o campos, claves i18n, rutas ni esquemas (`lms`).
 
