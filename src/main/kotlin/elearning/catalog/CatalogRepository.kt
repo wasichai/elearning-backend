@@ -24,6 +24,8 @@ data class CatalogQuery(
     val minHours: HoursFilter = HoursFilter(),
     // una clave del vocabulario conocimiento_previo, o PrerequisiteKnowledge.NONE: los que no declaran ninguna (ADR-0028)
     val prerequisiteKnowledge: String? = null,
+    // solo los destacados de la portada, por su orden antes que por sort (ADR-0046)
+    val featured: Boolean? = null,
     val sort: CatalogSort = CatalogSort.UPCOMING,
     val page: Int = 0,
     val size: Int = 12,
@@ -81,13 +83,16 @@ class CatalogRepository(
             .sql(
                 """
                 INSERT INTO lms.catalogo_publicado
-                    (organizacion, slug, codigo, titulo, resumen, categoria_slug, categoria_nombre, nivel, modalidad, semanas, inicios, fines, ficha, hash, actualizado_en)
-                VALUES (:org, :slug, :codigo, :titulo, :resumen, :categoriaSlug, :categoriaNombre, :nivel, :modalidad, :semanas, :inicios, :fines, CAST(:ficha AS jsonb), :hash, now())
+                    (organizacion, slug, codigo, titulo, resumen, categoria_slug, categoria_nombre, nivel, modalidad, semanas, inicios, fines, ficha, hash,
+                     destacado_orden, actualizado_en)
+                VALUES (:org, :slug, :codigo, :titulo, :resumen, :categoriaSlug, :categoriaNombre, :nivel, :modalidad, :semanas, :inicios, :fines,
+                        CAST(:ficha AS jsonb), :hash, :destacadoOrden, now())
                 ON CONFLICT (organizacion, slug) DO UPDATE SET
                     codigo = EXCLUDED.codigo, titulo = EXCLUDED.titulo, resumen = EXCLUDED.resumen,
                     categoria_slug = EXCLUDED.categoria_slug, categoria_nombre = EXCLUDED.categoria_nombre,
                     nivel = EXCLUDED.nivel, modalidad = EXCLUDED.modalidad, semanas = EXCLUDED.semanas,
-                    inicios = EXCLUDED.inicios, fines = EXCLUDED.fines, ficha = EXCLUDED.ficha, hash = EXCLUDED.hash, actualizado_en = now()
+                    inicios = EXCLUDED.inicios, fines = EXCLUDED.fines, ficha = EXCLUDED.ficha, hash = EXCLUDED.hash,
+                    destacado_orden = EXCLUDED.destacado_orden, actualizado_en = now()
                 """.trimIndent(),
             ).bind("org", organization)
             .bind("slug", d.slug)
@@ -103,6 +108,7 @@ class CatalogRepository(
             .bind("fines", course.endDates.toTypedArray())
             .bind("ficha", course.json())
             .bind("hash", course.hash)
+            .let { spec -> course.featuredOrder?.let { spec.bind("destacadoOrden", it) } ?: spec.bindNull("destacadoOrden", Integer::class.java) }
             .fetch()
             .rowsUpdated()
             .awaitSingle()
@@ -176,7 +182,7 @@ class CatalogRepository(
         val total = count(where, bindings)
         var spec =
             db.sql(
-                "SELECT ficha::text AS ficha FROM lms.catalogo_publicado WHERE $where ORDER BY ${query.sort.orderBy} LIMIT :limit OFFSET :offset",
+                "SELECT ficha::text AS ficha FROM lms.catalogo_publicado WHERE $where ORDER BY ${orderBy(query)} LIMIT :limit OFFSET :offset",
             )
         bindings.forEach { (k, v) -> spec = spec.bind(k, v) }
         val rows =
@@ -321,8 +327,14 @@ class CatalogRepository(
                 bindings["knowledge"] = it
             }
         }
+        query.featured?.let {
+            clauses += if (it) "destacado_orden IS NOT NULL" else "destacado_orden IS NULL"
+        }
         return clauses.joinToString(" AND ") to bindings
     }
+
+    // los destacados, en el orden que les dio la institución; el resto de criterios desempata
+    private fun orderBy(query: CatalogQuery): String = if (query.featured == true) "destacado_orden, ${query.sort.orderBy}" else query.sort.orderBy
 }
 
 // el nombre del campo de la ficha (CourseDetail.prerequisiteKnowledgeTags): fijo, nunca un valor

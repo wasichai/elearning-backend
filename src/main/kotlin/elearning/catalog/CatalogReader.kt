@@ -71,6 +71,7 @@ class CatalogReader(
                     NextOffering(it.code, it.status, it.startDate, it.endDate, it.timeZone, it.enrollmentOpen, it.enrollmentStatus)
                 },
             illustrative = d.illustrative,
+            featured = d.featured,
         )
 
     companion object {

@@ -182,6 +182,8 @@ data class CourseDetail(
     val teachers: List<TeacherView>,
     // las claves estructuradas, junto al texto libre prerequisiteKnowledge. vacío lee las filas proyectadas antes (ADR-0028)
     val prerequisiteKnowledgeTags: List<KnowledgeTag> = emptyList(),
+    // destacado en la portada pública (ADR-0046). false lee las filas proyectadas antes
+    val featured: Boolean = false,
 )
 
 data class NextOffering(
@@ -207,6 +209,7 @@ data class CourseSummary(
     val workload: WorkloadSummary,
     val nextOffering: NextOffering?,
     val illustrative: Boolean,
+    val featured: Boolean = false,
 )
 
 data class CategoryFacet(

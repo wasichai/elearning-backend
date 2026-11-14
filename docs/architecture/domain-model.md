@@ -123,6 +123,11 @@ de la plataforma no tiene dueño; ningún `PUT` ni `PATCH` lo cambia (`400` y `4
 de Wasichai, #345]. Los cursos anteriores quedan sin dueño. No da ni quita permisos: el primer borrador de un curso lo
 crea cualquiera con `CREATE` sobre `version_curso` (#270).
 
+**`curso_destacado`** — un curso del banner de la portada pública ([ADR-0046](../adr/0046-curso-destacado-en-la-portada.md)).
+`curso · RELATION → curso · requerido` · `orden · INTEGER · requerido`.
+Invariantes: solo lo escribe `ADMIN`, porque ningún rol del LMS tiene permisos sobre él [roles]. Solo cuenta para un
+curso con versión publicada [proyección]. Con varias marcas, gana el menor orden. Quitar la marca es borrar el registro.
+
 **`version_curso`** (CourseVersion) — una versión del temario: lo que se revisa, se aprueba y se publica. F1.
 
 - Identidad y estado: `curso · RELATION → curso · requerido` · `numero · INTEGER` · `estado · ENUM(BORRADOR,

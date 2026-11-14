@@ -151,6 +151,21 @@
       ]
     },
     {
+      "name": "curso_destacado",
+      "label": "Curso destacado",
+      "pluralLabel": "Cursos destacados",
+      "description": "Curso que la portada pública muestra en su banner (ADR-0046), de menor a mayor orden. Solo cuenta si el curso tiene una versión publicada: lo lee la proyección del catálogo, no la ruta anónima. Lo decide la institución (ADMIN), no quien escribe el curso. Quitar la marca es borrar el registro.",
+      "fields": [
+        {
+          "name": "orden",
+          "label": "Orden en la portada",
+          "type": "INTEGER",
+          "required": true,
+          "defaultValue": "0"
+        }
+      ]
+    },
+    {
       "name": "version_curso",
       "label": "Versión del curso",
       "pluralLabel": "Versiones del curso",
@@ -1876,6 +1891,16 @@
       "source": "curso",
       "target": "categoria",
       "fieldName": "categoria"
+    },
+    {
+      "name": "curso_destacado_curso",
+      "label": "Curso",
+      "inverseLabel": "Marcas de portada",
+      "type": "MANY_TO_ONE",
+      "source": "curso_destacado",
+      "target": "curso",
+      "fieldName": "curso",
+      "required": true
     },
     {
       "name": "version_curso_curso",
